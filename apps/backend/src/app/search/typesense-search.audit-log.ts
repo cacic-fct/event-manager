@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import { sanitizeAuditMetadata } from '../audit-log/audit-log.metadata';
 import type { AuditLogSearchDocument, AuditLogSearchDocumentInput } from './typesense-search.types';
 import { toOptionalString, toUnixTimestamp } from './typesense-search.shared';
 
@@ -99,7 +100,7 @@ export function toAuditLogSearchDocument(input: AuditLogSearchDocumentInput): Au
     changesText,
     beforeText: stringifyJsonForSearch(input.before),
     afterText: stringifyJsonForSearch(input.after),
-    metadataText: stringifyJsonForSearch(input.metadata ?? null),
+    metadataText: stringifyJsonForSearch(sanitizeAuditMetadata(input.metadata ?? null)),
     groupedCount: input.groupedCount,
     firstRecordedAt: toUnixTimestamp(input.firstRecordedAt),
     lastRecordedAt: toUnixTimestamp(input.lastRecordedAt),

@@ -45,12 +45,24 @@ export class PermissionsService {
   }
 
   canReadTab(tab: WorkspacePermissionTab): boolean {
+    if (tab === 'data-transfer') {
+      return this.hasAny([
+        Permission.DataTransfer.Export,
+        Permission.DataTransfer.Import,
+        Permission.DataTransfer.Undo,
+      ]);
+    }
     const permissions = TAB_PERMISSIONS_BY_ID.get(tab);
 
     return permissions ? this.hasAll(permissions.read) : false;
   }
 
   missingReadForTab(tab: WorkspacePermissionTab): WorkspacePermissionScope[] {
+    if (tab === 'data-transfer') {
+      return this.hasAny([Permission.DataTransfer.Export, Permission.DataTransfer.Import, Permission.DataTransfer.Undo])
+        ? []
+        : [Permission.DataTransfer.Export, Permission.DataTransfer.Import, Permission.DataTransfer.Undo];
+    }
     return this.missing(TAB_PERMISSIONS_BY_ID.get(tab)?.read ?? []);
   }
 

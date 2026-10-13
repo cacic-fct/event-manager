@@ -1,0 +1,149 @@
+.partial-approval {
+  display: grid;
+  align-items: flex-start;
+  gap: 0.25rem;
+  min-width: 0;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  padding: 0.75rem;
+  background: color-mix(in srgb, var(--mat-sys-error) 5%, var(--mat-sys-surface));
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+}
+
+.notice strong,
+.notice p,
+.partial-approval p {
+  margin: 0;
+}
+
+.notice p {
+  margin-block-start: 0.25rem;
+}
+
+.notice ul,
+.validation-message ul {
+  margin: 0.35rem 0 0;
+  padding-inline-start: 1.25rem;
+}
+
+.notice li,
+.validation-message li {
+  overflow-wrap: anywhere;
+}
+
+.success-note {
+  background: color-mix(in srgb, var(--mat-sys-tertiary-container) 45%, var(--mat-sys-surface));
+}
+
+.risk-note {
+  background: color-mix(in srgb, var(--mat-sys-error) 5%, var(--mat-sys-surface));
+}
+
+.risk-note > mat-icon {
+  color: var(--mat-sys-error);
+}
+
+.matching-note,
+.scope-note {
+  margin: 0;
+  font: var(--mat-sys-body-small);
+}
+
+.scope-note {
+  border-radius: 8px;
+  padding: 0.75rem;
+  background: var(--mat-sys-surface-container);
+}
+
+.import-inputs {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.file-picker-group {
+  display: grid;
+  justify-items: start;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.file-picker-group label {
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-title-small);
+}
+
+.visually-hidden-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.file-picker-selection {
+  margin: 0;
+  font: var(--mat-sys-body-small);
+}
+
+.json-field {
+  width: 100%;
+  min-width: 0;
+}
+
+.json-field textarea {
+  min-height: 18rem;
+  max-height: 48rem;
+  overflow: auto;
+  font-family: 'Source Code Pro Variable', monospace;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  tab-size: 2;
+  caret-color: var(--mat-sys-primary);
+}
+
+.json-field textarea::selection,
+.change-table code::selection,
+.change-table pre::selection {
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
+
+.validation-message,
+.error-message {
+  margin: 0;
+  color: var(--mat-sys-error);
+  font: var(--mat-sys-body-medium);
+  overflow-wrap: anywhere;
+}
+
+.validation-message {
+  border: 1px solid color-mix(in srgb, var(--mat-sys-error) 35%, var(--mat-sys-outline-variant));
+  border-radius: 8px;
+  padding: 0.75rem;
+  background: color-mix(in srgb, var(--mat-sys-error) 5%, var(--mat-sys-surface));
+}
+
+.success-message {
+  margin: 0;
+  color: var(--mat-sys-primary);
+  font: var(--mat-sys-body-medium);
+}
+
+.validation-message code,
+.notice code {
+  color: inherit;
+  font-family: 'Source Code Pro Variable', monospace;
+  overflow-wrap: anywhere;
+}
+
+.partial-approval p {
+  margin-inline-start: 2rem;
+  font: var(--mat-sys-body-small);
+}

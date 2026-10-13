@@ -106,4 +106,57 @@ describe('typesense audit-log search helpers', () => {
     expect(document.changedFields).toBeUndefined();
     expect(document.changedFieldLabels).toBeUndefined();
   });
+
+  it('never copies private JSON import snapshots or uploaded identities to the search index', () => {
+    const now = new Date();
+    const document = toAuditLogSearchDocument({
+      id: 'batch-1',
+      entityType: 'SYSTEM',
+      entityId: 'data-transfer:batch-1',
+      entityLabel: 'Importação JSON',
+      operation: 'IMPORT',
+      summary: 'Importação confirmada.',
+      actorId: 'organizer-1',
+      actorName: 'Organizador',
+      actorEmail: null,
+      actorType: 'USER',
+      permission: 'data-transfer#import',
+      eventId: null,
+      majorEventId: null,
+      eventGroupId: null,
+      before: null,
+      after: null,
+      changes: [],
+      changedFields: [],
+      groupedCount: 1,
+      firstRecordedAt: now,
+      lastRecordedAt: now,
+      createdAt: now,
+      revertedAt: null,
+      revertedById: null,
+      revertedByName: null,
+      revertedByEntryId: null,
+      revertTargetId: null,
+      revertMode: null,
+      metadata: {
+        type: 'data-transfer-batch',
+        version: 1,
+        summary: { create: 1, update: 0, unchanged: 0, skip: 0 },
+        undone: false,
+        synchronizationPending: true,
+        requestFingerprint: 'private-request-fingerprint',
+        requestItems: [{ id: 'private-request-item' }],
+        mutations: [{ before: { privateToken: 'private-rollback-token' }, after: null }],
+        document: { resources: [{ person: { email: 'private-person@example.test' } }] },
+      },
+    });
+    expect(document.metadataText).toContain('data-transfer-batch');
+    expect(document.metadataText).toContain('"create":1');
+    expect(JSON.stringify(document)).not.toContain('private-rollback-token');
+    expect(JSON.stringify(document)).not.toContain('private-person@example.test');
+    expect(JSON.stringify(document)).not.toContain('private-request-fingerprint');
+    expect(JSON.stringify(document)).not.toContain('private-request-item');
+    expect(document.metadataText).not.toContain('mutations');
+    expect(document.metadataText).not.toContain('document');
+  });
 });

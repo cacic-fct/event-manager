@@ -37,6 +37,9 @@ describe('event workspace routes', () => {
     ['/attendances/event/e1/oral', 'event', 'e1'],
     ['/certificates/event-group/g1/config1', 'group', 'g1'],
     ['/publication/event-group/g1', 'group', 'g1'],
+    ['/data-transfer/event/e1', 'event', 'e1'],
+    ['/admin/data-transfer/group/g1', 'group', 'g1'],
+    ['/data-transfer/major-event/m1', 'major-event', 'm1'],
     ['/draws?majorEventId=m1', 'major-event', 'm1'],
     ['/draws/draw-1?eventId=e1', 'event', 'e1'],
     ['/forms/form-1?eventId=e1', 'event', 'e1'],
@@ -59,9 +62,10 @@ describe('event workspace routes', () => {
         'forms',
         'tickets',
         'publication',
+        'data-transfer',
       ],
     ],
-    ['group', 'g1', ['settings', 'overview', 'interests', 'certificates', 'publication']],
+    ['group', 'g1', ['settings', 'overview', 'interests', 'certificates', 'publication', 'data-transfer']],
     [
       'major-event',
       'm1',
@@ -77,6 +81,7 @@ describe('event workspace routes', () => {
         'forms',
         'tickets',
         'publication',
+        'data-transfer',
       ],
     ],
   ] as const)('orders %s context operations by workflow', (kind, id, expectedOrder) => {
@@ -92,17 +97,24 @@ describe('event workspace routes', () => {
       [
         ['settings', 'subscriptions', 'attendances', 'interests', 'draws'],
         ['certificates', 'forms'],
-        ['tickets', 'publication'],
+        ['tickets', 'publication', 'data-transfer'],
       ],
     ],
-    ['group', 'g1', [['settings', 'overview', 'interests', 'certificates', 'publication']]],
+    [
+      'group',
+      'g1',
+      [
+        ['settings', 'overview', 'interests', 'certificates'],
+        ['publication', 'data-transfer'],
+      ],
+    ],
     [
       'major-event',
       'm1',
       [
         ['settings', 'overview', 'subscriptions', 'attendances', 'sports', 'interests', 'draws'],
         ['certificates', 'forms'],
-        ['tickets', 'publication'],
+        ['tickets', 'publication', 'data-transfer'],
       ],
     ],
   ] as const)('groups %s operations without singleton dividers', (kind, id, expectedGroups) => {
@@ -249,6 +261,7 @@ describe('EventWorkspaceContextService', () => {
       'overview',
       'interests',
       'certificates',
+      'data-transfer',
     ]);
   });
 
@@ -269,6 +282,7 @@ describe('EventWorkspaceContextService', () => {
       'draws',
       'certificates',
       'publication',
+      'data-transfer',
     ]);
   });
 

@@ -76,6 +76,49 @@ describe('SportsCategoryAdminService', () => {
     );
   });
 
+  it('creates imported category and backing-group IDs without generating registrations', async () => {
+    const category = sportsAdminCategoryRecord({
+      id: 'stable-category-1',
+      eventGroupId: 'stable-group-1',
+      eventGroup: { id: 'stable-group-1', name: 'Futsal', emoji: '⚽' },
+    });
+    prisma.sportsTournament.findFirst.mockResolvedValue({
+      majorEventId: 'major-event-1',
+      shouldIssueCertificate: false,
+      majorEvent: { name: 'Torneio esportivo' },
+    });
+    prisma.eventGroup.findFirst.mockResolvedValue(null);
+    tx.sportsCategory.findFirst.mockResolvedValue(null);
+    tx.sportsCategory.findUnique.mockResolvedValue(null);
+    tx.eventGroup.findFirst.mockResolvedValue(null);
+    tx.eventGroup.findUnique.mockResolvedValue(null);
+    tx.eventGroup.create.mockResolvedValue(category.eventGroup);
+    tx.sportsCategory.create.mockResolvedValue(category);
+
+    await expect(
+      service.createCategory(
+        categoryInput({
+          id: 'stable-category-1',
+          eventGroupId: 'stable-group-1',
+          initializeTeamRegistrations: false,
+        }),
+        actor,
+      ),
+    ).resolves.toEqual(category);
+
+    expect(tx.eventGroup.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        id: 'stable-group-1',
+        majorEventId: 'major-event-1',
+      }),
+    });
+    expect(tx.sportsCategory.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ id: 'stable-category-1', eventGroupId: 'stable-group-1' }),
+      include: { eventGroup: true },
+    });
+    expect(tx.sportsRegistration.createMany).not.toHaveBeenCalled();
+  });
+
   it('attaches and synchronizes an explicitly selected event group', async () => {
     const category = sportsAdminCategoryRecord();
     prisma.sportsTournament.findFirst.mockResolvedValue({ majorEventId: 'major-event-1' });
@@ -349,6 +392,7 @@ function createPrisma(tx: ReturnType<typeof createTransaction>) {
       callback(tx),
     ),
     sportsTournament: { findFirst: jest.fn() },
+    eventGroup: { findFirst: jest.fn() },
     sportsCategory: { findFirst: jest.fn() },
   };
 }
@@ -356,9 +400,21 @@ function createPrisma(tx: ReturnType<typeof createTransaction>) {
 function createTransaction() {
   return {
     eventForm: { findFirst: jest.fn() },
-    eventGroup: { findFirst: jest.fn(), create: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
+    eventGroup: {
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+    },
     event: { findFirst: jest.fn(), updateMany: jest.fn() },
-    sportsCategory: { findFirst: jest.fn(), create: jest.fn(), updateMany: jest.fn(), findUniqueOrThrow: jest.fn() },
+    sportsCategory: {
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      updateMany: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
+    },
     sportsMatch: { findMany: jest.fn(), updateMany: jest.fn() },
     sportsStage: { updateMany: jest.fn() },
     sportsTeam: { findMany: jest.fn().mockResolvedValue([{ id: 'team-1' }]) },

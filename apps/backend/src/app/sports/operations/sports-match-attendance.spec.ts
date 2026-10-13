@@ -66,6 +66,60 @@ describe('sports match attendance phase transition', () => {
     });
   });
 
+  it('previews the exact check-in transition without writing it', async () => {
+    tx.sportsMatch.findFirst.mockResolvedValue({
+      id: 'match-1',
+      state: SportsMatchState.SCHEDULED,
+      canonicalState: SportsMatchState.SCHEDULED,
+      revision: 4,
+    });
+    tx.sportsMatchRosterEntry.findFirst.mockResolvedValue({ id: 'roster-entry-1' });
+
+    await expect(
+      startSportsMatchCheckInFromAthleteAttendance({
+        tx: tx as never,
+        eventId: 'event-1',
+        personId: 'athlete-1',
+        dryRun: true,
+      }),
+    ).resolves.toEqual({
+      matchId: 'match-1',
+      state: SportsMatchState.SCHEDULED,
+      canonicalState: SportsMatchState.SCHEDULED,
+      revision: 4,
+      willTransition: true,
+    });
+
+    expect(tx.sportsMatch.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('previews a non-transition for a person outside the approved match roster', async () => {
+    tx.sportsMatch.findFirst.mockResolvedValue({
+      id: 'match-1',
+      state: SportsMatchState.SCHEDULED,
+      canonicalState: SportsMatchState.SCHEDULED,
+      revision: 4,
+    });
+    tx.sportsMatchRosterEntry.findFirst.mockResolvedValue(null);
+
+    await expect(
+      startSportsMatchCheckInFromAthleteAttendance({
+        tx: tx as never,
+        eventId: 'event-1',
+        personId: 'visitor-1',
+        dryRun: true,
+      }),
+    ).resolves.toEqual({
+      matchId: 'match-1',
+      state: SportsMatchState.SCHEDULED,
+      canonicalState: SportsMatchState.SCHEDULED,
+      revision: 4,
+      willTransition: false,
+    });
+
+    expect(tx.sportsMatch.updateMany).not.toHaveBeenCalled();
+  });
+
   it('does not move an already-started match back to check-in', async () => {
     tx.sportsMatch.findFirst.mockResolvedValue({
       id: 'match-1',

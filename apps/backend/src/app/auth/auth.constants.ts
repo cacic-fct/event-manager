@@ -9,3 +9,4 @@ export const ALLOW_NON_ONBOARDED_KEY = 'allowNonOnboarded';
 export const REQUIRED_ROLES_KEY = 'requiredRoles';
 export const REQUIRED_PERMISSIONS_KEY = 'requiredPermissions';
 export const ALLOW_SCOPED_COLLECTION_PERMISSIONS_KEY = 'allowScopedCollectionPermissions';
+export const EMPTY_SCOPED_PERMISSION_CONTEXT_KEY = 'emptyScopedPermissionContext';

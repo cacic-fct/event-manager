@@ -46,7 +46,8 @@ export interface ContextOperation {
     | 'draws'
     | 'interests'
     | 'certificates'
-    | 'publication';
+    | 'publication'
+    | 'data-transfer';
   label: string;
   icon: string;
   path: string[];
@@ -68,6 +69,7 @@ const contextOperationGroupById: Record<ContextOperation['id'], ContextOperation
   interests: 'operational',
   certificates: 'documents',
   publication: 'setup',
+  'data-transfer': 'setup',
 };
 
 export function eventContextFromUrl(url: string): EventWorkspaceRef | null {
@@ -101,6 +103,9 @@ export function eventContextFromUrl(url: string): EventWorkspaceRef | null {
     return { kind: kind as EventWorkspaceKind, id };
   }
   if (section === 'tickets' && id && (kind === 'event' || kind === 'major-event')) {
+    return { kind, id };
+  }
+  if (section === 'data-transfer' && id && (kind === 'event' || kind === 'group' || kind === 'major-event')) {
     return { kind, id };
   }
   if (['subscriptions', 'attendances', 'forms', 'certificates', 'publication'].includes(section) && id) {
@@ -221,6 +226,13 @@ export function contextOperations(context: EventWorkspaceRef): ContextOperation[
     icon: 'campaign',
     path: ['/publication', targetType, id],
     permissionTab: 'publication',
+  });
+  operations.push({
+    id: 'data-transfer',
+    label: 'Dados JSON',
+    icon: 'data_object',
+    path: ['/data-transfer', kind, id],
+    permissionTab: 'data-transfer',
   });
   return operations;
 }

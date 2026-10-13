@@ -216,6 +216,52 @@ describe('typesense writer helpers', () => {
     );
   });
 
+  it('propagates delete failures when requested', async () => {
+    const client = createClientMock();
+    const logger = { error: jest.fn() };
+    const failure = new Error('delete failed');
+    client.document.delete.mockRejectedValueOnce(failure);
+
+    await expect(
+      deleteTypesenseDocument({
+        client: client.instance as never,
+        logger: logger as never,
+        collectionName: 'events',
+        id: 'event-1',
+        throwOnError: true,
+      }),
+    ).rejects.toBe(failure);
+    expect(logger.error).toHaveBeenCalledWith('Failed to delete Typesense document event-1 from events.', failure);
+  });
+
+  it('reports an unavailable client when strict deletion is requested', async () => {
+    await expect(
+      deleteTypesenseDocument({
+        client: null,
+        logger: { error: jest.fn() } as never,
+        collectionName: 'events',
+        id: 'event-1',
+        throwOnError: true,
+      }),
+    ).rejects.toThrow('Typesense is unavailable; could not delete document event-1.');
+  });
+
+  it('allows a strict recovery deletion to replay when the document is already absent', async () => {
+    const client = createClientMock();
+    const logger = { error: jest.fn() };
+    client.document.delete.mockRejectedValueOnce({ httpStatus: 404 });
+    await expect(
+      deleteTypesenseDocument({
+        client: client.instance as never,
+        logger: logger as never,
+        collectionName: 'events',
+        id: 'event-1',
+        throwOnError: true,
+      }),
+    ).resolves.toBeUndefined();
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
   it('reports an unavailable client when propagation is requested', async () => {
     await expect(
       upsertTypesenseDocument({

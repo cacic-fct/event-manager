@@ -58,6 +58,7 @@ const permissionScopeExpectations = [
 const permissionResourceExpectations = [
   ['certificate', 'Certificado', 'workspace_premium'],
   ['certificate-config', 'Configuração de certificado', 'workspace_premium'],
+  ['data-transfer', 'Dados JSON', 'data_object'],
   ['event', 'Evento', 'event'],
   ['event-attendance', 'Presenças', 'fact_check'],
   ['event-attendance-collector', 'Coletor de presença', 'fact_check'],
@@ -90,12 +91,18 @@ const permissionResourceExpectations = [
 describe('shared permissions contract', () => {
   it('keeps catalog, scope rules, and barrel exports in sync', () => {
     expect(Permission.EventForm.Export).toBe('event-form#export');
+    expect(Permission.DataTransfer.Export).toBe('data-transfer#export');
+    expect(Permission.DataTransfer.Import).toBe('data-transfer#import');
+    expect(Permission.DataTransfer.Undo).toBe('data-transfer#undo');
     expect(EVENT_MANAGER_PERMISSION_CATALOG).toContain(Permission.PermissionGrant.Update);
     expect(EVENT_MANAGER_PERMISSION_SET.has(Permission.Frozen.Delete)).toBe(true);
     expect(EVENT_MANAGER_PERMISSION_SET.has(Permission.SportsMatch.Operate)).toBe(true);
     expect(EVENT_MANAGER_PERMISSION_SET.has(Permission.SportsScore.Review)).toBe(true);
     expect(requiresGlobalPermissionGrantScope(Permission.Person.Delete)).toBe(true);
     expect(requiresGlobalPermissionGrantScope(Permission.EventAttendance.Collect)).toBe(false);
+    expect(requiresGlobalPermissionGrantScope(Permission.DataTransfer.Export)).toBe(false);
+    expect(requiresGlobalPermissionGrantScope(Permission.DataTransfer.Import)).toBe(false);
+    expect(requiresGlobalPermissionGrantScope(Permission.DataTransfer.Undo)).toBe(false);
   });
 
   it('keeps split permission sets complete and deduplicated', () => {
@@ -165,6 +172,21 @@ describe('shared permissions contract', () => {
     expect(
       isPermissionGrantScopeCompatible(Permission.SportsMatch.Operate, EventManagerPermissionGrantScope.Event),
     ).toBe(true);
+  });
+
+  it('allows JSON data transfer at every event hierarchy scope', () => {
+    expect(getCompatiblePermissionGrantScopes(Permission.DataTransfer.Export)).toEqual([
+      EventManagerPermissionGrantScope.Global,
+      EventManagerPermissionGrantScope.Event,
+      EventManagerPermissionGrantScope.MajorEvent,
+      EventManagerPermissionGrantScope.EventGroup,
+    ]);
+    expect(getCompatiblePermissionGrantScopes(Permission.DataTransfer.Import)).toEqual([
+      EventManagerPermissionGrantScope.Global,
+      EventManagerPermissionGrantScope.Event,
+      EventManagerPermissionGrantScope.MajorEvent,
+      EventManagerPermissionGrantScope.EventGroup,
+    ]);
   });
 
   it('formats permission groups with stable labels, icons, and duplicate removal', () => {
@@ -285,6 +307,10 @@ describe('shared permissions contract', () => {
     expect(getPermissionIncludedDataSummary(Permission.Certificate.Read)).toContain(
       'Dados limitados da pessoa certificada',
     );
+    expect(getPermissionIncludedDataSummary(Permission.DataTransfer.Export)).toContain(
+      'inscrições e presenças selecionadas, conforme as permissões de leitura de cada recurso',
+    );
+    expect(getPermissionIncludedDataSummary(Permission.DataTransfer.Import)).toContain('IDs estáveis preservados');
     expect(getPermissionIncludedData(Permission.Event.Read)).toEqual([]);
     expect(getPermissionIncludedDataSummary(Permission.Event.Read)).toBe('');
     expect(getPermissionIncludedData(Permission.SportsTeam.Review)).toEqual(
@@ -452,6 +478,14 @@ describe('shared permissions contract', () => {
         delete: expect.arrayContaining([Permission.SportsTournament.Delete, Permission.SportsMatch.Delete]),
       }),
     );
+    const dataTransferTab = WORKSPACE_TAB_PERMISSIONS.find((tab) => tab.id === WorkspacePermissionTab.DataTransfer);
+    expect(dataTransferTab).toEqual({
+      id: WorkspacePermissionTab.DataTransfer,
+      label: 'Dados JSON',
+      read: [Permission.DataTransfer.Export, Permission.DataTransfer.Import, Permission.DataTransfer.Undo],
+      edit: [Permission.DataTransfer.Import],
+      delete: [],
+    });
     expect(WORKSPACE_PERMISSION_EVALUATION_SET).toEqual(
       expect.arrayContaining([
         Permission.Event.Read,
@@ -482,6 +516,9 @@ describe('shared permissions contract', () => {
     ).toEqual(new Set());
     expect(expandHardPermissionDependencies([Permission.RelatedPerson.Update])).toEqual(
       new Set([Permission.RelatedPerson.Update, Permission.RelatedPerson.Read]),
+    );
+    expect(expandHardPermissionDependencies([Permission.DataTransfer.Export, Permission.DataTransfer.Import])).toEqual(
+      new Set([Permission.DataTransfer.Export, Permission.DataTransfer.Import]),
     );
   });
 

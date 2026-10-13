@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PublicationTransitionService } from '../publishing/publishing-transition.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SportsCategoryAdminService } from './admin/sports-category-admin.service';
 import { SportsMatchAdminService } from './admin/sports-match-admin.service';
@@ -13,6 +14,7 @@ import { SportsTournamentAdminService } from './admin/sports-tournament-admin.se
 import { SportsVenueAdminService } from './admin/sports-venue-admin.service';
 import { SportsPaymentService } from './sports-payment.service';
 import { TicketIssuanceService } from '../tickets/ticket-issuance.service';
+import { sportsPrismaForTransaction } from './sports-transaction';
 
 export * from './sports-admin.types';
 
@@ -28,12 +30,12 @@ export class SportsAdminService {
   private readonly scoreEntries: SportsScoreEntryAdminService;
 
   constructor(
-    prisma: PrismaService,
-    frozen: FrozenResourceService,
-    auditLog: AuditLogService,
-    payments: SportsPaymentService,
-    publication: PublicationTransitionService,
-    ticketIssuance: TicketIssuanceService,
+    private readonly prisma: PrismaService,
+    private readonly frozen: FrozenResourceService,
+    private readonly auditLog: AuditLogService,
+    private readonly payments: SportsPaymentService,
+    private readonly publication: PublicationTransitionService,
+    private readonly ticketIssuance: TicketIssuanceService,
   ) {
     const dependencies = [prisma, frozen, auditLog, payments] as const;
     this.tournaments = new SportsTournamentAdminService(...dependencies);
@@ -44,6 +46,17 @@ export class SportsAdminService {
     this.matches = new SportsMatchAdminService(...dependencies, publication, ticketIssuance);
     this.officials = new SportsOfficialAdminService(...dependencies);
     this.scoreEntries = new SportsScoreEntryAdminService(...dependencies);
+  }
+
+  forTransaction(tx: Prisma.TransactionClient): SportsAdminService {
+    return new SportsAdminService(
+      sportsPrismaForTransaction(tx),
+      this.frozen.forTransaction(tx),
+      this.auditLog,
+      this.payments,
+      this.publication,
+      this.ticketIssuance,
+    );
   }
 
   readonly attachTournament = (...args: Parameters<SportsTournamentAdminService['attachTournament']>) =>

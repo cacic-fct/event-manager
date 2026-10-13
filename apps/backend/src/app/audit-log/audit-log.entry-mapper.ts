@@ -2,6 +2,7 @@ import { AuditLogEntry as PrismaAuditLogEntry, Prisma } from '@prisma/client';
 import { getAuditFieldLabel } from './audit-log.field-labels';
 import { AuditLogEntry, AuditLogExplorerEntry } from './audit-log.models';
 import { formatAuditValue, parseAuditChanges } from './audit-log.snapshots';
+import { sanitizeAuditMetadata } from './audit-log.metadata';
 
 export function mapAuditLogEntry(
   entry: PrismaAuditLogEntry,
@@ -52,7 +53,7 @@ export function mapAuditLogExplorerEntry(
     ...mapAuditLogEntry(entry, canRevert),
     beforeJson: stringifyAuditJson(entry.before),
     afterJson: stringifyAuditJson(entry.after),
-    metadataJson: stringifyAuditJson(entry.metadata),
+    metadataJson: stringifyAuditJson(sanitizeAuditMetadata(entry.metadata)),
   };
 }
 

@@ -7,6 +7,7 @@ import {
   ALLOW_NON_ONBOARDED_KEY,
   ALLOW_SCOPED_COLLECTION_PERMISSIONS_KEY,
   AUTH_SESSION_COOKIE_NAME,
+  EMPTY_SCOPED_PERMISSION_CONTEXT_KEY,
   IS_PUBLIC_KEY,
   REQUIRED_PERMISSIONS_KEY,
   REQUIRED_ROLES_KEY,
@@ -93,10 +94,17 @@ export class KeycloakScopeGuard implements CanActivate {
   }
 
   private getAuthorizationResourceContext(context: ExecutionContext, permissions: readonly string[]) {
+    const emptyScopedPermissionContext = this.reflector.getAllAndOverride<boolean>(
+      EMPTY_SCOPED_PERMISSION_CONTEXT_KEY,
+      [context.getHandler(), context.getClass()],
+    );
     const allowScopedCollection = this.reflector.getAllAndOverride<boolean>(ALLOW_SCOPED_COLLECTION_PERMISSIONS_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
+    if (emptyScopedPermissionContext) {
+      return { allowScopedCollection };
+    }
     const contextType = context.getType<'http' | 'graphql'>();
     if (contextType === 'graphql') {
       const gqlContext = GqlExecutionContext.create(context);

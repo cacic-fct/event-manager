@@ -40,6 +40,10 @@ export interface EventGroupPostCommitRecord {
   majorEventId?: string | null;
 }
 
+export interface PostCommitSyncOptions {
+  throwOnSearchError?: boolean;
+}
+
 const EVENT_EFFECTS_SELECT = {
   id: true,
   name: true,
@@ -115,7 +119,7 @@ export class EventPostCommitEffectsService {
     await this.syncEvents([eventId]);
   }
 
-  async syncEvents(eventIds: readonly string[]): Promise<void> {
+  async syncEvents(eventIds: readonly string[], options: PostCommitSyncOptions = {}): Promise<void> {
     const uniqueIds = [...new Set(eventIds.filter(Boolean))];
     if (uniqueIds.length === 0) {
       return;
@@ -134,10 +138,11 @@ export class EventPostCommitEffectsService {
           uniqueIds.map(async (eventId) => {
             const event = eventsById.get(eventId);
             if (!event || event.deletedAt) {
-              await this.typesenseSearch.deleteEvent(eventId);
+              if (options.throwOnSearchError) await this.typesenseSearch.deleteEvent(eventId, true);
+              else await this.typesenseSearch.deleteEvent(eventId);
               return;
             }
-            await this.upsertEventSearchDocument(event);
+            await this.upsertEventSearchDocument(event, options.throwOnSearchError);
             await this.onlineAttendanceNotifications.scheduleEvent(event);
           }),
         );
@@ -173,7 +178,7 @@ export class EventPostCommitEffectsService {
     await this.syncEventGroups([eventGroupId]);
   }
 
-  async syncEventGroups(eventGroupIds: readonly string[]): Promise<void> {
+  async syncEventGroups(eventGroupIds: readonly string[], options: PostCommitSyncOptions = {}): Promise<void> {
     const uniqueIds = [...new Set(eventGroupIds.filter(Boolean))];
     if (uniqueIds.length === 0) {
       return;
@@ -190,14 +195,20 @@ export class EventPostCommitEffectsService {
         await Promise.all(
           uniqueIds.map((eventGroupId) => {
             const eventGroup = eventGroupsById.get(eventGroupId);
-            return !eventGroup || eventGroup.deletedAt
-              ? this.typesenseSearch.deleteEventGroup(eventGroupId)
-              : this.typesenseSearch.upsertEventGroup({
-                  id: eventGroup.id,
-                  name: eventGroup.name,
-                  emoji: eventGroup.emoji,
-                  majorEventId: eventGroup.majorEventId,
-                });
+            if (!eventGroup || eventGroup.deletedAt) {
+              return options.throwOnSearchError
+                ? this.typesenseSearch.deleteEventGroup(eventGroupId, true)
+                : this.typesenseSearch.deleteEventGroup(eventGroupId);
+            }
+            const document = {
+              id: eventGroup.id,
+              name: eventGroup.name,
+              emoji: eventGroup.emoji,
+              majorEventId: eventGroup.majorEventId,
+            };
+            return options.throwOnSearchError
+              ? this.typesenseSearch.upsertEventGroup(document, true)
+              : this.typesenseSearch.upsertEventGroup(document);
           }),
         );
       });
@@ -231,8 +242,16 @@ export class EventPostCommitEffectsService {
     }
   }
 
-  private upsertEventSearchDocument(event: EventPostCommitRecord): Promise<void> {
-    return this.typesenseSearch.upsertEvent({
+  /** Runs even for configuration-only batches that have no event or group IDs. */
+  async refreshCatalogsAndSitemap(): Promise<void> {
+    await this.runAsSystem(async () => {
+      await this.sitemap.refresh();
+    });
+    await this.publishInvalidations('event');
+  }
+
+  private upsertEventSearchDocument(event: EventPostCommitRecord, throwOnError = false): Promise<void> {
+    const document = {
       id: event.id,
       name: event.name,
       emoji: event.emoji,
@@ -247,7 +266,8 @@ export class EventPostCommitEffectsService {
       publicationState: event.publicationState,
       startDate: event.startDate,
       endDate: event.endDate,
-    });
+    };
+    return throwOnError ? this.typesenseSearch.upsertEvent(document, true) : this.typesenseSearch.upsertEvent(document);
   }
 
   private runAsSystem<T>(operation: () => Promise<T>): Promise<T> {

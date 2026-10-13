@@ -1,0 +1,709 @@
+<div class="workspace-tab-shell data-transfer-page">
+  @if (!isScoped() && (canExport() || canImport())) {
+    <section class="transfer-panel scope-panel" aria-labelledby="transfer-scope-heading">
+      <div class="section-heading">
+        <h2 id="transfer-scope-heading">Contexto</h2>
+        @if (canExport()) {
+          <p>
+            Escolha o contexto que será exportado. A importação só usará este contexto quando você marcar essa opção.
+          </p>
+        } @else {
+          <p>Escolha um contexto existente para usar como destino opcional da importação.</p>
+        }
+      </div>
+      <app-event-context-picker
+        [context]="selectedContext()"
+        [allowGroups]="true"
+        [disabled]="exportLoading() || fileLoading() || previewLoading() || importLocked() || undoLoading()"
+        (contextChange)="setSelectedContext($event)" />
+      @if (selectedContext()) {
+        <button
+          mat-button
+          type="button"
+          class="clear-context"
+          [disabled]="exportLoading() || fileLoading() || previewLoading() || importLocked() || undoLoading()"
+          (click)="clearSelectedContext()">
+          <mat-icon>close</mat-icon>
+          Limpar contexto escolhido
+        </button>
+      }
+    </section>
+  }
+
+  @if (canExport()) {
+    <section class="transfer-panel" aria-labelledby="transfer-export-heading">
+      <div class="section-heading">
+        <h2 id="transfer-export-heading">Exportar JSON</h2>
+        <p>Baixe uma cópia portátil da estrutura selecionada e das configurações permitidas para sua conta.</p>
+      </div>
+
+      <div class="option-list" aria-label="Dados incluídos na exportação">
+        <mat-checkbox
+          [checked]="includeDescendants()"
+          [disabled]="exportLoading() || previewLoading() || importLocked() || undoLoading() || !exportTarget()"
+          (change)="setExportOption('includeDescendants', $event.checked)">
+          Incluir eventos e grupos filhos
+        </mat-checkbox>
+        <mat-checkbox
+          [checked]="includeConfiguration()"
+          [disabled]="exportLoading() || previewLoading() || importLocked() || undoLoading() || !exportTarget()"
+          (change)="setExportOption('includeConfiguration', $event.checked)">
+          Incluir configurações relacionadas
+        </mat-checkbox>
+        <p class="option-description">
+          As configurações podem incluir formulários, certificados, bilhetes, preços, locais e estrutura de esportes
+          associados ao contexto, incluindo o modo do torneio e as configurações de esportes.
+        </p>
+        <p class="option-description">
+          Somente os registros marcados abaixo serão incluídos. Os dados de participação podem ser exportados sem
+          incluir a hierarquia de eventos e grupos filhos.
+        </p>
+        <mat-checkbox
+          [checked]="includeSubscriptions()"
+          [disabled]="
+            exportLoading() ||
+            previewLoading() ||
+            importLocked() ||
+            undoLoading() ||
+            !exportTarget() ||
+            !canExportSubscriptions()
+          "
+          (change)="setExportOption('includeSubscriptions', $event.checked)">
+          {{ rootSubscriptionLabel() }}
+        </mat-checkbox>
+        @if (!canExportSubscriptions()) {
+          <p class="option-description">
+            A permissão de leitura de inscrições é necessária para incluir esses registros.
+          </p>
+        }
+        @if (hasRootAttendanceScope()) {
+          <mat-checkbox
+            [checked]="includeAttendances()"
+            [disabled]="
+              exportLoading() || previewLoading() || importLocked() || undoLoading() || !canExportAttendances()
+            "
+            (change)="setExportOption('includeAttendances', $event.checked)">
+            Incluir presenças deste evento
+          </mat-checkbox>
+        }
+        @if (hasChildTransferScope()) {
+          <mat-checkbox
+            [checked]="includeChildSubscriptions()"
+            [disabled]="
+              exportLoading() || previewLoading() || importLocked() || undoLoading() || !canExportSubscriptions()
+            "
+            (change)="setExportOption('includeChildSubscriptions', $event.checked)">
+            {{ childSubscriptionLabel() }}
+          </mat-checkbox>
+          <mat-checkbox
+            [checked]="includeChildAttendances()"
+            [disabled]="
+              exportLoading() || previewLoading() || importLocked() || undoLoading() || !canExportAttendances()
+            "
+            (change)="setExportOption('includeChildAttendances', $event.checked)">
+            {{ childAttendanceLabel() }}
+          </mat-checkbox>
+        }
+        @if (!canExportAttendances()) {
+          <p class="option-description">
+            A permissão de leitura de presenças é necessária para incluir esses registros.
+          </p>
+        }
+      </div>
+
+      @if (exportError()) {
+        <p class="error-message" role="alert">{{ exportError() }}</p>
+      }
+      @if (exportSuccessMessage()) {
+        <p class="success-message" role="status" aria-live="polite">{{ exportSuccessMessage() }}</p>
+      }
+      @if (exportIssues().length > 0) {
+        <div class="notice" role="status">
+          <mat-icon>info</mat-icon>
+          <div>
+            <strong>O arquivo foi exportado com avisos.</strong>
+            <ul>
+              @for (issue of exportIssues(); track $index) {
+                <li>
+                  @if (issue.path) {
+                    <code>{{ issue.path }}</code>
+                  }
+                  {{ issue.message }}
+                </li>
+              }
+            </ul>
+          </div>
+        </div>
+      }
+
+      <div class="action-row">
+        <button mat-flat-button type="button" [disabled]="!exportTarget() || exportLoading()" (click)="exportJson()">
+          <mat-icon>download</mat-icon>
+          Exportar JSON
+        </button>
+      </div>
+      @if (exportLoading()) {
+        <mat-progress-bar mode="indeterminate" aria-label="Exportando dados" />
+      }
+    </section>
+  }
+
+  @if (canImport()) {
+    <section class="transfer-panel" aria-labelledby="transfer-import-heading">
+      <div class="section-heading">
+        <h2 id="transfer-import-heading">Importar JSON</h2>
+        <p>Carregue um arquivo ou cole o conteúdo para revisar cada alteração antes de aplicá-la.</p>
+      </div>
+
+      <div class="notice risk-note" role="note">
+        <mat-icon>info</mat-icon>
+        <div>
+          <strong>O que acontece ao importar</strong>
+          <p>
+            IDs existentes serão atualizados e IDs novos serão criados. Propriedades ausentes preservam os valores
+            atuais; recursos ausentes nunca são excluídos. As alterações podem entrar em vigor imediatamente, inclusive
+            em contextos publicados. Esta importação não cria etapas de publicação. Novos recursos precisam de uma chave
+            local <code>key</code>; o servidor reserva o ID definitivo ao revisar o plano.
+          </p>
+          <p>
+            Arquivos com apenas chaves locais criam recursos novos a cada importação. Use o JSON com IDs gerados após
+            uma importação para que futuras revisões atualizem os mesmos recursos.
+          </p>
+        </div>
+      </div>
+
+      <p class="matching-note">
+        Inscrições e presenças são associadas às pessoas pelos identificadores e dados presentes no JSON. Registros sem
+        uma pessoa correspondente única ficam bloqueados para revisão.
+      </p>
+
+      @if (isScoped()) {
+        <p class="scope-note" role="note">A revisão e a aplicação usarão o contexto selecionado nesta rota.</p>
+      } @else {
+        <mat-checkbox
+          [checked]="useSelectedContextForImport()"
+          [disabled]="previewLoading() || importLocked() || undoLoading()"
+          (change)="setUseSelectedContextForImport($event.checked)">
+          Aplicar aos registros existentes do contexto escolhido acima
+        </mat-checkbox>
+        @if (useSelectedContextForImport() && !selectedContext()) {
+          <p class="validation-message" role="status">Escolha um contexto antes de revisar a importação.</p>
+        }
+      }
+
+      <div class="import-inputs">
+        <div class="file-picker-group">
+          <label for="transfer-file">Arquivo JSON (.json)</label>
+          <input
+            id="transfer-file"
+            #transferFileInput
+            class="visually-hidden-file-input"
+            type="file"
+            accept=".json,application/json"
+            tabindex="-1"
+            [disabled]="fileLoading() || previewLoading() || importLocked() || undoLoading()"
+            (change)="onFileSelected($event, transferFileButton)"
+            (cancel)="returnFocusToFilePicker(transferFileButton)" />
+          <button
+            #transferFileButton
+            mat-stroked-button
+            type="button"
+            [disabled]="fileLoading() || previewLoading() || importLocked() || undoLoading()"
+            aria-describedby="transfer-file-selection"
+            (click)="transferFileInput.click()">
+            <mat-icon>upload_file</mat-icon>
+            Selecionar arquivo
+          </button>
+          <p
+            id="transfer-file-selection"
+            class="muted file-picker-selection"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true">
+            @if (fileLoading()) {
+              Lendo arquivo JSON…
+            } @else if (fileName()) {
+              Arquivo selecionado: {{ fileName() }}
+            } @else {
+              Nenhum arquivo selecionado
+            }
+          </p>
+        </div>
+
+        <mat-form-field appearance="outline" class="json-field">
+          <mat-label>Conteúdo JSON</mat-label>
+          <textarea
+            matInput
+            rows="16"
+            spellcheck="false"
+            [value]="jsonText()"
+            [disabled]="fileLoading() || previewLoading() || importLocked() || undoLoading()"
+            [attr.aria-describedby]="
+              'transfer-json-help' +
+              (validationIssues().length > 0 ? ' transfer-validation-errors' : '') +
+              (serverIssues().length > 0 ? ' transfer-server-issues' : '')
+            "
+            [attr.aria-invalid]="validationIssues().length > 0 || serverIssues().length > 0"
+            [attr.aria-errormessage]="
+              validationIssues().length > 0
+                ? 'transfer-validation-errors'
+                : serverIssues().length > 0
+                  ? 'transfer-server-issues'
+                  : null
+            "
+            (input)="onTextInput($event)"></textarea>
+          <mat-hint id="transfer-json-help">Limite de 5 MiB. O JSON é validado antes de falar com o servidor.</mat-hint>
+        </mat-form-field>
+      </div>
+
+      @if (fileLoading()) {
+        <mat-progress-bar mode="indeterminate" aria-label="Lendo arquivo JSON" />
+      }
+      @if (validationIssues().length > 0) {
+        <div id="transfer-validation-errors" class="validation-message" role="alert">
+          <strong>Revise o JSON antes de continuar.</strong>
+          <ul>
+            @for (issue of validationIssues(); track $index) {
+              <li>
+                @if (issue.path) {
+                  <code>{{ issue.path }}</code>
+                }
+                {{ issue.message }}
+              </li>
+            }
+          </ul>
+        </div>
+      }
+      @if (serverIssues().length > 0) {
+        <div id="transfer-server-issues" class="validation-message" role="alert">
+          <strong>O servidor retornou detalhes para esta operação.</strong>
+          <ul>
+            @for (issue of serverIssues(); track $index) {
+              <li>
+                @if (issue.path) {
+                  <code>{{ issue.path }}</code>
+                }
+                {{ issue.message }}
+              </li>
+            }
+          </ul>
+        </div>
+      }
+      @if (participationPermissionWarnings().length > 0) {
+        <div class="notice" role="status">
+          <mat-icon>lock</mat-icon>
+          <div>
+            <strong>Alguns registros precisam de permissões específicas.</strong>
+            <ul>
+              @for (warning of participationPermissionWarnings(); track warning) {
+                <li>{{ warning }}</li>
+              }
+            </ul>
+          </div>
+        </div>
+      }
+      @if (importError()) {
+        <p class="error-message" role="alert">{{ importError() }}</p>
+      }
+      @if (importSuccessMessage()) {
+        <div class="notice success-note" role="status" aria-live="polite">
+          <mat-icon>check_circle</mat-icon>
+          <div>
+            <strong>{{ importSuccessMessage() }}</strong>
+            @if (committedResult()?.applied) {
+              <button mat-button type="button" (click)="downloadResult()">
+                <mat-icon>download</mat-icon>
+                Baixar relatório da importação
+              </button>
+              @if (committedResult()?.document) {
+                <button mat-button type="button" (click)="downloadResolvedDocument()">
+                  <mat-icon>download</mat-icon>
+                  Baixar JSON com IDs gerados
+                </button>
+              }
+            }
+          </div>
+        </div>
+      }
+      @if (committedResult()?.synchronizationPending) {
+        <p class="muted" role="status">A importação foi salva; o histórico está sendo sincronizado.</p>
+      }
+      @if (committedResult()?.batchId; as batchId) {
+        <div class="notice" aria-label="Identificação de auditoria da importação">
+          <mat-icon>manage_search</mat-icon>
+          <div>
+            <p>
+              Lote auditável: <code>{{ batchId }}</code>
+            </p>
+            @if (committedResult()?.auditEntryId; as auditEntryId) {
+              <p>
+                Entrada de auditoria: <code>{{ auditEntryId }}</code>
+              </p>
+            }
+          </div>
+        </div>
+        @if (canUndoBatch()) {
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="undoLoading() || importLocked() || previewLoading()"
+            (click)="requestUndo(batchId)">
+            <mat-icon>undo</mat-icon>
+            Desfazer esta importação
+          </button>
+        }
+      }
+      <div class="action-row">
+        <button
+          mat-flat-button
+          type="button"
+          [disabled]="!jsonText().trim() || fileLoading() || previewLoading() || importLocked() || undoLoading()"
+          (click)="previewImport()">
+          <mat-icon>fact_check</mat-icon>
+          Revisar importação
+        </button>
+      </div>
+      @if (previewLoading() || applyLoading() || undoLoading()) {
+        <mat-progress-bar
+          mode="indeterminate"
+          [attr.aria-label]="
+            previewLoading()
+              ? 'Revisando importação'
+              : applyLoading()
+                ? 'Aplicando alterações'
+                : 'Desfazendo importação'
+          " />
+      }
+
+      @if (offerPartialApproval() && !result()) {
+        <div class="partial-approval">
+          <mat-checkbox
+            [checked]="allowPartial()"
+            [disabled]="importLocked() || undoLoading()"
+            (change)="setAllowPartial($event.checked)">
+            Ignorar registros bloqueados
+          </mat-checkbox>
+          <p>Esse consentimento permite aplicar somente os registros liberados. Os demais constarão no relatório.</p>
+        </div>
+      }
+
+      @if (pendingApplyRequest()) {
+        <div class="notice risk-note" role="status" aria-live="polite">
+          <mat-icon>sync_problem</mat-icon>
+          <div>
+            <strong>Aguarde a confirmação do resultado.</strong>
+            <p>
+              Para evitar duplicações, o arquivo e o contexto ficam protegidos. A verificação reutiliza a mesma
+              solicitação, mesmo após a revisão expirar.
+            </p>
+            <button mat-flat-button type="button" [disabled]="applyLoading() || !canImport()" (click)="retryApply()">
+              Verificar resultado / tentar novamente
+            </button>
+          </div>
+        </div>
+      }
+
+      @if (preview(); as currentPreview) {
+        <section class="review-section" aria-labelledby="transfer-review-heading">
+          <div class="section-heading">
+            <h3 id="transfer-review-heading">
+              {{ result()?.applied ? 'Resultado da importação' : 'Revisão do plano' }}
+            </h3>
+            @if (result()?.applied) {
+              <p>Confira os registros aplicados e as alterações registradas neste lote.</p>
+            } @else if (pendingApplyRequest()) {
+              <p>Esta é a solicitação enviada. Verifique o resultado antes de revisar ou aplicar outra importação.</p>
+            } @else {
+              <p>Compare os valores atuais e propostos. Nada será salvo até você aplicar esta revisão.</p>
+            }
+          </div>
+
+          @if (!result() && currentPreview.allocation; as allocation) {
+            <p class="allocation-expiry">
+              IDs reservados para este plano. A revisão expira em
+              <time [attr.datetime]="allocation.expiresAt">{{ allocation.expiresAt | date: 'short' }}</time
+              >.
+            </p>
+            @if (allocationExpired() && !pendingApplyRequest()) {
+              <p class="validation-message" role="alert">
+                Esta revisão expirou. Revise o JSON novamente para reservar novos IDs antes de aplicar.
+              </p>
+            }
+          }
+
+          <dl class="summary-list" aria-label="Resumo da importação" aria-live="polite">
+            <div>
+              <dt>Novos registros</dt>
+              <dd>{{ currentPreview.summary.create }}</dd>
+            </div>
+            <div>
+              <dt>Registros a atualizar</dt>
+              <dd>{{ currentPreview.summary.update }}</dd>
+            </div>
+            <div>
+              <dt>Sem alterações</dt>
+              <dd>{{ currentPreview.summary.unchanged }}</dd>
+            </div>
+            <div>
+              <dt>Ignorados</dt>
+              <dd>{{ currentPreview.summary.skip }}</dd>
+            </div>
+          </dl>
+
+          @if (hasBlockedItems()) {
+            <p class="validation-message" role="status">
+              Há registros bloqueados. Eles só serão ignorados se você marcar a confirmação acima e revisar o plano
+              novamente.
+            </p>
+          }
+
+          @if (currentPreview.items.length > 0) {
+            <mat-accordion class="review-list" multi>
+              @for (item of currentPreview.items; track item.kind + ':' + item.id) {
+                <mat-expansion-panel class="review-item">
+                  <mat-expansion-panel-header>
+                    <mat-panel-title>{{ itemLabel(item) }} · {{ actionLabel(item.action) }}</mat-panel-title>
+                    <mat-panel-description
+                      >{{ itemReference(item) }} · {{ statusLabel(item.status) }}</mat-panel-description
+                    >
+                  </mat-expansion-panel-header>
+                  @if (item.message) {
+                    <p class="item-message">{{ item.message }}</p>
+                  }
+                  @if (item.key) {
+                    <p class="allocation-note">
+                      Chave local <code>{{ item.key }}</code
+                      >.
+                      @if (result()?.applied) {
+                        ID aplicado: <code>{{ item.id }}</code
+                        >.
+                      } @else if (generatedIdFor(item); as generatedId) {
+                        ID reservado para aplicar: <code>{{ generatedId }}</code
+                        >.
+                      } @else {
+                        O servidor reservará um ID ao revisar este recurso.
+                      }
+                    </p>
+                  }
+                  @if (item.changes.length > 0) {
+                    <div class="change-table-wrap" tabindex="0" role="region" aria-label="Comparação de alterações">
+                      <table class="change-table">
+                        <caption>
+                          Campos que serão alterados
+                        </caption>
+                        <thead>
+                          <tr>
+                            <th scope="col">Campo</th>
+                            <th scope="col">Valor atual</th>
+                            <th scope="col">Valor proposto</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (change of item.changes; track change.field) {
+                            <tr>
+                              <th scope="row">{{ fieldLabel(change.field) }}</th>
+                              <td>
+                                <pre>{{ jsonLabel(change.before) }}</pre>
+                              </td>
+                              <td>
+                                <pre>{{ jsonLabel(change.after) }}</pre>
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  } @else {
+                    <p class="muted">Este registro não tem campos diferentes para exibir.</p>
+                  }
+                </mat-expansion-panel>
+              }
+            </mat-accordion>
+          } @else {
+            <p class="empty-state">O plano não contém registros para importar.</p>
+          }
+
+          @if (!result() && !pendingApplyRequest()) {
+            <div class="notice risk-note" role="note">
+              <mat-icon>warning</mat-icon>
+              <div>
+                <strong>As alterações entram em vigor imediatamente.</strong>
+                <p>
+                  Confira os nomes, valores e efeitos relacionados acima. Alterações em contextos publicados também
+                  afetam o público, sem uma etapa adicional de publicação.
+                </p>
+              </div>
+            </div>
+            <div class="action-row">
+              <button mat-flat-button type="button" [disabled]="!canApplyPlan()" (click)="applyImport()">
+                <mat-icon>done_all</mat-icon>
+                Aplicar alterações
+              </button>
+            </div>
+          }
+
+          @if (!result() && !pendingApplyRequest() && hasReadyRecords(currentPreview) && !canApplyPlan()) {
+            <p class="validation-message" role="status">
+              O plano não pode ser aplicado com as permissões ou confirmações atuais. Revise os registros bloqueados.
+            </p>
+          }
+        </section>
+      }
+    </section>
+  } @else if (canExport()) {
+    <section class="transfer-panel" aria-labelledby="transfer-import-heading">
+      <div class="section-heading">
+        <h2 id="transfer-import-heading">Importar JSON</h2>
+        <p>Você pode exportar dados, mas sua conta não tem permissão para importar arquivos.</p>
+      </div>
+    </section>
+  }
+
+  @if (canImport() || canExport()) {
+    <section class="transfer-panel utility-panel" aria-labelledby="transfer-utilities-heading">
+      <div class="section-heading">
+        <h2 id="transfer-utilities-heading">Schema e modelo</h2>
+        @if (isScoped() && routeScope()?.kind === 'event') {
+          <p>
+            O modelo usa o ID do evento e começa com uma alteração vazia. Exporte o evento antes de editar para obter os
+            valores atuais; as associações existentes serão preservadas.
+          </p>
+        } @else if (isScoped()) {
+          <p>
+            O modelo cria registros filhos vinculados ao contexto atual. Associações existentes não serão alteradas;
+            exporte o contexto para baixar sua configuração completa.
+          </p>
+        } @else {
+          <p>Use o schema atual para validar a estrutura ou baixe um exemplo inicial para criar uma nova árvore.</p>
+        }
+      </div>
+      <div class="utility-actions">
+        @if (canImport()) {
+          <mat-form-field appearance="outline">
+            <mat-label>Tipo de estrutura</mat-label>
+            <mat-select
+              [value]="templateKind()"
+              [disabled]="isScoped() || importLocked() || undoLoading()"
+              (selectionChange)="setTemplateKind($event.value)">
+              @for (kind of templateKinds(); track kind.value) {
+                <mat-option [value]="kind.value">{{ kind.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <button mat-stroked-button type="button" (click)="downloadTemplate()">
+            <mat-icon>download</mat-icon>
+            Baixar modelo JSON
+          </button>
+        }
+        <button mat-stroked-button type="button" [disabled]="schemaLoading()" (click)="downloadSchema()">
+          <mat-icon>schema</mat-icon>
+          Baixar schema JSON
+        </button>
+      </div>
+      @if (schemaError()) {
+        <p class="error-message" role="alert">{{ schemaError() }}</p>
+      }
+      @if (schemaLoading()) {
+        <mat-progress-bar mode="indeterminate" aria-label="Baixando schema JSON" />
+      }
+    </section>
+  }
+
+  @if (canViewHistory()) {
+    <section class="transfer-panel history-panel" aria-labelledby="transfer-history-heading">
+      <div class="section-heading">
+        <h2 id="transfer-history-heading">Importações recentes</h2>
+        <p>Histórico dos lotes de importação autorizados para sua conta.</p>
+      </div>
+      <div class="action-row">
+        <button mat-button type="button" [disabled]="historyLoading()" (click)="retryHistory()">
+          <mat-icon>refresh</mat-icon>
+          Atualizar histórico
+        </button>
+      </div>
+      @if (historyLoading()) {
+        <mat-progress-bar mode="indeterminate" aria-label="Carregando importações recentes" />
+      }
+      @if (historyError()) {
+        <p class="error-message" role="alert">{{ historyError() }}</p>
+      }
+      @if (!historyLoading() && !historyError()) {
+        @if (historyEntries().length > 0) {
+          <ul class="batch-history" aria-label="Importações recentes">
+            @for (batch of historyEntries(); track batch.batchId) {
+              <li class="batch-history-row">
+                <div class="batch-history-details">
+                  <strong>{{ batch.undone ? 'Importação desfeita' : 'Importação concluída' }}</strong>
+                  <time [attr.datetime]="batch.createdAt">{{ batch.createdAt | date: 'short' }}</time>
+                  <p>
+                    {{ batch.summary.create }} novos · {{ batch.summary.update }} atualizados ·
+                    {{ batch.summary.unchanged }} sem alterações · {{ batch.summary.skip }} ignorados
+                  </p>
+                  <p>
+                    Lote <code>{{ batch.batchId }}</code> · Auditoria <code>{{ batch.auditEntryId }}</code>
+                  </p>
+                  @if (batch.synchronizationPending) {
+                    <p role="status">O histórico deste lote ainda está sendo sincronizado.</p>
+                  }
+                </div>
+                @if (canUndoHistoryBatch(batch)) {
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    [disabled]="undoLoading()"
+                    (click)="requestUndo(batch.batchId)">
+                    <mat-icon>undo</mat-icon>
+                    Desfazer este lote
+                  </button>
+                }
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="empty-state">Nenhuma importação recente disponível para sua conta.</p>
+        }
+      }
+    </section>
+  }
+
+  @if (undoConfirmationOpen()) {
+    <section class="risk-summary undo-confirmation" aria-labelledby="undo-confirmation-heading" role="group">
+      <mat-icon>warning</mat-icon>
+      <div>
+        <h2 id="undo-confirmation-heading">Reverter todas as alterações do lote {{ undoTarget()?.batchId }}?</h2>
+        <p>
+          A reversão preserva edições feitas depois deste lote e verifica novamente as permissões do domínio antes de
+          continuar.
+        </p>
+        @if (undoError()) {
+          <p class="error-message" role="alert">{{ undoError() }}</p>
+        }
+        <div class="action-row">
+          <button mat-button type="button" [disabled]="undoLoading()" (click)="cancelUndo()">Cancelar</button>
+          <button mat-flat-button type="button" [disabled]="undoLoading()" (click)="confirmUndo()">
+            Confirmar reversão
+          </button>
+        </div>
+      </div>
+    </section>
+  }
+  @if (undoLoading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Desfazendo importação" />
+  }
+  @if (undoError() && !undoConfirmationOpen()) {
+    <p class="error-message" role="alert">{{ undoError() }}</p>
+  }
+  @if (undoSuccessMessage()) {
+    <div class="notice success-note" role="status" aria-live="polite">
+      <mat-icon>check_circle</mat-icon>
+      <div>
+        <strong>{{ undoSuccessMessage() }}</strong>
+        @if (undoAuditEntryId()) {
+          <p>
+            Entrada de auditoria da reversão: <code>{{ undoAuditEntryId() }}</code>
+          </p>
+        }
+      </div>
+    </div>
+  }
+</div>

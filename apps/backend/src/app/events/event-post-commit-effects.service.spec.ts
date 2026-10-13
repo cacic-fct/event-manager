@@ -266,6 +266,80 @@ describe('EventPostCommitEffectsService', () => {
     );
   });
 
+  it('propagates strict event search failures requested by recovery', async () => {
+    const failure = new Error('Typesense unavailable');
+    const event = { ...eventRecord(), deletedAt: null };
+    const prisma = { event: { findMany: jest.fn().mockResolvedValue([event]) } };
+    const typesense = { upsertEvent: jest.fn().mockRejectedValue(failure), deleteEvent: jest.fn() };
+    const sitemap = { refresh: jest.fn().mockResolvedValue([]) };
+    const notifications = { scheduleEvent: jest.fn() };
+    const realtime = { scope: jest.fn((channel: string) => channel), publish: jest.fn().mockResolvedValue({}) };
+    const service = new EventPostCommitEffectsService(
+      prisma as never,
+      typesense as never,
+      sitemap as never,
+      notifications as never,
+      realtime as never,
+    );
+
+    await expect(service.syncEvents(['event-1'], { throwOnSearchError: true })).rejects.toBe(failure);
+
+    expect(typesense.upsertEvent).toHaveBeenCalledWith(expect.objectContaining({ id: 'event-1' }), true);
+  });
+
+  it('propagates strict event-group search failures requested by recovery', async () => {
+    const failure = new Error('Typesense group index unavailable');
+    const prisma = {
+      eventGroup: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ id: 'group-1', name: 'Grupo', emoji: '📁', majorEventId: null, deletedAt: null }]),
+      },
+    };
+    const typesense = { upsertEventGroup: jest.fn().mockRejectedValue(failure), deleteEventGroup: jest.fn() };
+    const realtime = { scope: jest.fn((channel: string) => channel), publish: jest.fn().mockResolvedValue({}) };
+    const service = new EventPostCommitEffectsService(
+      prisma as never,
+      typesense as never,
+      { refresh: jest.fn() } as never,
+      { scheduleEvent: jest.fn() } as never,
+      realtime as never,
+    );
+
+    await expect(service.syncEventGroups(['group-1'], { throwOnSearchError: true })).rejects.toBe(failure);
+
+    expect(typesense.upsertEventGroup).toHaveBeenCalledWith(expect.objectContaining({ id: 'group-1' }), true);
+  });
+
+  it('refreshes sitemap and both catalogs even when recovery has no row IDs', async () => {
+    const sitemap = { refresh: jest.fn().mockResolvedValue([]) };
+    const realtime = {
+      scope: jest.fn((channel: string) => `scope:${channel}`),
+      publish: jest.fn().mockResolvedValue({}),
+    };
+    const service = new EventPostCommitEffectsService(
+      {} as never,
+      {} as never,
+      sitemap as never,
+      {} as never,
+      realtime as never,
+    );
+
+    await service.refreshCatalogsAndSitemap();
+
+    expect(sitemap.refresh).toHaveBeenCalledTimes(1);
+    expect(realtime.publish).toHaveBeenNthCalledWith(
+      1,
+      'scope:admin-workspace',
+      expect.objectContaining({ type: 'CATALOG_INVALIDATED', domain: 'event' }),
+    );
+    expect(realtime.publish).toHaveBeenNthCalledWith(
+      2,
+      'scope:public-catalog-v2',
+      expect.objectContaining({ type: 'PUBLIC_CATALOG_INVALIDATED' }),
+    );
+  });
+
   it('does not publish when an empty event reconciliation has no committed target', async () => {
     const realtime = {
       scope: jest.fn(),

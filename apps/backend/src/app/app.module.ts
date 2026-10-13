@@ -1,4 +1,15 @@
 import { TicketsResolver } from './tickets/tickets.resolver';
+import { DataTransferController } from './data-transfer/data-transfer.controller';
+import { DataTransferService } from './data-transfer/data-transfer.service';
+import { DATA_TRANSFER_ADAPTERS } from './data-transfer/data-transfer.constants';
+import { EventTreeTransferAdapter } from './data-transfer/event-tree-transfer.adapter';
+import { SportsDataTransferAdapter } from './data-transfer/sports-data-transfer.adapter';
+import { ConfigurationTransferAdapter } from './data-transfer/configuration-transfer.adapter';
+import { ParticipationTransferAdapter } from './data-transfer/participation-transfer-adapter';
+import { PersonTransferMatcherService } from './data-transfer/person-transfer-matcher.service';
+import { TransferKeyAllocations } from './data-transfer/transfer-key-allocations';
+import { DataTransferJournalService } from './data-transfer/data-transfer-journal.service';
+import { DataTransferRecoveryService } from './data-transfer/data-transfer-recovery.service';
 import { CurrentUserTicketRealtimeController, AdminTicketRealtimeController } from './tickets/tickets.controller';
 import { TicketIssuanceService } from './tickets/ticket-issuance.service';
 import { TicketEligibilityService } from './tickets/ticket-eligibility.service';
@@ -423,8 +434,33 @@ const schedulerProviders = useInMemoryTestInfra
     SportsMatchOverlayController,
     PrizeDrawRealtimeController,
     RealtimeInvalidationController,
+    DataTransferController,
   ],
   providers: [
+    EventTreeTransferAdapter,
+    SportsDataTransferAdapter,
+    ConfigurationTransferAdapter,
+    PersonTransferMatcherService,
+    ParticipationTransferAdapter,
+    TransferKeyAllocations,
+    DataTransferJournalService,
+    DataTransferRecoveryService,
+    {
+      provide: DATA_TRANSFER_ADAPTERS,
+      useFactory: (
+        eventTree: EventTreeTransferAdapter,
+        sports: SportsDataTransferAdapter,
+        participation: ParticipationTransferAdapter,
+        configuration: ConfigurationTransferAdapter,
+      ) => [eventTree, sports, participation, configuration],
+      inject: [
+        EventTreeTransferAdapter,
+        SportsDataTransferAdapter,
+        ParticipationTransferAdapter,
+        ConfigurationTransferAdapter,
+      ],
+    },
+    DataTransferService,
     TicketsResolver,
     TicketIssuanceService,
     TicketEligibilityService,

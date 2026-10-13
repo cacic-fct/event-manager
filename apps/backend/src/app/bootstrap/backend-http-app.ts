@@ -3,6 +3,8 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import express from 'express';
+import type { NextFunction, Request as ExpressRequest, Response as ExpressResponse } from 'express';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import { AUTH_SESSION_COOKIE_NAME } from '../auth/auth.constants';
 import { createDocsAuthGate } from '../auth/docs-auth.middleware';
 import { KeycloakAuthService } from '../auth/keycloak-auth.service';
@@ -15,6 +17,7 @@ const globalPrefix = 'api';
 export async function createBackendHttpApp(): Promise<INestApplication> {
   const app = await NestFactory.create(AppModule, {
     rawBody: true,
+    bodyParser: false,
     logger: new RequestContextLogger(),
   });
   try {
@@ -44,6 +47,23 @@ export function configureBackendHttpApp(app: INestApplication): void {
   app.getHttpAdapter().getInstance().disable('x-powered-by');
   app.use(cookieParser());
   app.use(requestContextMiddleware);
+  // Keep the default request bound everywhere except the transfer import route,
+  // whose shared schema permits documents up to 5 MiB. Capture raw JSON bodies
+  // for signed integrations just as Nest's default parser does.
+  const captureRawBody = (request: IncomingMessage, _response: ServerResponse, buffer: Buffer) => {
+    (request as IncomingMessage & { rawBody?: Buffer }).rawBody = Buffer.from(buffer);
+  };
+  const defaultJsonParser = express.json({ limit: '100kb', verify: captureRawBody });
+  const transferJsonParser = express.json({ limit: '6mb', verify: captureRawBody });
+  app.use((request: ExpressRequest, response: ExpressResponse, next: NextFunction) => {
+    const path = request.path;
+    const parser =
+      path === '/api/admin/data-transfer' || path.startsWith('/api/admin/data-transfer/')
+        ? transferJsonParser
+        : defaultJsonParser;
+    parser(request, response, next);
+  });
+  app.use(express.urlencoded({ extended: true, limit: '100kb', verify: captureRawBody }));
   app.use(
     '/api/a/glitchtip',
     express.raw({

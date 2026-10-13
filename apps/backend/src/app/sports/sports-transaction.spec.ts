@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
 import { runSerializablePrismaTransaction } from '../common/serializable-prisma-transaction';
-import { runSerializableSportsTransaction } from './sports-transaction';
+import { runSerializableSportsTransaction, sportsPrismaForTransaction } from './sports-transaction';
 
 function retryableError(): Prisma.PrismaClientKnownRequestError {
   return new Prisma.PrismaClientKnownRequestError('Transaction conflict', {
@@ -18,6 +18,17 @@ describe('runSerializableSportsTransaction', () => {
 
   it('keeps the sports export as a compatibility alias for the shared helper', () => {
     expect(runSerializableSportsTransaction).toBe(runSerializablePrismaTransaction);
+  });
+
+  it('binds nested sports writers to the caller-owned transaction', async () => {
+    const delegate = { marker: true };
+    const tx = { event: delegate } as unknown as Prisma.TransactionClient;
+    const bound = sportsPrismaForTransaction(tx);
+    const callback = jest.fn().mockResolvedValue('saved');
+
+    expect(bound.event).toBe(delegate);
+    await expect(bound.$transaction(callback as never)).resolves.toBe('saved');
+    expect(callback).toHaveBeenCalledWith(tx);
   });
 
   it('runs the callback in a serializable transaction and returns its value', async () => {

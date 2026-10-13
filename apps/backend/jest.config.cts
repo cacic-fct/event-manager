@@ -6,6 +6,8 @@ module.exports = {
     '^.+\\.[tj]s$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.spec.json' }],
   },
   transformIgnorePatterns: ['node_modules/(?!@cacic-fct/form-contracts/)'],
+  // PGlite loads WebAssembly through ESM; its isolated integration target enables Node's VM modules.
+  testPathIgnorePatterns: ['/node_modules/', 'transfer-journal.integration.spec.ts$'],
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/apps/backend',
   coverageReporters: ['lcov', 'json', 'text', 'clover'],

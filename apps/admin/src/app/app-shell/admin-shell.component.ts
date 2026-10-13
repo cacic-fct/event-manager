@@ -291,6 +291,7 @@ export class AdminShellComponent {
         sports: 'sports',
         certificates: 'certificates',
         publication: 'publication',
+        'data-transfer': 'data-transfer',
       } as Record<string, ContextOperation['id']>
     )[section];
   }

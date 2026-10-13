@@ -29,6 +29,7 @@ function sportsMatchLocation(venue: SportsMatchEventVenue | null | undefined) {
 export function createSportsMatchBackingEvent(
   tx: Prisma.TransactionClient,
   input: {
+    id?: string;
     name: string;
     emoji: string;
     startDate: Date;
@@ -45,6 +46,7 @@ export function createSportsMatchBackingEvent(
 ) {
   return tx.event.create({
     data: {
+      ...(input.id ? { id: input.id } : {}),
       name: input.name,
       emoji: input.emoji,
       startDate: input.startDate,

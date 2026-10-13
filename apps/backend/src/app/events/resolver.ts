@@ -24,6 +24,7 @@ import { RequirePermissions } from '../auth/decorators/require-permissions.decor
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { eventContentAuditSnapshot } from './event-content-audit';
+import { normalizeEventCertificateSettings } from './event-certificate-settings';
 import { AccessibleEventGrantTargets, AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { resolvePagination } from '../common/pagination';
 import { FrozenResourceService } from '../common/frozen-resource.service';
@@ -1037,14 +1038,7 @@ export class EventsResolver {
     input: T,
     eventId?: string,
   ): Promise<T> {
-    let normalizedInput = input;
-    if (input.shouldIssueCertificate === false) {
-      normalizedInput = {
-        ...input,
-        shouldIssueCertificateForNonPayingAttendees: false,
-        shouldIssueCertificateForNonSubscribedAttendees: false,
-      };
-    }
+    const normalizedInput = normalizeEventCertificateSettings(input);
 
     const existingEvent =
       eventId && normalizedInput.eventGroupId === undefined
@@ -1077,31 +1071,7 @@ export class EventsResolver {
       },
     });
 
-    if (!eventGroup?.shouldIssueCertificate) {
-      return {
-        ...normalizedInput,
-        shouldIssueCertificate: false,
-        shouldIssueCertificateForNonPayingAttendees: false,
-        shouldIssueCertificateForNonSubscribedAttendees: false,
-      };
-    }
-
-    if (
-      !eventGroup.shouldIssueCertificateForNonPayingAttendees ||
-      !eventGroup.shouldIssueCertificateForNonSubscribedAttendees
-    ) {
-      return {
-        ...normalizedInput,
-        shouldIssueCertificateForNonPayingAttendees: eventGroup.shouldIssueCertificateForNonPayingAttendees
-          ? normalizedInput.shouldIssueCertificateForNonPayingAttendees
-          : false,
-        shouldIssueCertificateForNonSubscribedAttendees: eventGroup.shouldIssueCertificateForNonSubscribedAttendees
-          ? normalizedInput.shouldIssueCertificateForNonSubscribedAttendees
-          : false,
-      };
-    }
-
-    return normalizedInput;
+    return normalizeEventCertificateSettings(normalizedInput, eventGroup ?? { shouldIssueCertificate: false });
   }
 
   private buildPublicationUpdate(

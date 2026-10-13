@@ -87,6 +87,23 @@ describe('FrozenResourceService', () => {
     );
   });
 
+  it('reads newly created backing groups from the caller transaction and retains the override policy', async () => {
+    const committed = { eventGroup: { findFirst: jest.fn().mockResolvedValue(null) } };
+    const tx = { eventGroup: { findFirst: jest.fn().mockResolvedValue({ createdAt: new Date(), events: [] }) } };
+    const authorization = { canOverrideFrozenResource: jest.fn().mockResolvedValue(false) };
+    const actor = buildUser([]);
+    const service = new FrozenResourceService(committed as never, authorization as never).forTransaction(tx as never);
+
+    await expect(service.assertEventGroupMutable('group-new', actor, 'edit')).resolves.toBeUndefined();
+    expect(committed.eventGroup.findFirst).not.toHaveBeenCalled();
+    expect(tx.eventGroup.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'group-new', deletedAt: null } }),
+    );
+    expect(authorization.canOverrideFrozenResource).toHaveBeenCalledWith(actor, FROZEN_EDIT_PERMISSION, {
+      eventGroupId: 'group-new',
+    });
+  });
+
   it('checks event create targets for both event group and major event links', async () => {
     const prisma = {
       eventGroup: {
