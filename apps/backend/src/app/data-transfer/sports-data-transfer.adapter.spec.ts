@@ -7,6 +7,7 @@ import {
 import { SportsDataTransferAdapter } from './sports-data-transfer.adapter';
 import { assertSportsTimerRules } from './sports-transfer-rules';
 import { Permission } from '@cacic-fct/shared-permissions';
+import type { ResolvedTransferResource } from './data-transfer-adapter';
 
 describe('SportsDataTransferAdapter', () => {
   it('serializes a persisted match revision accepted by the public document schema', async () => {
@@ -328,8 +329,57 @@ describe('SportsDataTransferAdapter', () => {
       sportsVenue: { findFirst: jest.fn() },
     };
 
-    return { tx, matchId: match.id, eventId: event.id, stageId: stage.id, venueId: venue.id };
+    return { tx, match, category, matchId: match.id, eventId: event.id, stageId: stage.id, venueId: venue.id };
   }
+
+  it.each(['event', 'group'] as const)('keeps sports-owned %s roots in minimal exports', async (kind) => {
+    const graph = exportGraph();
+    const tx = {
+      ...graph.tx,
+      sportsMatch: { ...graph.tx.sportsMatch, findFirst: jest.fn().mockResolvedValue(graph.match) },
+    };
+    const authorization = { assertPermissions: jest.fn().mockResolvedValue(undefined) };
+    const transfer = new SportsDataTransferAdapter(
+      tx as never,
+      authorization as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+    const exported = await transfer.exportTarget(
+      { kind, id: kind === 'event' ? graph.eventId : 'group-1' },
+      {
+        includeDescendants: false,
+        includeConfiguration: false,
+        includeSubscriptions: false,
+        includeAttendances: false,
+      },
+      { ...context([]), tx: tx as never },
+    );
+    const expectedKinds =
+      kind === 'event'
+        ? ['sports-tournament', 'sports-category', 'group', 'sports-match', 'event']
+        : ['sports-tournament', 'sports-category', 'group'];
+    expect(parseTransferDocument(document(exported.resources)).resources.map(({ kind }) => kind)).toEqual(
+      expect.arrayContaining(expectedKinds),
+    );
+    expect(exported.issues).toEqual([]);
+    if (kind === 'group') expect(exported.resources.some(({ kind }) => kind === 'sports-match')).toBe(false);
+  });
+
+  it.each([false, true])('rejects match emoji edits through the match or backing alias (alias: %s)', async (alias) => {
+    const current = {
+      kind: 'sports-match',
+      id: 'match-1',
+      data: { eventId: 'event-1', categoryId: 'category-1', emoji: '⚽' },
+    } as TransferResource;
+    const resource = { ...current, data: alias ? {} : { emoji: '🏀' } } as TransferResource;
+    const resources = alias
+      ? [resource, { kind: 'event', id: 'event-1', data: { emoji: '🏀' } } as TransferResource]
+      : [resource];
+    const snapshot = { resource, current, revision: '1', scope: {}, dependencies: [] };
+    await expect(adapter.validate(snapshot, context(resources))).rejects.toThrow('Altere o emoji pelo grupo esportivo');
+  });
 
   it('exports a schema-valid nested sports tree without scoreboard state or denied match identifiers', async () => {
     const graph = exportGraph();

@@ -78,6 +78,7 @@ function fixture(entries: unknown[]) {
     refreshCatalogsAndSitemap: jest.fn().mockResolvedValue(undefined),
   };
   const search = {
+    isEnabled: jest.fn().mockReturnValue(true),
     upsertPlacePreset: jest.fn().mockResolvedValue(undefined),
     deletePlacePreset: jest.fn().mockResolvedValue(undefined),
     upsertMajorEvent: jest.fn().mockResolvedValue(undefined),
@@ -105,6 +106,45 @@ function fixture(entries: unknown[]) {
 }
 
 describe('DataTransferRecoveryService', () => {
+  it('completes non-search recovery when Typesense is disabled', async () => {
+    const batch = entry(
+      'batch-disabled-search',
+      metadata(
+        [
+          mutation('form-link', 'link-1', { majorEventId: 'major-1' }, 'eventFormLink'),
+          mutation('place-preset', 'place-1', {}, 'placePreset'),
+        ],
+        { auditEntryIds: ['unavailable-audit'] },
+      ),
+    );
+    batch.metadata.mutations[0].after = { id: 'link-1', formId: 'form-1' };
+    const { service, search, effects, realtime, journal } = fixture([batch]);
+    search.isEnabled.mockReturnValue(false);
+    search.upsertAuditLogEntry.mockRejectedValue(new Error('disabled client'));
+    await service.recoverPending();
+    expect(effects.syncEvents).toHaveBeenCalledWith([], { throwOnSearchError: false });
+    expect(search.upsertMajorEvent).toHaveBeenCalledWith(expect.objectContaining({ id: 'major-1' }), false);
+    expect(search.deletePlacePreset).toHaveBeenCalledWith('place-1', false);
+    expect(search.upsertAuditLogEntry).not.toHaveBeenCalled();
+    expect(realtime.publish).toHaveBeenCalled();
+    expect(journal.markSynchronized).toHaveBeenCalledWith(batch.id, false);
+  });
+
+  it('retries enabled audit indexing failures before marking a batch synchronized', async () => {
+    const batch = entry('batch-search-failure', metadata([]));
+    const { service, search, journal } = fixture([batch]);
+    search.upsertAuditLogEntry.mockRejectedValueOnce(new Error('search unavailable'));
+    const warning = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    try {
+      await service.recoverPending();
+      expect(journal.markSynchronized).not.toHaveBeenCalled();
+      await service.recoverPending();
+      expect(journal.markSynchronized).toHaveBeenCalledWith(batch.id, false);
+    } finally {
+      warning.mockRestore();
+    }
+  });
+
   it.each([false, true])('recovers place search documents after import and undo (undone: %s)', async (undone) => {
     const source = mutation('place-preset', 'place-1', {}, 'placePreset');
     source.source.action = 'create';

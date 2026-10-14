@@ -69,6 +69,46 @@ const relativeAliasStart = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOS
 const relativeAliasEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000).toISOString();
 
 describe('data transfer planning dependencies', () => {
+  it('does not retain key allocations for a fully unauthorized preview', async () => {
+    const calls = {
+      read: jest.fn().mockRejectedValue(new ForbiddenException()),
+      write: jest.fn(),
+      mutable: jest.fn(),
+      validate: jest.fn(),
+      apply: jest.fn(),
+    };
+    const adapter = createPlanningAdapter(['group'], calls, async (resource) => ({
+      resource,
+      current: null,
+      revision: null,
+      scope: {},
+      dependencies: [],
+    }));
+    const resolver = new TransferKeyAllocations();
+    const allocationPreview = jest.spyOn(resolver, 'preview');
+    try {
+      const service = new DataTransferService(
+        { $transaction: async (operation: (tx: unknown) => Promise<unknown>) => operation({}) } as never,
+        { assertPermissions: jest.fn().mockResolvedValue(undefined) } as never,
+        {} as never,
+        [adapter],
+        resolver,
+      );
+      const document = {
+        format: 'cacic-event-data' as const,
+        version: 1 as const,
+        resources: [{ kind: 'group' as const, key: 'GROUP-1', data: { name: 'Grupo' } }],
+      };
+      const preview = await service.preview({ document }, organizer());
+      expect(preview.canApply).toBe(false);
+      expect(preview.allocation).toBeUndefined();
+      const prepared = allocationPreview.mock.results[0].value;
+      expect(() => resolver.apply(document, 'organizer-1', prepared.allocation.token)).toThrow(ConflictException);
+    } finally {
+      allocationPreview.mockRestore();
+    }
+  });
+
   it.each([
     [500, false],
     [501, true],

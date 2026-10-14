@@ -10,6 +10,91 @@ import { TransferKeyAllocations } from './transfer-key-allocations';
 import { SportsDataTransferAdapter } from './sports-data-transfer.adapter';
 
 describe('ConfigurationTransferAdapter', () => {
+  it.each(['EVENT', 'MAJOR_EVENT'])('checks the %s link target separately from form grants', async (targetType) => {
+    const data = {
+      formId: 'form-1',
+      targetType,
+      eventId: targetType === 'EVENT' ? 'event-1' : null,
+      majorEventId: targetType === 'MAJOR_EVENT' ? 'major-1' : null,
+      displayOrder: 0,
+    };
+    const authorization = {
+      assertPermissions: jest.fn(
+        async (_actor: AuthenticatedUser, _permissions: Permission[], scope: Record<string, unknown>) => {
+          // A grant on the form cannot authorize its other event targets.
+          if (!scope['eventFormId']) throw new ForbiddenException();
+        },
+      ),
+    };
+    const tx = {
+      authorization,
+      eventForm: { findFirst: jest.fn().mockResolvedValue({ id: 'form-1' }) },
+      event: { findFirst: jest.fn().mockResolvedValue({ id: 'event-1' }) },
+      eventFormLink: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'link-1', ...data, updatedAt: new Date(), priceTiers: [] }),
+      },
+    };
+    const resource = transferResource('form-link', 'link-1', { displayOrder: 1 });
+    const context = createContext(tx, [resource]);
+    const adapter = createAdapter(tx);
+    const snapshot = await adapter.resolve(resource, context);
+    await expect(adapter.assertRead(snapshot, context)).rejects.toThrow(ForbiddenException);
+    await expect(adapter.assertWrite(snapshot, 'update', context)).rejects.toThrow(ForbiddenException);
+    authorization.assertPermissions.mockResolvedValue(undefined);
+    await adapter.assertRead(snapshot, context);
+    await adapter.assertWrite(snapshot, 'update', context);
+    expect(authorization.assertPermissions).toHaveBeenCalledWith(context.actor, [Permission.EventForm.Read], {
+      eventFormId: 'form-1',
+    });
+    expect(authorization.assertPermissions).toHaveBeenCalledWith(context.actor, [Permission.EventForm.Update], {
+      eventFormId: 'form-1',
+    });
+    const targetChecks = authorization.assertPermissions.mock.calls.filter(([, permissions]) =>
+      permissions.includes(Permission.DataTransfer.Import),
+    );
+    for (const [, , scope] of targetChecks) {
+      expect(scope).not.toHaveProperty('eventFormId');
+      expect(scope).not.toHaveProperty('eventFormLinkId');
+    }
+  });
+
+  it.each([0, 1])('requires an executable option or %s stored options for purchasing', async (existingOptions) => {
+    const config = transferResource('ticket-config', 'config-1', {
+      eventId: 'event-1',
+      purchaseEnabled: true,
+      recipientSubscriptionRequirement: 'ANY',
+      expirationMode: 'EVENT_END',
+    });
+    const option = transferResource('ticket-price-option', 'option-1', {
+      ticketConfigId: config.id,
+      label: 'Ingresso',
+      amountCents: 0,
+    });
+    const tx = {
+      event: { findFirst: jest.fn().mockResolvedValue({ id: 'event-1', majorEventId: 'major-1' }) },
+      ticketConfig: { findUnique: jest.fn().mockResolvedValue(null) },
+      ticketPriceOption: {
+        count: jest.fn().mockResolvedValue(existingOptions),
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+    };
+    const adapter = createAdapter(tx);
+    const context = createContext(tx, [config, option]);
+    const snapshot: ResolvedTransferResource = {
+      resource: config,
+      current: null,
+      revision: null,
+      scope: {},
+      dependencies: [],
+    };
+    await expect(adapter.validate(snapshot, context)).resolves.toBeUndefined();
+    await expect(adapter.validate(await adapter.resolve(option, context), context)).rejects.toThrow('valor positivo');
+    if (existingOptions) await expect(adapter.validatePlan(snapshot, context, [config])).resolves.toBeUndefined();
+    else await expect(adapter.validatePlan(snapshot, context, [config])).rejects.toThrow('ao menos uma opção');
+    const validOption = transferResource('ticket-price-option', 'option-1', { ...option.data, amountCents: 100 });
+    await expect(adapter.validatePlan(snapshot, context, [config, validOption])).resolves.toBeUndefined();
+  });
+
   it('reads normalized persisted form values for a reusable apply result', async () => {
     const now = new Date();
     let stored: Record<string, unknown> | null = null;

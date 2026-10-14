@@ -10,16 +10,39 @@ describe('preview-bound symbolic resource keys', () => {
       const raw = parseTransferDocument({ ...template, resources: [{ ...template.resources[0], key }] });
       const resolver = new TransferKeyAllocations();
       const preview = resolver.preview(raw, 'organizer-1');
+      preview.retain?.();
       expect(preview.allocation?.ids[key]).toBe(preview.document.resources[0].id);
       expect(preview.allocation?.ids[key]).toMatch(/^[0-9a-f-]{36}$/);
       expect(resolver.apply(raw, 'organizer-1', preview.allocation?.token)).toEqual(preview.document);
     },
   );
 
+  it('keeps allocations transient until the plan is authorized', () => {
+    const raw = createTransferTemplate('event');
+    const resolver = new TransferKeyAllocations();
+    const preview = resolver.preview(raw, 'organizer-1');
+    expect(() => resolver.apply(raw, 'organizer-1', preview.allocation?.token)).toThrow(ConflictException);
+    preview.retain?.();
+    expect(resolver.apply(raw, 'organizer-1', preview.allocation?.token)).toEqual(preview.document);
+  });
+
+  it('evicts only the oldest allocation of the same organizer', () => {
+    const raw = createTransferTemplate('event');
+    const resolver = new TransferKeyAllocations();
+    const victim = resolver.preview(raw, 'organizer-1');
+    victim.retain?.();
+    const oldest = resolver.preview(raw, 'organizer-2');
+    oldest.retain?.();
+    for (let index = 0; index < 100; index++) resolver.preview(raw, 'organizer-2').retain?.();
+    expect(resolver.apply(raw, 'organizer-1', victim.allocation?.token)).toEqual(victim.document);
+    expect(() => resolver.apply(raw, 'organizer-2', oldest.allocation?.token)).toThrow(ConflictException);
+  });
+
   it('allocates UUIDs on the server and resolves the complete child graph', () => {
     const raw = createTransferTemplate('major-event');
     const resolver = new TransferKeyAllocations();
     const preview = resolver.preview(raw, 'organizer-1');
+    preview.retain?.();
     expect(preview.allocation).toBeDefined();
     for (const row of preview.document.resources)
       expect(row.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
@@ -33,6 +56,7 @@ describe('preview-bound symbolic resource keys', () => {
     const raw = createTransferTemplate('event');
     const resolver = new TransferKeyAllocations();
     const preview = resolver.preview(raw, 'organizer-1');
+    preview.retain?.();
     expect(() => resolver.apply(raw, 'organizer-2', preview.allocation?.token)).toThrow(ConflictException);
     const changed = {
       ...raw,
@@ -49,10 +73,12 @@ describe('preview-bound symbolic resource keys', () => {
     const resolver = new TransferKeyAllocations();
     const now = Date.now();
     const preview = resolver.preview(raw, 'organizer-1');
+    preview.retain?.();
     const clock = jest.spyOn(Date, 'now').mockReturnValue(now + 16 * 60000);
     expect(() => resolver.apply(raw, 'organizer-1', preview.allocation?.token)).toThrow(ConflictException);
     clock.mockRestore();
     const fresh = resolver.preview(raw, 'organizer-1');
+    fresh.retain?.();
     expect(fresh.allocation?.ids).not.toEqual(preview.allocation?.ids);
     resolver.consume(fresh.allocation?.token);
     expect(() => resolver.apply(raw, 'organizer-1', fresh.allocation?.token)).toThrow(ConflictException);

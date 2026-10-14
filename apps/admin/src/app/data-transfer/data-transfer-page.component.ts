@@ -149,6 +149,12 @@ export class DataTransferPageComponent {
   protected readonly previewLoading = signal(false);
   protected readonly applyLoading = signal(false);
   protected readonly pendingApplyRequest = signal<TransferApplyRequest | null>(null);
+  protected readonly hasPendingImport = computed(
+    () =>
+      this.pendingApplyRequest() !== null ||
+      this.fileLoading() ||
+      (Boolean(this.jsonText()) && !this.result()?.applied),
+  );
   protected readonly importLocked = computed(() => this.applyLoading() || this.pendingApplyRequest() !== null);
   protected readonly exportError = signal('');
   protected readonly schemaError = signal('');
@@ -261,11 +267,7 @@ export class DataTransferPageComponent {
     });
 
     effect(() => {
-      this.pendingRegistration.set(
-        this.pendingApplyRequest() !== null ||
-          this.fileLoading() ||
-          (Boolean(this.jsonText()) && !this.result()?.applied),
-      );
+      this.pendingRegistration.set(this.hasPendingImport());
     });
 
     this.destroyRef.onDestroy(() => {
@@ -865,7 +867,7 @@ export class DataTransferPageComponent {
   }
 
   protected protectPendingApply(event: BeforeUnloadEvent): void {
-    if (this.pendingApplyRequest()) {
+    if (this.hasPendingImport() || this.applyLoading() || this.undoLoading()) {
       event.preventDefault();
       event.returnValue = '';
     }

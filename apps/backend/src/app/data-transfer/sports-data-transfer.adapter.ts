@@ -388,7 +388,7 @@ export class SportsDataTransferAdapter implements DataTransferAdapter {
     options: Omit<TransferExportRequest, 'target'>,
     context: TransferAdapterContext,
   ): Promise<TransferAdapterExportResult> {
-    if (!options.includeConfiguration) {
+    if (!options.includeConfiguration && target.kind === 'major-event') {
       return { resources: [], issues: [] };
     }
     const resources: TransferResource[] = [];
@@ -1805,6 +1805,11 @@ export class SportsDataTransferAdapter implements DataTransferAdapter {
     const eventId = this.requiredText(data.eventId, 'eventId');
     if (snapshot.current) {
       const current = this.data(snapshot.current);
+      const backingEvent = this.findDocumentResource(context.document, 'event', (item) => item.id === eventId);
+      const requestedEmoji = this.selectedMatchField(snapshot, proposedData, this.data(backingEvent), 'emoji');
+      if (this.aliasValueChanged(current.emoji, requestedEmoji)) {
+        throw new TransferValidationException('Altere o emoji pelo grupo esportivo, não pela partida.');
+      }
       if (current.categoryId !== categoryId || current.eventId !== eventId) {
         throw new ConflictException('Uma partida existente não pode ser movida para outra modalidade ou evento.');
       }

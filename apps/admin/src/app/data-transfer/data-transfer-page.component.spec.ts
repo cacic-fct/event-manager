@@ -231,6 +231,25 @@ describe('DataTransferPageComponent', () => {
     expect(api.preview).toHaveBeenLastCalledWith({ document: resolvedDocument });
   });
 
+  it('warns before unloading edited JSON and stops warning after apply', async () => {
+    const unload = () => {
+      const event = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    expect(unload()).toBe(false);
+    setJsonText();
+    expect(unload()).toBe(true);
+    clickButton('Revisar importação');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(unload()).toBe(true);
+    clickButton('Aplicar alterações');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(unload()).toBe(false);
+  });
+
   it('locks the source and recovery controls while an apply request is still running', async () => {
     const pending = new Subject<TransferResult>();
     api.apply.mockReturnValueOnce(pending);

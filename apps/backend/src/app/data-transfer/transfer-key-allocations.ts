@@ -46,23 +46,29 @@ const referenceKinds: Readonly<Record<string, TransferResourceKind>> = {
 export class TransferKeyAllocations {
   private readonly entries = new Map<string, StoredAllocation>();
   private readonly lifetimeMs = 15 * 60 * 1000;
-  private readonly maximumEntries = 100;
+  private readonly maximumEntriesPerActor = 100;
 
   preview(
     document: TransferDocument,
     actorId: string,
-  ): { document: ResolvedTransferDocument; allocation?: TransferAllocation } {
+  ): { document: ResolvedTransferDocument; allocation?: TransferAllocation; retain?: () => void } {
     this.prune();
     if (!document.resources.some((resource) => !resource.id)) return { document: this.resolve(document, new Map()) };
     const ids = new Map<string, string>();
     for (const resource of document.resources) if (!resource.id && resource.key) ids.set(resource.key, randomUUID());
     const token = randomBytes(32).toString('hex');
     const expiresAt = Date.now() + this.lifetimeMs;
-    if (this.entries.size >= this.maximumEntries) this.entries.delete(this.entries.keys().next().value ?? '');
-    this.entries.set(token, { actorId, fingerprint: this.fingerprint(document), expiresAt, ids });
+    const fingerprint = this.fingerprint(document);
     return {
       document: this.resolve(document, ids),
       allocation: { token, expiresAt: new Date(expiresAt).toISOString(), ids: Object.fromEntries(ids) },
+      // The service retains allocations only after an authorized executable plan exists.
+      retain: () => {
+        this.prune();
+        const actorTokens = [...this.entries].filter(([, value]) => value.actorId === actorId).map(([key]) => key);
+        if (actorTokens.length >= this.maximumEntriesPerActor) this.entries.delete(actorTokens[0]);
+        this.entries.set(token, { actorId, fingerprint, expiresAt, ids });
+      },
     };
   }
 

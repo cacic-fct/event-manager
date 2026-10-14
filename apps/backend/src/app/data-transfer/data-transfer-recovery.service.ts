@@ -31,7 +31,6 @@ type RecoveryTargets = {
   attendanceSettingsChanged: boolean;
 };
 
-const SEARCH_SYNC_OPTIONS = { throwOnSearchError: true } as const;
 const ATTENDANCE_AVAILABILITY_MODELS = new Set([
   'event',
   'eventGroup',
@@ -99,8 +98,10 @@ export class DataTransferRecoveryService implements OnApplicationBootstrap, OnMo
             const targets = this.collectTargets(metadata.mutations, metadata.undone);
             await this.collectSportsBackingTargets(targets);
 
-            await this.effects.syncEvents([...targets.eventIds], SEARCH_SYNC_OPTIONS);
-            await this.effects.syncEventGroups([...targets.groupIds], SEARCH_SYNC_OPTIONS);
+            const searchEnabled = this.search.isEnabled();
+            const searchOptions = { throwOnSearchError: searchEnabled };
+            await this.effects.syncEvents([...targets.eventIds], searchOptions);
+            await this.effects.syncEventGroups([...targets.groupIds], searchOptions);
 
             for (const id of targets.majorIds) {
               const major = await this.prisma.majorEvent.findUnique({
@@ -115,8 +116,8 @@ export class DataTransferRecoveryService implements OnApplicationBootstrap, OnMo
                   deletedAt: true,
                 },
               });
-              if (!major || major.deletedAt) await this.search.deleteMajorEvent(id, true);
-              else await this.search.upsertMajorEvent(major, true);
+              if (!major || major.deletedAt) await this.search.deleteMajorEvent(id, searchEnabled);
+              else await this.search.upsertMajorEvent(major, searchEnabled);
             }
 
             for (const id of targets.placeIds) {
@@ -124,8 +125,8 @@ export class DataTransferRecoveryService implements OnApplicationBootstrap, OnMo
                 where: { id },
                 select: { id: true, name: true, locationDescription: true, deletedAt: true },
               });
-              if (!place || place.deletedAt) await this.search.deletePlacePreset(id, true);
-              else await this.search.upsertPlacePreset(place, true);
+              if (!place || place.deletedAt) await this.search.deletePlacePreset(id, searchEnabled);
+              else await this.search.upsertPlacePreset(place, searchEnabled);
             }
 
             for (const { entity, id, tournamentId, deleted } of targets.sportsEntities.values()) {
@@ -317,6 +318,7 @@ export class DataTransferRecoveryService implements OnApplicationBootstrap, OnMo
     batchEntry: Prisma.AuditLogEntryGetPayload<Record<never, never>>,
     linkedEntryIds: readonly string[],
   ): Promise<void> {
+    if (!this.search.isEnabled()) return;
     const entries = new Map<string, Prisma.AuditLogEntryGetPayload<Record<never, never>>>();
     entries.set(batchEntry.id, batchEntry);
     const pendingIds = new Set(linkedEntryIds);

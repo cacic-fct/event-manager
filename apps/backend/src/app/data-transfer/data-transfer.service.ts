@@ -219,7 +219,8 @@ export class DataTransferService {
       },
       TRANSFER_TRANSACTION_OPTIONS,
     );
-    if (!allocationResult.allocation) return preview;
+    if (!allocationResult.allocation || !preview.canApply) return preview;
+    allocationResult.retain?.();
     const resolvedIds = new Map(preview.items.flatMap((item) => (item.key ? [[item.key, item.id] as const] : [])));
     return {
       ...preview,

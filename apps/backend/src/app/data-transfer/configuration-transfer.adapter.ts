@@ -487,16 +487,17 @@ export class ConfigurationTransferAdapter implements DataTransferAdapter {
       : await this.scopeForPersistedAncestor(snapshot.scope, context);
     if (snapshot.resource.kind === 'event-form' && snapshot.current) scope.eventFormId = snapshot.resource.id;
     if (snapshot.resource.kind === 'form-link') {
-      const formId = asId(dataOf(snapshot.resource)['formId']);
-      if (formId && snapshot.current) scope.eventFormId = formId;
+      delete scope.eventFormId;
+      delete scope.eventFormLinkId;
     }
     await this.authorization.assertPermissions(context.actor, [Permission.DataTransfer.Import, permission], scope);
     if (snapshot.resource.kind === 'form-link') {
-      const formId = asId(dataOf(snapshot.resource)['formId']);
+      const data = { ...(snapshot.current ? dataOf(snapshot.current) : {}), ...dataOf(snapshot.resource) };
+      const formId = asId(data['formId']);
       const form = formId
         ? await context.tx.eventForm.findFirst({ where: { id: formId, deletedAt: null }, select: { id: true } })
         : null;
-      if (form && !snapshot.current) {
+      if (form) {
         await this.authorization.assertPermissions(context.actor, [Permission.EventForm.Read], {
           eventFormId: form.id,
         });
@@ -513,7 +514,8 @@ export class ConfigurationTransferAdapter implements DataTransferAdapter {
     context: TransferAdapterContext,
   ): Promise<void> {
     if (snapshot.resource.kind === 'form-link') {
-      const formId = asId(dataOf(snapshot.resource)['formId']);
+      const data = { ...(snapshot.current ? dataOf(snapshot.current) : {}), ...dataOf(snapshot.resource) };
+      const formId = asId(data['formId']);
       const form = formId
         ? await context.tx.eventForm.findFirst({ where: { id: formId, deletedAt: null }, select: { id: true } })
         : null;
@@ -522,7 +524,11 @@ export class ConfigurationTransferAdapter implements DataTransferAdapter {
         : action === 'create'
           ? Permission.EventForm.Create
           : Permission.EventForm.Update;
-      const scope = snapshot.current ? snapshot.scope : await this.scopeForPersistedAncestor(snapshot.scope, context);
+      const scope = snapshot.current
+        ? { ...snapshot.scope }
+        : await this.scopeForPersistedAncestor(snapshot.scope, context);
+      delete scope.eventFormId;
+      delete scope.eventFormLinkId;
       await this.authorization.assertPermissions(context.actor, [Permission.DataTransfer.Import, permission], scope);
       if (form) {
         await this.authorization.assertPermissions(context.actor, [Permission.EventForm.Update], {
@@ -631,6 +637,18 @@ export class ConfigurationTransferAdapter implements DataTransferAdapter {
     context: TransferAdapterContext,
     executableResources: readonly TransferResource[],
   ): Promise<void> {
+    if (snapshot.resource.kind === 'ticket-config') {
+      const merged = { ...(snapshot.current ? dataOf(snapshot.current) : {}), ...dataOf(snapshot.resource) };
+      if (merged['purchaseEnabled'] !== true) return;
+      await this.validateTicketConfig(
+        dataOf(snapshot.resource),
+        snapshot.current ? dataOf(snapshot.current) : null,
+        snapshot.resource.id,
+        context,
+        executableResources,
+      );
+      return;
+    }
     if (snapshot.resource.kind === 'major-event-price') {
       await this.validatePrice(
         dataOf(snapshot.resource),
@@ -1421,6 +1439,7 @@ export class ConfigurationTransferAdapter implements DataTransferAdapter {
     current: Record<string, unknown> | null,
     configId: string,
     context: TransferAdapterContext,
+    executableResources: readonly TransferResource[] = context.document.resources,
   ) {
     const merged = { ...(current ?? {}), ...data };
     const eventId = asId(merged['eventId']);
@@ -1486,7 +1505,7 @@ export class ConfigurationTransferAdapter implements DataTransferAdapter {
       throw new TransferValidationException('A restrição por faixa de preço exige inscrição no grande evento.');
     }
     if (merged['purchaseEnabled'] === true) {
-      const proposedOptions = context.document.resources.some(
+      const proposedOptions = executableResources.some(
         (resource) => resource.kind === 'ticket-price-option' && dataOf(resource)['ticketConfigId'] === configId,
       );
       const existingOptions = await context.tx.ticketPriceOption.count({ where: { ticketConfigId: configId } });
