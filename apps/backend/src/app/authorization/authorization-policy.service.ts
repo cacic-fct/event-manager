@@ -566,7 +566,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     }
 
     if (context.eventGroupId) {
-      target.eventGroupIds.add(context.eventGroupId);
+      await this.addEventGroupTarget(target, context.eventGroupId);
     }
 
     if (context.folderId) {
@@ -690,7 +690,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
         target.majorEventIds.add(id);
         return true;
       case 'event-group':
-        target.eventGroupIds.add(id);
+        await this.addEventGroupTarget(target, id);
         return true;
       case 'subscription':
         await this.addSubscriptionTarget(target, id);
@@ -751,6 +751,28 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     }
     if (event?.eventGroupId) {
       target.eventGroupIds.add(event.eventGroupId);
+    }
+  }
+
+  private async addEventGroupTarget(target: ResolvedGrantTarget, eventGroupId: string): Promise<void> {
+    target.eventGroupIds.add(eventGroupId);
+    const eventGroup = await this.prisma.eventGroup.findUnique({
+      where: { id: eventGroupId },
+      select: { majorEventId: true },
+    });
+    if (eventGroup?.majorEventId) {
+      target.majorEventIds.add(eventGroup.majorEventId);
+      return;
+    }
+
+    const legacyParentIds = await this.prisma.event.findMany({
+      where: { eventGroupId, deletedAt: null, majorEventId: { not: null } },
+      select: { majorEventId: true },
+      distinct: ['majorEventId'],
+      take: 2,
+    });
+    if (legacyParentIds.length === 1 && legacyParentIds[0].majorEventId) {
+      target.majorEventIds.add(legacyParentIds[0].majorEventId);
     }
   }
 

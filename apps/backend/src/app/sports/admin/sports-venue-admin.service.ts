@@ -8,6 +8,8 @@ import { SportsAdminBaseService } from './sports-admin-base.service';
 export class SportsVenueAdminService extends SportsAdminBaseService {
   async createVenue(
     input: {
+      /** Internal transfer-only stable ID; the GraphQL create input does not expose it. */
+      id?: string;
       tournamentId: string;
       placePresetId: string;
       name: string;
@@ -36,6 +38,15 @@ export class SportsVenueAdminService extends SportsAdminBaseService {
     await this.frozen.assertMajorEventMutable(scope.majorEventId, actor, 'edit');
 
     return runSerializableSportsTransaction(this.prisma, async (tx) => {
+      if (input.id) {
+        const claimedVenueId = await tx.sportsVenue.findUnique({
+          where: { id: input.id },
+          select: { id: true },
+        });
+        if (claimedVenueId) {
+          throw new ConflictException('O ID do local esportivo já está em uso.');
+        }
+      }
       const [tournament, place] = await Promise.all([
         tx.sportsTournament.findFirst({
           where: { id: input.tournamentId, deletedAt: null },
@@ -64,6 +75,7 @@ export class SportsVenueAdminService extends SportsAdminBaseService {
       }
       const venue = await tx.sportsVenue.create({
         data: {
+          ...(input.id ? { id: input.id } : {}),
           tournamentId: input.tournamentId,
           placePresetId: input.placePresetId,
           name: this.requireText(input.name, 'nome do local', 2, 120),

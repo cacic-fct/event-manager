@@ -109,6 +109,8 @@ export function getPermissionResourceLabel(resource: string): string {
       return 'Certificado';
     case 'certificate-config':
       return 'Configuração de certificado';
+    case 'data-transfer':
+      return 'Dados JSON';
     case 'event':
       return 'Evento';
     case 'event-attendance':
@@ -175,6 +177,8 @@ export function getPermissionResourceIcon(resource: string): string {
     case 'certificate':
     case 'certificate-config':
       return 'workspace_premium';
+    case 'data-transfer':
+      return 'data_object';
     case 'event':
       return 'event';
     case 'event-attendance':

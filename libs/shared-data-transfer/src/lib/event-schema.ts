@@ -1,0 +1,130 @@
+import { Type } from '@sinclair/typebox';
+import {
+  AttendanceEligibility,
+  Count,
+  DateTime,
+  Id,
+  IdList,
+  Name,
+  Text,
+  audienceFields,
+  certificateFlags,
+  enumeration,
+  nullable,
+  registrationFields,
+} from './schema-helpers';
+import {
+  type BoundaryMap,
+  checkedResource,
+  type EventGroupTransferOwner,
+  type EventTransferOwner,
+  type MajorEventPriceTransferOwner,
+  type MajorEventTransferOwner,
+  type PlacePresetTransferOwner,
+  type PriceTierTransferOwner,
+} from './schema-contracts';
+
+export const EventResourceSchema = checkedResource<EventTransferOwner>()('event', {
+  name: Name,
+  emoji: Type.String({ maxLength: 64 }),
+  startDate: DateTime,
+  endDate: DateTime,
+  type: enumeration('MINICURSO', 'PALESTRA', 'OTHER'),
+  creditMinutes: nullable(Count),
+  description: nullable(Text),
+  shortDescription: nullable(Text),
+  latitude: nullable(Type.Number({ minimum: -90, maximum: 90 })),
+  longitude: nullable(Type.Number({ minimum: -180, maximum: 180 })),
+  locationDescription: nullable(Text),
+  majorEventId: nullable(Id),
+  eventGroupId: nullable(Id),
+  ...audienceFields,
+  ...registrationFields,
+  allowSubscription: Type.Boolean(),
+  slots: nullable(Count),
+  autoSubscribe: Type.Boolean(),
+  attendanceEligibility: nullable(AttendanceEligibility),
+  shouldIssueCertificate: Type.Boolean(),
+  ...certificateFlags,
+  regularAttendancePriceTierIds: IdList,
+  shouldCollectAttendance: Type.Boolean(),
+  shouldAllowOralAttendance: Type.Boolean(),
+  isOnlineAttendanceAllowed: Type.Boolean(),
+  onlineAttendanceStartDate: nullable(DateTime),
+  onlineAttendanceEndDate: nullable(DateTime),
+  shouldProvideSubscriberListToLecturer: Type.Boolean(),
+  isPubliclyListed: Type.Boolean(),
+  displayLecturerProfile: Type.Boolean(),
+  youtubeCode: nullable(Type.String({ maxLength: 100 })),
+  twitchChannel: nullable(Type.String({ maxLength: 100 })),
+  buttonText: nullable(Name),
+  buttonLink: nullable(Type.String({ maxLength: 2048 })),
+});
+
+export const GroupResourceSchema = checkedResource<EventGroupTransferOwner>()('group', {
+  name: Name,
+  emoji: Type.String({ maxLength: 64 }),
+  majorEventId: nullable(Id),
+  ...audienceFields,
+  interestEnabled: Type.Boolean(),
+  requiresImageLicenseAgreement: Type.Boolean(),
+  attendanceEligibility: nullable(AttendanceEligibility),
+  shouldIssueCertificate: Type.Boolean(),
+  ...certificateFlags,
+  shouldIssueCertificateForEachEvent: Type.Boolean(),
+  shouldIssuePartialCertificate: Type.Boolean(),
+});
+
+export const MajorEventResourceSchema = checkedResource<MajorEventTransferOwner>()('major-event', {
+  name: Name,
+  emoji: Type.String({ maxLength: 64 }),
+  startDate: DateTime,
+  endDate: DateTime,
+  description: nullable(Text),
+  ...audienceFields,
+  ...registrationFields,
+  attendanceEligibility: nullable(AttendanceEligibility),
+  maxCoursesPerAttendee: nullable(Count),
+  maxLecturesPerAttendee: nullable(Count),
+  maxUncategorizedPerAttendee: nullable(Count),
+  rankedSubscriptionEnabled: nullable(Type.Boolean()),
+  buttonText: nullable(Name),
+  buttonLink: nullable(Type.String({ maxLength: 2048 })),
+  contactInfo: nullable(Type.String({ maxLength: 300 })),
+  contactType: nullable(enumeration('EMAIL', 'PHONE', 'WHATSAPP', 'OTHER')),
+  isPaymentRequired: Type.Boolean(),
+  ...certificateFlags,
+  additionalPaymentInfo: nullable(Text),
+});
+
+export const PriceResourceSchema = checkedResource<MajorEventPriceTransferOwner, BoundaryMap<'major-event-price'>>()(
+  'major-event-price',
+  {
+    majorEventId: Id,
+    type: enumeration('SINGLE', 'TIERED'),
+  },
+);
+
+export const PriceTierResourceSchema = checkedResource<PriceTierTransferOwner, BoundaryMap<'price-tier'>>()(
+  'price-tier',
+  {
+    priceId: Id,
+    name: Name,
+    value: Count,
+    includesEventRegistration: Type.Boolean(),
+    includesSportsRegistration: Type.Boolean(),
+    restrictEventSelection: Type.Boolean(),
+    allowedEventIds: IdList,
+    customizeSubscriptionLimits: Type.Boolean(),
+    maxCoursesPerAttendee: nullable(Count),
+    maxLecturesPerAttendee: nullable(Count),
+    maxUncategorizedPerAttendee: nullable(Count),
+  },
+);
+
+export const PlaceResourceSchema = checkedResource<PlacePresetTransferOwner>()('place-preset', {
+  name: Name,
+  latitude: nullable(Type.Number({ minimum: -90, maximum: 90 })),
+  longitude: nullable(Type.Number({ minimum: -180, maximum: 180 })),
+  locationDescription: nullable(Text),
+});

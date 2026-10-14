@@ -4,6 +4,7 @@ import { NavigationLinkId, NavigationLinkItem, navigationLinkItems } from './nav
 import { sportsWorkspaceRoutePaths } from '../sports/sports-workspace-routes';
 import { formsUnsavedChangesGuard } from '../forms/forms-unsaved-changes.guard';
 import { prizeDrawsUnsavedChangesGuard } from '../prize-draws/prize-draws-unsaved-changes.guard';
+import { dataTransferPendingChangesGuard } from '../data-transfer/data-transfer-pending-changes.guard';
 import {
   workspacePendingChangesActivateGuard,
   workspacePendingChangesGuard,
@@ -28,6 +29,7 @@ const permissionsData = getFeatureRouteData('permissions');
 const auditLogsData = getFeatureRouteData('audit-logs');
 const preferencesData = getFeatureRouteData('preferences');
 const prizeDrawsData = getFeatureRouteData('prize-draws');
+const dataTransferData = getFeatureRouteData('data-transfer');
 const eventWorkspaceKinds = ['event', 'group', 'major-event'] as const;
 
 function getFeatureRouteData(id: NavigationLinkId) {
@@ -61,10 +63,11 @@ function guardedFeatureRoute(
             runGuardsAndResolvers: 'paramsOrQueryParamsChange' as const,
           }
         : {}),
-      ...(['events', 'groups', 'major-events', 'certificates', 'tickets', 'sports'].includes(data.id)
+      ...(['events', 'groups', 'major-events', 'certificates', 'tickets', 'sports', 'data-transfer'].includes(data.id)
         ? {
             canActivate: [workspacePendingChangesActivateGuard],
-            canDeactivate: [workspacePendingChangesGuard],
+            canDeactivate:
+              data.id === 'data-transfer' ? [dataTransferPendingChangesGuard] : [workspacePendingChangesGuard],
             runGuardsAndResolvers: 'paramsOrQueryParamsChange' as const,
           }
         : {}),
@@ -126,6 +129,12 @@ export const routes: Route[] = [
       ),
       ...guardedFeatureRoute('tickets/major-event/:majorEventId', ticketsData, () =>
         import('../tickets/ticket-admin-page.component').then((m) => m.TicketAdminPageComponent),
+      ),
+      ...guardedFeatureRoute('data-transfer/:kind/:targetId', dataTransferData, () =>
+        import('../data-transfer/data-transfer-page.component').then((m) => m.DataTransferPageComponent),
+      ),
+      ...guardedFeatureRoute(dataTransferData.path, dataTransferData, () =>
+        import('../data-transfer/data-transfer-page.component').then((m) => m.DataTransferPageComponent),
       ),
       ...eventWorkspaceKinds.flatMap((kind) => {
         const data = kind === 'event' ? eventsData : kind === 'group' ? groupsData : majorEventsData;

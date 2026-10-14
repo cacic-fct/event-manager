@@ -182,6 +182,45 @@ describe('AuthorizationPolicyService', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('matches data-transfer grants to typed event-group targets and their major-event parent', async () => {
+    activeScopes.mockResolvedValue([
+      grant({
+        permission: Permission.DataTransfer.Export,
+        scope: EventManagerPermissionScope.MAJOR_EVENT,
+        majorEventId: 'major-1',
+      }),
+    ]);
+    prisma.eventGroup.findUnique.mockResolvedValue({ majorEventId: 'major-1' });
+
+    await expect(
+      service.assertPermissions(user([EventManagerKeycloakRole.Access]), [Permission.DataTransfer.Export], {
+        eventGroupId: 'group-1',
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(prisma.eventGroup.findUnique).toHaveBeenCalledWith({
+      where: { id: 'group-1' },
+      select: { majorEventId: true },
+    });
+  });
+
+  it('matches data-transfer grants scoped directly to an event group', async () => {
+    activeScopes.mockResolvedValue([
+      grant({
+        permission: Permission.DataTransfer.Import,
+        scope: EventManagerPermissionScope.EVENT_GROUP,
+        eventGroupId: 'group-1',
+      }),
+    ]);
+    prisma.eventGroup.findUnique.mockResolvedValue({ majorEventId: null });
+
+    await expect(
+      service.assertPermissions(user([EventManagerKeycloakRole.Access]), [Permission.DataTransfer.Import], {
+        eventGroupId: 'group-1',
+      }),
+    ).resolves.toBeUndefined();
+  });
+
   it('does not authorize a tournament from one of its child event groups', async () => {
     activeScopes.mockResolvedValue([
       grant({
@@ -974,9 +1013,11 @@ function createPrisma() {
       findMany: jest.fn().mockResolvedValue([]),
     },
     event: {
+      findMany: jest.fn().mockResolvedValue([]),
       findUnique: jest.fn().mockResolvedValue(null),
     },
     eventGroup: {
+      findUnique: jest.fn().mockResolvedValue(null),
       findMany: jest.fn().mockResolvedValue([]),
     },
     eventSubscription: {

@@ -1,0 +1,25 @@
+{
+  "name": "shared-data-transfer",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/shared-data-transfer/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:contract"],
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "options": {
+        "command": "bunx tsc --noEmit -p libs/shared-data-transfer/tsconfig.lib.json"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["typecheck"],
+      "outputs": ["{workspaceRoot}/coverage/libs/shared-data-transfer"],
+      "options": {
+        "command": "bunx vitest run --coverage --config libs/shared-data-transfer/vitest.config.ts"
+      }
+    }
+  }
+}

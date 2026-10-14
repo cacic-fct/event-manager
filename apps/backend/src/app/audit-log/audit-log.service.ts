@@ -44,6 +44,7 @@ import {
   toNullableAuditJsonInput,
 } from './audit-log.snapshots';
 import { synchronizeAuditLogEntry } from './audit-log.synchronization';
+import { auditBatchId, isBatchAuditEntry } from './audit-transaction-context';
 import {
   AuditActor,
   AuditLogMetadataCategory,
@@ -107,7 +108,9 @@ export class AuditLogService {
     const actor = await this.resolveActor(options.actor, prisma);
     const now = new Date();
     const squashWindowMs = options.squashWindowMs ?? DEFAULT_SQUASH_WINDOW_MS;
+    const batchId = auditBatchId(prisma);
     const canSquash =
+      !batchId &&
       squashWindowMs > 0 &&
       options.operation === AuditLogOperation.UPDATE &&
       options.entityType !== AuditLogEntityType.SYSTEM &&
@@ -141,7 +144,11 @@ export class AuditLogService {
         changedFields: changes.map((change) => change.field),
         firstRecordedAt: now,
         lastRecordedAt: now,
-        metadata: options.metadata ? toAuditJsonInput(options.metadata) : undefined,
+        metadata: batchId
+          ? toAuditJsonInput({ ...options.metadata, dataTransferBatchId: batchId })
+          : options.metadata
+            ? toAuditJsonInput(options.metadata)
+            : undefined,
       },
     });
     synchronizeAuditLogEntry(entry, prisma, this.prisma, this.typesenseSearch);
@@ -234,6 +241,12 @@ export class AuditLogService {
 
     if (targetEntry.revertedAt) {
       throw new ConflictException('Essa alteração já foi desfeita.');
+    }
+
+    if (isBatchAuditEntry(targetEntry.metadata)) {
+      throw new BadRequestException(
+        'Esta alteração pertence a uma importação JSON. Desfaça o lote na área de dados JSON para preservar suas dependências.',
+      );
     }
 
     if (!isReversibleAuditOperation(targetEntry.operation)) {
@@ -456,6 +469,7 @@ export class AuditLogService {
   ): boolean {
     return (
       !isPublicationLifecycleEntry(entry) &&
+      !isBatchAuditEntry(entry.metadata) &&
       entry.operation === options.operation &&
       (entry.actorId ?? null) === (actor.id ?? null) &&
       entry.actorName === actor.name &&
@@ -758,7 +772,7 @@ export class AuditLogService {
   }
 
   private canRevertEntry(entry: PrismaAuditLogEntry): boolean {
-    if (entry.revertedAt || !isReversibleAuditOperation(entry.operation)) {
+    if (entry.revertedAt || isBatchAuditEntry(entry.metadata) || !isReversibleAuditOperation(entry.operation)) {
       return false;
     }
 

@@ -174,6 +174,7 @@ export abstract class PersonCsvImportSupport {
   protected async findPeopleByImportValues(
     values: string[],
     matchType: AttendanceImportMatchType,
+    client: Pick<Prisma.TransactionClient, 'people'> = this.prisma,
   ): Promise<PersonCsvImportMatchResult> {
     const personByValue = new Map<string, PersonCsvImportMatch>();
     const ambiguousPeopleByValue = new Map<string, PersonCsvImportMatch[]>();
@@ -184,7 +185,7 @@ export abstract class PersonCsvImportSupport {
     for (const chunk of this.chunk(normalizedValues, 500)) {
       const requestedKeys = new Set(chunk);
       const candidatesByKey = new Map<string, Map<string, PersonCsvImportMatch>>();
-      const people = await this.prisma.people.findMany({
+      const people = await client.people.findMany({
         where: {
           deletedAt: null,
           mergedIntoId: null,

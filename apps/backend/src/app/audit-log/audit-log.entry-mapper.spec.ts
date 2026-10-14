@@ -84,6 +84,46 @@ describe('audit log entry mapper', () => {
       canRevert: true,
     });
   });
+
+  it('exposes only safe batch summary metadata in audit explorer results', () => {
+    const entry = createAuditEntry({
+      entityType: AuditLogEntityType.SYSTEM,
+      entityId: 'data-transfer:batch-1',
+      operation: AuditLogOperation.IMPORT,
+      metadata: {
+        type: 'data-transfer-batch',
+        version: 1,
+        summary: { create: 1, update: 2, unchanged: 3, skip: 4, private: 'drop-me' },
+        undone: false,
+        synchronizationPending: true,
+        dataTransferBatchId: 'batch-1',
+        requestFingerprint: 'private-fingerprint',
+        requestItems: [{ id: 'private-resource-id' }],
+        allocationToken: 'private-allocation-token',
+        rawFile: 'private-file-content',
+        creationReferences: [{ model: 'eventGroup', key: { id: 'private-group-id' }, relations: {} }],
+        mutations: [{ before: { privateToken: 'private-rollback-token' } }],
+        document: { resources: [{ person: { email: 'private-person@example.test' } }] },
+      },
+    });
+
+    const metadataJson = mapAuditLogExplorerEntry(entry, () => false).metadataJson;
+    expect(metadataJson).toBe(
+      JSON.stringify(
+        {
+          type: 'data-transfer-batch',
+          version: 1,
+          summary: { create: 1, update: 2, unchanged: 3, skip: 4 },
+          undone: false,
+          synchronizationPending: true,
+          dataTransferBatchId: 'batch-1',
+        },
+        null,
+        2,
+      ),
+    );
+    expect(metadataJson).not.toContain('private');
+  });
 });
 
 function createAuditEntry(overrides: Partial<AuditLogEntry> = {}): AuditLogEntry {

@@ -8,8 +8,9 @@
   "targets": {
     "test": {
       "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/coverage/libs/shared-angular"],
       "options": {
-        "command": "bunx vitest run --config libs/shared-angular/vitest.config.ts"
+        "command": "bunx vitest run --coverage --config libs/shared-angular/vitest.config.ts"
       }
     },
     "lint": {

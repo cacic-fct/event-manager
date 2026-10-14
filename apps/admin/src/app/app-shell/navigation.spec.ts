@@ -10,6 +10,7 @@ describe('workspace nav', () => {
     expect(linkIds).toEqual([
       'dashboard',
       'events',
+      'data-transfer',
       'certificates',
       'people',
       'merge-candidates',
@@ -28,6 +29,7 @@ describe('workspace nav', () => {
     expect(findNavigationItemForUrl('/workspace/attendances/event/event-1').id).toBe('attendances');
     expect(findNavigationItemForUrl('/workspace/permissions?tab=scopes').id).toBe('permissions');
     expect(findNavigationItemForUrl('/workspace/preferences').id).toBe('preferences');
+    expect(findNavigationItemForUrl('/data-transfer').id).toBe('data-transfer');
   });
 
   it('maps scope homes to the correct permission owner', () => {
@@ -35,6 +37,7 @@ describe('workspace nav', () => {
     expect(findNavigationItemForUrl('/event-workspace/event/event-1').id).toBe('events');
     expect(findNavigationItemForUrl('/admin/event-workspace/group/group-1').id).toBe('groups');
     expect(findNavigationItemForUrl('/event-workspace/major-event/major-1?view=activities').id).toBe('major-events');
+    expect(findNavigationItemForUrl('/data-transfer/major-event/major-1').id).toBe('data-transfer');
   });
 
   it('preserves operation ownership for compatible scoped URLs', () => {

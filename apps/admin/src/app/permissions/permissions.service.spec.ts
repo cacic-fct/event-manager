@@ -52,6 +52,7 @@ describe('PermissionsService', () => {
     expect(service.canReadTab(WorkspacePermissionTab.Attendances)).toBe(false);
     expect(service.canReadTab(WorkspacePermissionTab.Dashboard)).toBe(true);
     expect(service.canReadTab(WorkspacePermissionTab.Preferences)).toBe(true);
+    expect(service.canReadTab(WorkspacePermissionTab.DataTransfer)).toBe(false);
     expect(service.missingReadForTab(WorkspacePermissionTab.Attendances)).toEqual([
       Permission.EventAttendance.Read,
       Permission.Event.Read,
@@ -59,6 +60,11 @@ describe('PermissionsService', () => {
     ]);
     expect(service.missingReadForTab(WorkspacePermissionTab.Preferences)).toEqual([]);
     expect(service.missingReadForTab(WorkspacePermissionTab.Dashboard)).toEqual([]);
+    expect(service.missingReadForTab(WorkspacePermissionTab.DataTransfer)).toEqual([
+      Permission.DataTransfer.Export,
+      Permission.DataTransfer.Import,
+      Permission.DataTransfer.Undo,
+    ]);
     expect(service.missingReadForTab(WorkspacePermissionTab.Subscriptions)).not.toContain(Permission.Person.Read);
     expect(service.missingReadForTab(WorkspacePermissionTab.Certificates)).not.toContain(Permission.Person.Read);
   });
@@ -126,5 +132,35 @@ describe('PermissionsService', () => {
 
     await service.evaluateWorkspacePermissions();
     httpTesting.expectNone('/api/auth/permissions/evaluate');
+  });
+
+  it('allows the data-transfer page with either action permission', async () => {
+    const evaluationPromise = service.evaluateWorkspacePermissions();
+    httpTesting.expectOne('/api/auth/permissions/evaluate').flush({ permissions: [Permission.DataTransfer.Export] });
+    await evaluationPromise;
+
+    expect(service.canReadTab(WorkspacePermissionTab.DataTransfer)).toBe(true);
+    expect(service.missingReadForTab(WorkspacePermissionTab.DataTransfer)).toEqual([]);
+    expect(service.has(Permission.DataTransfer.Import)).toBe(false);
+  });
+
+  it('also allows the data-transfer page with import-only access', async () => {
+    const evaluationPromise = service.evaluateWorkspacePermissions();
+    httpTesting.expectOne('/api/auth/permissions/evaluate').flush({ permissions: [Permission.DataTransfer.Import] });
+    await evaluationPromise;
+
+    expect(service.canReadTab(WorkspacePermissionTab.DataTransfer)).toBe(true);
+    expect(service.missingReadForTab(WorkspacePermissionTab.DataTransfer)).toEqual([]);
+    expect(service.has(Permission.DataTransfer.Export)).toBe(false);
+  });
+
+  it('allows the data-transfer page with undo-only access', async () => {
+    const evaluationPromise = service.evaluateWorkspacePermissions();
+    httpTesting.expectOne('/api/auth/permissions/evaluate').flush({ permissions: [Permission.DataTransfer.Undo] });
+    await evaluationPromise;
+
+    expect(service.canReadTab(WorkspacePermissionTab.DataTransfer)).toBe(true);
+    expect(service.missingReadForTab(WorkspacePermissionTab.DataTransfer)).toEqual([]);
+    expect(service.has(Permission.DataTransfer.Import)).toBe(false);
   });
 });

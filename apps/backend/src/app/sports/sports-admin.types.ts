@@ -1,6 +1,8 @@
 import {
   Prisma,
   SportsAthleteIdentifierMode,
+  AttendanceEligibility,
+  EventAudience,
   SportsCategoryStatus,
   SportsBracketSide,
   SportsFormat,
@@ -41,6 +43,12 @@ export interface UpdateSportsTournamentInput {
 }
 
 export interface CreateSportsCategoryInput {
+  /** Internal transfer-only stable ID; the GraphQL create input does not expose it. */
+  id?: string;
+  /** Avoid creating person-linked registration rows during configuration imports. */
+  initializeTeamRegistrations?: boolean;
+  /** Non-personal settings carried by the category's backing EventGroup. */
+  backingEventGroup?: SportsCategoryBackingGroupSettings;
   tournamentId: string;
   eventGroupId?: string;
   name: string;
@@ -73,7 +81,25 @@ export interface CreateSportsCategoryInput {
   registrationFormId?: string | null;
 }
 
+export interface SportsCategoryBackingGroupSettings {
+  audience?: EventAudience;
+  audienceCourseCodes?: string[];
+  interestEnabled?: boolean;
+  requiresImageLicenseAgreement?: boolean;
+  attendanceEligibility?: AttendanceEligibility | null;
+  shouldIssueCertificateForNonPayingAttendees?: boolean;
+  shouldIssueCertificateForNonSubscribedAttendees?: boolean;
+  shouldIssueCertificateForEachEvent?: boolean;
+  shouldIssuePartialCertificate?: boolean;
+}
+
 export interface CreateSportsMatchInput {
+  /** Internal transfer-only stable ID; the GraphQL create input does not expose it. */
+  id?: string;
+  /** Stable ID for the backing Event when the importer creates it with the match. */
+  backingEventId?: string;
+  /** Internal transfer-only guard that prevents new backing Events from being published. */
+  forceBackingEventDraft?: boolean;
   categoryId: string;
   eventId?: string;
   name?: string;

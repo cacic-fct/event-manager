@@ -9,6 +9,17 @@ import {
   SportsRegistrationStatus,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { eventContentAuditSnapshot } from '../../events/event-content-audit';
+import { AttendanceCategoryService } from '../../events/attendance-category.service';
+import {
+  normalizeEventCertificateSettings,
+  type EventCertificateSettings,
+} from '../../events/event-certificate-settings';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../../audiences/audience-context';
+import { PrismaService } from '../../prisma/prisma.service';
+import { FrozenResourceService } from '../../common/frozen-resource.service';
+import { AuditLogService } from '../../audit-log/audit-log.service';
+import { SportsPaymentService } from '../sports-payment.service';
 import { assertSportsOverallScoringRules } from '../domain/sports-overall-scoring';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 import { CreateSportsCategoryInput } from '../sports-admin.types';
@@ -16,6 +27,16 @@ import { softDeleteSportsMatchBackingEvents } from '../sports-match-event-sync';
 import { SportsAdminBaseService } from './sports-admin-base.service';
 
 export class SportsCategoryAdminService extends SportsAdminBaseService {
+  constructor(
+    prisma: PrismaService,
+    frozen: FrozenResourceService,
+    auditLog: AuditLogService,
+    payments: SportsPaymentService,
+    private readonly attendanceCategories = new AttendanceCategoryService(prisma),
+  ) {
+    super(prisma, frozen, auditLog, payments);
+  }
+
   async createCategory(input: CreateSportsCategoryInput, actor: AuthenticatedUser) {
     const actorId = this.requireActorId(actor);
     this.validateRosterLimits(input);
@@ -33,11 +54,26 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
     }
     await this.frozen.assertMajorEventMutable(tournament.majorEventId, actor, 'edit');
     if (input.eventGroupId) {
-      await this.frozen.assertEventGroupMutable(input.eventGroupId, actor, 'edit');
+      const existingEventGroup = await this.prisma.eventGroup.findFirst({
+        where: { id: input.eventGroupId, deletedAt: null },
+        select: { id: true },
+      });
+      if (existingEventGroup || !input.id) {
+        await this.frozen.assertEventGroupMutable(input.eventGroupId, actor, 'edit');
+      }
     }
 
     return runSerializableSportsTransaction(this.prisma, async (tx) => {
       await this.assertRegistrationFormForMajorEvent(tx, input.registrationFormId, tournament.majorEventId);
+      if (input.id) {
+        const claimedCategoryId = await tx.sportsCategory.findUnique({
+          where: { id: input.id },
+          select: { id: true },
+        });
+        if (claimedCategoryId) {
+          throw new ConflictException('O ID da modalidade já está em uso.');
+        }
+      }
       const duplicate = await tx.sportsCategory.findFirst({
         where: {
           tournamentId: input.tournamentId,
@@ -51,7 +87,7 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
         throw new ConflictException('Já existe uma modalidade com este nome e divisão no torneio.');
       }
 
-      const eventGroup = input.eventGroupId
+      const existingEventGroup = input.eventGroupId
         ? await tx.eventGroup.findFirst({
             where: {
               id: input.eventGroupId,
@@ -59,36 +95,46 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
               sportsCategory: { is: null },
             },
           })
-        : await tx.eventGroup.create({
-            data: {
-              name: this.backingEventGroupName(
-                tournament.majorEvent?.name ?? 'Torneio esportivo',
-                name,
-                input.division,
-              ),
-              emoji: input.emoji?.trim() || this.defaultSportEmoji(input.sport),
-              shouldIssueCertificate: input.shouldIssueCertificate ?? tournament.shouldIssueCertificate ?? false,
-              createdById: actorId,
-              updatedById: actorId,
-            },
-          });
+        : null;
+      let eventGroup = existingEventGroup
+        ? existingEventGroup
+        : input.eventGroupId && input.id
+          ? await this.createImportedBackingEventGroup(tx, input, tournament, name, actorId)
+          : input.eventGroupId
+            ? null
+            : await tx.eventGroup.create({
+                data: {
+                  name: this.backingEventGroupName(
+                    tournament.majorEvent?.name ?? 'Torneio esportivo',
+                    name,
+                    input.division,
+                  ),
+                  emoji: input.emoji?.trim() || this.defaultSportEmoji(input.sport),
+                  shouldIssueCertificate: input.shouldIssueCertificate ?? tournament.shouldIssueCertificate ?? false,
+                  ...(input.backingEventGroup ?? {}),
+                  createdById: actorId,
+                  updatedById: actorId,
+                },
+              });
       if (!eventGroup) {
         throw new ConflictException('O grupo de eventos não existe ou já pertence a outra modalidade.');
       }
       if (input.eventGroupId) {
         await this.assertBackingEventGroupsHaveNoOrdinaryEvents(tx, eventGroup.id);
-        await tx.eventGroup.update({
-          where: { id: eventGroup.id },
-          data: {
-            name: this.backingEventGroupName(tournament.majorEvent?.name ?? 'Torneio esportivo', name, input.division),
-            ...(input.emoji?.trim() ? { emoji: input.emoji.trim() } : {}),
-            shouldIssueCertificate: input.shouldIssueCertificate ?? tournament.shouldIssueCertificate ?? false,
-            updatedById: actorId,
-          },
-        });
+        const backingGroupData = {
+          name: this.backingEventGroupName(tournament.majorEvent?.name ?? 'Torneio esportivo', name, input.division),
+          ...(input.emoji?.trim() ? { emoji: input.emoji.trim() } : {}),
+          shouldIssueCertificate: input.shouldIssueCertificate ?? tournament.shouldIssueCertificate ?? false,
+          ...(input.backingEventGroup ?? {}),
+          updatedById: actorId,
+        };
+        eventGroup =
+          (await tx.eventGroup.update({ where: { id: eventGroup.id }, data: backingGroupData })) ??
+          ({ ...eventGroup, ...backingGroupData } as typeof eventGroup);
       }
       const category = await tx.sportsCategory.create({
         data: {
+          ...(input.id ? { id: input.id } : {}),
           tournamentId: input.tournamentId,
           eventGroupId: eventGroup.id,
           name,
@@ -123,24 +169,46 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
         },
         include: { eventGroup: true },
       });
-      const teams = await tx.sportsTeam.findMany({
-        where: { tournamentId: input.tournamentId, deletedAt: null },
-        select: { id: true },
-      });
-      if (teams.length > 0) {
-        const now = new Date();
-        await tx.sportsRegistration.createMany({
-          data: teams.map((team) => ({
-            teamId: team.id,
-            categoryId: category.id,
-            status: SportsRegistrationStatus.APPROVED,
-            approvedAt: now,
-            approvedById: actorId,
-            createdById: actorId,
-            updatedById: actorId,
-          })),
+      if (input.initializeTeamRegistrations !== false) {
+        const teams = await tx.sportsTeam.findMany({
+          where: { tournamentId: input.tournamentId, deletedAt: null },
+          select: { id: true },
         });
+        if (teams.length > 0) {
+          const now = new Date();
+          await tx.sportsRegistration.createMany({
+            data: teams.map((team) => ({
+              teamId: team.id,
+              categoryId: category.id,
+              status: SportsRegistrationStatus.APPROVED,
+              approvedAt: now,
+              approvedById: actorId,
+              createdById: actorId,
+              updatedById: actorId,
+            })),
+          });
+        }
       }
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.EVENT_GROUP,
+          entityId: eventGroup.id,
+          entityLabel: eventGroup.name,
+          operation: existingEventGroup ? AuditLogOperation.UPDATE : AuditLogOperation.CREATE,
+          actor,
+          ...(existingEventGroup ? { before: eventContentAuditSnapshot(existingEventGroup) } : {}),
+          after: eventContentAuditSnapshot(eventGroup),
+          summary: existingEventGroup
+            ? 'Grupo de apoio da modalidade atualizado.'
+            : 'Grupo de apoio da modalidade criado.',
+          scope: {
+            permission: existingEventGroup ? Permission.EventGroup.Update : Permission.EventGroup.Create,
+            majorEventId: tournament.majorEventId,
+            eventGroupId: eventGroup.id,
+          },
+        },
+        tx,
+      );
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.SPORTS_CATEGORY,
@@ -163,7 +231,7 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
 
   async updateCategory(
     categoryId: string,
-    input: Partial<Omit<CreateSportsCategoryInput, 'tournamentId'>> & {
+    input: Partial<Omit<CreateSportsCategoryInput, 'tournamentId' | 'id' | 'initializeTeamRegistrations'>> & {
       expectedRevision: number;
       status?: SportsCategoryStatus;
       finishedAt?: Date | null;
@@ -289,7 +357,8 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
         name !== undefined ||
         input.division !== undefined ||
         input.emoji !== undefined ||
-        input.shouldIssueCertificate !== undefined
+        input.shouldIssueCertificate !== undefined ||
+        input.backingEventGroup !== undefined
       ) {
         const tournamentPolicy =
           input.shouldIssueCertificate === null
@@ -302,33 +371,80 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
           input.shouldIssueCertificate === undefined
             ? false
             : (input.shouldIssueCertificate ?? tournamentPolicy?.shouldIssueCertificate ?? false);
-        await tx.eventGroup.update({
-          where: { id: existing.eventGroupId },
-          data: {
-            ...(name !== undefined || input.division !== undefined
-              ? {
-                  name: this.backingEventGroupName(
-                    existing.tournament.majorEvent?.name ?? 'Torneio esportivo',
-                    name ?? existing.name,
-                    input.division === undefined ? existing.division : input.division,
-                  ),
-                }
-              : {}),
-            ...(input.emoji !== undefined
-              ? {
-                  emoji: input.emoji.trim() || this.defaultSportEmoji(input.sport ?? existing.sport),
-                }
-              : {}),
-            ...(input.shouldIssueCertificate !== undefined
-              ? { shouldIssueCertificate: effectiveCertificatePolicy }
-              : {}),
-            updatedById: actorId,
-          },
+        const certificatePatch: EventCertificateSettings = normalizeEventCertificateSettings({
+          ...(input.shouldIssueCertificate !== undefined ? { shouldIssueCertificate: effectiveCertificatePolicy } : {}),
+          ...(input.backingEventGroup?.shouldIssueCertificateForNonPayingAttendees === false
+            ? { shouldIssueCertificateForNonPayingAttendees: false }
+            : {}),
+          ...(input.backingEventGroup?.shouldIssueCertificateForNonSubscribedAttendees === false
+            ? { shouldIssueCertificateForNonSubscribedAttendees: false }
+            : {}),
         });
-        if (input.shouldIssueCertificate !== undefined) {
+        const backingGroupData = {
+          ...(name !== undefined || input.division !== undefined
+            ? {
+                name: this.backingEventGroupName(
+                  existing.tournament.majorEvent?.name ?? 'Torneio esportivo',
+                  name ?? existing.name,
+                  input.division === undefined ? existing.division : input.division,
+                ),
+              }
+            : {}),
+          ...(input.emoji !== undefined
+            ? {
+                emoji: input.emoji.trim() || this.defaultSportEmoji(input.sport ?? existing.sport),
+              }
+            : {}),
+          ...(input.shouldIssueCertificate !== undefined ? { shouldIssueCertificate: effectiveCertificatePolicy } : {}),
+          ...(input.backingEventGroup ?? {}),
+          ...(certificatePatch.shouldIssueCertificate === false
+            ? {
+                shouldIssueCertificateForNonPayingAttendees: false,
+                shouldIssueCertificateForNonSubscribedAttendees: false,
+                shouldIssueCertificateForEachEvent: false,
+                shouldIssuePartialCertificate: false,
+              }
+            : {}),
+          updatedById: actorId,
+        };
+        const updatedEventGroup =
+          (await tx.eventGroup.update({ where: { id: existing.eventGroupId }, data: backingGroupData })) ??
+          ({ ...existing.eventGroup, ...backingGroupData } as typeof existing.eventGroup);
+        await this.auditLog.record(
+          {
+            entityType: AuditLogEntityType.EVENT_GROUP,
+            entityId: updatedEventGroup.id,
+            entityLabel: updatedEventGroup.name,
+            operation: AuditLogOperation.UPDATE,
+            actor,
+            before: eventContentAuditSnapshot(existing.eventGroup),
+            after: eventContentAuditSnapshot(updatedEventGroup),
+            summary: 'Grupo de apoio da modalidade atualizado.',
+            scope: {
+              permission: Permission.EventGroup.Update,
+              majorEventId: existing.tournament.majorEventId,
+              eventGroupId: existing.eventGroupId,
+            },
+          },
+          tx,
+        );
+        if (Object.keys(certificatePatch).length > 0) {
           await tx.event.updateMany({
             where: { eventGroupId: existing.eventGroupId, sportsMatch: { isNot: null }, deletedAt: null },
-            data: { shouldIssueCertificate: effectiveCertificatePolicy, updatedById: actorId },
+            data: { ...certificatePatch, updatedById: actorId },
+          });
+        }
+        if (
+          input.backingEventGroup?.attendanceEligibility !== undefined ||
+          input.backingEventGroup?.audience !== undefined ||
+          input.backingEventGroup?.audienceCourseCodes !== undefined
+        ) {
+          await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, async () => {
+            const events = await tx.event.findMany({
+              where: { eventGroupId: existing.eventGroupId, deletedAt: null },
+              select: { id: true },
+            });
+            for (const event of events) await this.attendanceCategories.refreshForEvent(event.id, tx);
           });
         }
       }
@@ -358,6 +474,47 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
 
   private backingEventGroupName(majorEventName: string, categoryName: string, division?: string | null): string {
     return [majorEventName, categoryName, division?.trim() || null].filter(Boolean).join(' — ');
+  }
+
+  private async createImportedBackingEventGroup(
+    tx: Prisma.TransactionClient,
+    input: CreateSportsCategoryInput,
+    tournament: {
+      majorEventId: string;
+      shouldIssueCertificate: boolean;
+      majorEvent: { name: string } | null;
+    },
+    categoryName: string,
+    actorId: string,
+  ) {
+    const eventGroupId = input.eventGroupId;
+    if (!eventGroupId) {
+      throw new ConflictException('A modalidade importada precisa de um ID estável para o grupo de eventos.');
+    }
+    const claimedId = await tx.eventGroup.findUnique({
+      where: { id: eventGroupId },
+      select: { id: true },
+    });
+    if (claimedId) {
+      throw new ConflictException('O ID do grupo de eventos já está em uso.');
+    }
+
+    return tx.eventGroup.create({
+      data: {
+        id: eventGroupId,
+        majorEventId: tournament.majorEventId,
+        name: this.backingEventGroupName(
+          tournament.majorEvent?.name ?? 'Torneio esportivo',
+          categoryName,
+          input.division,
+        ),
+        emoji: input.emoji?.trim() || this.defaultSportEmoji(input.sport),
+        shouldIssueCertificate: input.shouldIssueCertificate ?? tournament.shouldIssueCertificate,
+        ...(input.backingEventGroup ?? {}),
+        createdById: actorId,
+        updatedById: actorId,
+      },
+    });
   }
 
   async deleteCategory(categoryId: string, expectedRevision: number, actor: AuthenticatedUser): Promise<void> {

@@ -12,5 +12,12 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['libs/shared-event-participation/src/**/*.spec.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['lcov', 'text', 'json'],
+      reportsDirectory: 'coverage/libs/shared-event-participation',
+      include: ['libs/shared-event-participation/src/**/*.ts'],
+      exclude: ['**/*.spec.ts'],
+    },
   },
 });

@@ -27,6 +27,38 @@ const RECEIPT_CONTEXT_FIELDS = [
 export const EVENT_MANAGER_PERMISSION_INCLUDED_DATA: Readonly<
   Partial<Record<Permission, readonly PermissionIncludedData[]>>
 > = {
+  [Permission.DataTransfer.Export]: [
+    {
+      label: 'Estrutura de configuração exportada',
+      fields: [
+        'grandes eventos, grupos de eventos e eventos',
+        'configurações relacionadas e estrutura esportiva',
+        'IDs estáveis dos registros exportados',
+        'inscrições e presenças selecionadas, conforme as permissões de leitura de cada recurso',
+      ],
+    },
+  ],
+  [Permission.DataTransfer.Import]: [
+    {
+      label: 'Estrutura de configuração importada',
+      fields: [
+        'grandes eventos, grupos de eventos e eventos',
+        'configurações relacionadas e estrutura esportiva',
+        'IDs estáveis preservados nos registros compatíveis',
+        'inscrições e presenças, com associação a pessoas existentes e revisão antes de aplicar',
+      ],
+    },
+  ],
+  [Permission.DataTransfer.Undo]: [
+    {
+      label: 'Reversão de importação JSON',
+      fields: [
+        'lotes auditáveis',
+        'checagem de alterações posteriores',
+        'permissões atuais de leitura, atualização ou exclusão dos registros afetados',
+      ],
+    },
+  ],
   [Permission.PrizeDraw.Read]: [
     {
       label: 'Configuração e resultados do sorteio',

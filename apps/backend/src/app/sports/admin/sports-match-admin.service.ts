@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
 import {
   AuditLogEntityType,
@@ -32,6 +32,9 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
     const actorId = this.requireActorId(actor);
     if ((input.startDate && !input.endDate) || (!input.startDate && input.endDate)) {
       throw new BadRequestException('Informe o início e o fim da partida.');
+    }
+    if (input.eventId && input.backingEventId) {
+      throw new BadRequestException('A partida não pode anexar e criar o mesmo evento de apoio.');
     }
     if (input.startDate && input.endDate) {
       this.assertDateRange(input.startDate, input.endDate, 'partida');
@@ -67,6 +70,24 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
       if (!category) {
         throw new NotFoundException(`Sports category ${input.categoryId} was not found.`);
       }
+      if (input.id) {
+        const claimedMatchId = await tx.sportsMatch.findUnique({
+          where: { id: input.id },
+          select: { id: true },
+        });
+        if (claimedMatchId) {
+          throw new ConflictException('O ID da partida já está em uso.');
+        }
+      }
+      if (input.backingEventId) {
+        const claimedEventId = await tx.event.findUnique({
+          where: { id: input.backingEventId },
+          select: { id: true },
+        });
+        if (claimedEventId) {
+          throw new ConflictException('O ID do evento de apoio já está em uso.');
+        }
+      }
       const [home, away, venue, stage] = await Promise.all([
         this.findRegistration(tx, input.homeRegistrationId, category.id),
         this.findRegistration(tx, input.awayRegistrationId, category.id),
@@ -84,6 +105,7 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
       const requestedName =
         input.name === undefined ? undefined : this.requireText(input.name, 'nome da partida', 2, 160);
       const publishImmediately =
+        input.forceBackingEventDraft !== true &&
         input.publishImmediately === true &&
         category.status !== SportsCategoryStatus.DRAFT &&
         category.tournament.status !== SportsTournamentStatus.DRAFT &&
@@ -113,6 +135,7 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
             actorId,
           )
         : await createSportsMatchBackingEvent(tx, {
+            ...(input.backingEventId ? { id: input.backingEventId } : {}),
             name: requestedName || generatedName,
             emoji: category.eventGroup.emoji,
             startDate: this.requireDate(input.startDate, 'início da partida'),
@@ -138,6 +161,7 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
       const twitchChannel = this.twitchChannelForLivestream(input.livestreamProvider, livestreamUrl);
       const match = await tx.sportsMatch.create({
         data: {
+          ...(input.id ? { id: input.id } : {}),
           eventId: event.id,
           categoryId: category.id,
           stageId: stage?.id ?? null,

@@ -2,6 +2,7 @@ import { AuditLogEntry as PrismaAuditLogEntry } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { AuditPrismaClient } from './audit-log.types';
+import { auditBatchId } from './audit-transaction-context';
 
 const AUDIT_LOG_SYNC_RETRY_DELAYS_MS = [25, 100, 500, 1_000, 2_500] as const;
 
@@ -11,6 +12,8 @@ export function synchronizeAuditLogEntry(
   committedPrisma: PrismaService,
   typesenseSearch: TypesenseSearchService,
 ): void {
+  // The durable batch outbox will synchronize these entries only after the database commits.
+  if (auditBatchId(prisma)) return;
   if (prisma === committedPrisma) {
     void typesenseSearch.upsertAuditLogEntry(entry).catch(() => undefined);
     return;

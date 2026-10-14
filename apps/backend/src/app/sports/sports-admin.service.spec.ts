@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import {
   PublicationState,
   SportsCategoryStatus,
@@ -11,6 +11,8 @@ import {
 } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { SportsAdminService } from './sports-admin.service';
+import { FrozenResourceService } from '../common/frozen-resource.service';
+import { sportsAdminTournamentRecord, sportsTestDate } from './testing/sports-backend.fixtures';
 
 describe('SportsAdminService', () => {
   const actor = {
@@ -69,6 +71,69 @@ describe('SportsAdminService', () => {
       publication as never,
       ticketIssuance as never,
     );
+  });
+
+  it('attaches a tournament using a major event visible only inside the caller transaction', async () => {
+    const tournamentId = 'tournament-new';
+    const majorEvent = {
+      id: 'major-new',
+      name: 'New major event',
+      createdAt: sportsTestDate(),
+      endDate: sportsTestDate(3_600_000),
+    };
+    const tournament = sportsAdminTournamentRecord({ id: tournamentId, majorEventId: majorEvent.id, majorEvent });
+    const committed = { majorEvent: { findFirst: jest.fn().mockResolvedValue(null) } };
+    const caller = {
+      majorEvent: { findFirst: jest.fn().mockResolvedValue(majorEvent) },
+      sportsTournament: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue(tournament),
+      },
+    };
+    const boundService = new SportsAdminService(
+      committed as never,
+      new FrozenResourceService(committed as never),
+      auditLog as never,
+      payments as never,
+      publication as never,
+      ticketIssuance as never,
+    ).forTransaction(caller as never);
+
+    await expect(
+      boundService.attachTournament({ id: tournamentId, majorEventId: majorEvent.id }, actor),
+    ).resolves.toEqual(tournament);
+    expect(committed.majorEvent.findFirst).not.toHaveBeenCalled();
+    expect(caller.sportsTournament.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ id: tournamentId, majorEventId: majorEvent.id }),
+    });
+    expect(auditLog.record).toHaveBeenCalledWith(expect.anything(), caller);
+  });
+
+  it('preserves freeze restrictions when sports writers use a caller transaction', async () => {
+    const committed = { majorEvent: { findFirst: jest.fn().mockResolvedValue({ createdAt: sportsTestDate() }) } };
+    const caller = {
+      majorEvent: {
+        findFirst: jest.fn().mockResolvedValue({
+          createdAt: sportsTestDate(-365 * 86_400_000),
+          endDate: sportsTestDate(-364 * 86_400_000),
+        }),
+      },
+      sportsTournament: { create: jest.fn() },
+    };
+    const boundService = new SportsAdminService(
+      committed as never,
+      new FrozenResourceService(committed as never),
+      auditLog as never,
+      payments as never,
+      publication as never,
+      ticketIssuance as never,
+    ).forTransaction(caller as never);
+
+    await expect(boundService.attachTournament({ majorEventId: 'major-1' }, actor)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    expect(caller.sportsTournament.create).not.toHaveBeenCalled();
+    expect(committed.majorEvent.findFirst).not.toHaveBeenCalled();
   });
 
   it('attaches a compatible existing Event and enables shared attendance', async () => {
@@ -178,6 +243,87 @@ describe('SportsAdminService', () => {
         publishedAt: null,
       }),
     });
+  });
+
+  it('keeps transfer-created backing Events in draft under published sports parents', async () => {
+    prisma.sportsCategory.findFirst.mockResolvedValue({ eventGroupId: 'group-1' });
+    tx.sportsCategory.findFirst.mockResolvedValue(createCategory());
+    const startDate = new Date(Date.now() + 60 * 60 * 1000);
+    const endDate = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    const createdEvent = {
+      ...createEvent(),
+      id: 'event-transfer',
+      startDate,
+      endDate,
+      isPubliclyListed: false,
+      publicationState: PublicationState.DRAFT,
+      publishedAt: null,
+    };
+    tx.event.create.mockResolvedValue(createdEvent);
+    tx.sportsMatch.create.mockResolvedValue({
+      id: 'match-transfer',
+      eventId: createdEvent.id,
+      categoryId: 'category-1',
+      event: createdEvent,
+    });
+
+    await service.createMatch(
+      {
+        categoryId: 'category-1',
+        backingEventId: createdEvent.id,
+        startDate,
+        endDate,
+        publishImmediately: true,
+        forceBackingEventDraft: true,
+      },
+      actor,
+    );
+
+    expect(tx.event.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        isPubliclyListed: false,
+        publicationState: PublicationState.DRAFT,
+        publishedAt: null,
+      }),
+    });
+  });
+
+  it('creates a schedule with stable match and backing-event IDs through the domain writer', async () => {
+    prisma.sportsCategory.findFirst.mockResolvedValue({ eventGroupId: 'group-1' });
+    tx.sportsCategory.findFirst.mockResolvedValue(createCategory());
+    tx.sportsMatch.findUnique.mockResolvedValue(null);
+    tx.event.findUnique.mockResolvedValue(null);
+    const startDate = new Date('2026-09-01T10:00:00.000Z');
+    const endDate = new Date('2026-09-01T11:00:00.000Z');
+    const createdEvent = { ...createEvent(), id: 'stable-event-1', startDate, endDate };
+    tx.event.create.mockResolvedValue(createdEvent);
+    tx.sportsMatch.create.mockResolvedValue({
+      id: 'stable-match-1',
+      eventId: createdEvent.id,
+      categoryId: 'category-1',
+      event: createdEvent,
+    });
+
+    const result = await service.createMatch(
+      {
+        id: 'stable-match-1',
+        backingEventId: 'stable-event-1',
+        categoryId: 'category-1',
+        name: 'Futsal — programação importada',
+        startDate,
+        endDate,
+      },
+      actor,
+    );
+
+    expect(tx.event.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ id: 'stable-event-1', startDate, endDate, allowSubscription: false }),
+    });
+    expect(tx.sportsMatch.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ id: 'stable-match-1', eventId: 'stable-event-1', categoryId: 'category-1' }),
+      include: { event: true },
+    });
+    expect(result.id).toBe('stable-match-1');
   });
 
   it('rejects an Event outside the category EventGroup or MajorEvent', async () => {
@@ -749,6 +895,7 @@ function createTransaction() {
     },
     sportsMatch: {
       create: jest.fn(),
+      findUnique: jest.fn(),
       findFirst: jest.fn(),
       findMany: jest.fn(),
       findUniqueOrThrow: jest.fn(),
@@ -759,6 +906,7 @@ function createTransaction() {
     },
     event: {
       create: jest.fn(),
+      findUnique: jest.fn(),
       findFirst: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn(),

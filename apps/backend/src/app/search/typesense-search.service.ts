@@ -193,23 +193,27 @@ export class TypesenseSearchService implements OnModuleInit {
     );
   }
 
-  async upsertEvent(input: {
-    id: string;
-    name: string;
-    emoji: string;
-    type: string;
-    description?: string | null;
-    shortDescription?: string | null;
-    locationDescription?: string | null;
-    majorEventId?: string | null;
-    eventGroupId?: string | null;
-    shouldIssueCertificate?: boolean | null;
-    isPubliclyListed?: boolean | null;
-    publicationState?: string | null;
-    startDate: Date;
-    endDate: Date;
-  }): Promise<void> {
+  async upsertEvent(
+    input: {
+      id: string;
+      name: string;
+      emoji: string;
+      type: string;
+      description?: string | null;
+      shortDescription?: string | null;
+      locationDescription?: string | null;
+      majorEventId?: string | null;
+      eventGroupId?: string | null;
+      shouldIssueCertificate?: boolean | null;
+      isPubliclyListed?: boolean | null;
+      publicationState?: string | null;
+      startDate: Date;
+      endDate: Date;
+    },
+    throwOnError = false,
+  ): Promise<void> {
     if (!this.client) {
+      if (throwOnError) throw new Error(`Typesense is unavailable; could not upsert event ${input.id}.`);
       return;
     }
 
@@ -228,63 +232,77 @@ export class TypesenseSearchService implements OnModuleInit {
         eventGroupName: eventGroupContext?.name,
         majorEventPublicationState,
       }),
+      throwOnError,
     );
   }
 
-  async deleteEvent(id: string): Promise<void> {
-    await this.deleteDocument(TYPESENSE_COLLECTIONS.events, id);
+  async deleteEvent(id: string, throwOnError = false): Promise<void> {
+    await this.deleteDocument(TYPESENSE_COLLECTIONS.events, id, throwOnError);
   }
 
-  async upsertMajorEvent(input: {
-    id: string;
-    name: string;
-    description?: string | null;
-    startDate: Date;
-    endDate: Date;
-    publicationState?: string | null;
-  }): Promise<void> {
+  async upsertMajorEvent(
+    input: {
+      id: string;
+      name: string;
+      description?: string | null;
+      startDate: Date;
+      endDate: Date;
+      publicationState?: string | null;
+    },
+    throwOnError = false,
+  ): Promise<void> {
     if (!this.client) {
+      if (throwOnError) throw new Error(`Typesense is unavailable; could not upsert major event ${input.id}.`);
       return;
     }
 
     await this.upsertDocument<MajorEventSearchDocument>(
       TYPESENSE_COLLECTIONS.majorEvents,
       toMajorEventSearchDocument(input),
+      throwOnError,
     );
-    await this.reindexEventsByMajorEventId(input.id);
-    await this.reindexEventGroupsByMajorEventId(input.id);
+    await this.reindexEventsByMajorEventId(input.id, throwOnError);
+    await this.reindexEventGroupsByMajorEventId(input.id, throwOnError);
   }
 
-  async deleteMajorEvent(id: string): Promise<void> {
-    await this.deleteDocument(TYPESENSE_COLLECTIONS.majorEvents, id);
-    await this.reindexEventsByMajorEventId(id);
-    await this.reindexEventGroupsByMajorEventId(id);
+  async deleteMajorEvent(id: string, throwOnError = false): Promise<void> {
+    await this.deleteDocument(TYPESENSE_COLLECTIONS.majorEvents, id, throwOnError);
+    await this.reindexEventsByMajorEventId(id, throwOnError);
+    await this.reindexEventGroupsByMajorEventId(id, throwOnError);
   }
 
-  async upsertEventGroup(input: {
-    id: string;
-    name: string;
-    emoji?: string;
-    majorEventId?: string | null;
-  }): Promise<void> {
+  async upsertEventGroup(
+    input: {
+      id: string;
+      name: string;
+      emoji?: string;
+      majorEventId?: string | null;
+    },
+    throwOnError = false,
+  ): Promise<void> {
     if (!this.client) {
+      if (throwOnError) throw new Error(`Typesense is unavailable; could not upsert event group ${input.id}.`);
       return;
     }
 
     const majorEventName = await this.resolveMajorEventName(input.majorEventId);
-    await this.upsertDocument<EventGroupSearchDocument>(TYPESENSE_COLLECTIONS.eventGroups, {
-      id: input.id,
-      name: input.name,
-      emoji: input.emoji,
-      majorEventId: input.majorEventId ?? undefined,
-      majorEventName,
-    });
-    await this.reindexEventsByEventGroupId(input.id);
+    await this.upsertDocument<EventGroupSearchDocument>(
+      TYPESENSE_COLLECTIONS.eventGroups,
+      {
+        id: input.id,
+        name: input.name,
+        emoji: input.emoji,
+        majorEventId: input.majorEventId ?? undefined,
+        majorEventName,
+      },
+      throwOnError,
+    );
+    await this.reindexEventsByEventGroupId(input.id, throwOnError);
   }
 
-  async deleteEventGroup(id: string): Promise<void> {
-    await this.deleteDocument(TYPESENSE_COLLECTIONS.eventGroups, id);
-    await this.reindexEventsByEventGroupId(id);
+  async deleteEventGroup(id: string, throwOnError = false): Promise<void> {
+    await this.deleteDocument(TYPESENSE_COLLECTIONS.eventGroups, id, throwOnError);
+    await this.reindexEventsByEventGroupId(id, throwOnError);
   }
 
   async upsertPerson(input: {
@@ -304,15 +322,19 @@ export class TypesenseSearchService implements OnModuleInit {
     await this.deleteDocument(TYPESENSE_COLLECTIONS.people, id);
   }
 
-  async upsertPlacePreset(input: { id: string; name: string; locationDescription?: string | null }): Promise<void> {
+  async upsertPlacePreset(
+    input: { id: string; name: string; locationDescription?: string | null },
+    throwOnError = false,
+  ): Promise<void> {
     await this.upsertDocument<PlacePresetSearchDocument>(
       TYPESENSE_COLLECTIONS.placePresets,
       toPlacePresetSearchDocument(input),
+      throwOnError,
     );
   }
 
-  async deletePlacePreset(id: string): Promise<void> {
-    await this.deleteDocument(TYPESENSE_COLLECTIONS.placePresets, id);
+  async deletePlacePreset(id: string, throwOnError = false): Promise<void> {
+    await this.deleteDocument(TYPESENSE_COLLECTIONS.placePresets, id, throwOnError);
   }
 
   async upsertCertificateTemplate(input: {
@@ -364,29 +386,31 @@ export class TypesenseSearchService implements OnModuleInit {
     });
   }
 
-  private async reindexEventsByMajorEventId(majorEventId: string): Promise<void> {
-    await this.reindexEvents({ majorEventId });
+  private async reindexEventsByMajorEventId(majorEventId: string, throwOnError = false): Promise<void> {
+    await this.reindexEvents({ majorEventId }, throwOnError);
   }
 
-  private async reindexEventsByEventGroupId(eventGroupId: string): Promise<void> {
-    await this.reindexEvents({ eventGroupId });
+  private async reindexEventsByEventGroupId(eventGroupId: string, throwOnError = false): Promise<void> {
+    await this.reindexEvents({ eventGroupId }, throwOnError);
   }
 
-  private async reindexEventGroupsByMajorEventId(majorEventId: string): Promise<void> {
+  private async reindexEventGroupsByMajorEventId(majorEventId: string, throwOnError = false): Promise<void> {
     await reindexEventGroupSearchDocuments({
       client: this.client,
       logger: this.logger,
       prisma: this.prisma,
       where: { majorEventId },
+      throwOnError,
     });
   }
 
-  private async reindexEvents(where: Prisma.EventWhereInput): Promise<void> {
+  private async reindexEvents(where: Prisma.EventWhereInput, throwOnError = false): Promise<void> {
     await reindexEventSearchDocuments({
       client: this.client,
       logger: this.logger,
       prisma: this.prisma,
       where,
+      throwOnError,
     });
   }
 
@@ -425,12 +449,13 @@ export class TypesenseSearchService implements OnModuleInit {
     });
   }
 
-  private async deleteDocument(collectionName: string, id: string): Promise<void> {
+  private async deleteDocument(collectionName: string, id: string, throwOnError = false): Promise<void> {
     await deleteTypesenseDocument({
       client: this.client,
       logger: this.logger,
       collectionName,
       id,
+      throwOnError,
     });
   }
 

@@ -22,6 +22,7 @@ export const WorkspacePermissionTab = {
   Preferences: 'preferences',
   PrizeDraws: 'prize-draws',
   Tickets: 'tickets',
+  DataTransfer: 'data-transfer',
 } as const;
 
 export type WorkspacePermissionTab = (typeof WorkspacePermissionTab)[keyof typeof WorkspacePermissionTab];
@@ -308,6 +309,13 @@ export const WORKSPACE_TAB_PERMISSIONS = [
     label: 'Preferências',
     read: [],
     edit: [],
+    delete: [],
+  },
+  {
+    id: WorkspacePermissionTab.DataTransfer,
+    label: 'Dados JSON',
+    read: [Permission.DataTransfer.Export, Permission.DataTransfer.Import, Permission.DataTransfer.Undo],
+    edit: [Permission.DataTransfer.Import],
     delete: [],
   },
 ] as const satisfies readonly WorkspaceTabPermission[];

@@ -76,6 +76,31 @@ describe('SportsVenueAdminService', () => {
       );
     });
 
+    it('preserves an unclaimed imported venue ID within its existing tournament', async () => {
+      const venue = sportsAdminVenueRecord({ id: 'stable-venue-1' });
+      prisma.sportsTournament.findFirst.mockResolvedValue({ majorEventId: 'major-event-1' });
+      tx.sportsTournament.findFirst.mockResolvedValue({ majorEventId: 'major-event-1' });
+      tx.placePreset.findFirst.mockResolvedValue({ id: 'place-1' });
+      tx.sportsVenue.findUnique.mockResolvedValue(null);
+      tx.sportsVenue.create.mockResolvedValue(venue);
+
+      await expect(
+        service.createVenue(
+          {
+            id: 'stable-venue-1',
+            tournamentId: 'tournament-1',
+            placePresetId: 'place-1',
+            name: 'Ginásio importado',
+          },
+          actor,
+        ),
+      ).resolves.toEqual(venue);
+
+      expect(tx.sportsVenue.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ id: 'stable-venue-1', tournamentId: 'tournament-1' }),
+      });
+    });
+
     it.each([-1, 2.5])('rejects invalid capacity %s before database or authorization work', async (capacity) => {
       await expect(
         service.createVenue(
@@ -394,6 +419,7 @@ function createTransaction() {
     placePreset: { findFirst: jest.fn() },
     sportsVenue: {
       findFirst: jest.fn(),
+      findUnique: jest.fn(),
       create: jest.fn(),
       updateMany: jest.fn(),
       findUniqueOrThrow: jest.fn(),

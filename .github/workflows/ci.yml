@@ -88,6 +88,7 @@ jobs:
 
       - name: Validate import tools
         run: |
+          bunx nx run shared-data-transfer:typecheck
           bun run typecheck:data-import
           bun run test:data-import
           node --test tools/evcomp-import/*.test.mjs
@@ -132,10 +133,15 @@ jobs:
         project:
           - admin
           - backend
+          - event-manager-m2m-contracts
           - event-manager-public-testing
           - public-indexed-db
           - public
           - shared-angular
+          - shared-data-transfer
+          - shared-environment
+          - shared-event-participation
+          - shared-livestream
           - shared-permissions
           - shared-seo-angular
           - shared-utils
@@ -177,6 +183,14 @@ jobs:
       - name: Run unit tests with coverage
         run: bunx nx test ${{ matrix.project }}
 
+      - name: Verify atomic JSON import and undo with isolated PostgreSQL
+        if: matrix.project == 'backend'
+        run: bunx nx run backend:test-data-transfer-integration
+
+      - name: Run public Workbox tests with coverage
+        if: matrix.project == 'public'
+        run: bunx nx run public:test-workbox
+
       - name: Collect coverage reports
         id: coverage
         shell: bash
@@ -186,22 +200,13 @@ jobs:
               coverage_roots=(coverage/apps/admin coverage/admin)
               ;;
             backend)
-              coverage_roots=(coverage/apps/backend)
-              ;;
-            public-indexed-db)
-              coverage_roots=(coverage/libs/public-indexed-db)
+              coverage_roots=(coverage/apps/backend coverage/apps/backend-data-transfer-integration)
               ;;
             public)
-              coverage_roots=(coverage/apps/public coverage/public)
-              ;;
-            shared-seo-angular)
-              coverage_roots=(coverage/libs/shared-seo-angular)
-              ;;
-            shared-utils)
-              coverage_roots=(coverage/libs/shared-utils)
+              coverage_roots=(coverage/apps/public coverage/public coverage/apps/public-workbox)
               ;;
             *)
-              coverage_roots=(coverage/${{ matrix.project }})
+              coverage_roots=(coverage/libs/${{ matrix.project }})
               ;;
           esac
 
@@ -303,6 +308,24 @@ jobs:
 
       - name: Run frontend e2e tests
         run: E2E_START_SERVER=true E2E_COVERAGE=true E2E_COVERAGE_OUTPUT_DIR=coverage/${{ matrix.project }} bunx nx e2e ${{ matrix.project }} -- --project=chromium
+
+      - name: Build JSON transfer browser fixtures
+        if: matrix.project == 'admin-e2e'
+        run: bunx nx run admin:build-storybook --configuration=ci
+
+      - name: Verify JSON transfer browser flows and accessibility
+        if: matrix.project == 'admin-e2e'
+        shell: bash
+        run: |
+          python3 -m http.server 4400 --bind 127.0.0.1 --directory dist/storybook/admin > /tmp/data-transfer-storybook.log 2>&1 &
+          transfer_storybook_pid=$!
+          trap 'kill "$transfer_storybook_pid"' EXIT
+          for attempt in {1..30}; do
+            if curl --silent --fail http://127.0.0.1:4400/index.json > /dev/null; then break; fi
+            sleep 1
+          done
+          STORYBOOK_ADMIN_URL=http://127.0.0.1:4400 bunx playwright test apps/admin-e2e/src/data-transfer-storybook.spec.ts --config=apps/admin-e2e/playwright.config.ts --project=chromium --workers=1
+          node tools/storybook-browser-tests.mjs --url=http://127.0.0.1:4400 --grep=data-transfer --strict-a11y --workers=1
 
       - name: Install Playwright service-worker browsers
         if: matrix.project == 'public-e2e'
@@ -638,6 +661,7 @@ jobs:
 
       - name: Validate import tools
         run: |
+          bunx nx run shared-data-transfer:typecheck
           bun run typecheck:data-import
           bun run test:data-import
           node --test tools/evcomp-import/*.test.mjs
@@ -709,7 +733,13 @@ jobs:
         run: bunx prisma generate --schema apps/backend/prisma/schema
 
       - name: Run unit tests with coverage
-        run: bunx nx run-many -t test -p admin,backend,event-manager-public-testing,public-indexed-db,public,shared-angular,shared-permissions,shared-seo-angular,shared-utils --parallel=3 --coverage
+        run: bunx nx run-many -t test -p admin,backend,event-manager-m2m-contracts,event-manager-public-testing,public-indexed-db,public,shared-angular,shared-data-transfer,shared-environment,shared-event-participation,shared-livestream,shared-permissions,shared-seo-angular,shared-utils --parallel=3 --coverage
+
+      - name: Verify atomic JSON import and undo with isolated PostgreSQL
+        run: bunx nx run backend:test-data-transfer-integration
+
+      - name: Run public Workbox tests with coverage
+        run: bunx nx run public:test-workbox
 
   untrusted-pr-frontend-e2e:
     name: Untrusted PR frontend E2E (${{ matrix.project }})
@@ -762,6 +792,24 @@ jobs:
 
       - name: Run frontend e2e tests
         run: E2E_START_SERVER=true bunx nx e2e ${{ matrix.project }} -- --project=chromium
+
+      - name: Build JSON transfer browser fixtures
+        if: matrix.project == 'admin-e2e'
+        run: bunx nx run admin:build-storybook --configuration=ci
+
+      - name: Verify JSON transfer browser flows and accessibility
+        if: matrix.project == 'admin-e2e'
+        shell: bash
+        run: |
+          python3 -m http.server 4400 --bind 127.0.0.1 --directory dist/storybook/admin > /tmp/data-transfer-storybook.log 2>&1 &
+          transfer_storybook_pid=$!
+          trap 'kill "$transfer_storybook_pid"' EXIT
+          for attempt in {1..30}; do
+            if curl --silent --fail http://127.0.0.1:4400/index.json > /dev/null; then break; fi
+            sleep 1
+          done
+          STORYBOOK_ADMIN_URL=http://127.0.0.1:4400 bunx playwright test apps/admin-e2e/src/data-transfer-storybook.spec.ts --config=apps/admin-e2e/playwright.config.ts --project=chromium --workers=1
+          node tools/storybook-browser-tests.mjs --url=http://127.0.0.1:4400 --grep=data-transfer --strict-a11y --workers=1
 
       - name: Install Playwright service-worker browsers
         if: matrix.project == 'public-e2e'

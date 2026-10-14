@@ -129,6 +129,25 @@ describe('AttendanceHeatmapComponent', () => {
     callbacks.forEach((callback) => callback(0));
   }
 
+  async function flushAnimationFramesUntil(isComplete: () => boolean): Promise<void> {
+    await vi.waitFor(() => {
+      if (!isComplete()) {
+        expect(animationFrameCallbacks).not.toHaveLength(0);
+      }
+    });
+
+    for (let frame = 0; frame < 10 && !isComplete(); frame += 1) {
+      flushAnimationFrames();
+      if (!isComplete()) {
+        await vi.waitFor(() => {
+          expect(isComplete() || animationFrameCallbacks.length > 0).toBe(true);
+        });
+      }
+    }
+
+    expect(isComplete()).toBe(true);
+  }
+
   it('explains why the map is empty when neither scans nor event coordinates are available', () => {
     const fixture = createFixture();
     fixture.detectChanges();
@@ -171,9 +190,7 @@ describe('AttendanceHeatmapComponent', () => {
     ]);
     fixture.detectChanges();
 
-    await vi.waitFor(() => expect(animationFrameCallbacks).not.toHaveLength(0));
-    flushAnimationFrames();
-    await vi.waitFor(() => expect(openLayers.maps).toHaveLength(1));
+    await flushAnimationFramesUntil(() => openLayers.maps.length === 1);
     expect(openLayers.maps[0].options['target']).toBe(fixture.nativeElement.querySelector('.attendance-heatmap'));
   });
 
@@ -187,9 +204,7 @@ describe('AttendanceHeatmapComponent', () => {
     fixture.componentRef.setInput('eventLongitude', -41.53316);
     fixture.detectChanges();
 
-    await vi.waitFor(() => expect(animationFrameCallbacks).not.toHaveLength(0));
-    flushAnimationFrames();
-    await vi.waitFor(() => expect(openLayers.maps).toHaveLength(1));
+    await flushAnimationFramesUntil(() => openLayers.maps.length === 1);
     const view = openLayers.maps[0].options['view'] as InstanceType<typeof openLayers.View>;
     expect(view.fit).toHaveBeenCalledWith(
       [
@@ -208,9 +223,7 @@ describe('AttendanceHeatmapComponent', () => {
     ]);
     fixture.detectChanges();
 
-    await vi.waitFor(() => expect(animationFrameCallbacks).not.toHaveLength(0));
-    flushAnimationFrames();
-    await vi.waitFor(() => expect(openLayers.maps).toHaveLength(1));
+    await flushAnimationFramesUntil(() => openLayers.maps.length === 1);
     const map = openLayers.maps[0];
     map.updateSize.mockClear();
 
@@ -227,16 +240,14 @@ describe('AttendanceHeatmapComponent', () => {
       { latitude: -20.76, longitude: -41.53, count: 4, averageAccuracyMeters: 12 },
     ]);
     fixture.detectChanges();
-    await vi.waitFor(() => expect(animationFrameCallbacks).not.toHaveLength(0));
-    flushAnimationFrames();
-    await vi.waitFor(() => expect(openLayers.maps).toHaveLength(1));
+    await flushAnimationFramesUntil(() => openLayers.maps.length === 1);
 
     fixture.componentRef.setInput('points', []);
     fixture.detectChanges();
 
-    await vi.waitFor(() => expect(animationFrameCallbacks).not.toHaveLength(0));
-    flushAnimationFrames();
-    await vi.waitFor(() => expect(openLayers.maps[0].setTarget).toHaveBeenCalledWith(undefined));
+    await flushAnimationFramesUntil(
+      () => openLayers.maps[0]?.setTarget.mock.calls.some(([target]) => target === undefined) ?? false,
+    );
     expect(fixture.nativeElement.querySelector('.attendance-heatmap')).toBeNull();
   });
 });

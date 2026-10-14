@@ -14,6 +14,8 @@
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "paths": {
+      "@cacic-fct/shared-data-transfer": ["./libs/shared-data-transfer/src/index.ts"],
+      "@cacic-fct/shared-data-transfer/testing": ["./libs/shared-data-transfer/src/testing.ts"],
       "@cacic-fct/shared-angular/material/icons": ["./libs/shared-angular/src/lib/material/icons.ts"],
       "@cacic-fct/shared-angular/material/date-fns": ["./libs/shared-angular/src/lib/material/date-fns.providers.ts"],
       "@cacic-fct/shared-angular/auth/onboarding": [

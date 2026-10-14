@@ -7,4 +7,5 @@ module.exports = {
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/libs/shared-livestream',
+  coverageReporters: ['lcov', 'json', 'text', 'clover'],
 };

@@ -1,0 +1,172 @@
+.review-section {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  padding-block-start: 1rem;
+}
+
+.summary-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem 1rem;
+  margin: 0;
+  border-block: 1px solid var(--mat-sys-outline-variant);
+  padding-block: 0.75rem;
+}
+
+.summary-list > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.summary-list dt {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.summary-list dd {
+  margin: 0;
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-title-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.allocation-expiry,
+.allocation-note {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+  overflow-wrap: anywhere;
+}
+
+.allocation-note code {
+  font-family: 'Source Code Pro Variable', monospace;
+}
+
+.review-list {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.review-item {
+  min-width: 0;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px !important;
+  background: var(--mat-sys-surface);
+  box-shadow: none !important;
+}
+
+.review-item mat-expansion-panel-header {
+  min-height: 4rem;
+}
+
+.review-item mat-panel-title,
+.review-item mat-panel-description {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.review-item mat-panel-description {
+  justify-content: flex-end;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.item-message {
+  margin: 0 0 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.change-table-wrap {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  border-block: 1px solid var(--mat-sys-outline-variant);
+  scrollbar-color: var(--mat-sys-outline) var(--mat-sys-surface-container);
+}
+
+.change-table-wrap:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+.change-table {
+  width: 100%;
+  min-width: 36rem;
+  border-collapse: collapse;
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-small);
+}
+
+.change-table caption {
+  padding: 0.75rem;
+  text-align: start;
+  font: var(--mat-sys-title-small);
+}
+
+.change-table th,
+.change-table td {
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  padding: 0.625rem 0.75rem;
+  text-align: start;
+  vertical-align: top;
+}
+
+.change-table thead th {
+  background: var(--mat-sys-surface-container);
+  font: var(--mat-sys-label-large);
+}
+
+.change-table tbody th {
+  width: 20%;
+  min-width: 8rem;
+  font-weight: 500;
+}
+
+.change-table code,
+.change-table pre {
+  font-family: 'Source Code Pro Variable', monospace;
+  font-size: 0.75rem;
+}
+
+.change-table code {
+  overflow-wrap: anywhere;
+}
+
+.change-table pre {
+  max-width: 32rem;
+  max-height: 14rem;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  scrollbar-color: var(--mat-sys-outline) var(--mat-sys-surface-container);
+}
+
+.empty-state {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+@media (max-width: 720px) {
+  .transfer-panel {
+    padding: 0.75rem;
+  }
+
+  .summary-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .review-item mat-panel-description {
+    justify-content: flex-start;
+    font: var(--mat-sys-body-small);
+  }
+
+  .change-table {
+    min-width: 32rem;
+  }
+}

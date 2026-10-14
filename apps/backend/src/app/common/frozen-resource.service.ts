@@ -1,6 +1,6 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { CertificateScope } from '@prisma/client';
+import { CertificateScope, Prisma } from '@prisma/client';
 import { isBefore, isValid, max, subMonths } from 'date-fns';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -29,12 +29,16 @@ export function isFrozenFromDates(dates: Array<Date | null | undefined>, now = n
 @Injectable()
 export class FrozenResourceService {
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(PrismaService) private readonly prisma: PrismaService | Prisma.TransactionClient,
     private readonly authorizationPolicy: AuthorizationPolicyService = {
       canOverrideFrozenResource: async (user: AuthenticatedUser | undefined, permission: Permission) =>
         Boolean(user?.permissionSet?.has(permission) || user?.permissions?.includes(permission)),
     } as AuthorizationPolicyService,
   ) {}
+
+  forTransaction(tx: Prisma.TransactionClient): FrozenResourceService {
+    return new FrozenResourceService(tx, this.authorizationPolicy);
+  }
 
   async assertEventMutable(
     eventId: string,

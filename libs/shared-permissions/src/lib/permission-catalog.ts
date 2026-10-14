@@ -10,6 +10,9 @@ export const EVENT_MANAGER_PERMISSION_CATALOG = [
   Permission.CertificateConfig.Create,
   Permission.CertificateConfig.Update,
   Permission.CertificateConfig.Delete,
+  Permission.DataTransfer.Export,
+  Permission.DataTransfer.Import,
+  Permission.DataTransfer.Undo,
   Permission.Event.Read,
   Permission.Event.Create,
   Permission.Event.Update,
@@ -191,6 +194,9 @@ const ALL_GRANT_SCOPES = Object.values(EventManagerPermissionGrantScope);
 export const EVENT_MANAGER_PERMISSION_SCOPE_COMPATIBILITY: Readonly<
   Partial<Record<Permission, readonly EventManagerPermissionGrantScope[]>>
 > = {
+  [Permission.DataTransfer.Export]: ALL_GRANT_SCOPES,
+  [Permission.DataTransfer.Import]: ALL_GRANT_SCOPES,
+  [Permission.DataTransfer.Undo]: ALL_GRANT_SCOPES,
   [Permission.PrizeDraw.Read]: ALL_GRANT_SCOPES,
   [Permission.PrizeDraw.Create]: ALL_GRANT_SCOPES,
   [Permission.PrizeDraw.Update]: ALL_GRANT_SCOPES,

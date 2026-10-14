@@ -350,14 +350,23 @@ export async function deleteTypesenseDocument(input: {
   logger: Logger;
   collectionName: string;
   id: string;
+  throwOnError?: boolean;
 }): Promise<void> {
   if (!input.client) {
+    if (input.throwOnError) {
+      throw new Error(`Typesense is unavailable; could not delete document ${input.id}.`);
+    }
     return;
   }
 
   try {
     await input.client.collections(input.collectionName).documents(input.id).delete();
   } catch (error) {
+    // Recovery replays deletions; an already absent document is the desired final state.
+    if (readHttpStatus(error) === 404) return;
     input.logger.error(`Failed to delete Typesense document ${input.id} from ${input.collectionName}.`, error);
+    if (input.throwOnError) {
+      throw error;
+    }
   }
 }

@@ -18,6 +18,14 @@ export interface SportsMatchAttendanceMutationPublisher {
   publishAttendanceMutation(eventId: string): Promise<void>;
 }
 
+export interface SportsMatchAttendanceCheckInPreview {
+  matchId: string;
+  state: SportsMatchState;
+  canonicalState: SportsMatchState;
+  revision: number;
+  willTransition: boolean;
+}
+
 export async function notifySportsMatchAttendanceMutation(
   publisher: SportsMatchAttendanceMutationPublisher | undefined,
   attendance: { eventId: string },
@@ -38,22 +46,31 @@ export async function notifySportsMatchAttendanceMutation(
  * this match. The scheduled-state predicate is intentional: attendance
  * corrections must never move a live, paused, or terminal match backwards.
  */
-export async function startSportsMatchCheckInFromAthleteAttendance(input: {
+type SportsMatchAttendanceCheckInInput = {
   tx: Prisma.TransactionClient;
   eventId: string;
   personId: string;
   updatedById?: string | null;
-}): Promise<boolean> {
+};
+
+export function startSportsMatchCheckInFromAthleteAttendance(
+  input: SportsMatchAttendanceCheckInInput & { dryRun: true },
+): Promise<SportsMatchAttendanceCheckInPreview | null>;
+export function startSportsMatchCheckInFromAthleteAttendance(
+  input: SportsMatchAttendanceCheckInInput & { dryRun?: false },
+): Promise<boolean>;
+export async function startSportsMatchCheckInFromAthleteAttendance(
+  input: SportsMatchAttendanceCheckInInput & { dryRun?: boolean },
+): Promise<boolean | SportsMatchAttendanceCheckInPreview | null> {
   const tx = input.tx as SportsAttendanceTransaction;
   if (!tx.sportsMatch || !tx.sportsMatchRosterEntry) {
-    return false;
+    return input.dryRun ? null : false;
   }
 
   const match = await tx.sportsMatch.findFirst({
     where: {
       eventId: input.eventId,
       deletedAt: null,
-      state: SportsMatchState.SCHEDULED,
     },
     select: {
       id: true,
@@ -62,8 +79,18 @@ export async function startSportsMatchCheckInFromAthleteAttendance(input: {
       revision: true,
     },
   });
-  if (!match || match.state !== SportsMatchState.SCHEDULED) {
-    return false;
+  if (!match) {
+    return input.dryRun ? null : false;
+  }
+  const preview = (willTransition: boolean): SportsMatchAttendanceCheckInPreview => ({
+    matchId: match.id,
+    state: match.state,
+    canonicalState: match.canonicalState,
+    revision: match.revision,
+    willTransition,
+  });
+  if (match.state !== SportsMatchState.SCHEDULED) {
+    return input.dryRun ? preview(false) : false;
   }
 
   const athlete = await tx.sportsMatchRosterEntry.findFirst({
@@ -98,7 +125,10 @@ export async function startSportsMatchCheckInFromAthleteAttendance(input: {
     select: { id: true },
   });
   if (!athlete) {
-    return false;
+    return input.dryRun ? preview(false) : false;
+  }
+  if (input.dryRun) {
+    return preview(true);
   }
 
   const updated = await tx.sportsMatch.updateMany({

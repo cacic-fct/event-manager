@@ -50,6 +50,16 @@ export const navigationItems = [
   },
   {
     kind: 'link',
+    id: 'data-transfer',
+    path: 'data-transfer',
+    label: 'Dados JSON',
+    description: 'Exporte e importe estruturas de eventos com revisão antes de aplicar as alterações.',
+    icon: 'data_object',
+    group: 'Estrutura do evento',
+    helpLink: undefined,
+  },
+  {
+    kind: 'link',
     id: 'groups',
     contextOnly: true,
     path: 'groups',

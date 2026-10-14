@@ -7,8 +7,9 @@
   "targets": {
     "test": {
       "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/coverage/libs/shared-event-participation"],
       "options": {
-        "command": "bunx vitest run --config libs/shared-event-participation/vitest.config.ts"
+        "command": "bunx vitest run --coverage --config libs/shared-event-participation/vitest.config.ts"
       }
     }
   }

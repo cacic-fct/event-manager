@@ -20,6 +20,8 @@ import { SportsAdminBaseService } from './sports-admin-base.service';
 export class SportsTournamentAdminService extends SportsAdminBaseService {
   async attachTournament(
     input: {
+      /** Internal transfer-only stable ID; the GraphQL input does not expose it. */
+      id?: string;
       majorEventId: string;
       status?: SportsTournamentStatus;
       registrationStartDate?: Date | null;
@@ -47,7 +49,22 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
         where: { majorEventId: majorEvent.id },
       });
       if (existing && !existing.deletedAt) {
+        if (input.id && input.id !== existing.id) {
+          throw new ConflictException('Já existe um torneio diferente para este grande evento.');
+        }
         return existing;
+      }
+      if (input.id && existing?.deletedAt) {
+        throw new ConflictException('O ID do torneio está reservado por um registro excluído.');
+      }
+      if (input.id) {
+        const claimedId = await tx.sportsTournament.findUnique({
+          where: { id: input.id },
+          select: { id: true },
+        });
+        if (claimedId) {
+          throw new ConflictException('O ID do torneio já está em uso.');
+        }
       }
       const tournament = existing
         ? await tx.sportsTournament.update({
@@ -69,6 +86,7 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
           })
         : await tx.sportsTournament.create({
             data: {
+              ...(input.id ? { id: input.id } : {}),
               majorEventId: majorEvent.id,
               status: input.status ?? SportsTournamentStatus.DRAFT,
               registrationStartDate: input.registrationStartDate ?? null,

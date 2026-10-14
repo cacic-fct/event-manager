@@ -14,6 +14,11 @@ export const Permission = {
     Update: 'certificate-config#update',
     Delete: 'certificate-config#delete',
   },
+  DataTransfer: {
+    Export: 'data-transfer#export',
+    Import: 'data-transfer#import',
+    Undo: 'data-transfer#undo',
+  },
   Event: {
     Read: 'event#read',
     Create: 'event#create',

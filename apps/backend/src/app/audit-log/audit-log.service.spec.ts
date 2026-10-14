@@ -5,6 +5,7 @@ import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interfa
 import { AuditLogExplorerRevertedStatus } from './audit-log.models';
 import { AuditLogService } from './audit-log.service';
 import { AuditLogMetadataCategory } from './audit-log.types';
+import { AUDIT_BATCH_TRANSACTION } from './audit-transaction-context';
 
 describe('AuditLogService', () => {
   let prisma: ReturnType<typeof createPrisma>;
@@ -141,6 +142,68 @@ describe('AuditLogService', () => {
         entityLabel: 'Committed',
       }),
     );
+  });
+
+  it('keeps batch audit entries independent and lets the durable outbox synchronize them', async () => {
+    const tx = { ...createPrisma(), [AUDIT_BATCH_TRANSACTION]: 'batch-1' };
+    await service.record(
+      {
+        entityType: AuditLogEntityType.EVENT_GROUP,
+        entityId: 'group-1',
+        operation: AuditLogOperation.UPDATE,
+        actor: { id: 'admin-1', name: 'Organizador', type: AuditLogActorType.USER },
+        before: { name: 'Anterior' },
+        after: { name: 'Importado' },
+        metadata: { source: 'JSON' },
+      },
+      tx as never,
+    );
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(tx.auditLogEntry.findFirst).not.toHaveBeenCalled();
+    expect(tx.auditLogEntry.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ metadata: { source: 'JSON', dataTransferBatchId: 'batch-1' } }),
+    });
+    expect(typesenseSearch.upsertAuditLogEntry).not.toHaveBeenCalled();
+    expect(prisma.auditLogEntry.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('does not squash a later manual edit into an import batch audit entry', async () => {
+    prisma.auditLogEntry.findFirst.mockResolvedValue(
+      createAuditEntry({
+        entityType: AuditLogEntityType.EVENT_GROUP,
+        entityId: 'group-1',
+        operation: AuditLogOperation.UPDATE,
+        actorId: 'admin-1',
+        actorName: 'Organizador',
+        lastRecordedAt: new Date(),
+        metadata: { dataTransferBatchId: 'batch-1' },
+        before: { name: 'Anterior' },
+        after: { name: 'Importado' },
+      }),
+    );
+    await service.record({
+      entityType: AuditLogEntityType.EVENT_GROUP,
+      entityId: 'group-1',
+      operation: AuditLogOperation.UPDATE,
+      actor: { id: 'admin-1', name: 'Organizador', type: AuditLogActorType.USER },
+      before: { name: 'Importado' },
+      after: { name: 'Manual' },
+    });
+    expect(prisma.auditLogEntry.update).not.toHaveBeenCalled();
+    expect(prisma.auditLogEntry.create).toHaveBeenCalled();
+  });
+
+  it('blocks an individual import audit entry from bypassing the atomic batch undo', async () => {
+    prisma.auditLogEntry.findUnique.mockResolvedValue(
+      createAuditEntry({ metadata: { dataTransferBatchId: 'batch-1' } }),
+    );
+    await expect(
+      service.revertEntry({ entryId: 'audit-1', mode: AuditLogRevertMode.ENTRY_ONLY }, {
+        sub: 'admin-1',
+        roleSet: new Set([EventManagerKeycloakRole.SuperAdmin]),
+      } as AuthenticatedUser),
+    ).rejects.toThrow('Desfaça o lote');
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('retries transaction-scoped Typesense synchronization when the committed row is not visible yet', async () => {

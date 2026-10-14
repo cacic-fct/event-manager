@@ -63,6 +63,25 @@ describe('SportsTournamentAdminService', () => {
       );
     });
 
+    it('preserves an unclaimed imported tournament ID under its existing major event', async () => {
+      const tournament = sportsAdminTournamentRecord({ id: 'stable-tournament-1' });
+      tx.majorEvent.findFirst.mockResolvedValue(tournament.majorEvent);
+      tx.sportsTournament.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+      tx.sportsTournament.create.mockResolvedValue(tournament);
+
+      await expect(
+        service.attachTournament({ majorEventId: 'major-event-1', id: 'stable-tournament-1' }, actor),
+      ).resolves.toEqual(tournament);
+
+      expect(tx.sportsTournament.findUnique).toHaveBeenNthCalledWith(2, {
+        where: { id: 'stable-tournament-1' },
+        select: { id: true },
+      });
+      expect(tx.sportsTournament.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ id: 'stable-tournament-1', majorEventId: 'major-event-1' }),
+      });
+    });
+
     it('returns an active attachment idempotently without a duplicate audit', async () => {
       const tournament = sportsAdminTournamentRecord();
       tx.majorEvent.findFirst.mockResolvedValue(tournament.majorEvent);

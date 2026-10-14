@@ -361,6 +361,81 @@ describe('TypesenseSearchService', () => {
     expect(client.document.delete).toHaveBeenCalledTimes(1);
   });
 
+  it('propagates strict place search failures for import recovery', async () => {
+    const { client, service } = createEnabledService();
+    const failure = new Error('Typesense place index unavailable');
+    client.documents.upsert.mockRejectedValueOnce(failure);
+    await expect(service.upsertPlacePreset({ id: 'place-recovery', name: 'Ginásio' }, true)).rejects.toBe(failure);
+    client.document.delete.mockRejectedValueOnce(failure);
+    await expect(service.deletePlacePreset('place-recovery', true)).rejects.toBe(failure);
+  });
+
+  it('propagates strict event search write failures for recovery callers', async () => {
+    const { client, service } = createEnabledService();
+    const failure = new Error('Typesense event index unavailable');
+    client.documents.upsert.mockRejectedValueOnce(failure);
+    const startDate = new Date(Date.now() + 60 * 60 * 1000);
+    const endDate = new Date(Date.now() + 2 * 60 * 60 * 1000);
+
+    await expect(
+      service.upsertEvent(
+        {
+          id: 'event-recovery',
+          name: 'Evento',
+          emoji: '⚽',
+          type: 'OTHER',
+          startDate,
+          endDate,
+        },
+        true,
+      ),
+    ).rejects.toBe(failure);
+    expect(client.documents.upsert).toHaveBeenCalledWith(expect.objectContaining({ id: 'event-recovery' }));
+  });
+
+  it('propagates strict major-event reindex failures after its own document write', async () => {
+    const childStartDate = new Date(Date.now() + 60 * 60 * 1000);
+    const childEndDate = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    const prisma = createPrismaMock({
+      event: [
+        {
+          id: 'event-child',
+          name: 'Evento filho',
+          emoji: '⚽',
+          type: 'OTHER',
+          majorEventId: 'major-recovery',
+          majorEvent: { name: 'Grande evento', deletedAt: null, publicationState: 'PUBLISHED' },
+          eventGroupId: null,
+          eventGroup: null,
+          startDate: childStartDate,
+          endDate: childEndDate,
+          shouldIssueCertificate: false,
+          isPubliclyListed: true,
+          publicationState: 'PUBLISHED',
+        },
+      ],
+    });
+    const { client, service } = createEnabledService(prisma);
+    const failure = new Error('Typesense child index unavailable');
+    client.documents.upsert.mockResolvedValueOnce(undefined).mockRejectedValueOnce(failure);
+    const startDate = new Date(Date.now() + 60 * 60 * 1000);
+    const endDate = new Date(Date.now() + 25 * 60 * 60 * 1000);
+
+    await expect(
+      service.upsertMajorEvent(
+        {
+          id: 'major-recovery',
+          name: 'Grande evento',
+          startDate,
+          endDate,
+        },
+        true,
+      ),
+    ).rejects.toBe(failure);
+    expect(client.documents.upsert).toHaveBeenCalledTimes(2);
+    expect(client.documents.upsert.mock.calls[0]?.[0]).toEqual(expect.objectContaining({ id: 'major-recovery' }));
+  });
+
   it('syncs supported documents and reindexes events tied to parent changes', async () => {
     const reindexedEvent = {
       id: 'event-1',

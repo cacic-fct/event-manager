@@ -64,17 +64,42 @@ async function runStory(story) {
   page.on('pageerror', (error) => browserErrors.push(error.message));
   page.setDefaultTimeout(timeout);
   try {
+    // A fresh MSW registration can reload the first preview while reports are
+    // being collected. Activate the worker before entering Storybook, as the
+    // HttpClient/MSW integration tests do; each story still gets its own context.
+    const workerUrl = new URL('mockServiceWorker.js', baseUrl);
+    const workerResponse = await context.request.get(workerUrl.href);
+    if (workerResponse.ok() && workerResponse.headers()['content-type']?.includes('javascript')) {
+      await page.goto(workerUrl.href, { timeout });
+      await page.evaluate(async (url) => {
+        await navigator.serviceWorker.register(url, { scope: new URL('./', url).pathname });
+        await navigator.serviceWorker.ready;
+      }, workerUrl.href);
+    }
     await page.goto(iframeUrl.href, { timeout });
-    await page.waitForFunction(
-      () => {
-        const preview = window.__STORYBOOK_PREVIEW__;
-        // A preview without a selected story can defer creating its story store.
-        // Selecting the first story through the channel initializes that store.
-        return Boolean(preview?.channel);
-      },
-      undefined,
-      { timeout },
-    );
+    const waitForChannel = (timeoutMs) =>
+      page.waitForFunction(() => Boolean(window.__STORYBOOK_PREVIEW__?.channel), undefined, { timeout: timeoutMs });
+    try {
+      await waitForChannel(Math.min(timeout, 5000));
+    } catch {
+      // A cold preview without a selection may never initialize its channel.
+      // Bootstrap a sibling without running its play function. The tested story
+      // is selected below with autoplay enabled; assertion failures are not retried.
+      const sibling = Object.values(entries).find(
+        (entry) => entry.type === 'story' && entry.title === story.title && entry.id !== story.id,
+      );
+      if (!sibling) throw new Error(`Cannot initialize the preview channel for ${story.id}.`);
+      const bootstrapUrl = new URL(iframeUrl);
+      bootstrapUrl.searchParams.set('id', sibling.id);
+      bootstrapUrl.searchParams.set('embed', 'true');
+      await page.goto(bootstrapUrl.href, { timeout });
+      await waitForChannel(timeout);
+      await page.evaluate(() => {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('embed');
+        window.history.replaceState(null, '', url.href);
+      });
+    }
 
     // Use Storybook's own completion reports, including play and a11y results.
     // This avoids transforming stories or injecting a second test runtime.

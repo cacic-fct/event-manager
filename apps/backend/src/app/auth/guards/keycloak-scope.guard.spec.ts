@@ -1,7 +1,10 @@
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { Permission } from '@cacic-fct/shared-permissions';
 import {
   ALLOW_NON_ONBOARDED_KEY,
+  ALLOW_SCOPED_COLLECTION_PERMISSIONS_KEY,
+  EMPTY_SCOPED_PERMISSION_CONTEXT_KEY,
   IS_PUBLIC_KEY,
   REQUIRED_PERMISSIONS_KEY,
   REQUIRED_ROLES_KEY,
@@ -16,6 +19,7 @@ type RequestFixture = {
     cookie?: string;
   };
   cookies?: Record<string, unknown>;
+  body?: unknown;
   user?: AuthenticatedUser;
 };
 
@@ -208,6 +212,37 @@ describe('KeycloakScopeGuard onboarding enforcement', () => {
       requiredRoles: ['lgpd:read'],
     });
     expect(keycloakAuthService.assertClientRoles).not.toHaveBeenCalled();
+  });
+
+  it('checks a transfer import grant as a collection without binding it to the first nested ID', async () => {
+    reflector.getAllAndOverride.mockImplementation((key: string) => {
+      if (key === REQUIRED_PERMISSIONS_KEY) return [Permission.DataTransfer.Import];
+      if (key === ALLOW_SCOPED_COLLECTION_PERMISSIONS_KEY) return true;
+      if (key === EMPTY_SCOPED_PERMISSION_CONTEXT_KEY) return true;
+      if (key === IS_PUBLIC_KEY) return false;
+      return undefined;
+    });
+    const request = createRequest({ authorization: 'Bearer access-token' });
+    request.body = {
+      document: {
+        resources: [
+          { kind: 'event', id: 'event-a', data: { majorEventId: 'major-a' } },
+          { kind: 'group', id: 'group-b', data: { majorEventId: 'major-b' } },
+        ],
+      },
+    };
+    const user = createAuthenticatedUser({
+      claims: { is_onboarded: true },
+      roleSet: new Set(['access']),
+    });
+    keycloakAuthService.authenticateAccessToken.mockResolvedValue(user);
+
+    await expect(guard.canActivate(createHttpContext(request))).resolves.toBe(true);
+
+    expect(authorizationPolicy.buildResourceContext).not.toHaveBeenCalled();
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(user, [Permission.DataTransfer.Import], {
+      allowScopedCollection: true,
+    });
   });
 });
 

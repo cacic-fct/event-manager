@@ -204,8 +204,10 @@ export async function reindexEventSearchDocuments(input: {
   logger: Logger;
   prisma: PrismaService;
   where: Prisma.EventWhereInput;
+  throwOnError?: boolean;
 }): Promise<void> {
   if (!input.client) {
+    if (input.throwOnError) throw new Error('Typesense is unavailable; could not reindex events.');
     return;
   }
 
@@ -224,6 +226,7 @@ export async function reindexEventSearchDocuments(input: {
         logger: input.logger,
         collectionName: TYPESENSE_COLLECTIONS.events,
         document: toEventSearchDocument(event),
+        throwOnError: input.throwOnError,
       }),
     ),
   );
@@ -234,8 +237,10 @@ export async function reindexEventGroupSearchDocuments(input: {
   logger: Logger;
   prisma: PrismaService;
   where: Prisma.EventGroupWhereInput;
+  throwOnError?: boolean;
 }): Promise<void> {
   if (!input.client) {
+    if (input.throwOnError) throw new Error('Typesense is unavailable; could not reindex event groups.');
     return;
   }
   const groups = await input.prisma.eventGroup.findMany({
@@ -254,6 +259,7 @@ export async function reindexEventGroupSearchDocuments(input: {
         client: input.client,
         logger: input.logger,
         collectionName: TYPESENSE_COLLECTIONS.eventGroups,
+        throwOnError: input.throwOnError,
         document: {
           id: group.id,
           name: group.name,
