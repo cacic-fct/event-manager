@@ -730,6 +730,7 @@ describe('KeycloakAuthService', () => {
       sub: '22222222-2222-2222-2222-222222222222',
       email: 'aluno@unesp.br',
       preferred_username: 'aluno@unesp.br',
+      is_onboarded: true,
     });
 
     await service.createSession({
@@ -747,6 +748,7 @@ describe('KeycloakAuthService', () => {
         token: accessToken,
         claims: expect.objectContaining({
           sub: '22222222-2222-2222-2222-222222222222',
+          is_onboarded: undefined,
         }),
       }),
     );
@@ -766,6 +768,7 @@ describe('KeycloakAuthService', () => {
         preferredUsername: 'aluno@unesp.br',
         claims: expect.objectContaining({
           sub: '22222222-2222-2222-2222-222222222222',
+          is_onboarded: undefined,
         }),
       }),
     );

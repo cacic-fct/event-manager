@@ -92,7 +92,7 @@ describe('KeycloakScopeGuard onboarding enforcement', () => {
 
     expect(keycloakAuthService.authenticateAccessToken).toHaveBeenCalledWith('access-token');
     expect(keycloakAuthService.assertClientRoles).not.toHaveBeenCalled();
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalled();
+    expect(authorizationPolicy.assertPermissions).not.toHaveBeenCalled();
   });
 
   it('rejects non-onboarded session principals before protected handlers run', async () => {
@@ -109,7 +109,7 @@ describe('KeycloakScopeGuard onboarding enforcement', () => {
 
     expect(keycloakAuthService.authenticateSession).toHaveBeenCalledWith('session-id');
     expect(keycloakAuthService.assertClientRoles).not.toHaveBeenCalled();
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalled();
+    expect(authorizationPolicy.assertPermissions).not.toHaveBeenCalled();
   });
 
   it.each([true, 'true'])('allows onboarded protected principals with claim %p', async (isOnboarded) => {
@@ -149,16 +149,16 @@ describe('KeycloakScopeGuard onboarding enforcement', () => {
     await expect(guard.canActivate(createHttpContext(request))).resolves.toBe(true);
   });
 
-  it('allows Keycloak service-account principals without onboarding claims', async () => {
+  it('does not exempt service-account-looking usernames from onboarding', async () => {
     const request = createRequest({ authorization: 'Bearer service-token' });
     keycloakAuthService.authenticateAccessToken.mockResolvedValue(
       createAuthenticatedUser({
         preferredUsername: 'service-account-account-backend',
-        claims: {},
+        claims: { is_onboarded: false },
       }),
     );
 
-    await expect(guard.canActivate(createHttpContext(request))).resolves.toBe(true);
+    await expect(guard.canActivate(createHttpContext(request))).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('checks required roles as Event Manager client roles for human principals', async () => {
@@ -193,6 +193,10 @@ describe('KeycloakScopeGuard onboarding enforcement', () => {
         return ['lgpd:read'];
       }
 
+      if (key === ALLOW_NON_ONBOARDED_KEY) {
+        return true;
+      }
+
       if (key === IS_PUBLIC_KEY) {
         return false;
       }
@@ -202,7 +206,7 @@ describe('KeycloakScopeGuard onboarding enforcement', () => {
     const request = createRequest({ authorization: 'Bearer service-token' });
     const user = createAuthenticatedUser({
       preferredUsername: 'service-account-account-backend',
-      claims: {},
+      claims: { azp: 'account-backend' },
     });
     keycloakAuthService.authenticateAccessToken.mockResolvedValue(user);
 

@@ -16,6 +16,8 @@ import { AUTH_ONBOARDING_ENFORCEMENT_ENABLED } from './auth-onboarding-enforceme
 import { AuthOnlineStatusService } from './auth-online-status.service';
 import { AuthService } from './auth.service';
 import { SilentSsoService, type SilentSsoResult } from './silent-sso.service';
+import { CacicAnalyticsService } from '../observability/analytics.service';
+import { Router } from '@angular/router';
 
 describe('AuthService silent SSO fallback', () => {
   const rootEnvironmentInjector = null as unknown as EnvironmentInjector;
@@ -24,13 +26,16 @@ describe('AuthService silent SSO fallback', () => {
   };
   let injector: EnvironmentInjector;
   let service: AuthService;
+  const analytics = { trackEvent: vi.fn() };
 
   beforeEach(() => {
     window.sessionStorage.clear();
     silentSso.check.mockReset();
+    analytics.trackEvent.mockReset();
     injector = createEnvironmentInjector(
       [
         AuthService,
+        { provide: CacicAnalyticsService, useValue: analytics },
         { provide: DOCUMENT, useValue: document },
         { provide: PLATFORM_ID, useValue: 'browser' },
         { provide: HttpClient, useValue: {} },
@@ -70,22 +75,24 @@ describe('AuthService silent SSO fallback', () => {
     expect(redirectFallback).not.toHaveBeenCalled();
   });
 
-  it('refreshes again after returning from onboarding with a stale claim', async () => {
+  it('refreshes once and redirects only once for concurrent onboarding checks', async () => {
     const currentUrl = window.location.href;
     window.sessionStorage.setItem('cacic-eventos:onboarding-return-url', currentUrl);
     service.user.set({ sub: 'user-id', claims: { is_onboarded: false } });
     const refresh = vi.spyOn(service, 'refreshTokenSilently').mockReturnValue(of({ expiresAt: Date.now() + 60_000 }));
-    const redirectToOnboarding = Reflect.get(service, 'redirectToOnboardingIfNeeded') as () => Promise<void>;
+    const redirectToOnboarding = Reflect.get(service, 'redirectToOnboardingIfNeeded') as () => Promise<boolean>;
 
-    await redirectToOnboarding.call(service);
-    await redirectToOnboarding.call(service);
+    await expect(
+      Promise.all([redirectToOnboarding.call(service), redirectToOnboarding.call(service)]),
+    ).resolves.toEqual([false, false]);
 
-    expect(refresh).toHaveBeenCalledTimes(2);
+    expect(refresh).toHaveBeenCalledOnce();
+    expect(analytics.trackEvent).toHaveBeenCalledExactlyOnceWith('onboarding_redirect', { source: 'session' });
     expect(window.sessionStorage.getItem('cacic-eventos:onboarding-refresh-attempted')).toBeNull();
   });
 
   it('shares one silent restoration attempt between concurrent guards', async () => {
-    const user = { sub: 'restored-user' };
+    const user = { sub: 'restored-user', claims: { is_onboarded: true } };
     const refresh = vi.spyOn(service, 'refreshTokenSilently').mockReturnValue(
       defer(() => {
         service.user.set(user);
@@ -133,7 +140,7 @@ describe('AuthService silent SSO fallback', () => {
         refreshResponses.push(response);
         return response.asObservable();
       }),
-      get: vi.fn(() => of({ sub: 'restored-user' })),
+      get: vi.fn(() => of({ sub: 'restored-user', claims: { is_onboarded: true } })),
     };
     Reflect.set(service, 'http', http);
 
@@ -161,7 +168,7 @@ describe('AuthService silent SSO fallback', () => {
         .mockReturnValue(throwError(() => denied)),
       get: vi
         .fn()
-        .mockReturnValueOnce(of({ sub: 'restored-user' }))
+        .mockReturnValueOnce(of({ sub: 'restored-user', claims: { is_onboarded: true } }))
         .mockReturnValue(of(null)),
     };
     Reflect.set(service, 'http', http);
@@ -187,7 +194,7 @@ describe('AuthService silent SSO fallback', () => {
   });
 
   it('does not refresh when a user is already authenticated', async () => {
-    service.user.set({ sub: 'already-authenticated' });
+    service.user.set({ sub: 'already-authenticated', claims: { is_onboarded: true } });
     const refresh = vi.spyOn(service, 'refreshTokenSilently');
 
     await expect(service.ensureAuthenticated()).resolves.toBe(true);
@@ -215,7 +222,7 @@ describe('AuthService silent SSO fallback', () => {
       };
       Reflect.set(service, 'http', http);
 
-      await expect(service.ensureAuthenticated({ returnTo })).resolves.toBe(true);
+      await expect(service.ensureAuthenticated({ returnTo })).resolves.toBe(false);
 
       expect(http.post).toHaveBeenCalledOnce();
       expect(http.post).toHaveBeenCalledWith('/api/auth/refresh', {});
@@ -233,6 +240,110 @@ describe('AuthService silent SSO fallback', () => {
         createdBase.remove();
       }
     }
+  });
+
+  it('recovers after onboarding with a refreshed claim even when return storage is unavailable', async () => {
+    service.user.set({ sub: 'user-1', claims: { is_onboarded: false } });
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('storage blocked');
+    });
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      throw new Error('storage blocked');
+    });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('storage blocked');
+    });
+    const refresh = vi.spyOn(service, 'refreshTokenSilently').mockReturnValue(
+      defer(() => {
+        service.user.set({ sub: 'user-1', claims: { is_onboarded: true } });
+        return of({ expiresAt: Date.now() + 60_000 });
+      }),
+    );
+    await expect(service.ensureAuthenticated()).resolves.toBe(true);
+    expect(refresh).toHaveBeenCalledOnce();
+    expect(analytics.trackEvent).not.toHaveBeenCalled();
+  });
+
+  it('keeps the current identity and allows retry after a transient onboarding refresh failure', async () => {
+    const user = { sub: 'user-1', claims: { is_onboarded: false } };
+    service.user.set(user);
+    const outage = new HttpErrorResponse({ status: 503, url: '/api/auth/refresh' });
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const refresh = vi
+      .spyOn(service, 'refreshTokenSilently')
+      .mockReturnValueOnce(throwError(() => outage))
+      .mockReturnValueOnce(
+        defer(() => {
+          service.user.set({ ...user, claims: { is_onboarded: true } });
+          return of({ expiresAt: Date.now() + 60_000 });
+        }),
+      );
+    await expect(service.ensureAuthenticated()).rejects.toBe(outage);
+    expect(service.user()).toEqual(user);
+    await expect(service.ensureAuthenticated()).resolves.toBe(true);
+    expect(refresh).toHaveBeenCalledTimes(2);
+    expect(analytics.trackEvent).not.toHaveBeenCalled();
+  });
+
+  it('honors a server onboarding refusal despite a local completed claim and disabled feature flag', () => {
+    service.user.set({ sub: 'user-1', claims: { is_onboarded: true } });
+    Reflect.set(service, 'isOnboardingEnforcementEnabled', () => false);
+    service.redirectToOnboarding();
+    service.redirectToOnboarding();
+    expect(analytics.trackEvent).toHaveBeenCalledExactlyOnceWith('onboarding_redirect', { source: 'api' });
+    expect(window.sessionStorage.getItem('cacic-eventos:onboarding-return-url')).toBe(window.location.href);
+  });
+
+  it('continues onboarding navigation when optional analytics fails', () => {
+    analytics.trackEvent.mockImplementation(() => {
+      throw new Error('analytics unavailable');
+    });
+    expect(() => service.redirectToOnboarding()).not.toThrow();
+    expect(window.sessionStorage.getItem('cacic-eventos:onboarding-return-url')).toBe(window.location.href);
+  });
+
+  it('returns to the pending route when an API refusal interrupts navigation', () => {
+    const router = {
+      currentNavigation: () => ({ extractedUrl: {} }),
+      serializeUrl: () => '/profile?tab=tickets#details',
+    };
+    Reflect.set(service, 'injector', {
+      get: (token: unknown) => (token === Router ? router : analytics),
+    });
+    service.redirectToOnboarding();
+    expect(window.sessionStorage.getItem('cacic-eventos:onboarding-return-url')).toBe(
+      new URL('/profile?tab=tickets#details', window.location.origin).toString(),
+    );
+  });
+
+  it('redirects once when a scheduled refresh discovers incomplete onboarding', async () => {
+    vi.useFakeTimers();
+    try {
+      service.user.set({ sub: 'user-1', claims: { is_onboarded: true } });
+      const refresh = vi.spyOn(service, 'refreshTokenSilently').mockReturnValue(
+        defer(() => {
+          service.user.set({ sub: 'user-1', claims: { is_onboarded: false } });
+          return of({ expiresAt: Date.now() + 60_000 });
+        }),
+      );
+      const schedule = Reflect.get(service, 'scheduleRefresh') as (expiresAt: number) => void;
+      schedule.call(service, Date.now() + 65_000);
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(refresh).toHaveBeenCalledOnce();
+      expect(analytics.trackEvent).toHaveBeenCalledExactlyOnceWith('onboarding_redirect', { source: 'session' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('returns to authentication when the onboarding refresh confirms an expired session', async () => {
+    service.user.set({ sub: 'user-1', claims: { is_onboarded: false } });
+    vi.spyOn(service, 'refreshTokenSilently').mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 401, url: '/api/auth/refresh' })),
+    );
+    await expect(service.ensureAuthenticated()).resolves.toBe(false);
+    expect(service.isAuthenticated()).toBe(false);
+    expect(analytics.trackEvent).not.toHaveBeenCalled();
   });
 
   async function checkExistingSsoSession(): Promise<void> {

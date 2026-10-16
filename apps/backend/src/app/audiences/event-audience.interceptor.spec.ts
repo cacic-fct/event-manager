@@ -10,7 +10,9 @@ describe('event audience request isolation', () => {
   const member = { ...ANONYMOUS_AUDIENCE, userId: 'user-1', personIds: ['person-1'], isUnesp: true };
   function setup(isPublic = true, historyAccess = false) {
     const audience = { principalForUser: jest.fn().mockResolvedValue(member) };
-    const auth = { authenticateSession: jest.fn().mockResolvedValue({ sub: 'user-1' }) };
+    const auth = {
+      authenticateSession: jest.fn().mockResolvedValue({ sub: 'user-1', claims: { is_onboarded: true } }),
+    };
     const reflector = {
       getAllAndOverride: jest.fn((key: string) =>
         key === IS_PUBLIC_KEY ? isPublic : key === PAST_PARTICIPATION_ACCESS ? historyAccess : [],
@@ -68,6 +70,20 @@ describe('event audience request isolation', () => {
     expect(auth.authenticateSession).not.toHaveBeenCalled();
     expect(audience.principalForUser).not.toHaveBeenCalled();
   });
+
+  it.each([false, 'false', undefined, 1, ['true']])(
+    'keeps non-onboarded public readers anonymous for claim %p',
+    async (claim) => {
+      const { interceptor, auth, audience, authorization } = setup();
+      auth.authenticateSession.mockResolvedValue({ sub: 'user-1', claims: { is_onboarded: claim } });
+      const output = await interceptor.intercept(graphqlContext(), {
+        handle: () => defer(() => of(audienceContext.getStore())),
+      });
+      expect(await firstValueFrom(output)).toEqual(ANONYMOUS_AUDIENCE);
+      expect(audience.principalForUser).not.toHaveBeenCalled();
+      expect(authorization.assertAudienceForPermissions).toHaveBeenCalledWith([], {}, ANONYMOUS_AUDIENCE);
+    },
+  );
 
   it('does not let the public-cache header bypass authorization on protected handlers', async () => {
     const { interceptor, auth, authorization } = setup(false);

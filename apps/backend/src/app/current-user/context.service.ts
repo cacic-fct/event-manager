@@ -2,7 +2,6 @@ import {
   BadRequestException,
   ConflictException,
   forwardRef,
-  ForbiddenException,
   Inject,
   Injectable,
   Logger,
@@ -11,6 +10,7 @@ import {
 import { AccountMergeService } from '../account-merge/account-merge.service';
 import { AuthenticatedUserSyncService, InferredAuthenticatedProfile } from '../auth/authenticated-user-sync.service';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { assertUserOnboarded } from '../auth/onboarding';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { reassignTicketUserRelations } from '../tickets/ticket-merge-relations';
@@ -44,7 +44,7 @@ export class CurrentUserContextService {
     options: ResolveCurrentUserContextOptions = {},
   ): Promise<{ user: UserRecord | null; person: PersonRecord | null }> {
     if (!options.allowNonOnboarded) {
-      this.assertAuthenticatedUserOnboarded(authenticatedUser);
+      assertUserOnboarded(authenticatedUser);
     }
 
     const effectiveUser = await this.resolveMergedAuthenticatedUser(authenticatedUser);
@@ -96,7 +96,7 @@ export class CurrentUserContextService {
     options: ResolveCurrentUserContextOptions = {},
   ): Promise<PersonRecord> {
     if (!options.allowNonOnboarded) {
-      this.assertAuthenticatedUserOnboarded(authenticatedUser);
+      assertUserOnboarded(authenticatedUser);
     }
 
     const effectiveUser = await this.resolveMergedAuthenticatedUser(authenticatedUser);
@@ -188,15 +188,6 @@ export class CurrentUserContextService {
       },
       select: USER_SELECT,
     });
-  }
-
-  private assertAuthenticatedUserOnboarded(authenticatedUser: AuthenticatedUser): void {
-    const claimValue = authenticatedUser.claims['is_onboarded'];
-    if (claimValue === true || claimValue === 'true') {
-      return;
-    }
-
-    throw new ForbiddenException('Complete onboarding before using the event system.');
   }
 
   private async resolveMergedAuthenticatedUser(authenticatedUser: AuthenticatedUser): Promise<AuthenticatedUser> {

@@ -14,6 +14,7 @@ describe('admin feature route access', () => {
     clearSession: ReturnType<typeof vi.fn>;
     consumePostLogoutRedirect: ReturnType<typeof vi.fn>;
     ensureAuthenticated: ReturnType<typeof vi.fn>;
+    isAuthenticated: ReturnType<typeof vi.fn>;
     login: ReturnType<typeof vi.fn>;
     roles: ReturnType<typeof vi.fn>;
   };
@@ -29,6 +30,7 @@ describe('admin feature route access', () => {
       clearSession: vi.fn(),
       consumePostLogoutRedirect: vi.fn(() => false),
       ensureAuthenticated: vi.fn().mockResolvedValue(true),
+      isAuthenticated: vi.fn().mockReturnValue(false),
       login: vi.fn().mockResolvedValue(undefined),
       roles: vi.fn(() => []),
     };

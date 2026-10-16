@@ -641,6 +641,8 @@ export class KeycloakAuthService {
       claims: {
         ...identityClaims,
         ...principal.claims,
+        // Identity fallback must not restore a stale onboarding authorization.
+        is_onboarded: principal.claims['is_onboarded'],
         sub,
       },
     };
