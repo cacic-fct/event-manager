@@ -1,4 +1,4 @@
-import type { TransferResource } from '@cacic-fct/shared-data-transfer';
+import { TRANSFER_MAX_RESOURCES, type TransferResource } from '@cacic-fct/shared-data-transfer';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { diffResourceData } from './data-transfer.service';
 import type { TransferAdapterContext } from './data-transfer-adapter';
@@ -9,6 +9,55 @@ import { DataTransferService } from './data-transfer.service';
 import { TransferKeyAllocations } from './transfer-key-allocations';
 
 describe('EventTreeTransferAdapter normalization and mutations', () => {
+  it.each(['major-event', 'group'] as const)(
+    'bounds %s descendant events before authorizing each child',
+    async (kind) => {
+      const tx = {
+        majorEvent: { findFirst: jest.fn().mockResolvedValue({ id: 'root-1', updatedAt: new Date() }) },
+        eventGroup: {
+          findFirst: jest.fn().mockResolvedValue({ id: 'root-1', updatedAt: new Date(), sportsCategory: null }),
+          findMany: jest.fn().mockResolvedValue([]),
+        },
+        event: {
+          findMany: jest
+            .fn()
+            .mockResolvedValue(Array.from({ length: TRANSFER_MAX_RESOURCES + 1 }, () => eventRecord())),
+        },
+      };
+      const authorization = { assertPermissions: jest.fn().mockResolvedValue(undefined) };
+      await expect(
+        createAdapter(tx, authorization).exportTarget(
+          { kind, id: 'root-1' },
+          { includeDescendants: true, includeConfiguration: false },
+          createContext(tx),
+        ),
+      ).rejects.toThrow('limite de recursos');
+      expect(tx.event.findMany).toHaveBeenCalledWith(expect.objectContaining({ take: TRANSFER_MAX_RESOURCES + 1 }));
+      expect(authorization.assertPermissions).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('bounds descendant groups before querying their events', async () => {
+    const tx = {
+      majorEvent: { findFirst: jest.fn().mockResolvedValue({ id: 'root-1', updatedAt: new Date() }) },
+      eventGroup: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue(Array.from({ length: TRANSFER_MAX_RESOURCES + 1 }, () => ({ id: 'group-1' }))),
+      },
+      event: { findMany: jest.fn() },
+    };
+    await expect(
+      createAdapter(tx).exportTarget(
+        { kind: 'major-event', id: 'root-1' },
+        { includeDescendants: true, includeConfiguration: false },
+        createContext(tx),
+      ),
+    ).rejects.toThrow('limite de recursos');
+    expect(tx.eventGroup.findMany).toHaveBeenCalledWith(expect.objectContaining({ take: TRANSFER_MAX_RESOURCES + 1 }));
+    expect(tx.event.findMany).not.toHaveBeenCalled();
+  });
+
   it('enforces the existing and proposed parent certificate settings', async () => {
     const event = eventRecord({ eventGroupId: 'group-1', shouldIssueCertificate: true });
     const tx = {

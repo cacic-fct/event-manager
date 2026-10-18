@@ -383,6 +383,13 @@ export class EventTicketTransferAdapter implements DataTransferAdapter {
         result.issues.push({ kind: 'event-ticket', message: 'Bilhetes omitidos por falta de permissão no contexto.' });
         continue;
       }
+      let includePersonData = false;
+      try {
+        await this.authorization.assertPermissions(context.actor, [Permission.Person.Read]);
+        includePersonData = true;
+      } catch (error) {
+        if (!(error instanceof ForbiddenException)) throw error;
+      }
       const rows = await context.tx.eventTicket.findMany({
         where: { eventId: event.id },
         include: { holder: true },
@@ -391,13 +398,15 @@ export class EventTicketTransferAdapter implements DataTransferAdapter {
       });
       if (rows.length + result.resources.length > TRANSFER_MAX_RESOURCES)
         throw new TransferValidationException('Os bilhetes excedem o limite de registros por arquivo.');
-      for (const row of rows) result.resources.push(ticketResource(row, this.exportPerson(row.holder)));
+      for (const row of rows)
+        result.resources.push(ticketResource(row, this.exportPerson(row.holder, includePersonData)));
     }
     return result;
   }
 
-  private exportPerson(person: People | null): TicketResource['data']['person'] {
+  private exportPerson(person: People | null, includePersonData: boolean): TicketResource['data']['person'] {
     if (!person || person.deletedAt || person.mergedIntoId) return null;
+    if (!includePersonData) return { id: person.id, name: person.name };
     return {
       id: person.id,
       name: person.name,

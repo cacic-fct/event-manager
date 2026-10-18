@@ -475,9 +475,101 @@ describe('ParticipationTransferAdapter', () => {
     await expect(harness.adapter.resolve(resource, context(tx))).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it.each(['event-attendance', 'event-subscription', 'group-subscription', 'major-event-subscription'] as const)(
+    'exports portable, authorized person identifiers for %s without tying matching to source person IDs',
+    async (kind) => {
+      const harness = createHarness();
+      const person = {
+        id: 'source-person',
+        name: 'Ana Silva',
+        email: 'ana@example.test',
+        phone: '18999999999',
+        academicId: '123',
+        identityDocument: '12345678901',
+      };
+      const row = {
+        id: 'subscription-1',
+        personId: person.id,
+        eventId: 'event-1',
+        eventGroupId: 'group-1',
+        majorEventId: 'major-1',
+        attendedAt: new Date(),
+        status: 'VALID',
+        imageLicenseAgreementAccepted: true,
+        subscriptionStatus: 'CONFIRMED',
+        amountPaid: null,
+        paymentDate: null,
+        paymentTier: null,
+        selectedEvents: [],
+      };
+      const tx = {
+        event: { findFirst: jest.fn().mockResolvedValue({ id: 'event-1' }) },
+        eventGroup: { findFirst: jest.fn().mockResolvedValue({ id: 'group-1' }) },
+        majorEvent: { findFirst: jest.fn().mockResolvedValue({ id: 'major-1' }) },
+        eventAttendance: { findMany: jest.fn().mockResolvedValue([row]) },
+        eventSubscription: { findMany: jest.fn().mockResolvedValue([row]) },
+        eventGroupSubscription: { findMany: jest.fn().mockResolvedValue([row]) },
+        majorEventSubscription: { findMany: jest.fn().mockResolvedValue([row]) },
+        people: { findMany: jest.fn().mockResolvedValue([person]) },
+      };
+      const target =
+        kind === 'major-event-subscription'
+          ? { kind: 'major-event' as const, id: 'major-1' }
+          : kind === 'group-subscription'
+            ? { kind: 'group' as const, id: 'group-1' }
+            : { kind: 'event' as const, id: 'event-1' };
+      const options = {
+        includeDescendants: false,
+        includeConfiguration: false,
+        includeSubscriptions: kind !== 'event-attendance',
+        includeAttendances: kind === 'event-attendance',
+      };
+      const exported = await harness.adapter.exportTarget(target, options, context(tx));
+      const resource = exported.resources[0];
+      expect(resource?.kind).toBe(kind);
+      expect(resource?.data).toHaveProperty('person', {
+        name: person.name,
+        email: person.email,
+        phone: person.phone,
+        academicId: person.academicId,
+        identityDocument: person.identityDocument,
+      });
+      expect(resource?.revision).toBe(
+        participationRevision({
+          ...resource,
+          data: { ...resource?.data, person: { id: person.id } },
+        } as TransferResource),
+      );
+      expect(harness.authorization.assertPermissions).toHaveBeenCalledWith(
+        actor,
+        [kind === 'event-attendance' ? Permission.EventAttendance.Read : Permission.Subscription.Read],
+        expect.any(Object),
+      );
+
+      harness.authorization.assertPermissions.mockRejectedValue(new ForbiddenException());
+      tx.people.findMany.mockClear();
+      expect((await harness.adapter.exportTarget(target, options, context(tx))).resources).toEqual([]);
+      expect(tx.people.findMany).not.toHaveBeenCalled();
+    },
+  );
+
   it('exports parent subscriptions independently from child subscriptions', async () => {
     const harness = createHarness();
     const tx = {
+      people: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            {
+              id: 'person-1',
+              name: 'Ana Silva',
+              email: 'ana@example.test',
+              phone: null,
+              academicId: null,
+              identityDocument: null,
+            },
+          ]),
+      },
       majorEvent: { findFirst: jest.fn().mockResolvedValue({ id: 'major-1' }) },
       majorEventSubscription: {
         findMany: jest.fn().mockResolvedValue([
@@ -514,6 +606,7 @@ describe('ParticipationTransferAdapter', () => {
     );
 
     expect(exported.resources.map((resource) => resource.kind)).toEqual(['major-event-subscription']);
+    expect(exported.resources[0]?.data).toHaveProperty('person', { name: 'Ana Silva', email: 'ana@example.test' });
     expect(tx.event.findMany).not.toHaveBeenCalled();
     expect(tx.eventSubscription.findMany).not.toHaveBeenCalled();
     expect(tx.eventGroupSubscription.findMany).not.toHaveBeenCalled();
@@ -522,6 +615,20 @@ describe('ParticipationTransferAdapter', () => {
   it('exports child subscriptions only when the child option is selected', async () => {
     const harness = createHarness();
     const tx = {
+      people: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            {
+              id: 'person-1',
+              name: 'Ana Silva',
+              email: 'ana@example.test',
+              phone: null,
+              academicId: null,
+              identityDocument: null,
+            },
+          ]),
+      },
       majorEvent: { findFirst: jest.fn().mockResolvedValue({ id: 'major-1' }) },
       event: {
         findFirst: jest.fn().mockResolvedValue({ id: 'event-1' }),

@@ -34,14 +34,12 @@ function harness() {
     reviewCandidates: jest.fn().mockResolvedValue([]),
   };
   const issuance = {
-    issueForPerson: jest
-      .fn()
-      .mockImplementation(async (_tx, eventId, personId, _source, sourceKey) => ({
-        id: 'issued-ticket',
-        eventId,
-        originalHolderPersonId: personId,
-        sourceKey,
-      })),
+    issueForPerson: jest.fn().mockImplementation(async (_tx, eventId, personId, _source, sourceKey) => ({
+      id: 'issued-ticket',
+      eventId,
+      originalHolderPersonId: personId,
+      sourceKey,
+    })),
   };
   const realtime = { enqueueForUsers: jest.fn().mockResolvedValue(undefined) };
   const tx = {
@@ -258,6 +256,40 @@ describe('issued ticket transfer and optional export', () => {
     const output = await h.tickets.exportTarget(target, { ...options, includeTickets: true }, h.context);
     expect(output.issues).toHaveLength(1);
     expect(h.tx.eventTicket.findMany).not.toHaveBeenCalled();
+  });
+
+  it('requires person read permission for private holder fields while preserving the permitted holder reference', async () => {
+    const h = harness();
+    h.authorization.assertPermissions.mockImplementation(async (_actor, permissions) => {
+      if (permissions.includes(Permission.Person.Read)) throw new ForbiddenException();
+    });
+    h.tx.eventTicket.findMany.mockResolvedValue([
+      {
+        id: 'ticket-1',
+        eventId: 'event-1',
+        holderPersonId: 'person-1',
+        issuedAt: h.now,
+        expiresAt: h.event.endDate,
+        updatedAt: h.now,
+        holder: {
+          id: 'person-1',
+          name: 'Ana Silva',
+          email: 'ana@example.test',
+          phone: '18999999999',
+          academicId: '123',
+          identityDocument: 'private-document',
+          deletedAt: null,
+          mergedIntoId: null,
+        },
+      },
+    ]);
+    const output = await h.tickets.exportTarget(
+      { kind: 'event', id: 'event-1' },
+      { includeDescendants: false, includeConfiguration: false, includeTickets: true },
+      h.context,
+    );
+    expect(output.resources[0]?.data).toHaveProperty('person', { id: 'person-1', name: 'Ana Silva' });
+    expect(h.authorization.assertPermissions).toHaveBeenCalledWith(h.context.actor, [Permission.Person.Read]);
   });
 
   it('exports transferred, consumed, and revoked tickets with holder references accepted by the importer', async () => {

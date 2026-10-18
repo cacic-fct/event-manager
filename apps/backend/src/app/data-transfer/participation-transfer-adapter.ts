@@ -825,7 +825,38 @@ export class ParticipationTransferAdapter implements DataTransferAdapter {
     }
     const resources = await this.listCurrent(kind, target, context.tx);
     this.assertBound(resources);
-    result.resources.push(...resources.map((resource) => ({ ...resource, revision: participationRevision(resource) })));
+    if (!resources.length) return;
+    const personIds = resources.map((resource) => resource.data.person?.id).filter((id): id is string => !!id);
+    const people = await context.tx.people.findMany({
+      where: {
+        id: { in: [...new Set(personIds)] },
+        deletedAt: null,
+        mergedIntoId: null,
+      },
+      select: { id: true, name: true, email: true, phone: true, academicId: true, identityDocument: true },
+    });
+    const peopleById = new Map(people.map((person) => [person.id, person]));
+    for (const resource of resources) {
+      const person = peopleById.get(resource.data.person?.id ?? '');
+      result.resources.push({
+        ...resource,
+        // Keep the revision tied to persisted participation data, before adding portable identity fields.
+        revision: participationRevision(resource),
+        data: {
+          ...resource.data,
+          // Source person IDs would prevent matching or creating people in another database.
+          person: person
+            ? {
+                name: person.name,
+                ...(person.email ? { email: person.email } : {}),
+                ...(person.phone ? { phone: person.phone } : {}),
+                ...(person.academicId ? { academicId: person.academicId } : {}),
+                ...(person.identityDocument ? { identityDocument: person.identityDocument } : {}),
+              }
+            : resource.data.person,
+        },
+      });
+    }
   }
 
   private async listCurrent(

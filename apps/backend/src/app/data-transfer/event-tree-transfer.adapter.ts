@@ -820,7 +820,10 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
           where: { eventGroupId: group.id, deletedAt: null },
           select: EVENT_SELECT,
           orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
+          take: TRANSFER_MAX_RESOURCES + 1,
         });
+        if (children.length + 1 > TRANSFER_MAX_RESOURCES)
+          throw new TransferValidationException('A hierarquia excede o limite de recursos por arquivo.');
         for (const event of children) {
           events.set(event.id, event);
         }
@@ -851,7 +854,10 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
           },
           select: EVENT_GROUP_SELECT,
           orderBy: [{ name: 'asc' }, { id: 'asc' }],
+          take: TRANSFER_MAX_RESOURCES + 1,
         });
+        if (groups.length + 1 > TRANSFER_MAX_RESOURCES)
+          throw new TransferValidationException('A hierarquia excede o limite de recursos por arquivo.');
         for (const group of groups) {
           eventGroups.set(group.id, group);
         }
@@ -862,7 +868,10 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
           },
           select: EVENT_SELECT,
           orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
+          take: TRANSFER_MAX_RESOURCES + 1,
         });
+        if (children.length + eventGroups.size + 1 > TRANSFER_MAX_RESOURCES)
+          throw new TransferValidationException('A hierarquia excede o limite de recursos por arquivo.');
         for (const event of children) {
           events.set(event.id, event);
         }

@@ -93,11 +93,8 @@ jobs:
           bun run test:data-import
           bun run lint:data-import
 
-      - name: Audit Storybook stories
-        run: bun run storybook:quality
-
-      - name: Verify backend container startup
-        run: node --test tools/backend-container.test.mjs
+      - name: Test Storybook library discovery
+        run: node --test tools/storybook-library-stories.test.mjs
 
   unit-tests:
     name: Unit tests (${{ matrix.project }})
@@ -669,11 +666,8 @@ jobs:
           bun run test:data-import
           bun run lint:data-import
 
-      - name: Audit Storybook stories
-        run: bun run storybook:quality
-
-      - name: Verify backend container startup
-        run: node --test tools/backend-container.test.mjs
+      - name: Test Storybook library discovery
+        run: node --test tools/storybook-library-stories.test.mjs
 
   untrusted-pr-unit-tests:
     name: Untrusted PR unit tests

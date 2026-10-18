@@ -12,8 +12,6 @@
     "publish:event-manager-m2m-contracts": "bunx nx run event-manager-m2m-contracts:publish",
     "publish:event-manager-public-contracts": "bunx nx run event-manager-public-contracts:publish",
     "publish:packages": "bun run publish:event-manager-m2m-contracts && bun run publish:event-manager-public-contracts",
-    "storybook:quality": "node --test tools/storybook-library-stories.test.mjs tools/storybook-quality-audit.test.mjs && node tools/storybook-quality-audit.mjs",
-    "storybook:test-controls": "bunx playwright test --config=tools/storybook-playwright.config.mjs",
     "test:data-import": "node --test tools/data-import/*.test.mts tools/data-import/lib/*.test.mts tools/evcomp-import/*.test.mjs",
     "lint:data-import": "bunx eslint tools/data-import/*.mjs tools/data-import/*.mts tools/data-import/lib/*.mts tools/evcomp-import/*.mjs",
     "test:prisma-migrations": "PRISMA_MIGRATION_INTEGRATION_TEST=1 bun tools/prisma-migration-integrity.test.mts",

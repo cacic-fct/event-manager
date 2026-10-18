@@ -135,6 +135,7 @@ services:
     labels:
       - 'wud.watch=true'
       - 'wud.watch.digest=true'
+      - 'wud.trigger.docker.enabled=false'
       - 'wud.tag.include=^latest$$'
       - 'wud.display.name=event-manager-backend'
       - 'wud.link.template=https://github.com/cacic-fct/event-manager/pkgs/container/event-manager%2Fbackend'

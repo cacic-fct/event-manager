@@ -4,9 +4,8 @@ import {
   ElementRef,
   OnDestroy,
   PLATFORM_ID,
-  afterNextRender,
+  afterRenderEffect,
   computed,
-  effect,
   inject,
   input,
   viewChild,
@@ -86,45 +85,22 @@ export class AttendanceHeatmapComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly mapTarget = viewChild<ElementRef<HTMLElement>>('mapTarget');
   private map: Map | null = null;
-  private hasRendered = false;
-  private mapRenderFrame?: number;
+  private mapSizeFrame?: number;
   private mapResizeObserver?: ResizeObserver;
   private observedMapTarget?: HTMLElement;
 
   constructor() {
-    afterNextRender(() => {
-      this.hasRendered = true;
-      this.scheduleMapRender();
-    });
-
-    effect(() => {
+    afterRenderEffect(() => {
       this.points();
       this.eventLatitude();
       this.eventLongitude();
-
-      if (this.hasRendered) {
-        this.scheduleMapRender();
-      }
+      this.renderCurrentMap();
     });
   }
 
   ngOnDestroy(): void {
-    if (this.mapRenderFrame !== undefined) {
-      cancelAnimationFrame(this.mapRenderFrame);
-    }
     this.stopObservingMapTarget();
     this.destroyMap();
-  }
-
-  private scheduleMapRender(): void {
-    if (!this.isBrowser || this.mapRenderFrame !== undefined) {
-      return;
-    }
-
-    this.mapRenderFrame = requestAnimationFrame(() => {
-      this.mapRenderFrame = undefined;
-      this.renderCurrentMap();
-    });
   }
 
   private renderCurrentMap(): void {
@@ -193,7 +169,10 @@ export class AttendanceHeatmapComponent implements OnDestroy {
         padding: [32, 32, 32, 32],
       });
     }
-    requestAnimationFrame(() => this.map?.updateSize());
+    this.mapSizeFrame = requestAnimationFrame(() => {
+      this.mapSizeFrame = undefined;
+      this.map?.updateSize();
+    });
   }
 
   private observeMapTarget(target: HTMLElement): void {
@@ -217,6 +196,10 @@ export class AttendanceHeatmapComponent implements OnDestroy {
   }
 
   private destroyMap(): void {
+    if (this.mapSizeFrame !== undefined) {
+      cancelAnimationFrame(this.mapSizeFrame);
+      this.mapSizeFrame = undefined;
+    }
     this.map?.setTarget(undefined);
     this.map = null;
   }
