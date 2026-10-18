@@ -24,6 +24,9 @@ export async function ensureAdminAuthentication(
     if (await auth.ensureAuthenticated({ returnTo })) {
       return true;
     }
+    if (auth.isAuthenticated()) {
+      return false;
+    }
     if (auth.consumePostLogoutRedirect()) {
       return router.parseUrl('/login');
     }

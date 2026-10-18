@@ -1,7 +1,14 @@
 import { isPlatformBrowser } from '@angular/common';
-import { HttpErrorResponse, HttpEvent, HttpHandlerFn, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
+import {
+  HttpErrorResponse,
+  HttpEvent,
+  HttpHandlerFn,
+  HttpInterceptorFn,
+  HttpRequest,
+  HttpResponse,
+} from '@angular/common/http';
 import { PLATFORM_ID, inject } from '@angular/core';
-import { Observable, catchError, switchMap, throwError } from 'rxjs';
+import { Observable, catchError, switchMap, tap, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
 
 export const authInterceptor: HttpInterceptorFn = (
@@ -32,8 +39,48 @@ export const authInterceptor: HttpInterceptorFn = (
 
       return throwError(() => error);
     }),
+    tap({
+      next: (event) => {
+        if (event instanceof HttpResponse && hasOnboardingError(event.body)) {
+          authService.redirectToOnboarding();
+        }
+      },
+      error: (error: unknown) => {
+        if (error instanceof HttpErrorResponse && error.status === 403 && hasOnboardingError(error.error)) {
+          authService.redirectToOnboarding();
+        }
+      },
+    }),
   );
 };
+
+function hasOnboardingError(body: unknown): boolean {
+  if (!isRecord(body)) {
+    return false;
+  }
+  if (body['code'] === 'ONBOARDING_REQUIRED') {
+    return true;
+  }
+  const errors = body['errors'];
+  return (
+    Array.isArray(errors) &&
+    errors.some((error: unknown) => {
+      if (!isRecord(error) || !isRecord(error['extensions'])) {
+        return false;
+      }
+      const extensions = error['extensions'];
+      const originalError = extensions['originalError'];
+      return (
+        extensions['code'] === 'ONBOARDING_REQUIRED' ||
+        (isRecord(originalError) && originalError['code'] === 'ONBOARDING_REQUIRED')
+      );
+    })
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 function isAuthenticationFailure(error: unknown): boolean {
   return error instanceof HttpErrorResponse && (error.status === 401 || error.status === 403);

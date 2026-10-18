@@ -32,13 +32,14 @@ describe('public authGuard', () => {
     router = TestBed.inject(Router);
   });
 
-  it('allows already authenticated users through without restoring or starting a new login', async () => {
+  it('checks onboarding for already authenticated users without starting a new login', async () => {
     authService.isAuthenticated.mockReturnValue(true);
+    authService.ensureAuthenticated.mockResolvedValue(true);
 
     const result = await runGuard('/preferences');
 
     expect(result).toBe(true);
-    expect(authService.ensureAuthenticated).not.toHaveBeenCalled();
+    expect(authService.ensureAuthenticated).toHaveBeenCalledWith({ returnTo: '/preferences' });
     expect(authService.login).not.toHaveBeenCalled();
   });
 

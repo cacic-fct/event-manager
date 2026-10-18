@@ -98,7 +98,11 @@ export async function resolveTransferPerson<Snapshot extends ResolvedTransferRes
       const selected = candidates.find((candidate) => candidate.id === decision.personId);
       if (!selected) return prompt('Selecione uma das pessoas correspondentes ao nome para mesclar os dados.');
       if (selected.userId) {
-        const currentData = normalizeTransferPerson(selected);
+        const currentData = normalizeTransferPerson({
+          phone: selected.phone ?? undefined,
+          identityDocument: selected.identityDocument ?? undefined,
+          academicId: selected.academicId ?? undefined,
+        });
         const changesManagedFields = (['phone', 'identityDocument', 'academicId'] as const).some(
           (field) => data[field] && data[field] !== currentData[field],
         );

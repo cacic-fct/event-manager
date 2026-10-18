@@ -1,6 +1,17 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Service, PLATFORM_ID, REQUEST, RESPONSE_INIT, computed, inject, isDevMode, signal } from '@angular/core';
+import {
+  Service,
+  Injector,
+  PLATFORM_ID,
+  REQUEST,
+  RESPONSE_INIT,
+  computed,
+  inject,
+  isDevMode,
+  signal,
+} from '@angular/core';
+import { Router } from '@angular/router';
 import { CacicAccountPrivacyService } from '@cacic-fct/account-manager-privacy';
 import type { Permission } from '@cacic-fct/shared-permissions';
 import {
@@ -21,6 +32,7 @@ import { AuthenticatedUser, AuthRefreshResult, PasswordLoginResult } from './aut
 import type { LoginOptions } from './auth.types';
 import { AUTH_ONBOARDING_ENFORCEMENT_ENABLED } from './auth-onboarding-enforcement.token';
 import { SilentSsoService } from './silent-sso.service';
+import { CacicAnalyticsService } from '../observability/analytics.service';
 
 type LogoutResponse = {
   success: boolean;
@@ -42,6 +54,7 @@ export class AuthService {
   private readonly accountTrackingSyncTimeoutMs = 2_000;
 
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
   private readonly accountPrivacy = inject(CacicAccountPrivacyService);
   private readonly document = inject(DOCUMENT);
   private readonly request = inject(REQUEST, { optional: true });
@@ -53,6 +66,8 @@ export class AuthService {
 
   private refreshRequest$: Observable<AuthRefreshResult> | null = null;
   private authenticationRecovery: Promise<boolean> | null = null;
+  private onboardingCheck: Promise<boolean> | null = null;
+  private onboardingRedirectStarted = false;
   private refreshTimerId: ReturnType<typeof setTimeout> | null = null;
   private refreshExpiresAt: number | null = null;
   private readonly beforeLogoutCleanups = new Set<() => void | Promise<void>>();
@@ -79,7 +94,9 @@ export class AuthService {
       }
     } catch (error) {
       this.logUnexpectedAuthError('Auth initialization failed', error);
-      this.clearSession();
+      if (this.isExpectedUnauthenticatedError(error)) {
+        this.clearSession();
+      }
     } finally {
       this.initialized.set(true);
     }
@@ -105,7 +122,14 @@ export class AuthService {
   /** Share one restoration attempt between guards for the same unauthenticated session. */
   async ensureAuthenticated(options?: Pick<LoginOptions, 'returnTo'>): Promise<boolean> {
     if (this.isAuthenticated()) {
-      return true;
+      try {
+        return await this.redirectToOnboardingIfNeeded(options?.returnTo);
+      } catch (error) {
+        if (this.isExpectedUnauthenticatedError(error)) {
+          return false;
+        }
+        throw error;
+      }
     }
     if (!isPlatformBrowser(this.platformId)) {
       return false;
@@ -113,14 +137,14 @@ export class AuthService {
 
     this.authenticationRecovery ??= firstValueFrom(this.refreshTokenSilently().pipe(timeout({ first: 10_000 })))
       .then(async () => {
-        await this.redirectToOnboardingIfNeeded(options?.returnTo, true);
+        const onboarded = await this.redirectToOnboardingIfNeeded(options?.returnTo, true);
         const authenticated = this.isAuthenticated();
         // Only failed attempts are memoized. A successful recovery must not
         // outlive the session if a later /me request clears the user.
         if (authenticated) {
           this.authenticationRecovery = null;
         }
-        return authenticated;
+        return authenticated && onboarded;
       })
       .catch((error: unknown) => {
         if (this.isExpectedUnauthenticatedError(error)) {
@@ -316,6 +340,7 @@ export class AuthService {
     this.clearRefreshTimer();
     this.refreshExpiresAt = null;
     this.user.set(null);
+    this.onboardingRedirectStarted = false;
   }
 
   private async runBeforeLogoutCleanups(): Promise<void> {
@@ -370,9 +395,26 @@ export class AuthService {
     }
   }
 
-  private async redirectToOnboardingIfNeeded(returnTo?: string, sessionWasRestored = false): Promise<void> {
+  /** A server refusal overrides stale local claims and client feature flags. */
+  redirectToOnboarding(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      this.startOnboardingRedirect(undefined, 'api');
+    }
+  }
+
+  private redirectToOnboardingIfNeeded(returnTo?: string, sessionWasRestored = false): Promise<boolean> {
+    this.onboardingCheck ??= this.checkOnboarding(returnTo, sessionWasRestored).finally(() => {
+      this.onboardingCheck = null;
+    });
+    return this.onboardingCheck;
+  }
+
+  private async checkOnboarding(returnTo?: string, sessionWasRestored = false): Promise<boolean> {
     if (!isPlatformBrowser(this.platformId)) {
-      return;
+      return true;
+    }
+    if (this.onboardingRedirectStarted) {
+      return false;
     }
 
     const user = this.user();
@@ -380,39 +422,64 @@ export class AuthService {
     if (!user || !this.isOnboardingEnforcementEnabled() || this.isUserOnboarded(user)) {
       this.removeSessionStorageItem(this.onboardingReturnStorageKey);
       this.removeSessionStorageItem(this.onboardingRefreshAttemptStorageKey);
-      return;
+      return true;
     }
 
-    const currentUrl = returnTo
-      ? new URL(this.resolveReturnTo(returnTo), window.location.origin).toString()
-      : this.getCurrentAbsoluteUrl();
-    const pendingReturnUrl = this.getSessionStorageItem(this.onboardingReturnStorageKey);
-    const refreshAttempted = this.getSessionStorageItem(this.onboardingRefreshAttemptStorageKey);
-
-    if (pendingReturnUrl === currentUrl && !refreshAttempted && !sessionWasRestored) {
+    const currentUrl = this.getOnboardingReturnUrl(returnTo);
+    // Refresh once even when storage is unavailable or the user returns to a
+    // different URL. The Event Manager session may still contain the old claim.
+    if (!sessionWasRestored) {
       this.setSessionStorageItem(this.onboardingRefreshAttemptStorageKey, 'true');
 
       try {
-        await firstValueFrom(this.refreshTokenSilently());
+        await firstValueFrom(this.refreshTokenSilently().pipe(timeout({ first: 10_000 })));
       } catch (error) {
         if (!this.isExpectedUnauthenticatedError(error)) {
           this.logUnexpectedAuthError('Silent token refresh before onboarding failed', error);
         } else {
           this.clearSession();
         }
-        return;
+        throw error;
       }
 
       if (this.isUserOnboarded(this.user())) {
         this.removeSessionStorageItem(this.onboardingReturnStorageKey);
         this.removeSessionStorageItem(this.onboardingRefreshAttemptStorageKey);
-        return;
+        return this.isAuthenticated();
       }
     }
 
+    this.startOnboardingRedirect(currentUrl, 'session');
+    return false;
+  }
+
+  private startOnboardingRedirect(returnTo: string | undefined, source: 'session' | 'api'): void {
+    if (this.onboardingRedirectStarted) {
+      return;
+    }
+    this.onboardingRedirectStarted = true;
+    const currentUrl = this.getOnboardingReturnUrl(returnTo);
     this.setSessionStorageItem(this.onboardingReturnStorageKey, currentUrl);
     this.removeSessionStorageItem(this.onboardingRefreshAttemptStorageKey);
+    // Resolve lazily: analytics observes this service's identity and consent.
+    try {
+      this.injector.get(CacicAnalyticsService).trackEvent('onboarding_redirect', { source });
+    } catch {
+      // Optional analytics must never prevent required onboarding navigation.
+    }
     window.location.assign(this.buildAccountOnboardingRedirectUrl(currentUrl));
+  }
+
+  private getOnboardingReturnUrl(returnTo?: string): string {
+    const router = this.injector.get(Router, null);
+    const navigation = router?.currentNavigation();
+    const target = navigation?.extractedUrl ?? navigation?.initialUrl;
+    const path = returnTo ?? (target && router ? router.serializeUrl(target) : undefined);
+    if (!path) {
+      return this.getCurrentAbsoluteUrl();
+    }
+    const url = new URL(this.resolveReturnTo(path), window.location.origin);
+    return url.origin === window.location.origin ? url.toString() : this.getCurrentAbsoluteUrl();
   }
 
   private isUserOnboarded(user: AuthenticatedUser | null): boolean {
@@ -436,6 +503,11 @@ export class AuthService {
 
     this.refreshTimerId = setTimeout(() => {
       this.refreshTokenSilently().subscribe({
+        next: () => {
+          void this.redirectToOnboardingIfNeeded(undefined, true).catch((error: unknown) => {
+            this.logUnexpectedAuthError('Onboarding check after scheduled refresh failed', error);
+          });
+        },
         error: (error) => {
           if (!this.isExpectedUnauthenticatedError(error)) {
             this.logUnexpectedAuthError('Scheduled token refresh failed', error);

@@ -1,10 +1,17 @@
 import { BadRequestException } from '@nestjs/common';
-import { AUTH_SESSION_COOKIE_NAME } from '../auth/auth.constants';
+import { ALLOW_NON_ONBOARDED_KEY, AUTH_SESSION_COOKIE_NAME, IS_PUBLIC_KEY } from '../auth/auth.constants';
 import type { KeycloakAuthService } from '../auth/keycloak-auth.service';
 import type { AccountManagerTotpService } from './account-manager-totp.service';
 import { TotpController } from './totp.controller';
 
 describe('TotpController', () => {
+  it('requires completed onboarding before relaying wallet credentials', () => {
+    expect(Reflect.getMetadata(IS_PUBLIC_KEY, TotpController)).toBeUndefined();
+    expect(Reflect.getMetadata(IS_PUBLIC_KEY, TotpController.prototype.relayCurrentUserSeed)).toBeUndefined();
+    expect(Reflect.getMetadata(ALLOW_NON_ONBOARDED_KEY, TotpController)).toBeUndefined();
+    expect(Reflect.getMetadata(ALLOW_NON_ONBOARDED_KEY, TotpController.prototype.relayCurrentUserSeed)).toBeUndefined();
+  });
+
   let accountManagerTotp: Pick<jest.Mocked<AccountManagerTotpService>, 'relaySeed'>;
   let keycloakAuth: Pick<jest.Mocked<KeycloakAuthService>, 'getSessionExpiration'>;
   let controller: TotpController;

@@ -3,7 +3,6 @@ import { ApiCookieAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swa
 import type { Request } from 'express';
 import { AUTH_SESSION_COOKIE_NAME } from '../auth/auth.constants';
 import { readAuthCookie } from '../auth/auth-cookie-utils';
-import { AllowNonOnboarded } from '../auth/decorators/allow-non-onboarded.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { KeycloakAuthService } from '../auth/keycloak-auth.service';
 import { AccountManagerTotpService } from './account-manager-totp.service';
@@ -23,7 +22,6 @@ export class TotpController {
   ) {}
 
   @Get('seed')
-  @AllowNonOnboarded()
   @ApiCookieAuth(AUTH_SESSION_COOKIE_NAME)
   @ApiOperation({
     summary: 'Relay the current user TOTP seed for the public wallet',

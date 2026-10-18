@@ -70,7 +70,7 @@ describe('AuthService', () => {
     const initialization = auth.initialize();
     httpTesting.expectOne('/api/auth/me').flush({
       sub: 'user-id',
-      claims: { exp: Math.floor(expiresAt / 1_000) },
+      claims: { is_onboarded: true, exp: Math.floor(expiresAt / 1_000) },
     });
     await initialization;
     const user = auth.user();

@@ -6,6 +6,7 @@ import { authenticateHttpRequest, type AuthenticatedRequest } from '../auth/auth
 import { readAuthCookie } from '../auth/auth-cookie-utils';
 import { AUTH_SESSION_COOKIE_NAME, IS_PUBLIC_KEY, REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { KeycloakAuthService } from '../auth/keycloak-auth.service';
+import { isUserOnboarded } from '../auth/onboarding';
 import { ANONYMOUS_AUDIENCE, audienceContext, type EventAudiencePrincipal } from './audience-context';
 import { EventAudienceService } from './event-audience.service';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
@@ -91,6 +92,9 @@ export class EventAudienceInterceptor implements NestInterceptor {
         }
         return ANONYMOUS_AUDIENCE;
       }
+    }
+    if (isPublic && request.user && !isUserOnboarded(request.user)) {
+      return ANONYMOUS_AUDIENCE;
     }
     return this.audiences.principalForUser(request.user);
   }

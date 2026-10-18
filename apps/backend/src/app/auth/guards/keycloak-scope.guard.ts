@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { GqlExecutionContext } from '@nestjs/graphql';
 import { Request } from 'express';
@@ -15,6 +15,7 @@ import {
 import { readAuthCookie } from '../auth-cookie-utils';
 import { AuthenticatedUser } from '../interfaces/authenticated-user.interface';
 import { KeycloakAuthService } from '../keycloak-auth.service';
+import { assertUserOnboarded } from '../onboarding';
 
 type RequestWithUser = Request & {
   user?: AuthenticatedUser;
@@ -51,13 +52,13 @@ export class KeycloakScopeGuard implements CanActivate {
     const accessToken = this.extractBearerToken(request.headers.authorization);
     if (accessToken) {
       request.user = await this.keycloakAuthService.authenticateAccessToken(accessToken);
+      this.assertOnboardingAllowed(context, request.user);
       this.assertRequiredRoles(request.user, roles);
       await this.authorizationPolicy.assertPermissions(
         request.user,
         permissions,
         this.getAuthorizationResourceContext(context, permissions),
       );
-      this.assertOnboardingAllowed(context, request.user);
       return true;
     }
 
@@ -67,13 +68,13 @@ export class KeycloakScopeGuard implements CanActivate {
     }
 
     request.user = await this.keycloakAuthService.authenticateSession(sessionId);
+    this.assertOnboardingAllowed(context, request.user);
     this.assertRequiredRoles(request.user, roles);
     await this.authorizationPolicy.assertPermissions(
       request.user,
       permissions,
       this.getAuthorizationResourceContext(context, permissions),
     );
-    this.assertOnboardingAllowed(context, request.user);
 
     return true;
   }
@@ -137,20 +138,16 @@ export class KeycloakScopeGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    if (allowNonOnboarded || this.isServiceAccountPrincipal(user) || this.isUserOnboarded(user)) {
+    if (allowNonOnboarded) {
       return;
     }
 
-    throw new ForbiddenException('Complete onboarding before using the event system.');
-  }
-
-  private isUserOnboarded(user: AuthenticatedUser): boolean {
-    const claimValue = user.claims['is_onboarded'];
-    return claimValue === true || claimValue === 'true';
+    assertUserOnboarded(user);
   }
 
   private isServiceAccountPrincipal(user: AuthenticatedUser): boolean {
-    return user.preferredUsername?.startsWith('service-account-') === true;
+    const clientId = user.claims['azp'] ?? user.claims['client_id'];
+    return typeof clientId === 'string' && user.preferredUsername === `service-account-${clientId}`;
   }
 
   private getRequest(context: ExecutionContext): RequestWithUser {

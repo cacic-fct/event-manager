@@ -49,14 +49,25 @@ describe('authentication route guards', () => {
 
   afterEach(() => injector.destroy());
 
-  it('allows an authenticated user without starting another recovery attempt', async () => {
+  it('checks onboarding for an authenticated user before allowing the route', async () => {
     auth.isAuthenticated.mockReturnValue(true);
+    auth.ensureAuthenticated.mockResolvedValue(true);
 
     await expect(runGuard(authGuard)).resolves.toBe(true);
 
-    expect(auth.ensureAuthenticated).not.toHaveBeenCalled();
+    expect(auth.ensureAuthenticated).toHaveBeenCalledWith({ returnTo: state.url });
     expect(auth.login).not.toHaveBeenCalled();
   });
+
+  it.each([authGuard, requiredPermissionsGuard(['event#read' as Permission])])(
+    'cancels navigation during onboarding without starting a competing login',
+    async (guard) => {
+      auth.isAuthenticated.mockReturnValue(true);
+      await expect(runGuard(guard)).resolves.toBe(false);
+      expect(auth.login).not.toHaveBeenCalled();
+      expect(auth.evaluatePermissions).not.toHaveBeenCalled();
+    },
+  );
 
   it('allows access when silent restoration authenticates the user', async () => {
     auth.ensureAuthenticated.mockResolvedValue(true);

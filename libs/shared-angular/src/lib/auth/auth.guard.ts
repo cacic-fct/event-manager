@@ -11,17 +11,17 @@ export const authGuard = (async (_route: ActivatedRouteSnapshot, state: RouterSt
   const router = inject(Router);
   const errors = inject(RouteErrorService);
 
-  if (auth.isAuthenticated()) {
-    return true;
-  }
   // A deliberate logout must not immediately start another SSO round trip.
-  if (auth.consumePostLogoutRedirect()) {
+  if (!auth.isAuthenticated() && auth.consumePostLogoutRedirect()) {
     return router.parseUrl('/');
   }
 
   try {
     if (await auth.ensureAuthenticated({ returnTo: state.url })) {
       return true;
+    }
+    if (auth.isAuthenticated()) {
+      return false;
     }
     await auth.login({ returnTo: state.url });
     return false;
@@ -43,6 +43,9 @@ export const requiredPermissionsGuard =
 
     try {
       if (!(await auth.ensureAuthenticated({ returnTo: state.url }))) {
+        if (auth.isAuthenticated()) {
+          return false;
+        }
         await auth.login({ returnTo: state.url });
         return false;
       }

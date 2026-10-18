@@ -5,6 +5,7 @@ import { adminAuthenticationGuard } from './admin-auth.guard';
 
 describe('adminAuthenticationGuard', () => {
   let authService: {
+    isAuthenticated: ReturnType<typeof vi.fn>;
     consumePostLogoutRedirect: ReturnType<typeof vi.fn>;
     ensureAuthenticated: ReturnType<typeof vi.fn>;
     login: ReturnType<typeof vi.fn>;
@@ -13,6 +14,7 @@ describe('adminAuthenticationGuard', () => {
 
   beforeEach(() => {
     authService = {
+      isAuthenticated: vi.fn().mockReturnValue(false),
       consumePostLogoutRedirect: vi.fn(() => false),
       ensureAuthenticated: vi.fn().mockResolvedValue(false),
       login: vi.fn().mockResolvedValue(undefined),
@@ -49,6 +51,12 @@ describe('adminAuthenticationGuard', () => {
     expect(result).toBe(false);
     expect(authService.ensureAuthenticated).toHaveBeenCalledOnce();
     expect(authService.login).toHaveBeenCalledWith({ returnTo: '/events?status=draft&page=2#selected-event' });
+  });
+
+  it('cancels admin navigation while onboarding redirects without starting a competing login', async () => {
+    authService.isAuthenticated.mockReturnValue(true);
+    expect(await runGuard()).toBe(false);
+    expect(authService.login).not.toHaveBeenCalled();
   });
 
   it('returns to the explicit post-logout page without starting SSO again', async () => {

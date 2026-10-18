@@ -14,12 +14,14 @@ describe('authInterceptor', () => {
   let authService: {
     clearSession: ReturnType<typeof vi.fn>;
     refreshTokenSilently: ReturnType<typeof vi.fn>;
+    redirectToOnboarding: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
     authService = {
       clearSession: vi.fn(),
       refreshTokenSilently: vi.fn(() => of(refreshResult)),
+      redirectToOnboarding: vi.fn(),
     };
 
     TestBed.configureTestingModule({
@@ -52,6 +54,48 @@ describe('authInterceptor', () => {
     expect(authService.clearSession).not.toHaveBeenCalled();
   });
 
+  it('redirects on the REST onboarding code without refreshing or replaying the request', async () => {
+    const response = firstValueFrom(http.post('/api/private', { input: 'original' }));
+    httpTesting
+      .expectOne('/api/private')
+      .flush({ code: 'ONBOARDING_REQUIRED' }, { status: 403, statusText: 'Forbidden' });
+    await expect(response).rejects.toBeInstanceOf(HttpErrorResponse);
+    expect(authService.redirectToOnboarding).toHaveBeenCalledOnce();
+    expect(authService.refreshTokenSilently).not.toHaveBeenCalled();
+    expect(authService.clearSession).not.toHaveBeenCalled();
+  });
+
+  it.each([{ code: 'ONBOARDING_REQUIRED' }, { code: 'FORBIDDEN', originalError: { code: 'ONBOARDING_REQUIRED' } }])(
+    'redirects on GraphQL onboarding errors returned with HTTP 200: %p',
+    async (extensions) => {
+      const body = { data: null, errors: [{ message: 'Cadastro incompleto.', extensions }] };
+      const response = firstValueFrom(http.post('/api/graphql', { query: 'mutation { protectedOperation }' }));
+      httpTesting.expectOne('/api/graphql').flush(body);
+      await expect(response).resolves.toEqual(body);
+      expect(authService.redirectToOnboarding).toHaveBeenCalledOnce();
+      expect(authService.refreshTokenSilently).not.toHaveBeenCalled();
+    },
+  );
+
+  it('handles an onboarding refusal on the retry after refreshing an expired token', async () => {
+    const response = firstValueFrom(http.get('/api/private'));
+    httpTesting.expectOne('/api/private').flush({}, { status: 401, statusText: 'Unauthorized' });
+    httpTesting
+      .expectOne('/api/private')
+      .flush({ code: 'ONBOARDING_REQUIRED' }, { status: 403, statusText: 'Forbidden' });
+    await expect(response).rejects.toBeInstanceOf(HttpErrorResponse);
+    expect(authService.redirectToOnboarding).toHaveBeenCalledOnce();
+    expect(authService.clearSession).not.toHaveBeenCalled();
+  });
+
+  it('does not treat ordinary GraphQL permission denials as onboarding errors', async () => {
+    const body = { errors: [{ extensions: { code: 'FORBIDDEN' } }] };
+    const response = firstValueFrom(http.post('/api/graphql', { query: '{ privateData }' }));
+    httpTesting.expectOne('/api/graphql').flush(body);
+    await expect(response).resolves.toEqual(body);
+    expect(authService.redirectToOnboarding).not.toHaveBeenCalled();
+  });
+
   it('does not recursively refresh auth endpoint failures', async () => {
     const response = firstValueFrom(http.get('/api/auth/me'));
 
@@ -62,6 +106,7 @@ describe('authInterceptor', () => {
     await expect(response).rejects.toBeInstanceOf(HttpErrorResponse);
     expect(authService.refreshTokenSilently).not.toHaveBeenCalled();
     expect(authService.clearSession).not.toHaveBeenCalled();
+    expect(authService.redirectToOnboarding).not.toHaveBeenCalled();
   });
 
   it('does not mutate local auth state when an external CACiC integration returns 401', async () => {
@@ -91,6 +136,7 @@ describe('authInterceptor', () => {
     await expect(response).rejects.toBeInstanceOf(HttpErrorResponse);
     expect(authService.refreshTokenSilently).toHaveBeenCalledOnce();
     expect(authService.clearSession).not.toHaveBeenCalled();
+    expect(authService.redirectToOnboarding).not.toHaveBeenCalled();
   });
 
   it('does not clear local auth state when refresh fails because the provider is temporarily unavailable', async () => {
