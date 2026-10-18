@@ -1,8 +1,5 @@
 import { readFile } from 'node:fs/promises';
 
-import { connectPostgres, normalizeWgs84Coordinates } from './common.mts';
-import { createUuidV5, createUuidV7 } from './ids.mts';
-
 export type SqlLiteral = string | number | null;
 export type ParsedSqlRow = Record<string, SqlLiteral>;
 export type ParsedSqlTables = Record<string, ParsedSqlRow[]>;
@@ -11,127 +8,6 @@ export interface MysqlTime {
   hours: number;
   minutes: number;
   seconds: number;
-}
-
-export interface LegacyPerson {
-  id: string;
-  name: string;
-  email: string | null;
-  identityDocument: string | null;
-  academicId: string | null;
-  externalRef: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface LegacyMajorEvent {
-  id: string;
-  name: string;
-  startDate: Date;
-  endDate: Date;
-  description: string | null;
-  isPaymentRequired: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface LegacyEventGroup {
-  id: string;
-  name: string;
-  type: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface LegacyEvent {
-  id: string;
-  name: string;
-  creditMinutes: number | null;
-  startDate: Date;
-  endDate: Date;
-  type: string;
-  emoji: string;
-  description: string | null;
-  shortDescription: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  locationDescription: string | null;
-  majorEventId: string | null;
-  eventGroupId: string | null;
-  allowSubscription: boolean;
-  slots: number | null;
-  shouldIssueCertificate: boolean;
-  shouldCollectAttendance: boolean;
-  isOnlineAttendanceAllowed: boolean;
-  onlineAttendanceCode: string | null;
-  onlineAttendanceStartDate: Date | null;
-  onlineAttendanceEndDate: Date | null;
-  isPubliclyListed: boolean;
-  youtubeCode: string | null;
-  buttonText: string | null;
-  buttonLink: string | null;
-  createdAt: Date;
-  createdById: string | null;
-  updatedAt: Date;
-}
-
-export interface LegacyMajorEventSubscription {
-  id: string;
-  majorEventId: string;
-  personId: string;
-  amountPaid: number | null;
-  paymentDate: Date | null;
-  paymentTier: string | null;
-  subscriptionStatus: string;
-  createdAt: Date;
-  createdById: string | null;
-}
-
-export interface LegacyEventSubscription {
-  id: string;
-  eventId: string;
-  personId: string;
-  createdAt: Date;
-  createdById: string | null;
-}
-
-export interface LegacyEventAttendance {
-  personId: string;
-  eventId: string;
-  attendedAt: Date;
-  createdAt: Date;
-  createdById: string | null;
-}
-
-export interface LegacyEventLecturer {
-  eventId: string;
-  personId: string;
-  createdAt: Date;
-  createdById: string | null;
-}
-
-export interface LegacyImportPayload {
-  majorEvents: LegacyMajorEvent[];
-  eventGroups: LegacyEventGroup[];
-  events: LegacyEvent[];
-  people: LegacyPerson[];
-  majorEventSubscriptions: LegacyMajorEventSubscription[];
-  eventSubscriptions: LegacyEventSubscription[];
-  eventAttendances: LegacyEventAttendance[];
-  eventLecturers: LegacyEventLecturer[];
-  skippedMajorSubscriptions: number;
-  skippedEventSubscriptions: number;
-  skippedAttendances: number;
-  skippedLecturers: number;
-}
-
-export interface QueryResult<Row> {
-  rows: Row[];
-}
-
-export interface LegacyPostgresClient {
-  query<Row = unknown>(query: string, values?: readonly unknown[]): Promise<QueryResult<Row>>;
-  end?(): Promise<void>;
 }
 
 const SQL_NUMBER_PATTERN = /^-?\d+(?:\.\d+)?$/;
@@ -513,6 +389,23 @@ export function decimalToInt(rawValue: unknown): number | null {
   }
 }
 
+/** Convert a nonnegative legacy BRL decimal value to integer centavos. */
+export function decimalToCents(rawValue: unknown): number | null {
+  if (rawValue == null) {
+    return null;
+  }
+  const match = /^(\d+)(?:\.(\d{1,2}))?$/u.exec(String(rawValue).trim());
+  if (!match) {
+    return null;
+  }
+  try {
+    const cents = BigInt(match[1] ?? '0') * 100n + BigInt((match[2] ?? '').padEnd(2, '0') || '0');
+    return cents <= 2_147_483_647n ? Number(cents) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function coerceText(value: unknown, { fixMojibake = false }: { fixMojibake?: boolean } = {}): string | null {
   if (value == null) {
     return null;
@@ -619,10 +512,6 @@ export function buildPrefixedId(prefix: string, ...parts: unknown[]): string {
   return `${prefix}${joined}`;
 }
 
-export function deterministicPrefixedId(prefix: string, seed: string): string {
-  return `${prefix}${createUuidV5(seed, '')}`;
-}
-
 export function normalizeIdPart(value: unknown): string {
   const text = coerceText(value, { fixMojibake: true }) ?? '';
   return text.replace(/[^a-zA-Z0-9_.-]+/gu, '-').replace(/^-+|-+$/gu, '');
@@ -631,252 +520,3 @@ export function normalizeIdPart(value: unknown): string {
 export function utcNow(): Date {
   return new Date();
 }
-
-export async function writeLegacySqlPayload(
-  databaseOrClient: string | LegacyPostgresClient,
-  payload: LegacyImportPayload,
-): Promise<void> {
-  const ownsClient = typeof databaseOrClient === 'string';
-  const db = (ownsClient ? await connectPostgres(databaseOrClient) : databaseOrClient) as LegacyPostgresClient;
-  const events = payload.events.map((event) => ({
-    ...event,
-    ...normalizeWgs84Coordinates(event.latitude, event.longitude, `event ${event.id}`),
-  }));
-  try {
-    await db.query('BEGIN');
-    const { oldPersonIdToExternalRef, resolvedPersonIdByExternalRef } = await reconcilePeopleIdsWithDatabase(
-      db,
-      payload.people,
-    );
-    rebindPeopleForeignKeys(payload, oldPersonIdToExternalRef, resolvedPersonIdByExternalRef);
-
-    await insertRows(
-      db,
-      `INSERT INTO major_events
-        (id, name, "startDate", "endDate", description, "isPaymentRequired", "createdAt", "updatedAt")
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-       ON CONFLICT (id) DO UPDATE SET
-         name=EXCLUDED.name, "startDate"=EXCLUDED."startDate", "endDate"=EXCLUDED."endDate",
-         description=EXCLUDED.description, "isPaymentRequired"=EXCLUDED."isPaymentRequired", "updatedAt"=EXCLUDED."updatedAt"`,
-      payload.majorEvents,
-      (row) => [
-        row.id,
-        row.name,
-        row.startDate,
-        row.endDate,
-        row.description,
-        row.isPaymentRequired,
-        row.createdAt,
-        row.updatedAt,
-      ],
-    );
-    await insertRows(
-      db,
-      `INSERT INTO event_groups (id, name, "createdAt", "updatedAt")
-       VALUES ($1,$2,$3,$4)
-       ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, "updatedAt"=EXCLUDED."updatedAt"`,
-      payload.eventGroups,
-      (row) => [row.id, row.name, row.createdAt, row.updatedAt],
-    );
-    await insertRows(
-      db,
-      `INSERT INTO events
-        (id, name, "creditMinutes", "startDate", "endDate", type, emoji, description, "shortDescription",
-         latitude, longitude, "locationDescription", "majorEventId", "eventGroupId", "allowSubscription", slots,
-         "shouldIssueCertificate", "shouldCollectAttendance", "isOnlineAttendanceAllowed", "onlineAttendanceCode",
-         "onlineAttendanceStartDate", "onlineAttendanceEndDate", "isPubliclyListed", "youtubeCode", "buttonText",
-         "buttonLink", "createdAt", "createdById", "updatedAt")
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29)
-       ON CONFLICT (id) DO UPDATE SET
-         name=EXCLUDED.name, "creditMinutes"=EXCLUDED."creditMinutes", "startDate"=EXCLUDED."startDate",
-         "endDate"=EXCLUDED."endDate", type=EXCLUDED.type, emoji=EXCLUDED.emoji, description=EXCLUDED.description,
-         "shortDescription"=EXCLUDED."shortDescription", latitude=EXCLUDED.latitude, longitude=EXCLUDED.longitude,
-         "locationDescription"=EXCLUDED."locationDescription", "majorEventId"=EXCLUDED."majorEventId",
-         "eventGroupId"=EXCLUDED."eventGroupId", "allowSubscription"=EXCLUDED."allowSubscription", slots=EXCLUDED.slots,
-         "shouldIssueCertificate"=EXCLUDED."shouldIssueCertificate", "shouldCollectAttendance"=EXCLUDED."shouldCollectAttendance",
-         "isOnlineAttendanceAllowed"=EXCLUDED."isOnlineAttendanceAllowed", "onlineAttendanceCode"=EXCLUDED."onlineAttendanceCode",
-         "onlineAttendanceStartDate"=EXCLUDED."onlineAttendanceStartDate", "onlineAttendanceEndDate"=EXCLUDED."onlineAttendanceEndDate",
-         "isPubliclyListed"=EXCLUDED."isPubliclyListed", "youtubeCode"=EXCLUDED."youtubeCode", "buttonText"=EXCLUDED."buttonText",
-         "buttonLink"=EXCLUDED."buttonLink", "updatedAt"=EXCLUDED."updatedAt"`,
-      events,
-      (row) => [
-        row.id,
-        row.name,
-        row.creditMinutes,
-        row.startDate,
-        row.endDate,
-        row.type,
-        row.emoji,
-        row.description,
-        row.shortDescription,
-        row.latitude,
-        row.longitude,
-        row.locationDescription,
-        row.majorEventId,
-        row.eventGroupId,
-        row.allowSubscription,
-        row.slots,
-        row.shouldIssueCertificate,
-        row.shouldCollectAttendance,
-        row.isOnlineAttendanceAllowed,
-        row.onlineAttendanceCode,
-        row.onlineAttendanceStartDate,
-        row.onlineAttendanceEndDate,
-        row.isPubliclyListed,
-        row.youtubeCode,
-        row.buttonText,
-        row.buttonLink,
-        row.createdAt,
-        row.createdById,
-        row.updatedAt,
-      ],
-    );
-    await insertRows(
-      db,
-      `INSERT INTO people
-        (id, name, email, "identityDocument", "academicId", "externalRef", "createdAt", "updatedAt")
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-       ON CONFLICT ("externalRef") DO UPDATE SET
-         name=EXCLUDED.name, email=EXCLUDED.email, "identityDocument"=EXCLUDED."identityDocument",
-         "academicId"=EXCLUDED."academicId", "updatedAt"=EXCLUDED."updatedAt"`,
-      payload.people,
-      (row) => [
-        row.id,
-        row.name,
-        row.email,
-        row.identityDocument,
-        row.academicId,
-        row.externalRef,
-        row.createdAt,
-        row.updatedAt,
-      ],
-    );
-    await insertRows(
-      db,
-      `INSERT INTO major_event_subscriptions
-        (id, "majorEventId", "personId", "amountPaid", "paymentDate", "paymentTier", "subscriptionStatus", "createdAt", "createdById")
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-       ON CONFLICT (id) DO UPDATE SET
-         "majorEventId"=EXCLUDED."majorEventId", "personId"=EXCLUDED."personId", "amountPaid"=EXCLUDED."amountPaid",
-         "paymentDate"=EXCLUDED."paymentDate", "paymentTier"=EXCLUDED."paymentTier", "subscriptionStatus"=EXCLUDED."subscriptionStatus",
-         "createdAt"=EXCLUDED."createdAt", "createdById"=EXCLUDED."createdById"`,
-      payload.majorEventSubscriptions,
-      (row) => [
-        row.id,
-        row.majorEventId,
-        row.personId,
-        row.amountPaid,
-        row.paymentDate,
-        row.paymentTier,
-        row.subscriptionStatus,
-        row.createdAt,
-        row.createdById,
-      ],
-    );
-    await insertRows(
-      db,
-      `INSERT INTO event_subscriptions (id, "eventId", "personId", "createdAt", "createdById")
-       VALUES ($1,$2,$3,$4,$5)
-       ON CONFLICT (id) DO UPDATE SET "eventId"=EXCLUDED."eventId", "personId"=EXCLUDED."personId",
-         "createdAt"=EXCLUDED."createdAt", "createdById"=EXCLUDED."createdById"`,
-      payload.eventSubscriptions,
-      (row) => [row.id, row.eventId, row.personId, row.createdAt, row.createdById],
-    );
-    await insertRows(
-      db,
-      `INSERT INTO event_attendances ("personId", "eventId", "attendedAt", "createdAt", "createdById")
-       VALUES ($1,$2,$3,$4,$5)
-       ON CONFLICT ("personId", "eventId") DO UPDATE SET "attendedAt"=EXCLUDED."attendedAt",
-         "createdAt"=EXCLUDED."createdAt", "createdById"=EXCLUDED."createdById"`,
-      payload.eventAttendances,
-      (row) => [row.personId, row.eventId, row.attendedAt, row.createdAt, row.createdById],
-    );
-    await insertRows(
-      db,
-      `INSERT INTO event_lecturers ("eventId", "personId", "createdAt", "createdById")
-       VALUES ($1,$2,$3,$4)
-       ON CONFLICT ("eventId", "personId") DO UPDATE SET "createdAt"=EXCLUDED."createdAt", "createdById"=EXCLUDED."createdById"`,
-      payload.eventLecturers,
-      (row) => [row.eventId, row.personId, row.createdAt, row.createdById],
-    );
-    await db.query('COMMIT');
-  } catch (error) {
-    await db.query('ROLLBACK').catch(() => undefined);
-    throw error;
-  } finally {
-    if (ownsClient) {
-      await db.end?.();
-    }
-  }
-}
-
-async function insertRows<Row>(
-  db: LegacyPostgresClient,
-  query: string,
-  rows: readonly Row[],
-  valuesForRow: (row: Row) => readonly unknown[],
-): Promise<void> {
-  for (const row of rows) {
-    await db.query(query, valuesForRow(row));
-  }
-}
-
-export async function reconcilePeopleIdsWithDatabase(
-  db: LegacyPostgresClient,
-  peopleRows: LegacyPerson[],
-): Promise<{
-  oldPersonIdToExternalRef: Map<string, string>;
-  resolvedPersonIdByExternalRef: Map<string, string>;
-}> {
-  const oldPersonIdToExternalRef = new Map(peopleRows.map((row) => [String(row.id), row.externalRef]));
-  const resolvedPersonIdByExternalRef = new Map(peopleRows.map((row) => [row.externalRef, row.id]));
-  const externalRefs = [...resolvedPersonIdByExternalRef.keys()];
-  if (externalRefs.length) {
-    const result = await db.query<{ id: string; externalRef: string }>(
-      'SELECT id, "externalRef" FROM people WHERE "externalRef" = ANY($1::text[])',
-      [externalRefs],
-    );
-    for (const row of result.rows) {
-      resolvedPersonIdByExternalRef.set(String(row.externalRef), String(row.id));
-    }
-  }
-  for (const row of peopleRows) {
-    const resolvedPersonId = resolvedPersonIdByExternalRef.get(row.externalRef);
-    if (!resolvedPersonId) {
-      throw new Error(`Missing resolved personId for externalRef '${row.externalRef}'.`);
-    }
-    row.id = resolvedPersonId;
-  }
-  return { oldPersonIdToExternalRef, resolvedPersonIdByExternalRef };
-}
-
-export function rebindPeopleForeignKeys(
-  payload: LegacyImportPayload,
-  oldPersonIdToExternalRef: ReadonlyMap<string, string>,
-  resolvedPersonIdByExternalRef: ReadonlyMap<string, string>,
-): void {
-  const collections: ReadonlyArray<ReadonlyArray<{ personId: string }>> = [
-    payload.majorEventSubscriptions,
-    payload.eventSubscriptions,
-    payload.eventAttendances,
-    payload.eventLecturers,
-  ];
-  for (const rows of collections) {
-    for (const row of rows) {
-      if (typeof row.personId !== 'string') {
-        throw new Error('Unexpected personId type while rebinding references.');
-      }
-      const externalRef = oldPersonIdToExternalRef.get(row.personId);
-      if (!externalRef) {
-        throw new Error(`Missing externalRef mapping for personId '${row.personId}'.`);
-      }
-      const resolvedPersonId = resolvedPersonIdByExternalRef.get(externalRef);
-      if (!resolvedPersonId) {
-        throw new Error(`Missing resolved personId for externalRef '${externalRef}'.`);
-      }
-      row.personId = resolvedPersonId;
-    }
-  }
-}
-
-export { createUuidV7 };

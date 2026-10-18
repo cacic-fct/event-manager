@@ -10,6 +10,8 @@ import {
   EventFormSigilo,
   EventFormTargetType,
   EventType,
+  EventTicketIssueSource,
+  EventTicketStatus,
   PriceType,
   SportsAthleteIdentifierMode,
   SportsFormat,
@@ -34,6 +36,8 @@ type TransferEnumField = {
 
 const transferEnumFields: TransferEnumField[] = [
   { kind: 'event', field: 'type', generatedEnum: EventType },
+  { kind: 'event-ticket', field: 'source', generatedEnum: EventTicketIssueSource },
+  { kind: 'event-ticket', field: 'status', generatedEnum: EventTicketStatus },
   { kind: 'event', field: 'audience', generatedEnum: EventAudience },
   { kind: 'event', field: 'attendanceEligibility', generatedEnum: AttendanceEligibility },
   { kind: 'group', field: 'audience', generatedEnum: EventAudience },

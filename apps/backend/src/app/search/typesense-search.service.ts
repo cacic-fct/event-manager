@@ -305,21 +305,28 @@ export class TypesenseSearchService implements OnModuleInit {
     await this.reindexEventsByEventGroupId(id, throwOnError);
   }
 
-  async upsertPerson(input: {
-    id: string;
-    name: string;
-    email?: string | null;
-    secondaryEmails?: string[];
-    phone?: string | null;
-    identityDocument?: string | null;
-    academicId?: string | null;
-    userId?: string | null;
-  }): Promise<void> {
-    await this.upsertDocument<PersonSearchDocument>(TYPESENSE_COLLECTIONS.people, toPersonSearchDocument(input));
+  async upsertPerson(
+    input: {
+      id: string;
+      name: string;
+      email?: string | null;
+      secondaryEmails?: string[];
+      phone?: string | null;
+      identityDocument?: string | null;
+      academicId?: string | null;
+      userId?: string | null;
+    },
+    throwOnError = false,
+  ): Promise<void> {
+    await this.upsertDocument<PersonSearchDocument>(
+      TYPESENSE_COLLECTIONS.people,
+      toPersonSearchDocument(input),
+      throwOnError,
+    );
   }
 
-  async deletePerson(id: string): Promise<void> {
-    await this.deleteDocument(TYPESENSE_COLLECTIONS.people, id);
+  async deletePerson(id: string, throwOnError = false): Promise<void> {
+    await this.deleteDocument(TYPESENSE_COLLECTIONS.people, id, throwOnError);
   }
 
   async upsertPlacePreset(

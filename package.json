@@ -4,7 +4,7 @@
   "license": "AGPL-3.0-only",
   "scripts": {
     "build:packages": "bunx nx run-many --target=build --projects=event-manager-m2m-contracts,event-manager-public-contracts",
-    "build:data-import": "bunx tsc -p tools/data-import/tsconfig.build.json",
+    "build:data-import": "node tools/data-import/build.mjs",
     "data-import": "node tools/data-import/index.mts",
     "data-import:built": "node dist/tools/data-import/index.mjs",
     "e2e:backend:keycloak": "bunx nx run backend-e2e:e2e-keycloak",
@@ -14,7 +14,8 @@
     "publish:packages": "bun run publish:event-manager-m2m-contracts && bun run publish:event-manager-public-contracts",
     "storybook:quality": "node --test tools/storybook-library-stories.test.mjs tools/storybook-quality-audit.test.mjs && node tools/storybook-quality-audit.mjs",
     "storybook:test-controls": "bunx playwright test --config=tools/storybook-playwright.config.mjs",
-    "test:data-import": "node --test tools/data-import/*.test.mts tools/data-import/lib/*.test.mts",
+    "test:data-import": "node --test tools/data-import/*.test.mts tools/data-import/lib/*.test.mts tools/evcomp-import/*.test.mjs",
+    "lint:data-import": "bunx eslint tools/data-import/*.mjs tools/data-import/*.mts tools/data-import/lib/*.mts tools/evcomp-import/*.mjs",
     "test:prisma-migrations": "PRISMA_MIGRATION_INTEGRATION_TEST=1 bun tools/prisma-migration-integrity.test.mts",
     "test:attendance-access-migration": "node --test tools/attendance-access-migration.test.mts",
     "test:ticketing:database": "node tools/run-ticketing-database-tests.mjs",
@@ -91,6 +92,7 @@
     "detectincognitojs": "^1.9.0",
     "dexie": "^4.4.6",
     "dompurify": "^3.4.15",
+    "dotenv": "16.4.7",
     "echarts": "^6.1.0",
     "express": "^5.2.1",
     "github-markdown-css": "^5.9.0",
@@ -108,6 +110,7 @@
     "passport-oauth2": "^1.8.0",
     "pg": "^8.23.0",
     "playwright": "^1.63.0",
+    "prisma": "^7.10.0",
     "redis": "^5.12.1",
     "reflect-metadata": "^0.1.14",
     "rxjs": "~7.8.2",
@@ -188,7 +191,6 @@
     "msw-storybook-addon": "^2.0.7",
     "nx": "23.2.1",
     "prettier": "~3.6.2",
-    "prisma": "^7.10.0",
     "prisma-erd-generator": "^2.5.0",
     "puppeteer": "^25.10.0",
     "storybook": "^10.6.0",
@@ -205,7 +207,8 @@
     "workbox-expiration": "^7.4.1",
     "workbox-precaching": "^7.4.1",
     "workbox-routing": "^7.4.1",
-    "workbox-strategies": "^7.4.1"
+    "workbox-strategies": "^7.4.1",
+    "yaml": "^2.9.0"
   },
   "msw": {
     "workerDirectory": [

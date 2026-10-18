@@ -1,14 +1,11 @@
 ---
-title: Landing (index)
+title: Landing
 ---
 
-A página de _landing_ é necessária para receber aval do Google Cloud para utilização do OAuth.
+A página inicial pública apresenta o CACiC Eventos e permite escolher entre entrar no aplicativo ou explorar a programação.
 
-Ela deve conter informações sobre o projeto.
+Pessoas que já estão autenticadas e abrem a página inicial são encaminhadas à tela indicada para sua conta. Notificações não lidas ou um fluxo esportivo associado à conta também podem alterar o destino, de forma dinâmica.
 
-Devem-se redirecionar automaticamente os usuários logados para a página do calendário.
+## Demonstrações
 
-## Quirk
-
-Para que as abas continuem na raiz do caminho (`/calendario`), a página de _landing_ está na rota das abas.  
-O componente tab-bar contém um CSS que esconde os elementos com base na rota atual.
+As demonstrações usam dados de exemplo e servem para conhecer o aplicativo.

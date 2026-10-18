@@ -87,6 +87,8 @@ A permissão comum continua necessária. Além dela, a pessoa precisa estar auto
 
 Use esse acesso apenas para correções justificadas. Mudanças tardias podem afetar inscrições, presenças, resultados esportivos, comprovantes e certificados já emitidos.
 
+Em [Dados JSON](./Dados%20JSON.md), exportar, importar e desfazer têm permissões separadas. Cada linha continua sujeita às permissões do recurso e ao seu escopo; liberar a transferência não libera acesso a todos os dados do arquivo.
+
 ## Quando o acesso não funciona
 
 Confira a cadeia inteira:

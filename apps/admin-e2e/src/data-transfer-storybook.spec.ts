@@ -249,12 +249,13 @@ test.describe('JSON transfer Storybook with real HttpClient and MSW', () => {
     expect(focusState.buttonFocused, JSON.stringify(focusState)).toBe(true);
   });
 
-  test('exports major-event and child participation independently from its hierarchy', async () => {
+  test('exports tickets and child participation independently from its hierarchy', async () => {
     const page = await openTransferStory('connected-api-scoped');
     await page.getByRole('checkbox', { name: 'Incluir eventos e grupos filhos', exact: true }).click();
     await page.getByRole('checkbox', { name: 'Incluir inscrições deste grande evento', exact: true }).click();
     await page.getByRole('checkbox', { name: 'Incluir inscrições dos eventos e grupos filhos', exact: true }).click();
     await page.getByRole('checkbox', { name: 'Incluir presenças dos eventos filhos', exact: true }).click();
+    await page.getByRole('checkbox', { name: 'Incluir bilhetes', exact: true }).click();
 
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Exportar JSON', exact: true }).click();
@@ -269,6 +270,7 @@ test.describe('JSON transfer Storybook with real HttpClient and MSW', () => {
       includeAttendances: false,
       includeChildSubscriptions: true,
       includeChildAttendances: true,
+      includeTickets: true,
     });
   });
 

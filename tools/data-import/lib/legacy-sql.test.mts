@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 import {
-  deterministicPrefixedId,
+  decimalToCents,
   decimalToInt,
   normalizePersonName,
   parseInsertRowsByTable,
@@ -14,9 +14,7 @@ import {
   parseMysqlTime,
   parseSqlLiteral,
   parseValuesBlock,
-  writeLegacySqlPayload,
 } from './legacy-sql.mts';
-import type { LegacyImportPayload, LegacyPostgresClient } from './legacy-sql.mts';
 
 test('parses quoted parentheses, commas, escapes, and NULL values', () => {
   assert.deepEqual(parseValuesBlock("(1,'Ana (teste), D\\'Ávila',NULL),(2,'a''b',-3.50)"), [
@@ -49,17 +47,14 @@ test('reads expected INSERT tables and ignores malformed row widths', async () =
 });
 
 test('parses MySQL temporal values as UTC and normalizes legacy names', () => {
-  assert.equal(parseMysqlDate('2026-08-16')?.toISOString(), '2026-08-16T00:00:00.000Z');
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() - 30);
+  const dateText = date.toISOString().slice(0, 10);
+  const dateTimeText = `${dateText} 14:30:00`;
+  assert.equal(parseMysqlDate(dateText)?.toISOString(), `${dateText}T00:00:00.000Z`);
   assert.deepEqual(parseMysqlTime('14:30'), { hours: 14, minutes: 30, seconds: 0 });
-  assert.equal(parseMysqlDatetime('2026-08-16 14:30:00')?.toISOString(), '2026-08-16T14:30:00.000Z');
+  assert.equal(parseMysqlDatetime(dateTimeText)?.toISOString(), `${dateText}T14:30:00.000Z`);
   assert.equal(normalizePersonName('MARIA DA SILVA II'), 'Maria da Silva II');
-});
-
-test('keeps the old URL-namespace UUIDv5 seed contract', () => {
-  assert.equal(
-    deterministicPrefixedId('SYCOMPP-1-', 'legacy1-major-sub:1:2'),
-    'SYCOMPP-1-49fb14d1-1ed1-57c1-9e8c-7d3599764c8d',
-  );
 });
 
 test('truncates decimal text without floating-point rounding', () => {
@@ -67,41 +62,13 @@ test('truncates decimal text without floating-point rounding', () => {
   assert.equal(decimalToInt('9007199254740992'), null);
 });
 
-test('commits successful writes and rolls back failed writes with an injected client', async () => {
-  const emptyPayload: LegacyImportPayload = {
-    majorEvents: [],
-    eventGroups: [],
-    events: [],
-    people: [],
-    majorEventSubscriptions: [],
-    eventSubscriptions: [],
-    eventAttendances: [],
-    eventLecturers: [],
-    skippedMajorSubscriptions: 0,
-    skippedEventSubscriptions: 0,
-    skippedAttendances: 0,
-    skippedLecturers: 0,
-  };
-  const successfulQueries: string[] = [];
-  const successfulClient: LegacyPostgresClient = {
-    async query(text: string) {
-      successfulQueries.push(text);
-      return { rows: [] };
-    },
-  };
-  await writeLegacySqlPayload(successfulClient, structuredClone(emptyPayload));
-  assert.deepEqual(successfulQueries, ['BEGIN', 'COMMIT']);
-
-  const failedQueries: string[] = [];
-  const failedClient: LegacyPostgresClient = {
-    async query(text: string) {
-      failedQueries.push(text);
-      if (text === 'COMMIT') {
-        throw new Error('commit failed');
-      }
-      return { rows: [] };
-    },
-  };
-  await assert.rejects(writeLegacySqlPayload(failedClient, structuredClone(emptyPayload)), /commit failed/);
-  assert.deepEqual(failedQueries, ['BEGIN', 'COMMIT', 'ROLLBACK']);
+test('converts BRL amounts to integer centavos without truncating decimals', () => {
+  assert.equal(decimalToCents('0'), 0);
+  assert.equal(decimalToCents('50'), 5000);
+  assert.equal(decimalToCents('19.9'), 1990);
+  assert.equal(decimalToCents('19.99'), 1999);
+  assert.equal(decimalToCents('21474836.47'), 2147483647);
+  assert.equal(decimalToCents('1.999'), null);
+  assert.equal(decimalToCents('-1.00'), null);
+  assert.equal(decimalToCents('21474836.48'), null);
 });

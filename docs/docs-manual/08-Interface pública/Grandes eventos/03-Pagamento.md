@@ -4,6 +4,10 @@ title: Pagamento
 
 A página de pagamento mostra valor, status da inscrição, dados bancários e envio de comprovante para grandes eventos pagos.
 
+## Bilhetes adicionais
+
+Quando houver uma oferta para sua inscrição, ela aparece como **Bilhetes adicionais**. A compra usa os dados de pagamento do grande evento e exige o envio de um comprovante para análise. A aprovação libera o bilhete na Carteira; a recusa exibe o motivo. Consulte [Bilhetes](../Perfil/Bilhetes.md) para conferir os critérios, o prazo e a transferência de titularidade.
+
 ## Valor
 
 O valor exibido depende da faixa de pagamento escolhida na inscrição.

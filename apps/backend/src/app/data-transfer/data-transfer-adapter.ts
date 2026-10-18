@@ -5,6 +5,9 @@ import type {
   TransferResourceKind,
   TransferChange,
   TransferTarget,
+  TransferPersonDecision,
+  TransferPersonPrompt,
+  TransferPersonData,
   ResolvedTransferDocument,
 } from '@cacic-fct/shared-data-transfer';
 import type { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -37,6 +40,7 @@ export interface TransferAdapterContext {
   actor: AuthenticatedUser;
   document: ResolvedTransferDocument;
   requestedScope?: TransferTarget;
+  personDecisions?: readonly TransferPersonDecision[];
   frozenResources: FrozenResourceService;
 }
 
@@ -54,6 +58,13 @@ export interface ResolvedTransferResource {
   revision: string | null;
   /** Canonical target identity when source IDs resolve to an existing natural key. */
   identityKey?: string;
+  personPrompt?: TransferPersonPrompt;
+  personCreation?: { id: string; data: TransferPersonData & { name: string } };
+  personMerge?: {
+    id: string;
+    revision: string;
+    data: { secondaryEmails: string[]; phone?: string; identityDocument?: string; academicId?: string };
+  };
   /** Actual database ID when an external participation row resolves by its natural key. */
   resolvedId?: string;
   scope: TransferAuthorizationScope;

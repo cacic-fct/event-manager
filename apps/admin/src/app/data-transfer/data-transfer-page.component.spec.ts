@@ -14,6 +14,7 @@ import {
   type TransferUndoResult,
 } from '@cacic-fct/shared-data-transfer';
 import { DataTransferApiService } from './data-transfer-api.service';
+import { TransferPersonReviewComponent } from './transfer-person-review.component';
 import { DataTransferPageComponent } from './data-transfer-page.component';
 import {
   createTransferPreviewFixture,
@@ -573,9 +574,31 @@ describe('DataTransferPageComponent', () => {
       includeConfiguration: true,
       includeSubscriptions: true,
       includeAttendances: false,
+      includeTickets: false,
       includeChildSubscriptions: true,
       includeChildAttendances: true,
     });
+  });
+
+  it('exports all ticket states only after the organizer selects tickets', async () => {
+    granted.set(new Set([Permission.DataTransfer.Export, Permission.MajorEvent.Read, Permission.Ticket.Read]));
+    fixture.detectChanges();
+    const picker = fixture.debugElement.query(By.directive(EventContextPickerComponent))
+      .componentInstance as EventContextPickerComponent;
+    picker.choose(contextStoryMajor);
+    fixture.detectChanges();
+    toggleCheckbox('Incluir bilhetes');
+    clickButton('Exportar JSON');
+    await fixture.whenStable();
+    expect(api.export).toHaveBeenCalledWith(
+      expect.objectContaining({ includeTickets: true, includeSubscriptions: false, includeAttendances: false }),
+    );
+    granted.set(new Set([Permission.DataTransfer.Export, Permission.MajorEvent.Read]));
+    fixture.detectChanges();
+    const checkbox = fixture.debugElement
+      .queryAll(By.css('mat-checkbox'))
+      .find((element) => element.nativeElement.textContent.includes('Incluir bilhetes'));
+    expect(checkbox?.componentInstance.disabled).toBe(true);
   });
 
   it('keeps export available after a server failure so the user can retry', async () => {
@@ -777,6 +800,42 @@ describe('DataTransferPageComponent', () => {
       ),
     ).toBe(false);
   });
+
+  it.each(['create', 'skip', 'merge'] as const)(
+    'collects a person %s choice and requires a new full preview before applying',
+    async (action) => {
+      const initial = {
+        ...createTransferPreviewFixture(),
+        canApply: false,
+        personPrompts: [{ key: 'a'.repeat(64), data: { name: 'Ana Silva' }, message: 'Revise a pessoa.' }],
+      };
+      api.preview.mockReturnValueOnce(of(initial)).mockReturnValueOnce(of(createTransferPreviewFixture()));
+      setJsonText();
+      clickButton('Revisar importação');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(findButton('Aplicar alterações').disabled).toBe(true);
+      const review = fixture.debugElement.query(By.directive(TransferPersonReviewComponent))
+        .componentInstance as TransferPersonReviewComponent;
+      const decision =
+        action === 'skip'
+          ? { key: 'a'.repeat(64), action }
+          : action === 'merge'
+            ? { key: 'a'.repeat(64), action, personId: 'person-1', data: { email: 'ana@example.com' } }
+            : { key: 'a'.repeat(64), action, data: { email: 'ana@example.com' } };
+      review.decision.emit(decision);
+      fixture.detectChanges();
+      expect(api.apply).not.toHaveBeenCalled();
+      expect(fixture.nativeElement.querySelector('.review-section')).toBeNull();
+      clickButton('Revisar importação');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(api.preview).toHaveBeenNthCalledWith(2, expect.objectContaining({ personDecisions: [decision] }));
+      clickButton('Aplicar alterações');
+      await fixture.whenStable();
+      expect(api.apply.mock.calls[0][0]).toMatchObject({ personDecisions: [decision] });
+    },
+  );
 
   it('uses only the user’s authorized transfer action', () => {
     granted.set(new Set([Permission.DataTransfer.Export, Permission.Event.Read]));

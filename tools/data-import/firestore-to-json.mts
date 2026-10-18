@@ -2,8 +2,9 @@
 
 import { readFileSync } from 'node:fs';
 import process from 'node:process';
-import { connectPostgres, databaseUrlFromOptions, isMain, normalizeWgs84Coordinates } from './lib/common.mts';
+import { isMain, normalizeWgs84Coordinates } from './lib/common.mts';
 import { createUuidV5 } from './lib/ids.mts';
+import { writeTransferResources, type TransferResource } from './lib/transfer.mts';
 
 export const DEFAULT_UNKNOWN_EMOJI = '❔';
 
@@ -44,16 +45,6 @@ export interface MajorEventRow {
   createdAt: Date;
   createdById: string | null;
   updatedAt: Date;
-}
-
-export interface PaymentInfoRow {
-  id: string;
-  bankName: string;
-  agency: string;
-  account: string;
-  holder: string;
-  document: string;
-  majorEventId: string;
 }
 
 export interface MajorEventPriceRow {
@@ -98,7 +89,6 @@ export interface EventRow {
   shouldIssueCertificate: boolean;
   shouldCollectAttendance: boolean;
   isOnlineAttendanceAllowed: boolean;
-  onlineAttendanceCode: string | null;
   onlineAttendanceStartDate: Date | null;
   onlineAttendanceEndDate: Date | null;
   isPubliclyListed: boolean;
@@ -130,6 +120,7 @@ export interface MajorEventSubscriptionRow {
   paymentDate: Date | null;
   paymentTier: string | null;
   subscriptionStatus: SubscriptionStatus;
+  selectedEventIds: string[];
   createdAt: Date;
   createdById: string | null;
 }
@@ -161,7 +152,6 @@ export interface EventAttendanceRow {
 
 export interface ImportPayload {
   majorEvents: MajorEventRow[];
-  paymentInfos: PaymentInfoRow[];
   majorEventPrices: MajorEventPriceRow[];
   priceTiers: PriceTierRow[];
   eventGroups: EventGroupRow[];
@@ -188,24 +178,9 @@ export interface UuidGenerator {
   forSeed(seed: string): string;
 }
 
-export interface DatabaseQueryResult {
-  rows?: readonly unknown[];
-}
-
-export interface DatabaseClient {
-  query(text: string, parameters?: readonly unknown[]): Promise<DatabaseQueryResult | void>;
-  end?: () => Promise<void>;
-}
-
 export interface FirestoreImportOptions {
   input: string;
-  databaseUrl: string;
-  dbHost: string;
-  dbPort: number;
-  dbName: string;
-  dbUser: string;
-  dbPassword: string;
-  dryRun: boolean;
+  output: string;
   help: boolean;
 }
 
@@ -221,7 +196,6 @@ interface FirestoreCollections {
 
 interface MajorEventMapping {
   majorEvents: MajorEventRow[];
-  paymentInfos: PaymentInfoRow[];
   majorEventPrices: MajorEventPriceRow[];
   priceTiers: PriceTierRow[];
   majorEventSubscriptions: MajorEventSubscriptionRow[];
@@ -413,16 +387,18 @@ export function normalizePhone(rawPhone: unknown): string | null {
   if (!digits || [...digits].every((character) => character === '0')) {
     return null;
   }
+  const international = raw.trim().startsWith('+') || digits.startsWith('00');
   if (digits.startsWith('00')) {
     digits = digits.slice(2);
   }
+  if (international) return digits.length >= 8 && digits.length <= 15 ? `+${digits}` : null;
   if (digits.startsWith('55') && [12, 13].includes(digits.length)) {
     return `+${digits}`;
   }
   if ([10, 11].includes(digits.length)) {
     return `+55${digits}`;
   }
-  return raw.trim().startsWith('+') && digits.length >= 8 ? `+${digits}` : null;
+  return null;
 }
 
 export function parseFirestoreTimestamp(value: unknown): Date | null {
@@ -643,7 +619,6 @@ export function buildPayload(
 
   return {
     majorEvents: major.majorEvents,
-    paymentInfos: major.paymentInfos,
     majorEventPrices: major.majorEventPrices,
     priceTiers: major.priceTiers,
     eventGroups: events.eventGroups,
@@ -683,11 +658,7 @@ export function buildPeopleFromUsers(
     if (!existing) {
       peopleRowsById.set(personId, {
         id: personId,
-        name:
-          coerceText(rawUser.fullName) ||
-          coerceText(rawUser.displayName) ||
-          coerceText(rawUser.email) ||
-          `Legacy User ${canonicalLegacyId}`,
+        name: coerceText(rawUser.fullName) || coerceText(rawUser.displayName) || '',
         email: coerceText(rawUser.email),
         phone: normalizePhone(rawUser.phone),
         identityDocument: normalizeIdentityDocument(rawUser.cpf),
@@ -697,6 +668,9 @@ export function buildPeopleFromUsers(
         updatedAt: fallbackNow,
       });
       continue;
+    }
+    if (!existing.name) {
+      existing.name = coerceText(rawUser.fullName) || coerceText(rawUser.displayName) || '';
     }
     if (existing.email === null) {
       existing.email = coerceText(rawUser.email);
@@ -728,7 +702,7 @@ export function resolvePersonId(
   mappings.personIds.set(legacyPersonId, generated);
   peopleRowsById.set(generated, {
     id: generated,
-    name: `Legacy Person ${legacyPersonId}`,
+    name: '',
     email: null,
     phone: null,
     identityDocument: null,
@@ -758,7 +732,6 @@ export function mapMajorEvents(
   fallbackNow: Date,
 ): MajorEventMapping {
   const majorEvents: MajorEventRow[] = [];
-  const paymentInfos: PaymentInfoRow[] = [];
   const majorEventPrices: MajorEventPriceRow[] = [];
   const priceTiers: PriceTierRow[] = [];
   const majorEventSubscriptions: MajorEventSubscriptionRow[] = [];
@@ -812,10 +785,6 @@ export function mapMajorEvents(
       updatedAt: fallbackNow,
     });
 
-    const paymentRow = buildPaymentInfoRow(majorEventId, paymentInfo, idGenerator);
-    if (paymentRow) {
-      paymentInfos.push(paymentRow);
-    }
     if (majorEventPrice) {
       majorEventPrices.push(majorEventPrice);
       priceTiers.push(...eventPriceTiers);
@@ -845,10 +814,20 @@ export function mapMajorEvents(
         id: idGenerator.forSeed(`major-event-subscription:${majorEventId}:${personId}`),
         majorEventId,
         personId,
-        amountPaid: parseInteger(payment.price),
+        amountPaid: toCents(payment.price),
         paymentDate,
         paymentTier: coerceText(rawSubscription.subscriptionType),
         subscriptionStatus: mapSubscriptionStatus(payment.status),
+        selectedEventIds: Array.isArray(rawSubscription.subscribedToEvents)
+          ? [
+              ...new Set(
+                rawSubscription.subscribedToEvents.flatMap((reference) => {
+                  const id = mappings.eventIds.get(coerceText(reference) ?? '');
+                  return id ? [id] : [];
+                }),
+              ),
+            ]
+          : [],
         createdAt: createdAtSub,
         createdById: createdByIdSub,
       });
@@ -869,7 +848,7 @@ export function mapMajorEvents(
     }
   }
 
-  return { majorEvents, paymentInfos, majorEventPrices, priceTiers, majorEventSubscriptions, majorSubEventSeeds };
+  return { majorEvents, majorEventPrices, priceTiers, majorEventSubscriptions, majorSubEventSeeds };
 }
 
 export function mergeMajorSubscriptionsFromUserRefs(
@@ -912,6 +891,7 @@ export function mergeMajorSubscriptionsFromUserRefs(
         paymentDate: null,
         paymentTier: null,
         subscriptionStatus: 'WAITING_RECEIPT_UPLOAD',
+        selectedEventIds: [],
         createdAt: fallbackNow,
         createdById: null,
       });
@@ -1024,7 +1004,6 @@ export function mapEvents(
       shouldIssueCertificate: coerceBool(rawEvent.issueCertificate),
       shouldCollectAttendance: coerceBool(rawEvent.collectAttendance),
       isOnlineAttendanceAllowed,
-      onlineAttendanceCode,
       onlineAttendanceStartDate: onlineAttendanceStart,
       onlineAttendanceEndDate: onlineAttendanceEnd,
       isPubliclyListed: true,
@@ -1270,55 +1249,28 @@ function upsertEventSubscriptionSeed(
   }
 }
 
-export function buildPaymentInfoRow(
-  majorEventId: string,
-  paymentInfo: unknown,
-  idGenerator: UuidGenerator,
-): PaymentInfoRow | null {
-  if (!isRecord(paymentInfo) || Object.keys(paymentInfo).length === 0) {
-    return null;
-  }
-  const bankName = coerceText(paymentInfo.bankName);
-  const agency = coerceText(paymentInfo.agency);
-  const account = coerceText(paymentInfo.accountNumber) || coerceText(paymentInfo.account);
-  const holder = coerceText(paymentInfo.name) || coerceText(paymentInfo.holder);
-  const document = coerceText(paymentInfo.document);
-  if (bankName === null || agency === null || account === null || holder === null || document === null) {
-    return null;
-  }
-  return {
-    id: idGenerator.forSeed(`payment-info:${majorEventId}`),
-    bankName,
-    agency,
-    account,
-    holder,
-    document,
-    majorEventId,
-  };
-}
-
 export function buildMajorEventPriceRows(
   majorEventId: string,
   rawPrice: unknown,
   idGenerator: UuidGenerator,
   createdAt: Date,
 ): [MajorEventPriceRow | null, PriceTierRow[]] {
-  let singlePrice = parseInteger(rawPrice);
-  const tiers: Array<{ name: string; value: number }> = [];
+  let singlePrice = isRecord(rawPrice) ? null : toCents(rawPrice);
+  const tiers: Array<{ sourceKey: string; name: string; value: number }> = [];
   let priceType: PriceType = 'SINGLE';
   if (isRecord(rawPrice)) {
-    singlePrice = parseInteger(rawPrice.single);
+    singlePrice = toCents(rawPrice.single);
     if (Array.isArray(rawPrice.tiers)) {
       rawPrice.tiers.forEach((rawTier, index) => {
         if (!isRecord(rawTier)) {
           return;
         }
-        const value = parseInteger(rawTier.price);
+        const value = toCents(rawTier.price);
         if (value === null) {
           return;
         }
         const tierName = coerceText(rawTier.name) || coerceText(rawTier.title) || `Faixa ${index + 1}`;
-        tiers.push({ name: tierName, value });
+        tiers.push({ sourceKey: coerceText(rawTier.id) ?? String(index), name: tierName, value });
       });
     }
     if (tiers.length > 0) {
@@ -1329,12 +1281,12 @@ export function buildMajorEventPriceRows(
     if (singlePrice === null) {
       return [null, []];
     }
-    tiers.push({ name: 'Valor único', value: singlePrice });
+    tiers.push({ sourceKey: '0', name: 'Valor único', value: singlePrice });
   }
   const priceId = idGenerator.forSeed(`major-event-price:${majorEventId}`);
   const priceRow = { id: priceId, majorEventId, type: priceType, createdAt };
-  const tierRows = tiers.map((tier, index) => ({
-    id: idGenerator.forSeed(`price-tier:${majorEventId}:${index}:${tier.name}:${tier.value}`),
+  const tierRows = tiers.map((tier) => ({
+    id: idGenerator.forSeed(`price-tier:${majorEventId}:${tier.sourceKey}`),
     priceId,
     name: tier.name,
     value: tier.value,
@@ -1346,18 +1298,19 @@ export function inferIsPaymentRequired(paymentInfo: unknown, price: unknown): bo
   if (isRecord(paymentInfo) && Object.keys(paymentInfo).length > 0) {
     return true;
   }
-  const scalarPrice = parseInteger(price);
+  const scalarPrice = isRecord(price) ? null : toCents(price);
   if (scalarPrice !== null) {
     return scalarPrice > 0;
   }
   if (isRecord(price)) {
-    const singlePrice = parseInteger(price.single);
-    if (singlePrice !== null) {
-      return singlePrice > 0;
-    }
     if (Array.isArray(price.tiers)) {
-      return price.tiers.some((tier) => isRecord(tier) && (parseInteger(tier.price) || 0) > 0);
+      const amounts = price.tiers
+        .filter(isRecord)
+        .map((tier) => toCents(tier.price))
+        .filter((value) => value !== null);
+      if (amounts.length) return amounts.some((value) => value > 0);
     }
+    return (toCents(price.single) ?? 0) > 0;
   }
   return false;
 }
@@ -1388,433 +1341,206 @@ export function mapContactInfo(rawContactInfo: unknown): [string | null, Contact
   return text === null ? [null, null] : [text, 'OTHER'];
 }
 
-async function executeMany<T>(
-  client: DatabaseClient,
-  text: string,
-  rows: readonly T[],
-  valuesForRow: (row: T) => readonly unknown[],
-): Promise<void> {
-  for (const row of rows) {
-    await client.query(text, valuesForRow(row));
-  }
+/** Firestore monetary fields are BRL; the transfer contract stores integer cents. */
+export function toCents(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const text =
+    typeof value === 'number' ? String(value) : typeof value === 'string' ? value.trim().replace(',', '.') : '';
+  if (typeof value === 'string' && !text) return null;
+  if (!/^\d+(?:\.\d{1,2})?$/.test(text)) throw new Error('Invalid BRL amount in Firestore export.');
+  const [whole = '0', fraction = ''] = text.split('.');
+  const cents = Number(whole) * 100 + Number(fraction.padEnd(2, '0'));
+  if (!Number.isSafeInteger(cents) || cents > 2147483647)
+    throw new Error('Firestore amount exceeds the supported integer range.');
+  return cents;
 }
 
-export async function writePayload(databaseOrClient: string | DatabaseClient, payload: ImportPayload): Promise<void> {
-  let client: DatabaseClient;
-  let ownsClient = false;
-  if (typeof databaseOrClient === 'string') {
-    client = (await connectPostgres(databaseOrClient)) as unknown as DatabaseClient;
-    ownsClient = true;
-  } else {
-    client = databaseOrClient;
-  }
-  await client.query('BEGIN');
-  try {
-    await executeMany(
-      client,
-      `
-      INSERT INTO major_events (
-        id, name, "startDate", "endDate", description, emoji,
-        "subscriptionStartDate", "subscriptionEndDate",
-        "maxCoursesPerAttendee", "maxLecturesPerAttendee",
-        "buttonText", "buttonLink", "contactInfo", "contactType",
-        "isPaymentRequired", "additionalPaymentInfo",
-        "createdAt", "createdById", "updatedAt"
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
-      ON CONFLICT (id) DO UPDATE SET
-        name=EXCLUDED.name, "startDate"=EXCLUDED."startDate", "endDate"=EXCLUDED."endDate",
-        description=EXCLUDED.description, emoji=EXCLUDED.emoji,
-        "subscriptionStartDate"=EXCLUDED."subscriptionStartDate",
-        "subscriptionEndDate"=EXCLUDED."subscriptionEndDate",
-        "maxCoursesPerAttendee"=EXCLUDED."maxCoursesPerAttendee",
-        "maxLecturesPerAttendee"=EXCLUDED."maxLecturesPerAttendee",
-        "buttonText"=EXCLUDED."buttonText", "buttonLink"=EXCLUDED."buttonLink",
-        "contactInfo"=EXCLUDED."contactInfo", "contactType"=EXCLUDED."contactType",
-        "isPaymentRequired"=EXCLUDED."isPaymentRequired",
-        "additionalPaymentInfo"=EXCLUDED."additionalPaymentInfo",
-        "createdById"=EXCLUDED."createdById", "updatedAt"=EXCLUDED."updatedAt"
-    `,
-      payload.majorEvents,
-      (row) => [
-        row.id,
-        row.name,
-        row.startDate,
-        row.endDate,
-        row.description,
-        row.emoji,
-        row.subscriptionStartDate,
-        row.subscriptionEndDate,
-        row.maxCoursesPerAttendee,
-        row.maxLecturesPerAttendee,
-        row.buttonText,
-        row.buttonLink,
-        row.contactInfo,
-        row.contactType,
-        row.isPaymentRequired,
-        row.additionalPaymentInfo,
-        row.createdAt,
-        row.createdById,
-        row.updatedAt,
-      ],
+export function buildTransferResources(payload: ImportPayload): {
+  resources: TransferResource[];
+  report: Record<string, unknown>;
+} {
+  const resources: TransferResource[] = [];
+  const issues: Array<{ kind: string; sourceId: string; reason: string }> = [];
+  const people = new Map(payload.people.map((person) => [person.id, person]));
+  const personReference = (personId: string, kind: string): Record<string, string> | null => {
+    const row = people.get(personId);
+    if (!row) {
+      issues.push({ kind, sourceId: personId, reason: 'missing_source_person_identifiers' });
+      return null;
+    }
+    const reference = Object.fromEntries(
+      Object.entries({
+        name: row.name,
+        email: row.email,
+        phone: row.phone,
+        identityDocument: row.identityDocument,
+        academicId: row.academicId,
+      }).filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].length > 0),
     );
-
-    await executeMany(
-      client,
-      `
-      INSERT INTO payment_info (id, "bankName", agency, account, holder, document, "majorEventId")
-      VALUES ($1,$2,$3,$4,$5,$6,$7)
-      ON CONFLICT ("majorEventId") DO UPDATE SET
-        "bankName"=EXCLUDED."bankName", agency=EXCLUDED.agency, account=EXCLUDED.account,
-        holder=EXCLUDED.holder, document=EXCLUDED.document
-    `,
-      payload.paymentInfos,
-      (row) => [row.id, row.bankName, row.agency, row.account, row.holder, row.document, row.majorEventId],
-    );
-
-    if (payload.majorEventPrices.length > 0) {
-      await client.query(
-        `
-        DELETE FROM price_tiers
-        WHERE "priceId" IN (
-          SELECT id FROM major_event_prices WHERE "majorEventId" = ANY($1::text[])
-        )
-      `,
-        [payload.majorEventPrices.map((row) => row.majorEventId)],
+    if (!row.name) issues.push({ kind, sourceId: row.externalRef, reason: 'missing_source_person_name' });
+    if (!Object.keys(reference).length) {
+      issues.push({ kind, sourceId: row.externalRef, reason: 'missing_source_person_identifiers' });
+      return null;
+    }
+    return reference;
+  };
+  function catalog(kind: string, rows: readonly { id: string }[], fields: readonly string[]) {
+    for (const row of rows) {
+      const source = row as unknown as Record<string, unknown>;
+      const data = Object.fromEntries(
+        fields.map((field) => {
+          const value = source[field];
+          return [field, value instanceof Date ? value.toISOString() : value];
+        }),
       );
-    }
-
-    await executeMany(
-      client,
-      `
-      INSERT INTO major_event_prices (id, "majorEventId", type, "createdAt")
-      VALUES ($1,$2,$3,$4)
-      ON CONFLICT ("majorEventId") DO UPDATE SET
-        id=EXCLUDED.id, type=EXCLUDED.type, "createdAt"=EXCLUDED."createdAt"
-    `,
-      payload.majorEventPrices,
-      (row) => [row.id, row.majorEventId, row.type, row.createdAt],
-    );
-
-    await executeMany(
-      client,
-      `
-      INSERT INTO price_tiers (id, "priceId", name, value)
-      VALUES ($1,$2,$3,$4)
-      ON CONFLICT (id) DO UPDATE SET
-        "priceId"=EXCLUDED."priceId", name=EXCLUDED.name, value=EXCLUDED.value
-    `,
-      payload.priceTiers,
-      (row) => [row.id, row.priceId, row.name, row.value],
-    );
-
-    await executeMany(
-      client,
-      `
-      INSERT INTO event_groups (id, name, emoji, "createdAt", "updatedAt")
-      VALUES ($1,$2,$3,$4,$5)
-      ON CONFLICT (id) DO UPDATE SET
-        name=EXCLUDED.name, emoji=EXCLUDED.emoji, "updatedAt"=EXCLUDED."updatedAt"
-    `,
-      payload.eventGroups,
-      (row) => [row.id, row.name, row.emoji, row.createdAt, row.updatedAt],
-    );
-
-    await executeMany(
-      client,
-      `
-      INSERT INTO events (
-        id, name, "creditMinutes", "startDate", "endDate", type, emoji,
-        description, "shortDescription", latitude, longitude, "locationDescription",
-        "majorEventId", "eventGroupId", "allowSubscription", slots,
-        "shouldIssueCertificate", "shouldCollectAttendance", "isOnlineAttendanceAllowed",
-        "onlineAttendanceCode", "onlineAttendanceStartDate", "onlineAttendanceEndDate",
-        "isPubliclyListed", "youtubeCode", "buttonText", "buttonLink",
-        "createdAt", "createdById", "updatedAt"
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29)
-      ON CONFLICT (id) DO UPDATE SET
-        name=EXCLUDED.name, "creditMinutes"=EXCLUDED."creditMinutes",
-        "startDate"=EXCLUDED."startDate", "endDate"=EXCLUDED."endDate", type=EXCLUDED.type,
-        emoji=EXCLUDED.emoji, description=EXCLUDED.description,
-        "shortDescription"=EXCLUDED."shortDescription", latitude=EXCLUDED.latitude,
-        longitude=EXCLUDED.longitude, "locationDescription"=EXCLUDED."locationDescription",
-        "majorEventId"=EXCLUDED."majorEventId", "eventGroupId"=EXCLUDED."eventGroupId",
-        "allowSubscription"=EXCLUDED."allowSubscription", slots=EXCLUDED.slots,
-        "shouldIssueCertificate"=EXCLUDED."shouldIssueCertificate",
-        "shouldCollectAttendance"=EXCLUDED."shouldCollectAttendance",
-        "isOnlineAttendanceAllowed"=EXCLUDED."isOnlineAttendanceAllowed",
-        "onlineAttendanceCode"=EXCLUDED."onlineAttendanceCode",
-        "onlineAttendanceStartDate"=EXCLUDED."onlineAttendanceStartDate",
-        "onlineAttendanceEndDate"=EXCLUDED."onlineAttendanceEndDate",
-        "isPubliclyListed"=EXCLUDED."isPubliclyListed", "youtubeCode"=EXCLUDED."youtubeCode",
-        "buttonText"=EXCLUDED."buttonText", "buttonLink"=EXCLUDED."buttonLink",
-        "createdById"=EXCLUDED."createdById", "updatedAt"=EXCLUDED."updatedAt"
-    `,
-      payload.events,
-      (row) => [
-        row.id,
-        row.name,
-        row.creditMinutes,
-        row.startDate,
-        row.endDate,
-        row.type,
-        row.emoji,
-        row.description,
-        row.shortDescription,
-        row.latitude,
-        row.longitude,
-        row.locationDescription,
-        row.majorEventId,
-        row.eventGroupId,
-        row.allowSubscription,
-        row.slots,
-        row.shouldIssueCertificate,
-        row.shouldCollectAttendance,
-        row.isOnlineAttendanceAllowed,
-        row.onlineAttendanceCode,
-        row.onlineAttendanceStartDate,
-        row.onlineAttendanceEndDate,
-        row.isPubliclyListed,
-        row.youtubeCode,
-        row.buttonText,
-        row.buttonLink,
-        row.createdAt,
-        row.createdById,
-        row.updatedAt,
-      ],
-    );
-
-    await executeMany(
-      client,
-      `
-      INSERT INTO people (
-        id, name, email, phone, "identityDocument", "academicId", "externalRef", "createdAt", "updatedAt"
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-      ON CONFLICT (id) DO UPDATE SET
-        name=EXCLUDED.name, email=EXCLUDED.email, phone=EXCLUDED.phone,
-        "identityDocument"=EXCLUDED."identityDocument", "academicId"=EXCLUDED."academicId",
-        "externalRef"=EXCLUDED."externalRef", "updatedAt"=EXCLUDED."updatedAt"
-    `,
-      payload.people,
-      (row) => [
-        row.id,
-        row.name,
-        row.email,
-        row.phone,
-        row.identityDocument,
-        row.academicId,
-        row.externalRef,
-        row.createdAt,
-        row.updatedAt,
-      ],
-    );
-
-    await executeMany(
-      client,
-      `
-      INSERT INTO major_event_subscriptions (
-        id, "majorEventId", "personId", "amountPaid", "paymentDate", "paymentTier",
-        "subscriptionStatus", "createdAt", "createdById"
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-      ON CONFLICT (id) DO UPDATE SET
-        "majorEventId"=EXCLUDED."majorEventId", "personId"=EXCLUDED."personId",
-        "amountPaid"=EXCLUDED."amountPaid", "paymentDate"=EXCLUDED."paymentDate",
-        "paymentTier"=EXCLUDED."paymentTier", "subscriptionStatus"=EXCLUDED."subscriptionStatus",
-        "createdAt"=EXCLUDED."createdAt", "createdById"=EXCLUDED."createdById"
-    `,
-      payload.majorEventSubscriptions,
-      (row) => [
-        row.id,
-        row.majorEventId,
-        row.personId,
-        row.amountPaid,
-        row.paymentDate,
-        row.paymentTier,
-        row.subscriptionStatus,
-        row.createdAt,
-        row.createdById,
-      ],
-    );
-
-    await executeMany(
-      client,
-      `
-      INSERT INTO event_group_subscriptions (id, "eventGroupId", "personId", "createdAt", "createdById")
-      VALUES ($1,$2,$3,$4,$5)
-      ON CONFLICT (id) DO UPDATE SET
-        "eventGroupId"=EXCLUDED."eventGroupId", "personId"=EXCLUDED."personId",
-        "createdAt"=EXCLUDED."createdAt", "createdById"=EXCLUDED."createdById"
-    `,
-      payload.eventGroupSubscriptions,
-      (row) => [row.id, row.eventGroupId, row.personId, row.createdAt, row.createdById],
-    );
-
-    await executeMany(
-      client,
-      `
-      INSERT INTO event_subscriptions (id, "eventId", "personId", "eventGroupSubscriptionId", "createdAt", "createdById")
-      VALUES ($1,$2,$3,$4,$5,$6)
-      ON CONFLICT (id) DO UPDATE SET
-        "eventId"=EXCLUDED."eventId", "personId"=EXCLUDED."personId",
-        "eventGroupSubscriptionId"=EXCLUDED."eventGroupSubscriptionId",
-        "createdAt"=EXCLUDED."createdAt", "createdById"=EXCLUDED."createdById"
-    `,
-      payload.eventSubscriptions,
-      (row) => [row.id, row.eventId, row.personId, row.eventGroupSubscriptionId, row.createdAt, row.createdById],
-    );
-
-    await executeMany(
-      client,
-      `
-      INSERT INTO event_attendances ("personId", "eventId", "attendedAt", "createdAt", "createdById")
-      VALUES ($1,$2,$3,$4,$5)
-      ON CONFLICT ("personId", "eventId") DO UPDATE SET
-        "attendedAt"=EXCLUDED."attendedAt", "createdAt"=EXCLUDED."createdAt",
-        "createdById"=EXCLUDED."createdById"
-    `,
-      payload.eventAttendances,
-      (row) => [row.personId, row.eventId, row.attendedAt, row.createdAt, row.createdById],
-    );
-
-    await client.query('COMMIT');
-  } catch (error) {
-    try {
-      await client.query('ROLLBACK');
-    } catch {
-      // Preserve the original database error.
-    }
-    throw error;
-  } finally {
-    if (ownsClient && client.end) {
-      await client.end();
+      resources.push({ kind, id: row.id, data });
     }
   }
-}
-
-function parseOptionValue(argv: readonly string[], index: number, option: string): string {
-  const value = argv[index + 1];
-  if (!value || value.startsWith('--')) {
-    throw new Error(`${option} requires a value.`);
+  catalog('major-event', payload.majorEvents, [
+    'name',
+    'startDate',
+    'endDate',
+    'description',
+    'emoji',
+    'subscriptionStartDate',
+    'subscriptionEndDate',
+    'maxCoursesPerAttendee',
+    'maxLecturesPerAttendee',
+    'buttonText',
+    'buttonLink',
+    'contactInfo',
+    'contactType',
+    'isPaymentRequired',
+    'additionalPaymentInfo',
+  ]);
+  catalog('group', payload.eventGroups, ['name', 'emoji']);
+  catalog('event', payload.events, [
+    'name',
+    'creditMinutes',
+    'startDate',
+    'endDate',
+    'type',
+    'emoji',
+    'description',
+    'shortDescription',
+    'latitude',
+    'longitude',
+    'locationDescription',
+    'majorEventId',
+    'eventGroupId',
+    'allowSubscription',
+    'slots',
+    'shouldIssueCertificate',
+    'shouldCollectAttendance',
+    'isOnlineAttendanceAllowed',
+    'onlineAttendanceStartDate',
+    'onlineAttendanceEndDate',
+    'isPubliclyListed',
+    'youtubeCode',
+    'buttonText',
+    'buttonLink',
+  ]);
+  catalog('major-event-price', payload.majorEventPrices, ['majorEventId', 'type']);
+  catalog('price-tier', payload.priceTiers, ['priceId', 'name', 'value']);
+  for (const row of payload.majorEventSubscriptions) {
+    const person = personReference(row.personId, 'major-event-subscription');
+    if (!person) continue;
+    resources.push({
+      kind: 'major-event-subscription',
+      key: row.id,
+      data: {
+        majorEventId: row.majorEventId,
+        person,
+        subscriptionStatus: row.subscriptionStatus,
+        amountPaid: row.amountPaid,
+        paymentDate: row.paymentDate?.toISOString() ?? null,
+        paymentTier: row.paymentTier,
+        selectedEventIds: row.selectedEventIds,
+        imageLicenseAgreementAccepted: false,
+      },
+    });
   }
-  return value;
+  for (const row of payload.eventGroupSubscriptions) {
+    const person = personReference(row.personId, 'group-subscription');
+    if (person)
+      resources.push({
+        kind: 'group-subscription',
+        key: row.id,
+        data: { eventGroupId: row.eventGroupId, person, imageLicenseAgreementAccepted: false },
+      });
+  }
+  for (const row of payload.eventSubscriptions) {
+    const person = personReference(row.personId, 'event-subscription');
+    if (person)
+      resources.push({
+        kind: 'event-subscription',
+        key: row.id,
+        data: { eventId: row.eventId, person, imageLicenseAgreementAccepted: false },
+      });
+  }
+  for (const row of payload.eventAttendances) {
+    const person = personReference(row.personId, 'event-attendance');
+    if (person)
+      resources.push({
+        kind: 'event-attendance',
+        key: `attendance:${row.eventId}:${row.personId}`,
+        data: { eventId: row.eventId, person, attendedAt: row.attendedAt.toISOString(), status: 'PRESENT' },
+      });
+  }
+  return {
+    resources,
+    report: {
+      source: 'firestore',
+      moneyUnit: 'integer cents converted from BRL',
+      issues,
+      generatedFallbackPeople: payload.generatedFallbackPeople,
+      unknownMajorEventRefs: payload.unknownMajorEventRefs,
+      skippedUserMajorEventRefs: payload.skippedUserMajorEventRefs,
+      skippedUserEventRefs: payload.skippedUserEventRefs,
+      limitations: [
+        'Standalone people have no transfer resource; participant identifiers accompany subscriptions and attendance.',
+        'Bank account credentials, online attendance codes, creation/audit metadata, receipt history, and original attendance categories are outside the JSON contract.',
+        'Missing-source placeholder people are omitted and listed in issues; reconcile them manually.',
+        'Events with unknown major-event references are exported without that parent; review unknownMajorEventRefs.',
+      ],
+    },
+  };
 }
 
 export function parseArgs(argv: readonly string[] = process.argv.slice(2)): FirestoreImportOptions {
-  const options: FirestoreImportOptions = {
-    input: 'import/file.json',
-    databaseUrl: '',
-    dbHost: 'localhost',
-    dbPort: 5432,
-    dbName: 'postgres',
-    dbUser: 'postgres',
-    dbPassword: 'postgres',
-    dryRun: false,
-    help: false,
-  };
+  const options = { input: 'import/file.json', output: 'import/transfers/firestore', help: false };
   for (let index = 0; index < argv.length; index += 1) {
-    const argument = argv[index];
-    if (argument === undefined) {
-      break;
-    }
-    if (argument === '--dry-run') {
-      options.dryRun = true;
-      continue;
-    }
+    const argument = argv[index] ?? '';
     if (argument === '--help' || argument === '-h') {
       options.help = true;
       continue;
     }
-    const equalsIndex = argument.indexOf('=');
-    const option = equalsIndex >= 0 ? argument.slice(0, equalsIndex) : argument;
-    const valueOptions = new Set([
-      '--input',
-      '--database-url',
-      '--db-host',
-      '--db-port',
-      '--db-name',
-      '--db-user',
-      '--db-password',
-    ]);
-    if (!valueOptions.has(option)) {
-      throw new Error(`Unknown option: ${argument}`);
-    }
-    const value = equalsIndex >= 0 ? argument.slice(equalsIndex + 1) : parseOptionValue(argv, index, option);
-    if (equalsIndex < 0) {
-      index += 1;
-    }
-    switch (option) {
-      case '--input':
-        options.input = value;
-        break;
-      case '--database-url':
-        options.databaseUrl = value;
-        break;
-      case '--db-host':
-        options.dbHost = value;
-        break;
-      case '--db-port': {
-        const parsed = Number(value);
-        if (!Number.isInteger(parsed) || parsed <= 0) {
-          throw new Error('--db-port must be a positive integer.');
-        }
-        options.dbPort = parsed;
-        break;
-      }
-      case '--db-name':
-        options.dbName = value;
-        break;
-      case '--db-user':
-        options.dbUser = value;
-        break;
-      case '--db-password':
-        options.dbPassword = value;
-        break;
-      default:
-        throw new Error(`Unknown option: ${argument}`);
-    }
+    const equals = argument.indexOf('=');
+    const flag = equals < 0 ? argument : argument.slice(0, equals);
+    if (flag !== '--input' && flag !== '--output') throw new Error(`Unknown option: ${argument}`);
+    const value = equals < 0 ? argv[++index] : argument.slice(equals + 1);
+    if (!value || value.startsWith('--')) throw new Error(`${flag} requires a value.`);
+    options[flag === '--input' ? 'input' : 'output'] = value;
   }
   return options;
-}
-
-function printPreparedRows(payload: ImportPayload): void {
-  console.log(
-    'Prepared rows -> ' +
-      `major_events=${payload.majorEvents.length}, ` +
-      `payment_infos=${payload.paymentInfos.length}, ` +
-      `major_event_prices=${payload.majorEventPrices.length}, ` +
-      `price_tiers=${payload.priceTiers.length}, ` +
-      `event_groups=${payload.eventGroups.length}, ` +
-      `events=${payload.events.length}, ` +
-      `people=${payload.people.length}, ` +
-      `major_event_subscriptions=${payload.majorEventSubscriptions.length}, ` +
-      `event_group_subscriptions=${payload.eventGroupSubscriptions.length}, ` +
-      `event_subscriptions=${payload.eventSubscriptions.length}, ` +
-      `event_attendances=${payload.eventAttendances.length}, ` +
-      `generated_fallback_people=${payload.generatedFallbackPeople}, ` +
-      `events_with_unknown_major_ref=${payload.unknownMajorEventRefs}, ` +
-      `skipped_user_major_event_refs=${payload.skippedUserMajorEventRefs}, ` +
-      `skipped_user_event_refs=${payload.skippedUserEventRefs}`,
-  );
 }
 
 export async function main(argv: readonly string[] = process.argv.slice(2)): Promise<void> {
   const options = parseArgs(argv);
   if (options.help) {
-    console.log('Usage: bun run data-import -- firestore-to-postgres [--input PATH] [--dry-run] [database options]');
+    console.log('Usage: bun run data-import -- firestore-to-json [--input PATH] [--output DIRECTORY]');
     return;
   }
-  const payload = buildPayload(options.input);
-  printPreparedRows(payload);
-  if (options.dryRun) {
-    console.log('Dry run enabled. No database changes were made.');
-    return;
-  }
-  await writePayload(databaseUrlFromOptions(options), payload);
-  console.log('Import completed.');
+  const result = buildTransferResources(buildPayload(options.input));
+  const output = await writeTransferResources(options.output, result.resources, result.report);
+  console.log(
+    `Exported ${output.files.length} JSON data files to ${output.directory}. Review manifest.json before importing.`,
+  );
 }
 
 if (isMain(import.meta.url)) {
   main().catch((error: unknown) => {
-    console.error(error instanceof Error ? error.stack || error.message : String(error));
+    console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
   });
 }

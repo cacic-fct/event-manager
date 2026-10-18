@@ -17,6 +17,8 @@ Quando a dúvida for sobre a modelagem do evento em si, consulte antes:
 - [Criar um grupo de eventos](../02-Gerenciar%20Eventos/03-Criar%20um%20grupo%20de%20eventos.md);
 - [Criar um grande evento](../02-Gerenciar%20Eventos/04-Criar%20um%20grande%20evento.md).
 
+Para exportar ou importar a estrutura de um evento em JSON, consulte [Dados JSON](./Dados%20JSON.md).
+
 ## Padrão das telas
 
 A maior parte das telas administrativas possui uma área de busca ou lista e uma área de edição ou detalhe.
@@ -28,6 +30,14 @@ O botão **Limpar** remove a seleção atual do formulário, mas não exclui o r
 O botão **Atualizar** recarrega os dados já carregados na tela.
 
 Exportações em CSV dependem dos registros carregados naquela tela. Antes de exportar, confira se o filtro, o evento ou o grande evento correto está selecionado.
+
+## Navegação por contexto
+
+O menu lateral permite alternar entre a navegação global e o trabalho em um contexto específico. Use **Escolher evento** para abrir um evento, grupo de eventos ou grande evento. O menu então mostra as operações disponíveis para esse contexto; volte a **Menu global** para acessar outras áreas do painel.
+
+Na visão geral de um grupo ou grande evento, escolha uma atividade para abrir seu próprio contexto. Os atalhos e operações exibidos variam conforme o tipo de contexto e as permissões da conta.
+
+Se houver alterações ainda não salvas, a troca de tela pode pedir confirmação para descartá-las. Salve o formulário antes de sair ou confirme o descarte somente se não precisar das alterações.
 
 ## Testes
 

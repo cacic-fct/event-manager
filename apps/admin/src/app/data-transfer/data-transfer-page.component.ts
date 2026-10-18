@@ -22,6 +22,8 @@ import {
   type TransferIssue,
   type TransferItem,
   type TransferPreview,
+  type TransferPersonDecision,
+  type TransferPersonPrompt,
   type TransferResourceKind,
   type TransferResult,
   type TransferTarget,
@@ -29,6 +31,7 @@ import {
 } from '@cacic-fct/shared-data-transfer';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom } from 'rxjs';
+import { TransferPersonReviewComponent } from './transfer-person-review.component';
 import { DataTransferApiService } from './data-transfer-api.service';
 import { EventContextPickerComponent, type EventContextRef } from '../shared/event-context-picker.component';
 import { WorkspacePendingChangesService } from '../app-shell/workspace-pending-changes.service';
@@ -56,6 +59,8 @@ const resourceLabels: Record<TransferResourceKind, string> = {
   'group-subscription': 'Inscrição em grupo de eventos',
   'major-event-subscription': 'Inscrição em grande evento',
   'event-attendance': 'Presença em evento',
+  'ticket-purchase': 'Compra avulsa de bilhete',
+  'event-ticket': 'Bilhete emitido',
 };
 
 const actionLabels: Record<TransferItem['action'], string> = {
@@ -82,6 +87,7 @@ const templateKinds: Array<{ value: TransferTarget['kind']; label: string }> = [
   selector: 'app-data-transfer-page',
   imports: [
     DatePipe,
+    TransferPersonReviewComponent,
     EventContextPickerComponent,
     MatButtonModule,
     MatCheckboxModule,
@@ -131,6 +137,7 @@ export class DataTransferPageComponent {
   protected readonly includeConfiguration = signal(true);
   protected readonly includeSubscriptions = signal(false);
   protected readonly includeAttendances = signal(false);
+  protected readonly includeTickets = signal(false);
   protected readonly includeChildSubscriptions = signal(false);
   protected readonly includeChildAttendances = signal(false);
   protected readonly jsonText = signal('');
@@ -138,6 +145,8 @@ export class DataTransferPageComponent {
   protected readonly sourceDocument = signal<ReturnType<typeof parseTransferJson> | null>(null);
   protected readonly validationIssues = signal<TransferIssue[]>([]);
   protected readonly serverIssues = signal<TransferIssue[]>([]);
+  protected readonly personPrompts = signal<TransferPersonPrompt[]>([]);
+  protected readonly personDecisions = signal<TransferPersonDecision[]>([]);
   protected readonly preview = signal<TransferPreview | null>(null);
   protected readonly result = signal<TransferResult | null>(null);
   protected readonly committedResult = signal<TransferResult | null>(null);
@@ -178,6 +187,7 @@ export class DataTransferPageComponent {
   protected readonly canImport = computed(() => this.permissions.has(Permission.DataTransfer.Import));
   protected readonly canUndoPermission = computed(() => this.permissions.has(Permission.DataTransfer.Undo));
   protected readonly canExportSubscriptions = computed(() => this.permissions.has(Permission.Subscription.Read));
+  protected readonly canExportTickets = computed(() => this.permissions.has(Permission.Ticket.Read));
   protected readonly canExportAttendances = computed(() => this.permissions.has(Permission.EventAttendance.Read));
   protected readonly canImportSubscriptions = computed(() => this.permissions.has(Permission.Subscription.Import));
   protected readonly canImportAttendances = computed(() => this.permissions.has(Permission.EventAttendance.Import));
@@ -225,6 +235,7 @@ export class DataTransferPageComponent {
       this.undoLoading() ||
       this.previewLoading() ||
       this.allocationExpired() ||
+      !!current.personPrompts?.length ||
       !this.hasImportableChanges()
     ) {
       return false;
@@ -323,12 +334,14 @@ export class DataTransferPageComponent {
       | 'includeDescendants'
       | 'includeConfiguration'
       | 'includeSubscriptions'
+      | 'includeTickets'
       | 'includeAttendances'
       | 'includeChildSubscriptions'
       | 'includeChildAttendances',
     enabled: boolean,
   ): void {
     if (this.importLocked() || this.undoLoading()) return;
+    if (option === 'includeTickets' && enabled && !this.canExportTickets()) return;
     if (option === 'includeSubscriptions' && enabled && !this.canExportSubscriptions()) {
       return;
     }
@@ -467,6 +480,7 @@ export class DataTransferPageComponent {
       includeDescendants: this.includeDescendants(),
       includeConfiguration: this.includeConfiguration(),
       includeSubscriptions: this.includeSubscriptions() && this.canExportSubscriptions(),
+      includeTickets: this.includeTickets() && this.canExportTickets(),
       includeAttendances: target.kind === 'event' && this.includeAttendances() && this.canExportAttendances(),
       includeChildSubscriptions:
         target.kind !== 'event' && this.includeChildSubscriptions() && this.canExportSubscriptions(),
@@ -508,6 +522,18 @@ export class DataTransferPageComponent {
     this.downloadJson(`modelo-cacic-${kind}.json`, template);
   }
 
+  protected choosePerson(decision: TransferPersonDecision): void {
+    if (this.importLocked() || this.previewLoading() || this.undoLoading()) return;
+    this.personDecisions.update((choices) => [...choices.filter((choice) => choice.key !== decision.key), decision]);
+    this.invalidatePreview(false);
+  }
+
+  protected editPerson(key: string): void {
+    if (this.importLocked() || !this.personDecisions().some((decision) => decision.key === key)) return;
+    this.personDecisions.update((choices) => choices.filter((choice) => choice.key !== key));
+    this.invalidatePreview(false);
+  }
+
   protected async previewImport(): Promise<void> {
     if (!this.canImport() || this.previewLoading() || this.importLocked() || this.undoLoading()) {
       return;
@@ -532,12 +558,17 @@ export class DataTransferPageComponent {
     this.previewLoading.set(true);
     try {
       const preview = await firstValueFrom(
-        this.api.preview({ document, ...(requestScope ? { scope: requestScope } : {}) }),
+        this.api.preview({
+          document,
+          ...(requestScope ? { scope: requestScope } : {}),
+          ...(this.personDecisions().length ? { personDecisions: this.personDecisions() } : {}),
+        }),
       );
       if (request !== this.previewRequest || this.destroyRef.destroyed) {
         return;
       }
       this.preview.set(preview);
+      this.personPrompts.set(preview.personPrompts ?? []);
       this.scheduleAllocationExpiry(preview.allocation?.expiresAt);
       this.offerPartialApproval.set(
         preview.items.some((item) => item.status === 'blocked' || item.action === 'skip') || preview.summary.skip > 0,
@@ -566,6 +597,7 @@ export class DataTransferPageComponent {
     const requestBody: TransferApplyRequest = {
       document,
       ...(target ? { scope: target } : {}),
+      ...(this.personDecisions().length ? { personDecisions: this.personDecisions() } : {}),
       planHash: preview.planHash,
       allowPartial: this.allowPartial(),
       ...(preview.allocation ? { allocationToken: preview.allocation.token } : {}),
@@ -920,6 +952,8 @@ export class DataTransferPageComponent {
     this.serverIssues.set([]);
     this.importSuccessMessage.set('');
     if (resetPartialApproval) {
+      this.personPrompts.set([]);
+      this.personDecisions.set([]);
       this.allowPartial.set(false);
       this.offerPartialApproval.set(false);
     }
@@ -928,6 +962,7 @@ export class DataTransferPageComponent {
   private resetParticipationOptions(): void {
     this.includeSubscriptions.set(false);
     this.includeAttendances.set(false);
+    this.includeTickets.set(false);
     this.includeChildSubscriptions.set(false);
     this.includeChildAttendances.set(false);
   }

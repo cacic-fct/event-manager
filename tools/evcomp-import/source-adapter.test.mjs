@@ -51,6 +51,7 @@ test('reads standard extended MySQL dump inserts without a live database', () =>
     INSERT INTO \`comprovante_blob\` VALUES (0xDEADBEEF);
   `;
   const snapshot = parseEvcompSqlDump(sql);
+  assert.equal(Object.hasOwn(snapshot, 'payments'), false);
   assert.equal(snapshot.people.length, 1);
   assert.deepEqual(snapshot.events, []);
   assert.deepEqual(snapshot.activities, []);
@@ -248,18 +249,78 @@ test('does not downgrade a dump with a present but incomplete event or activity 
   assert.throws(() => parseEvcompSqlDump('CREATE TABLE `atividade` (`idAtividade` int);'), /activities\.idEvento/);
 });
 
-test('reads current modality columns from the live adapter query', async () => {
+test('reads payment rows from SQL dumps while excluding proof content and paths', (t) => {
+  mock.timers.enable({ apis: ['Date'], now: new Date('2026-08-16T00:00:00.000Z') });
+  t.after(() => mock.timers.reset());
+  const sql = `
+    CREATE TABLE \`usuário\` (
+      \`idUsuário\` int, \`nome_completo\` varchar(50), \`email\` varchar(100),
+      \`ra\` char(9), \`tipo_usuario\` char(3)
+    );
+    CREATE TABLE \`inscrição\` (
+      \`idInscrição\` int, \`idEvento\` int, \`idUsuário\` int,
+      \`data_inscricao\` datetime, \`status\` tinyint
+    );
+    CREATE TABLE \`inscrição_atividade\` (\`idInscrição\` int, \`idAtividade\` int);
+    CREATE TABLE \`presença\` (
+      \`idPresença\` int, \`idAtividade\` int, \`idUsuário\` int,
+      \`data_registro\` datetime, \`presente\` tinyint
+    );
+    CREATE TABLE \`ministrante_atividade\` (\`idUsuário\` int, \`idAtividade\` int);
+    CREATE TABLE \`pagamento\` (
+      \`idPagamento\` int, \`idInscrição\` int, \`status_pagamento\` varchar(30),
+      \`data_envio\` datetime, \`data_avaliacao\` datetime,
+      \`comprovante_blob\` blob, \`caminho_comprovante\` varchar(255)
+    );
+    INSERT INTO \`pagamento\` VALUES
+      (90,10,'APROVADO','2026-08-16 15:00:00','2026-08-16 16:00:00',0xDEADBEEF,'proof-path-placeholder');
+  `;
+
+  const snapshot = parseEvcompSqlDump(sql);
+  assert.deepEqual(snapshot.payments, [
+    {
+      sourceId: 90,
+      sourceRegistrationId: 10,
+      status: 'APROVADO',
+      submittedAt: new Date('2026-08-16T18:00:00.000Z'),
+      evaluatedAt: new Date('2026-08-16T19:00:00.000Z'),
+    },
+  ]);
+  assert.equal(JSON.stringify(snapshot).includes('proof-path-placeholder'), false);
+  assert.equal(parseEvcompSqlDump(sql, {}, '+05:30').payments[0].submittedAt.toISOString(), '2026-08-16T09:30:00.000Z');
+  const emptyPaymentsSnapshot = parseEvcompSqlDump(sql.slice(0, sql.indexOf('INSERT INTO')));
+  assert.deepEqual(emptyPaymentsSnapshot.payments, []);
+});
+
+test('reports SQL dump drift when a present payments table is incomplete', () => {
+  assert.throws(
+    () => parseEvcompSqlDump('CREATE TABLE `pagamento` (`idPagamento` int);'),
+    /EvComp SQL dump schema drift detected; update sourceSchema for: payments\.idInscrição \(pagamento\)/,
+  );
+});
+
+test('reads current modality columns from the live adapter query', async (t) => {
+  mock.timers.enable({ apis: ['Date'], now: new Date('2026-08-16T00:00:00.000Z') });
+  t.after(() => mock.timers.reset());
   const availableRows = Object.entries(defaultSourceSchema).flatMap(([, section]) =>
     Object.entries(section)
       .filter(([fieldName]) => fieldName !== 'table' && fieldName !== 'includedTypes')
       .map(([, column]) => ({ tableName: section.table, columnName: column })),
   );
   const calls = [];
+  let paymentTablePresent = true;
   const connection = {
-    async query(sql) {
+    async query(sql, parameters = []) {
       calls.push(sql);
       if (sql.includes('information_schema.COLUMNS')) {
-        return [availableRows];
+        const requestedTables = parameters[0];
+        return [
+          availableRows.filter(
+            (row) =>
+              requestedTables.includes(row.tableName) &&
+              (paymentTablePresent || row.tableName !== defaultSourceSchema.payments.table),
+          ),
+        ];
       }
       if (sql.includes('FROM `evento`')) {
         return [
@@ -324,6 +385,19 @@ test('reads current modality columns from the live adapter query', async () => {
       if (sql.includes('FROM `ministrante_atividade`')) {
         return [[]];
       }
+      if (sql.includes('FROM `pagamento`')) {
+        return [
+          [
+            {
+              sourceId: 90,
+              sourceRegistrationId: 10,
+              status: 'APROVADO',
+              submittedAt: '2026-08-16 15:00:00',
+              evaluatedAt: '2026-08-16 16:00:00',
+            },
+          ],
+        ];
+      }
       if (sql.includes('FROM `usuário`')) {
         return [[{ sourceId: 1, name: 'Ana', email: 'ana@example.com', academicId: '123' }]];
       }
@@ -339,7 +413,45 @@ test('reads current modality columns from the live adapter query', async () => {
   assert.equal(snapshot.activities[0].startDate.toISOString(), '2026-08-16T11:00:00.000Z');
   assert.equal(snapshot.activities[0].durationInMinutes, 240);
   assert.deepEqual(snapshot.modalities, [{ sourceId: 7, sourceEventId: 20, name: 'Com camiseta', amount: '50.00' }]);
+  assert.deepEqual(snapshot.payments, [
+    {
+      sourceId: 90,
+      sourceRegistrationId: 10,
+      status: 'APROVADO',
+      submittedAt: new Date('2026-08-16T18:00:00.000Z'),
+      evaluatedAt: new Date('2026-08-16T19:00:00.000Z'),
+    },
+  ]);
   assert.ok(calls.some((sql) => sql.includes('LEFT JOIN `modalidade_inscricao`')));
+
+  paymentTablePresent = false;
+  const legacySnapshot = await readEvcompSnapshot(connection);
+  assert.equal(Object.hasOwn(legacySnapshot, 'payments'), false);
+});
+
+test('reports source schema drift when a present payments table is incomplete', async () => {
+  const availableRows = Object.entries(defaultSourceSchema).flatMap(([, section]) =>
+    Object.entries(section)
+      .filter(([fieldName]) => fieldName !== 'table' && fieldName !== 'includedTypes')
+      .map(([, column]) => ({ tableName: section.table, columnName: column })),
+  );
+  const incompletePaymentRows = availableRows.filter(
+    (item) =>
+      !(
+        item.tableName === defaultSourceSchema.payments.table &&
+        item.columnName === defaultSourceSchema.payments.evaluatedAt
+      ),
+  );
+  const connection = {
+    async query() {
+      return [incompletePaymentRows];
+    },
+  };
+
+  await assert.rejects(
+    validateSourceSchema(connection, defaultSourceSchema),
+    /EvComp source schema drift detected; update sourceSchema for: payments\.data_avaliacao \(pagamento\)/,
+  );
 });
 
 test('SQL dump mode reports configured schema drift before importing', () => {

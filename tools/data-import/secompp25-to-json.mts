@@ -3,8 +3,11 @@
 import process from 'node:process';
 import { resolve } from 'node:path';
 import { connectPostgres, isMain, resolveDatabaseUrlFromEnvOptions } from './lib/common.mts';
-import { readCsvFile, writeCsvAtomic } from './lib/csv.mts';
-import type { CsvDocument, CsvRow } from './lib/csv.mts';
+import { readCsvFile } from './lib/csv.mts';
+import type { CsvDocument } from './lib/csv.mts';
+import { dedupeParticipationResources } from './lib/participation.mts';
+import { writeTransferResources } from './lib/transfer.mts';
+import type { TransferResource } from './lib/transfer.mts';
 import { canonicalHeader, normalizeSpaces, normalizeTextKey } from './lib/text.mts';
 
 export const ALL_USERS_EVENT_NAMES = [
@@ -70,7 +73,7 @@ export type EventPartNumber = 1 | 2 | null;
 
 export interface Secompp25Args {
   input: string;
-  output: string;
+  outputDir: string;
   envFile: string;
   databaseUrl: string;
   eventYear: number;
@@ -117,6 +120,24 @@ interface RowPayload {
   selectedEventNames: string[];
 }
 
+export interface Secompp25TransferBuildResult {
+  resources: TransferResource[];
+  duplicateResourcesRemoved: number;
+  sameNameReferenceGroups: number;
+  rowsSkippedWithoutName: number;
+  rowsWithoutResolvedEvents: number;
+}
+
+export interface Secompp25RunResult {
+  rows: number;
+  resources: number;
+  duplicateResourcesRemoved: number;
+  sameNameReferenceGroups: number;
+  rowsSkippedWithoutName: number;
+  rowsWithoutResolvedEvents: number;
+  outputDirectory: string;
+}
+
 function isDatabaseEventRow(value: unknown): value is DatabaseEventRow {
   return (
     typeof value === 'object' &&
@@ -142,7 +163,7 @@ export class Secompp25InputError extends Error {
 export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Secompp25Args {
   const args: Secompp25Args = {
     input: 'Cópia de Inscrição SECOMPP25 (respostas) - Inscrições SECOMPP.csv',
-    output: 'import/secompp25_subscriptions.csv',
+    outputDir: 'import/transfers/secompp25',
     envFile: '.env',
     databaseUrl: '',
     eventYear: 2025,
@@ -179,7 +200,7 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Seco
           args.input = value;
           break;
         case '--output':
-          args.output = value;
+          args.outputDir = value;
           break;
         case '--env-file':
           args.envFile = value;
@@ -195,11 +216,11 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Seco
 
 export function usage() {
   return [
-    'Usage: bun run data-import -- secompp25-csv-events-to-subscriptions [options]',
+    'Usage: bun run data-import -- secompp25-to-json [options]',
     '',
     'Options:',
     '  --input <path>          Google Forms CSV input',
-    '  --output <path>         Normalized subscriptions CSV',
+    '  --output <path>         JSON transfer output directory (default: import/transfers/secompp25)',
     '  --env-file <path>       .env file containing DATABASE_URL (default: .env)',
     '  --database-url <url>    Direct PostgreSQL URL (overrides --env-file)',
     '  --event-year <year>     Event start year (default: 2025)',
@@ -555,10 +576,59 @@ function printResolutionErrors({ missingEventNames, ambiguousEventNames, eventsB
       );
     }
   }
-  process.stderr.write('ERROR: Continuing and writing CSV with only resolved event IDs.\n');
+  process.stderr.write('ERROR: Continuing with only resolved event IDs in the JSON transfer.\n');
 }
 
-export async function runSecompp25(args: Secompp25Args): Promise<CsvRow[]> {
+export function buildSecompp25TransferResources(
+  rows: readonly RowPayload[],
+  eventIdByInputName: ReadonlyMap<string, string>,
+  commonEventIds: readonly string[],
+): Secompp25TransferBuildResult {
+  const resources: TransferResource[] = [];
+  let rowsSkippedWithoutName = 0;
+  let rowsWithoutResolvedEvents = 0;
+
+  rows.forEach((row, rowIndex) => {
+    if (!row.fullName) {
+      rowsSkippedWithoutName += 1;
+      return;
+    }
+    const selectedEventIds = row.selectedEventNames.flatMap((eventName) => {
+      const eventId = eventIdByInputName.get(eventName);
+      return eventId === undefined ? [] : [eventId];
+    });
+    const eventIds = dedupePreservingOrder([...selectedEventIds, ...commonEventIds]);
+    if (eventIds.length === 0) {
+      rowsWithoutResolvedEvents += 1;
+      return;
+    }
+
+    const person = {
+      name: row.fullName,
+      ...(row.email ? { email: row.email } : {}),
+      ...(row.enrollmentNumber ? { academicId: row.enrollmentNumber } : {}),
+      ...(row.identityDocument ? { identityDocument: row.identityDocument } : {}),
+    };
+    eventIds.forEach((eventId, eventIndex) => {
+      resources.push({
+        kind: 'event-subscription',
+        key: `SECOMPP25-${rowIndex + 1}-${eventIndex + 1}`,
+        data: { eventId, person },
+      });
+    });
+  });
+
+  const deduplicated = dedupeParticipationResources(resources);
+  return {
+    resources: deduplicated.resources,
+    duplicateResourcesRemoved: deduplicated.duplicateResourcesRemoved,
+    sameNameReferenceGroups: deduplicated.sameNameReferenceGroups,
+    rowsSkippedWithoutName,
+    rowsWithoutResolvedEvents,
+  };
+}
+
+export async function runSecompp25(args: Secompp25Args): Promise<Secompp25RunResult> {
   const databaseUrl = resolveDatabaseUrlFromEnvOptions({ databaseUrl: args.databaseUrl, envFile: args.envFile });
   const parsed: CsvDocument = await readCsvFile(resolve(args.input));
   const fullNameColumn = findColumnName(parsed.headers, FULL_NAME_COLUMN_KEY);
@@ -604,26 +674,42 @@ export async function runSecompp25(args: Secompp25Args): Promise<CsvRow[]> {
     const eventId = resolution.eventIdByInputName.get(eventName);
     return eventId === undefined ? [] : [eventId];
   });
-  const outputRows: CsvRow[] = rowPayloads.map((row) => {
-    const selectedEventIds = row.selectedEventNames.flatMap((eventName) => {
-      const eventId = resolution.eventIdByInputName.get(eventName);
-      return eventId === undefined ? [] : [eventId];
-    });
-    return {
-      fullName: row.fullName,
-      email: row.email,
-      enrollmentNumber: row.enrollmentNumber,
-      identityDocument: row.identityDocument,
-      subscribedEventsId: JSON.stringify(dedupePreservingOrder([...selectedEventIds, ...commonEventIds])),
-    };
+  const {
+    resources,
+    duplicateResourcesRemoved,
+    sameNameReferenceGroups,
+    rowsSkippedWithoutName,
+    rowsWithoutResolvedEvents,
+  } = buildSecompp25TransferResources(rowPayloads, resolution.eventIdByInputName, commonEventIds);
+  const outputDirectory = resolve(args.outputDir);
+  const written = await writeTransferResources(outputDirectory, resources, {
+    source: 'secompp25',
+    input: resolve(args.input),
+    eventYear: args.eventYear,
+    rows: rowPayloads.length,
+    resources: resources.length,
+    duplicateResourcesRemoved,
+    sameNameReferenceGroups,
+    rowsSkippedWithoutName,
+    rowsWithoutResolvedEvents,
+    missingEventNames: resolution.missingEventNames,
+    ambiguousEventNames: resolution.ambiguousEventNames.map(([name, matches]) => ({
+      name,
+      matches: matches.map(({ eventId, eventName }) => ({ eventId, eventName })),
+    })),
   });
-  await writeCsvAtomic(
-    resolve(args.output),
-    ['fullName', 'email', 'enrollmentNumber', 'identityDocument', 'subscribedEventsId'],
-    outputRows,
+  process.stdout.write(
+    `Wrote ${resources.length} event subscriptions from ${rowPayloads.length} rows to ${written.directory} (${written.files.length} JSON files; duplicates_removed=${duplicateResourcesRemoved}, same_name_groups=${sameNameReferenceGroups})\n`,
   );
-  process.stdout.write(`Wrote ${outputRows.length} rows to ${args.output}\n`);
-  return outputRows;
+  return {
+    rows: rowPayloads.length,
+    resources: resources.length,
+    duplicateResourcesRemoved,
+    sameNameReferenceGroups,
+    rowsSkippedWithoutName,
+    rowsWithoutResolvedEvents,
+    outputDirectory: written.directory,
+  };
 }
 
 if (isMain(import.meta.url)) {

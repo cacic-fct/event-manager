@@ -1,4 +1,6 @@
 const labels: Readonly<Record<string, string>> = {
+  purchasedAt: 'Data da compra',
+  priceTierName: 'Faixa de pagamento da compra',
   name: 'Nome',
   emoji: 'Emoji',
   startDate: 'Início',

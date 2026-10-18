@@ -51,8 +51,8 @@
           Incluir configurações relacionadas
         </mat-checkbox>
         <p class="option-description">
-          As configurações podem incluir formulários, certificados, bilhetes, preços, locais e estrutura de esportes
-          associados ao contexto, incluindo o modo do torneio e as configurações de esportes.
+          As configurações podem incluir formulários, certificados, regras de bilhetes, preços, locais e estrutura de
+          esportes associados ao contexto, incluindo o modo do torneio e as configurações de esportes.
         </p>
         <p class="option-description">
           Somente os registros marcados abaixo serão incluídos. Os dados de participação podem ser exportados sem
@@ -76,6 +76,25 @@
             A permissão de leitura de inscrições é necessária para incluir esses registros.
           </p>
         }
+        <mat-checkbox
+          [checked]="includeTickets()"
+          [disabled]="
+            exportLoading() ||
+            previewLoading() ||
+            importLocked() ||
+            undoLoading() ||
+            !exportTarget() ||
+            !canExportTickets()
+          "
+          (change)="setExportOption('includeTickets', $event.checked)">
+          Incluir bilhetes
+        </mat-checkbox>
+        <p class="option-description">
+          Inclui bilhetes ativos, consumidos e revogados dos eventos deste contexto, com o titular atual.
+          @if (!canExportTickets()) {
+            É necessária a permissão de leitura de bilhetes.
+          }
+        </p>
         @if (hasRootAttendanceScope()) {
           <mat-checkbox
             [checked]="includeAttendances()"
@@ -173,8 +192,9 @@
       </div>
 
       <p class="matching-note">
-        Inscrições e presenças são associadas às pessoas pelos identificadores e dados presentes no JSON. Registros sem
-        uma pessoa correspondente única ficam bloqueados para revisão.
+        Inscrições, presenças, compras e bilhetes são associados às pessoas pelos identificadores e dados presentes no
+        JSON. Pessoas não encontradas ou com dados que exigem revisão precisam de uma escolha: criar, mesclar ou
+        ignorar.
       </p>
 
       @if (isScoped()) {
@@ -352,6 +372,21 @@
             Desfazer esta importação
           </button>
         }
+      }
+      @if (personPrompts().length && !result()) {
+        <section aria-labelledby="transfer-people-heading">
+          <h3 id="transfer-people-heading">Pessoas que precisam de revisão</h3>
+          <p>
+            Escolha criar, mesclar ou ignorar e revise a importação novamente. Tudo será salvo junto ao aplicar o plano.
+          </p>
+          @for (prompt of personPrompts(); track prompt.key) {
+            <app-transfer-person-review
+              [prompt]="prompt"
+              [locked]="importLocked() || previewLoading() || undoLoading()"
+              (decision)="choosePerson($event)"
+              (edited)="editPerson($event)" />
+          }
+        </section>
       }
       <div class="action-row">
         <button

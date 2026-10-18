@@ -30,6 +30,8 @@ A tela permite:
 
 Alterar uma inscrição pode afetar vagas, fila, status de pagamento e emissão de certificados.
 
+Uma inscrição confirmada pode emitir um bilhete quando essa regra estiver configurada para o evento. Para configurar, emitir manualmente, consultar ou transferir bilhetes, leia [Bilhetes](11-Bilhetes.md).
+
 Leia [Fila de inscrições](../04-Funcionamento%20do%20app/Fila%20de%20inscrições.md) antes de fazer ajustes em massa.
 
 ## Importação por CSV
@@ -43,6 +45,10 @@ A importação de inscrições em grande evento exige:
 O sistema pode criar pessoas automaticamente quando houver dados suficientes. Revise o resultado da importação, principalmente as linhas com falha e as pessoas criadas.
 
 Quando possível, faça importações primeiro em ambiente local ou com um arquivo pequeno de conferência.
+
+Se o grande evento tiver regras de atividades ou limites por faixa de pagamento, informe a faixa aplicável ao arquivo. Sem uma faixa informada, inscrições existentes preservam a faixa atual; novas inscrições precisam de uma faixa válida quando essas regras estiverem ativas. O CSV também respeita a seleção completa dos grupos e os limites da faixa.
+
+Para transferir inscrições junto com configurações ou revisar diferenças antes de aplicar, use [Dados JSON](./Dados%20JSON.md). Nesse formato, as pessoas precisam existir previamente; elas não são criadas pela importação.
 
 ## Exportação
 

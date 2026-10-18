@@ -35,6 +35,8 @@ type DataTransferStoryMode =
   | 'error'
   | 'completed'
   | 'readonly'
+  | 'person-creation'
+  | 'person-merge'
   | 'import-only'
   | 'undo-only'
   | 'connected'
@@ -56,13 +58,31 @@ let storyBatchUndone = false;
 const dataTransferApi = {
   getSchema: () => of({ $schema: 'https://json-schema.org/draft/2020-12/schema', type: 'object' }),
   export: () => of({ document: transferDocumentFixture, issues: [] }),
-  preview: () => {
+  preview: (request: { personDecisions?: unknown[] }) => {
     if (activeMode === 'loading') {
       return NEVER;
     }
     if (activeMode === 'error') {
       return throwError(() => new Error('O servidor recusou a revisão. Confira o arquivo e tente novamente.'));
     }
+    if (['person-creation', 'person-merge'].includes(activeMode) && !request.personDecisions?.length)
+      return of({
+        ...createTransferPreviewFixture(),
+        canApply: false,
+        personPrompts: [
+          {
+            key: 'a'.repeat(64),
+            data:
+              activeMode === 'person-merge' ? { name: 'Ana Silva', email: 'new@example.com' } : { name: 'Ana Silva' },
+            message: 'Revise os dados antes de importar.',
+            canCreate: true,
+            canMerge: activeMode === 'person-merge',
+            ...(activeMode === 'person-merge'
+              ? { candidates: [{ id: 'existing-person', name: 'Ana Silva', email: 'old@example.com' }] }
+              : {}),
+          },
+        ],
+      });
     return of(createTransferPreviewFixture(activeMode === 'blocked'));
   },
   apply: () => of(createTransferResultFixture(activeMode === 'blocked')),
@@ -120,7 +140,17 @@ const meta: Meta<DataTransferStoryArgs> = {
   argTypes: {
     mode: {
       control: 'select',
-      options: ['ready', 'blocked', 'loading', 'error', 'completed', 'readonly', 'undo-only'],
+      options: [
+        'ready',
+        'person-creation',
+        'person-merge',
+        'blocked',
+        'loading',
+        'error',
+        'completed',
+        'readonly',
+        'undo-only',
+      ],
     },
   },
   decorators: [
@@ -211,6 +241,37 @@ export const ReadyPreview: Story = {
     await expect(canvas.getByText('Valor atual')).toBeVisible();
     await expect(canvas.getByText('Valor proposto')).toBeVisible();
     await expect(canvas.getByRole('button', { name: /aplicar alterações/i })).toBeEnabled();
+  },
+};
+
+export const PersonCreation: Story = {
+  args: { mode: 'person-creation' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await enterJson(canvas);
+    await userEvent.click(canvas.getByRole('button', { name: 'Revisar importação' }));
+    await expect(await canvas.findByRole('heading', { name: 'Pessoas que precisam de revisão' })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Confirmar criação' })).toBeDisabled();
+    await userEvent.type(canvas.getByRole('textbox', { name: 'E-mail' }), 'ana@example.com');
+    await userEvent.click(canvas.getByRole('button', { name: 'Confirmar criação' }));
+    await expect(canvas.getByText(/Criação confirmada/)).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: 'Revisar importação' }));
+    await expect(await canvas.findByRole('button', { name: 'Aplicar alterações' })).toBeEnabled();
+  },
+};
+
+export const PersonMergeReview: Story = {
+  args: { mode: 'person-merge' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await enterJson(canvas);
+    await userEvent.click(canvas.getByRole('button', { name: 'Revisar importação' }));
+    await userEvent.click(await canvas.findByRole('combobox', { name: 'Pessoa existente' }));
+    await userEvent.click(within(document.body).getByRole('option', { name: /old@example.com/ }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Confirmar mesclagem' }));
+    await expect(canvas.getByText(/Mesclagem confirmada/)).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: 'Revisar importação' }));
+    await expect(await canvas.findByRole('button', { name: 'Aplicar alterações' })).toBeEnabled();
   },
 };
 
@@ -367,3 +428,12 @@ async function enterJson(canvas: ReturnType<typeof within>): Promise<void> {
   await userEvent.click(editor);
   await userEvent.paste(JSON.stringify(transferDocumentFixture));
 }
+
+export const TicketExport: StoryObj<DataTransferStoryArgs> = {
+  args: { mode: 'ready' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('checkbox', { name: /^Incluir bilhetes$/ })).not.toBeChecked();
+    await expect(canvas.getByText(/Inclui bilhetes ativos, consumidos e revogados/)).toBeVisible();
+  },
+};

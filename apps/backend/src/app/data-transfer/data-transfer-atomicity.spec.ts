@@ -51,6 +51,45 @@ describe('data transfer commit safety', () => {
     expect(fixture.adapter.apply).not.toHaveBeenCalled();
   });
 
+  it('blocks the entire apply while a person choice is pending, even with partial approval', async () => {
+    const fixture = createFixture();
+    jest.mocked(fixture.adapter.resolve).mockImplementation(async (resource) => ({
+      ...snapshot(resource),
+      ...(resource.id === 'person-pending'
+        ? {
+            personPrompt: { key: 'a'.repeat(64), data: { name: 'Ana Silva' }, message: 'Confirme ou ignore.' },
+            skip: { message: 'Confirme ou ignore.' },
+          }
+        : {}),
+    }));
+    const input = document('ready-event', 'person-pending');
+    const preview = await fixture.service.preview({ document: input }, actor);
+    expect(preview.canApply).toBe(false);
+    await expect(
+      fixture.service.apply({ ...applyRequest(input), planHash: preview.planHash, allowPartial: true }, actor),
+    ).rejects.toThrow('pessoas pendentes');
+    expect(fixture.journal.begin).not.toHaveBeenCalled();
+    expect(fixture.adapter.apply).not.toHaveBeenCalled();
+  });
+
+  it('rejects stale person merge revisions before writing any records', async () => {
+    const fixture = createFixture();
+    let revision = 'before';
+    jest
+      .mocked(fixture.adapter.resolve)
+      .mockImplementation(async (resource) => ({
+        ...snapshot(resource),
+        personMerge: { id: 'person-1', revision, data: { secondaryEmails: ['imported@example.com'] } },
+      }));
+    const input = document();
+    const preview = await fixture.service.preview({ document: input }, actor);
+    revision = 'after';
+    await expect(
+      fixture.service.apply({ ...applyRequest(input), planHash: preview.planHash }, actor),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(fixture.journal.begin).not.toHaveBeenCalled();
+  });
+
   it('requires explicit partial consent and journals only the rows that were applied', async () => {
     const fixture = createFixture();
     const input = document('ready-event', 'blocked-event');

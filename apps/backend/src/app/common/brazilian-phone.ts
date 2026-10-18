@@ -1,4 +1,6 @@
 export function getBrazilianPhoneCandidates(value: string): string[] {
+  // An explicit foreign country code must not be interpreted as a Brazilian DDD.
+  if (value.trim().startsWith('+') && !value.trim().startsWith('+55')) return [];
   const digits = value.replace(/\D/g, '');
   if (!digits) {
     return [];

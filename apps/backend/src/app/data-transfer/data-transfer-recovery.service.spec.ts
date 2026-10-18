@@ -50,6 +50,7 @@ function entry(id: string, batchMetadata: ReturnType<typeof metadata>, overrides
 function fixture(entries: unknown[]) {
   const prisma = {
     auditLogEntry: { findMany: jest.fn().mockResolvedValue(entries) },
+    people: { findMany: jest.fn().mockResolvedValue([{ userId: 'holder-user' }]) },
     placePreset: { findUnique: jest.fn().mockResolvedValue(null) },
     majorEvent: {
       findUnique: jest.fn().mockImplementation(async ({ where }: { where: { id: string } }) => ({
@@ -92,6 +93,7 @@ function fixture(entries: unknown[]) {
   };
   const realtime = { scope: (channel: string) => channel, publish: jest.fn().mockResolvedValue(undefined) };
   const attendanceRealtime = { notifyAllConnectedPeople: jest.fn().mockResolvedValue(undefined) };
+  const ticketRealtime = { enqueueForUsers: jest.fn().mockResolvedValue(undefined) };
   const service = new DataTransferRecoveryService(
     prisma as never,
     journal as never,
@@ -100,12 +102,35 @@ function fixture(entries: unknown[]) {
     sportsEvents as never,
     realtime as never,
     attendanceRealtime as never,
+    ticketRealtime as never,
   );
 
-  return { service, prisma, journal, effects, search, sportsEvents, realtime, attendanceRealtime };
+  return { service, prisma, journal, effects, search, sportsEvents, realtime, attendanceRealtime, ticketRealtime };
 }
 
 describe('DataTransferRecoveryService', () => {
+  it.each([false, true])('refreshes ticket holders and purchases after import/undo (undone: %s)', async (undone) => {
+    const source = mutation('event-ticket', 'ticket-1', { eventId: 'event-1' }, 'eventTicket');
+    source.before = { id: 'ticket-1', eventId: 'event-1', holderPersonId: 'old-holder' };
+    source.after = { id: 'ticket-1', eventId: 'event-1', holderPersonId: 'new-holder' };
+    const batch = entry('batch-tickets', metadata([source], { undone }));
+    const { service, prisma, ticketRealtime, journal } = fixture([batch]);
+    await service.recoverPending();
+    expect(prisma.people.findMany).toHaveBeenCalledWith({
+      where: { id: { in: ['old-holder', 'new-holder'] } },
+      select: { userId: true },
+    });
+    expect(ticketRealtime.enqueueForUsers).toHaveBeenCalledWith(prisma, ['holder-user'], {
+      type: 'TICKETS_CHANGED',
+      eventId: 'event-1',
+    });
+    expect(ticketRealtime.enqueueForUsers).toHaveBeenCalledWith(prisma, ['holder-user'], {
+      type: 'PURCHASES_CHANGED',
+      eventId: 'event-1',
+    });
+    expect(journal.markSynchronized).toHaveBeenCalledWith(batch.id, undone);
+  });
+
   it('completes non-search recovery when Typesense is disabled', async () => {
     const batch = entry(
       'batch-disabled-search',

@@ -91,10 +91,13 @@ jobs:
           bunx nx run shared-data-transfer:typecheck
           bun run typecheck:data-import
           bun run test:data-import
-          node --test tools/evcomp-import/*.test.mjs
+          bun run lint:data-import
 
       - name: Audit Storybook stories
         run: bun run storybook:quality
+
+      - name: Verify backend container startup
+        run: node --test tools/backend-container.test.mjs
 
   unit-tests:
     name: Unit tests (${{ matrix.project }})
@@ -664,10 +667,13 @@ jobs:
           bunx nx run shared-data-transfer:typecheck
           bun run typecheck:data-import
           bun run test:data-import
-          node --test tools/evcomp-import/*.test.mjs
+          bun run lint:data-import
 
       - name: Audit Storybook stories
         run: bun run storybook:quality
+
+      - name: Verify backend container startup
+        run: node --test tools/backend-container.test.mjs
 
   untrusted-pr-unit-tests:
     name: Untrusted PR unit tests

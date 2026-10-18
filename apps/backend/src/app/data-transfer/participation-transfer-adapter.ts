@@ -1,3 +1,4 @@
+import { resolveTransferPerson } from './transfer-person-resolution';
 import { TransferValidationException } from './transfer-validation.exception';
 import { createHash } from 'node:crypto';
 import {
@@ -229,9 +230,9 @@ export class ParticipationTransferAdapter implements DataTransferAdapter {
         : {}),
     };
     if (!reference) return { ...base, skip: { message: 'Informe os dados para identificar uma pessoa existente.' } };
-    const match = await this.people.match(reference, context.tx);
-    if ('message' in match) return { ...base, skip: { message: match.message } };
-    const personId = match.id;
+    const personSnapshot = await resolveTransferPerson(reference, base, context, this.authorization, this.people, this);
+    if (!personSnapshot.personId) return personSnapshot;
+    const personId = personSnapshot.personId;
     const normalized: ParticipationResource = { ...resource, data: { ...resource.data, person: { id: personId } } };
     const current = await this.loadCurrent(normalized, target, personId, context.tx);
     const presenceRecorded = recordsPresence(resource, current);
@@ -240,7 +241,7 @@ export class ParticipationTransferAdapter implements DataTransferAdapter {
       await this.authorization.assertPermissions(context.actor, [Permission.Ticket.Read], scope);
     }
     const snapshot: ParticipationSnapshot = {
-      ...base,
+      ...personSnapshot,
       resource: normalized,
       personId,
       storedId: current?.id,
@@ -278,15 +279,18 @@ export class ParticipationTransferAdapter implements DataTransferAdapter {
         sportsMatch.majorEventId,
       );
       snapshot.revision = participationPlanRevision(snapshot.attendanceRevision ?? null, snapshot.sportsAttendance);
-      snapshot.additionalChanges = willTransition
-        ? [
-            {
-              field: 'Estado da partida após presença de atleta',
-              before: { state: sportsMatch.state, revision: sportsMatch.revision },
-              after: { state: 'CHECK_IN', revision: sportsMatch.revision + 1 },
-            },
-          ]
-        : [];
+      snapshot.additionalChanges = [
+        ...(snapshot.additionalChanges ?? []),
+        ...(willTransition
+          ? [
+              {
+                field: 'Estado da partida após presença de atleta',
+                before: { state: sportsMatch.state, revision: sportsMatch.revision },
+                after: { state: 'CHECK_IN', revision: sportsMatch.revision + 1 },
+              },
+            ]
+          : []),
+      ];
     }
     if (consumesTicket) {
       snapshot.additionalChanges = [
@@ -313,6 +317,7 @@ export class ParticipationTransferAdapter implements DataTransferAdapter {
       const previousSelections = current.data.selectedEventIds ?? [];
       if (canonicalTransferJson(proposedSelections) !== canonicalTransferJson(previousSelections)) {
         snapshot.additionalChanges = [
+          ...(snapshot.additionalChanges ?? []),
           { field: 'Inscrições nos eventos selecionados', before: previousSelections, after: proposedSelections },
         ];
       }
@@ -457,7 +462,10 @@ export class ParticipationTransferAdapter implements DataTransferAdapter {
       const after = nextStatus === 'CONFIRMED' ? selected : [];
       const before = active.map((row) => row.eventId).sort();
       if (canonicalTransferJson(before) !== canonicalTransferJson([...after].sort())) {
-        value.additionalChanges = [{ field: 'Inscrições ativas relacionadas', before, after: [...after].sort() }];
+        value.additionalChanges = [
+          ...(value.additionalChanges ?? []),
+          { field: 'Inscrições ativas relacionadas', before, after: [...after].sort() },
+        ];
       }
       return;
     }

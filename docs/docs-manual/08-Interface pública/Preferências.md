@@ -18,7 +18,7 @@ O link é privado. Quem possui a URL pode consultar o conteúdo disponibilizado 
 
 Não publique o link nem o envie para terceiros.
 
-É possível copiar, baixar ou adicionar o feed a um aplicativo compatível. Novas inscrições aparecem quando o aplicativo de calendário atualizar a assinatura.
+Com o feed ativado, use **Adicionar ao Google Agenda** para criar uma assinatura nesse serviço. Para outro aplicativo compatível, copie o link ou baixe o feed e siga as instruções do aplicativo. Novas inscrições aparecem quando o aplicativo de calendário atualizar a assinatura.
 
 ## Rotacionar a chave
 

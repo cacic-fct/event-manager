@@ -5,6 +5,8 @@ import { DATA_TRANSFER_ADAPTERS } from './data-transfer/data-transfer.constants'
 import { EventTreeTransferAdapter } from './data-transfer/event-tree-transfer.adapter';
 import { SportsDataTransferAdapter } from './data-transfer/sports-data-transfer.adapter';
 import { ConfigurationTransferAdapter } from './data-transfer/configuration-transfer.adapter';
+import { EventTicketTransferAdapter } from './data-transfer/event-ticket-transfer.adapter';
+import { TicketPurchaseTransferAdapter } from './data-transfer/ticket-purchase-transfer.adapter';
 import { ParticipationTransferAdapter } from './data-transfer/participation-transfer-adapter';
 import { PersonTransferMatcherService } from './data-transfer/person-transfer-matcher.service';
 import { TransferKeyAllocations } from './data-transfer/transfer-key-allocations';
@@ -442,6 +444,8 @@ const schedulerProviders = useInMemoryTestInfra
     ConfigurationTransferAdapter,
     PersonTransferMatcherService,
     ParticipationTransferAdapter,
+    TicketPurchaseTransferAdapter,
+    EventTicketTransferAdapter,
     TransferKeyAllocations,
     DataTransferJournalService,
     DataTransferRecoveryService,
@@ -452,12 +456,16 @@ const schedulerProviders = useInMemoryTestInfra
         sports: SportsDataTransferAdapter,
         participation: ParticipationTransferAdapter,
         configuration: ConfigurationTransferAdapter,
-      ) => [eventTree, sports, participation, configuration],
+        purchases: TicketPurchaseTransferAdapter,
+        tickets: EventTicketTransferAdapter,
+      ) => [eventTree, sports, participation, configuration, purchases, tickets],
       inject: [
         EventTreeTransferAdapter,
         SportsDataTransferAdapter,
         ParticipationTransferAdapter,
         ConfigurationTransferAdapter,
+        TicketPurchaseTransferAdapter,
+        EventTicketTransferAdapter,
       ],
     },
     DataTransferService,

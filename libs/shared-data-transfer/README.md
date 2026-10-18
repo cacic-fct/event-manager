@@ -44,14 +44,40 @@ Subscriptions can match an existing target/person pair even when the input uses 
 
 ## Resource kinds
 
-The version 1 schema has 20 resource kinds:
+The version 1 schema has 22 resource kinds:
 
 - Event tree and price setup: `major-event`, `group`, `event`, `major-event-price`, `price-tier`, `place-preset`.
 - Event configuration: `event-form`, `form-link`, `certificate-config`, `ticket-config`, `ticket-price-option`.
 - Sports setup: `sports-tournament`, `sports-category`, `sports-venue`, `sports-stage`, `sports-match`.
 - Participation: `event-subscription`, `group-subscription`, `major-event-subscription`, `event-attendance`.
+- Ticket rights and external payments: `event-ticket`, `ticket-purchase`.
 
-Only fields listed for a resource in `TransferDocumentSchema` are accepted. Publication state, payment receipts, online attendance codes, invitations, private participant records, match results, scores, and operational sports actions are outside this format. Person references in participation resources match existing people only; unresolved or ambiguous matches are reported as skipped rows, and imports never create people.
+Only fields listed for a resource in `TransferDocumentSchema` are accepted. Publication state, payment receipts, online attendance codes, invitations, private participant records, match results, scores, and operational sports actions are outside this format. Person references are crossed against all supplied identifiers using the CSV matching rules. Missing people and conflicting or ambiguous name matches require manual review. The preview returns `personPrompts`; submit `personDecisions` with each prompt key and a `create`, `merge`, or `skip` action, then review the complete plan again. Creation requires global `Person.Read` and `Person.Create`, a full name, and at least one enrollment number, document number, email, or complete E.164 international phone (or a Brazilian number with area code). A manual merge selects a server-provided candidate and requires global `Person.Read` and `Person.Update`; it preserves the primary email and adds the imported address using the existing secondary-email merge rules. Existing enrollment/document values must remain compatible. The server rejects identifier collisions across existing records and proposed person changes. Pending person choices block the entire apply, including partial imports. People and participation writes share the same serializable transaction, undo journal, and durable search outbox.
+
+## Standalone purchases and issued tickets
+
+A `ticket-purchase` imports a paid external purchase. Supply `eventId`, `person`, `amountCents`, and `purchasedAt`; `priceTierName` is optional historical payment text. The event must belong to a major event and have enabled ticket configuration, which can be supplied in the same file. The import creates an approved purchase and issues a `PURCHASE` ticket in the same transaction, with no main-event subscription, account, or receipt upload required. Historical purchases can precede the current date even when the event has ended. The purchase date must precede ticket expiration. This administrative flow requires ticket issue and receipt approval permissions and does not use the public checkout's subscription or audience requirements. Existing approved purchases match by event/person; pending/rejected purchases cannot be approved by JSON. Duplicate live or consumed rights are blocked. Purchase dates are immutable after import.
+
+```json
+{
+  "format": "cacic-event-data",
+  "version": 1,
+  "resources": [{
+    "kind": "ticket-purchase",
+    "key": "DINNER-ANA",
+    "data": {
+      "eventId": "dinner-event",
+      "person": { "name": "Ana Silva", "email": "ana@example.com" },
+      "amountCents": 2500,
+      "purchasedAt": "2026-10-01T18:00:00.000Z"
+    }
+  }]
+}
+```
+
+An `event-ticket` transfers the issued right itself, independently of a payment record or subscription. Exported rights can be reimported using their stable IDs. New snapshots require `eventId`, `person` (or `null` for a deleted/anonymized holder), `source`, `status`, `issuedAt`, and `expiresAt`; consumed/revoked snapshots also require the matching timestamp. Existing source metadata and original holder are immutable. Changing a holder requires ticket transfer management permission and no pending transfer. The original holder ID, when supplied, must already exist in the destination. The current holder uses the same create/merge/skip review as subscriptions. A transferred snapshot records a transfer history marker so subscription reconciliation cannot recreate the original entitlement. Ticket issuance/revocation permissions are required. Do not import a purchase and a separate live ticket for the same event/person in one file; a purchase issues its own right.
+
+Ticket exports contain issued rights, not financial purchase records, receipt objects, transfer requests, scanner credentials, or full operational history. Receipt storage metadata never enters the JSON contract. Imported external purchases use the existing expired/empty receipt representation, so no storage object is created or fetched.
 
 ## Export selection
 
@@ -61,6 +87,7 @@ Only fields listed for a resource in `TransferDocumentSchema` are accepted. Publ
 - `includeConfiguration` includes supported forms, certificates, tickets, prices, and sports setup attached to the selected tree.
 - `includeSubscriptions` includes subscriptions on the selected target itself.
 - `includeAttendances` includes attendance only when the selected target is an event.
+- `includeTickets` independently includes all issued tickets for the selected event, or for events belonging to the selected group/major event. It defaults to `false` and requires ticket read permission in each event scope. Active, consumed, revoked, expired, manually issued, purchased, and transferred rights retain their persisted state, source, original holder ID, dates, and current holder reference. Expiration remains derived from the stored expiration date; it is not a separate persisted status.
 - `includeChildSubscriptions` independently includes subscriptions for descendant events and groups.
 - `includeChildAttendances` independently includes attendance for descendant events.
 
@@ -76,7 +103,7 @@ Existing records cannot be reparented in version 1. New resources must supply th
 
 `POST /api/admin/data-transfer/apply` requires the reviewed `planHash` and an explicit `allowPartial` value. With `allowPartial: false`, any blocked row rejects the whole apply. With `true`, ready rows can apply, while a blocked parent also blocks dependent rows. Unrelated ready branches can proceed. Aggregate rules are checked again against the executable plan and after its writes: a price table cannot rely on a skipped new tier. Group certificate cascades include authorized child names, values, and revisions in the preview. Explicit child updates are normalized to the parent policy and written only once. Reversed subscription and online-attendance windows are rejected, including when one bound is omitted. There is no generic delete operation.
 
-If an apply commits but its response is lost, retry the exact request as the same organizer with the same file, scope, `planHash`, `allowPartial`, and allocation token. The server returns the previously committed normalized result without writing the resources again, even after a restart or allocation expiry. Changing any part of the request starts a new apply attempt; an undone batch cannot be replayed. Identical concurrent requests are serialized with a transaction advisory lock and recheck the committed result before resolving local keys. The UI retains the exact request after a network or server failure, protects its file/context, and provides a result verification action instead of requiring another preview. It warns before leaving while the outcome is unknown. A conclusive server rejection allows a fresh review. The audit record stores a request fingerprint and safe result summary, not the original file or allocation token.
+If an apply commits but its response is lost, retry the exact request as the same organizer with the same file, scope, `personDecisions`, `planHash`, `allowPartial`, and allocation token. The server returns the previously committed normalized result without writing the resources again, even after a restart or allocation expiry. Changing any part of the request starts a new apply attempt; an undone batch cannot be replayed. Identical concurrent requests are serialized with a transaction advisory lock and recheck the committed result before resolving local keys. The UI retains the exact request after a network or server failure, protects its file/context, and provides a result verification action instead of requiring another preview. It warns before leaving while the outcome is unknown. A conclusive server rejection allows a fresh review. The audit record stores a request fingerprint and safe result summary, not the original file or allocation token.
 
 ## Permissions, history, and undo
 

@@ -35,6 +35,8 @@ Se não houver vaga ou houver conflito de horário, recuse o comprovante com mot
 
 Ao recusar um comprovante, selecione o motivo mais próximo da situação real e escreva uma mensagem útil e específica para o participante.
 
+Essa fila também recebe comprovantes de compras de bilhetes adicionais. Confira o pagamento no extrato antes de aprovar; a aprovação emite o bilhete. A recusa exige um motivo e libera a reserva de quantidade da oferta. Para detalhes da operação, leia [Bilhetes](../05-Interface%20administrativa/11-Bilhetes.md).
+
 
 ## Desfazer
 

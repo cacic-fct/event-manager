@@ -27,6 +27,8 @@ import {
   EventSubscriptionResourceSchema,
   GroupSubscriptionResourceSchema,
   MajorSubscriptionResourceSchema,
+  TicketPurchaseResourceSchema,
+  EventTicketResourceSchema,
 } from './participation-schema';
 import type { AssertContract, EqualContract, ResourceContractKind } from './schema-contracts';
 
@@ -46,6 +48,8 @@ export const TRANSFER_RESOURCE_SCHEMAS = {
   'certificate-config': CertificateConfigResourceSchema,
   'ticket-config': TicketConfigResourceSchema,
   'ticket-price-option': TicketPriceOptionResourceSchema,
+  'ticket-purchase': TicketPurchaseResourceSchema,
+  'event-ticket': EventTicketResourceSchema,
   'sports-tournament': TournamentResourceSchema,
   'sports-category': CategoryResourceSchema,
   'sports-venue': VenueResourceSchema,
@@ -78,6 +82,8 @@ export const TransferResourceSchema = Type.Union([
   GroupSubscriptionResourceSchema,
   MajorSubscriptionResourceSchema,
   AttendanceResourceSchema,
+  TicketPurchaseResourceSchema,
+  EventTicketResourceSchema,
 ]);
 
 export const TransferDocumentSchema = Type.Object(

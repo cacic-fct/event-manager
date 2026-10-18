@@ -62,8 +62,33 @@ services:
     networks:
       - default
 
+  events-backend-migrate:
+    image: &events-backend-image ghcr.io/cacic-fct/event-manager/backend:${IMAGE_TAG:-latest}
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@events-db:5432/postgres}
+    working_dir: /app/apps/backend
+    command:
+      - node
+      - /app/node_modules/prisma/build/index.js
+      - migrate
+      - deploy
+      - --config
+      - /app/apps/backend/prisma.config.ts
+    healthcheck:
+      disable: true
+    depends_on:
+      events-db:
+        condition: service_healthy
+    restart: 'no'
+    networks:
+      - default
+    labels:
+      - 'wud.watch=false'
+      - 'traefik.enable=false'
+
   events-backend:
-    image: ghcr.io/cacic-fct/event-manager/backend:${IMAGE_TAG:-latest}
+    image: *events-backend-image
     env_file:
       - .env
     environment:
@@ -98,25 +123,19 @@ services:
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
       TURNSTILE_EXPECTED_HOSTNAMES: ${TURNSTILE_EXPECTED_HOSTNAMES:-}
       TURNSTILE_SITEVERIFY_TIMEOUT_MS: ${TURNSTILE_SITEVERIFY_TIMEOUT_MS:-}
-    command:
-      - sh
-      - -c
-      - |
-        cd /app/apps/backend
-        ../../node_modules/.bin/prisma migrate deploy --config prisma.config.ts
-        cd /app
-        exec node main.js
+    command: ['node', 'main.js']
     depends_on:
       events-db:
         condition: service_healthy
       events-redis:
         condition: service_healthy
+      events-backend-migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
     labels:
       - 'wud.watch=true'
       - 'wud.watch.digest=true'
       - 'wud.tag.include=^latest$$'
-      - 'wud.trigger.include=docker.eventmanager'
       - 'wud.display.name=event-manager-backend'
       - 'wud.link.template=https://github.com/cacic-fct/event-manager/pkgs/container/event-manager%2Fbackend'
       - 'traefik.enable=true'

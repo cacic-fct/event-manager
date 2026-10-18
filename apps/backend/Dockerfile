@@ -92,6 +92,11 @@ COPY --chown=app:app tools/evcomp-import ./tools/evcomp-import
 
 USER app
 
+RUN cd /app/apps/backend \
+    && export DATABASE_URL="postgresql://user:password@localhost:5432/db?schema=public" \
+    && node /app/node_modules/prisma/build/index.js validate --config /app/apps/backend/prisma.config.ts \
+    && node /app/node_modules/prisma/build/index.js migrate deploy --help >/dev/null
+
 EXPOSE 3000 50051
 
 ENTRYPOINT ["dumb-init", "--"]

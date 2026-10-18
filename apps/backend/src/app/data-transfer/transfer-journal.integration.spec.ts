@@ -17,6 +17,7 @@ import type { AuthenticatedUser } from '../auth/interfaces/authenticated-user.in
 import type { DataTransferAdapter } from './data-transfer-adapter';
 import { DataTransferService } from './data-transfer.service';
 import { ConfigurationTransferAdapter } from './configuration-transfer.adapter';
+import { TicketPurchaseTransferAdapter } from './ticket-purchase-transfer.adapter';
 import { TransferKeyAllocations } from './transfer-key-allocations';
 
 type SqlClient = Pick<PGlite, 'query'>;
@@ -54,6 +55,8 @@ function delegates(client: SqlClient) {
               related = (await allRows('eventGroupAudienceInvitation')).filter(
                 (candidate) => candidate['eventGroupId'] === row['id'],
               );
+            else if (model === 'people' && relationName === 'eventSubscriptions')
+              related = (await allRows('eventSubscription')).filter((candidate) => candidate['personId'] === row['id']);
             else if (model === 'event' && relationName === 'ticketConfig')
               related = (await allRows('ticketConfig')).filter((candidate) => candidate['eventId'] === row['id']);
             const keys = Object.keys(nestedSelect as Row);
@@ -111,8 +114,13 @@ function delegates(client: SqlClient) {
     eventGroup: delegate('eventGroup'),
     event: delegate('event'),
     ticketConfig: delegate('ticketConfig'),
+    ticketPurchase: delegate('ticketPurchase'),
+    eventTicket: delegate('eventTicket'),
+    ticketRealtimeOutbox: delegate('ticketRealtimeOutbox'),
     eventGroupAudienceInvitation: delegate('eventGroupAudienceInvitation'),
     eventSubscription: delegate('eventSubscription'),
+    people: delegate('people'),
+    user: delegate('user'),
     eventTicketHistory: delegate('eventTicketHistory'),
     eventFormLink: delegate('eventFormLink'),
     placePreset: delegate('placePreset'),
@@ -178,6 +186,7 @@ describe('durable audit-backed import rollback and undo', () => {
   } as unknown as AuthorizationPolicyService;
   const frozen = {
     assertEventGroupMutable: jest.fn().mockResolvedValue(undefined),
+    assertMajorEventMutable: jest.fn().mockResolvedValue(undefined),
     assertEventMutable: jest.fn().mockResolvedValue(undefined),
   } as unknown as FrozenResourceService;
 
@@ -198,6 +207,247 @@ describe('durable audit-backed import rollback and undo', () => {
   });
   afterEach(async () => {
     await database.close();
+  });
+
+  it.each([
+    { action: 'create', identityDocument: undefined, isCPF: null },
+    { action: 'merge', identityDocument: undefined, isCPF: null },
+    { action: 'merge', identityDocument: '52998224725', isCPF: true },
+    { action: 'merge', identityDocument: 'AB12345', isCPF: false },
+  ] as const)(
+    'rolls back person $action with document $identityDocument and journals atomic undo',
+    async ({ action, identityDocument, isCPF }) => {
+      const personId = randomUUID();
+      const eventId = randomUUID();
+      await client.event.create({ data: { id: eventId, name: 'Evento existente' } });
+      const beforePeople =
+        action === 'merge'
+          ? [
+              await client.people.create({
+                data: {
+                  id: personId,
+                  name: 'Ana Silva',
+                  email: 'old@example.com',
+                  secondaryEmails: [],
+                  identityDocument: null,
+                  isCPF: null,
+                },
+              }),
+            ]
+          : [];
+      let fail = true;
+      const adapter: DataTransferAdapter = {
+        kinds: ['event-subscription'],
+        dependencyOrder: 90,
+        resolve: async (resource) => ({
+          resource: { ...resource, data: { eventId, person: { id: personId } } } as typeof resource,
+          current: null,
+          revision: null,
+          scope: { eventId },
+          dependencies: [],
+          ...(action === 'create'
+            ? { personCreation: { id: personId, data: { name: 'Ana Silva', email: 'ana@example.com' } } }
+            : {
+                personMerge: {
+                  id: personId,
+                  revision: 'previous-person-revision',
+                  data: {
+                    secondaryEmails: ['ana@example.com'],
+                    ...(identityDocument ? { identityDocument } : {}),
+                  },
+                },
+              }),
+          additionalChanges: [
+            { field: 'Nova pessoa', before: null, after: { name: 'Ana Silva', email: 'ana@example.com' } },
+          ],
+        }),
+        assertRead: async () => undefined,
+        assertWrite: async () => undefined,
+        assertMutable: async () => undefined,
+        validate: async () => undefined,
+        apply: async (snapshot, _action, context) => {
+          await context.tx.eventSubscription.create({ data: { id: snapshot.resource.id, eventId, personId } });
+          if (fail) throw new Error('Participation write failed');
+          return {};
+        },
+        exportTarget: async () => ({ resources: [], issues: [] }),
+      };
+      const transfer = new DataTransferService(
+        prisma,
+        authorization,
+        frozen,
+        [adapter],
+        new TransferKeyAllocations(),
+        journal,
+      );
+      const replay = jest.spyOn(journal, 'findCommittedRequest').mockResolvedValue(null);
+      const doc: ResolvedTransferDocument = {
+        format: 'cacic-event-data',
+        version: 1,
+        resources: [
+          {
+            kind: 'event-subscription',
+            id: randomUUID(),
+            data: { eventId, person: { name: 'Ana Silva', email: 'ana@example.com' } },
+          },
+        ],
+      };
+      try {
+        const preview = await transfer.preview({ document: doc }, actor);
+        const request = { document: doc, planHash: preview.planHash, allowPartial: false };
+        await expect(transfer.apply(request, actor)).rejects.toThrow('Participation write failed');
+        expect(await client.people.findMany()).toEqual(beforePeople);
+        expect(await client.eventSubscription.findMany()).toEqual([]);
+        expect(await client.auditLogEntry.findMany()).toEqual([]);
+        fail = false;
+        const result = await transfer.apply(request, actor);
+        expect(await client.people.findMany()).toHaveLength(1);
+        if (action === 'merge')
+          expect((await client.people.findMany())[0]).toMatchObject({
+            email: 'old@example.com',
+            secondaryEmails: ['ana@example.com'],
+            identityDocument: identityDocument ?? null,
+            isCPF,
+          });
+        expect(await client.eventSubscription.findMany()).toHaveLength(1);
+        await journal.undo(result.batchId, actor);
+        if (action === 'create') expect(await client.people.findMany()).toEqual([]);
+        else
+          expect((await client.people.findMany())[0]).toMatchObject({
+            id: personId,
+            email: 'old@example.com',
+            secondaryEmails: [],
+            identityDocument: null,
+            isCPF: null,
+          });
+        expect(await client.eventSubscription.findMany()).toEqual([]);
+        expect(await client.event.findMany()).toHaveLength(1);
+        expect(authorization.assertPermissions).toHaveBeenCalledWith(actor, [
+          Permission.Person.Read,
+          action === 'create' ? Permission.Person.Delete : Permission.Person.Update,
+        ]);
+      } finally {
+        replay.mockRestore();
+      }
+    },
+  );
+
+  it('atomically imports and undoes an unsubscribed person’s paid ticket after notification delivery', async () => {
+    const now = new Date();
+    await client.event.create({
+      data: {
+        id: 'dinner-event',
+        name: 'Jantar',
+        endDate: new Date(now.getTime() + 86400000),
+        majorEventId: 'major-1',
+        eventGroupId: null,
+      },
+    });
+    await client.ticketConfig.create({
+      data: {
+        id: 'ticket-config',
+        eventId: 'dinner-event',
+        enabled: true,
+        expirationMode: 'EVENT_END',
+        customExpiresAt: null,
+      },
+    });
+    await client.people.create({ data: { id: 'person-1', name: 'Ana Silva', email: 'ana@example.com' } });
+    let failIssuance = true;
+    const issuance = {
+      issueForPerson: jest.fn(
+        async (
+          tx: Prisma.TransactionClient,
+          eventId: string,
+          personId: string,
+          source: 'PURCHASE',
+          sourceKey: string,
+        ) => {
+          if (failIssuance) throw new Error('Ticket issuance failed');
+          const ticket = await tx.eventTicket.create({
+            data: {
+              id: 'imported-ticket',
+              eventId,
+              ticketConfigId: 'ticket-config',
+              holderPersonId: personId,
+              originalHolderPersonId: personId,
+              source,
+              sourceKey,
+              status: 'ACTIVE',
+              expiresAt: new Date(now.getTime() + 86400000),
+            },
+          });
+          await tx.eventTicketHistory.create({ data: { ticketId: ticket.id, operation: 'ISSUED' } });
+          await tx.ticketRealtimeOutbox.createMany({
+            data: [{ recipientUserId: 'user-1', type: 'TICKETS_CHANGED', eventId }],
+          });
+          return ticket;
+        },
+      ),
+    };
+    const adapter = new TicketPurchaseTransferAdapter(
+      authorization,
+      { match: async () => ({ id: 'person-1' }) } as never,
+      issuance as never,
+    );
+    const transfer = new DataTransferService(
+      prisma,
+      authorization,
+      frozen,
+      [adapter],
+      new TransferKeyAllocations(),
+      journal,
+    );
+    const replay = jest.spyOn(journal, 'findCommittedRequest').mockResolvedValue(null);
+    const doc = {
+      format: 'cacic-event-data',
+      version: 1,
+      resources: [
+        {
+          kind: 'ticket-purchase',
+          key: 'DINNER-1',
+          data: {
+            eventId: 'dinner-event',
+            person: { email: 'ana@example.com' },
+            amountCents: 2500,
+            purchasedAt: new Date(now.getTime() - 3600000).toISOString(),
+          },
+        },
+      ],
+    };
+    try {
+      const preview = await transfer.preview({ document: doc }, actor);
+      expect(preview.canApply).toBe(true);
+      const request = {
+        document: doc,
+        planHash: preview.planHash,
+        allocationToken: preview.allocation?.token,
+        allowPartial: false,
+      };
+      await expect(transfer.apply(request, actor)).rejects.toThrow('Ticket issuance failed');
+      expect(await client.ticketPurchase.findMany()).toEqual([]);
+      failIssuance = false;
+      const result = await transfer.apply(request, actor);
+      expect(result.document?.resources[0]).toMatchObject({
+        kind: 'ticket-purchase',
+        data: { person: { id: 'person-1' }, amountCents: 2500 },
+      });
+      expect(await client.ticketPurchase.findMany()).toEqual([
+        expect.objectContaining({ status: 'APPROVED', majorEventSubscriptionId: null }),
+      ]);
+      expect(await client.eventTicket.findMany()).toHaveLength(1);
+      expect(await client.eventSubscription.findMany()).toEqual([]);
+      const notifications = await client.ticketRealtimeOutbox.findMany();
+      await client.ticketRealtimeOutbox.updateMany({ where: {}, data: { publishedAt: new Date() } });
+      await transfer.undo(result.batchId ?? '', actor);
+      expect(await client.ticketPurchase.findMany()).toEqual([]);
+      expect(await client.eventTicket.findMany()).toEqual([]);
+      expect(await client.eventTicketHistory.findMany()).toEqual([]);
+      expect(await client.ticketRealtimeOutbox.findMany()).toHaveLength(notifications.length);
+      expect(await client.people.findMany()).toHaveLength(1);
+    } finally {
+      replay.mockRestore();
+    }
   });
 
   it('executes the exact-request lock as a signed PostgreSQL advisory key', async () => {

@@ -28,7 +28,13 @@ import type {
   CurrentUserEventGroupSubscriptionRecord,
   CurrentUserEventSubscription,
 } from '@cacic-fct/shared-frontend-types';
-import type { TicketConfig, TicketPriceOption } from '@cacic-fct/shared-ticketing';
+import type {
+  TicketConfig,
+  TicketPriceOption,
+  TicketPurchase,
+  TicketIssueSource,
+  TicketLifecycleState,
+} from '@cacic-fct/shared-ticketing';
 import type { FormElement } from '@cacic-fct/form-contracts';
 
 type Equal<Left, Right> =
@@ -402,6 +408,25 @@ export type EventAttendanceTransferOwner = Pick<AdminEventAttendance, 'eventId' 
   person: PersonTransferReferenceOwner;
 };
 
+export type EventTicketTransferOwner = {
+  eventId: TicketConfig['eventId'];
+  person: PersonTransferReferenceOwner | null;
+  originalHolderPersonId: string | null;
+  source: TicketIssueSource;
+  sourceKey: string | null;
+  status: Exclude<TicketLifecycleState, 'EXPIRED' | 'UNAVAILABLE'>;
+  issuedAt: string;
+  expiresAt: string;
+  consumedAt: string | null;
+  revokedAt: string | null;
+  revokedReason: string | null;
+};
+
+export type TicketPurchaseTransferOwner = Pick<TicketPurchase, 'eventId' | 'amountCents' | 'priceTierName'> & {
+  person: PersonTransferReferenceOwner;
+  purchasedAt: TicketPurchase['createdAt'];
+};
+
 export type ResourceContractOwnerByKind = {
   'major-event': MajorEventTransferOwner;
   group: EventGroupTransferOwner;
@@ -414,6 +439,8 @@ export type ResourceContractOwnerByKind = {
   'certificate-config': CertificateConfigTransferOwner;
   'ticket-config': TicketConfigTransferOwner;
   'ticket-price-option': TicketPriceOptionTransferOwner;
+  'ticket-purchase': TicketPurchaseTransferOwner;
+  'event-ticket': EventTicketTransferOwner;
   'sports-tournament': SportsTournamentTransferOwner;
   'sports-category': SportsCategoryTransferOwner;
   'sports-venue': SportsVenueTransferOwner;
@@ -442,26 +469,29 @@ export type BoundaryMap<Kind extends ResourceContractKind> = Kind extends 'major
           }
         : Kind extends 'ticket-price-option'
           ? { ticketConfigId: ExactTransferBoundary<TicketConfig['id']> }
-          : Kind extends 'sports-category'
-            ? {
-                timerRules: ExactTransferBoundary<SerializedJsonObject<SportsCategory['timerRulesJson']>>;
-                scoreRules: ExactTransferBoundary<SerializedJsonObject<SportsCategory['scoreRulesJson']>>;
-                overallScoringRules: ExactTransferBoundary<
-                  SerializedJsonObject<SportsCategory['overallScoringRulesJson']>
-                >;
-                rosterRules: ExactTransferBoundary<SerializedJsonObject<SportsCategory['rosterRulesJson']>>;
-                bracketRules: ExactTransferBoundary<SerializedJsonObject<SportsCategory['bracketRulesJson']>>;
-                standingsRules: ExactTransferBoundary<SerializedJsonObject<SportsCategory['standingsRulesJson']>>;
-              }
-            : Kind extends 'sports-stage'
-              ? { settings: ExactTransferBoundary<SerializedJsonObject<SportsStage['settingsJson']>> }
-              : Kind extends
-                    | 'event-subscription'
-                    | 'group-subscription'
-                    | 'major-event-subscription'
-                    | 'event-attendance'
-                ? { person: ExactTransferBoundary<PersonTransferReferenceOwner> }
-                : Record<never, never>;
+          : Kind extends 'event-ticket'
+            ? { person: ExactTransferBoundary<PersonTransferReferenceOwner | null> }
+            : Kind extends 'sports-category'
+              ? {
+                  timerRules: ExactTransferBoundary<SerializedJsonObject<SportsCategory['timerRulesJson']>>;
+                  scoreRules: ExactTransferBoundary<SerializedJsonObject<SportsCategory['scoreRulesJson']>>;
+                  overallScoringRules: ExactTransferBoundary<
+                    SerializedJsonObject<SportsCategory['overallScoringRulesJson']>
+                  >;
+                  rosterRules: ExactTransferBoundary<SerializedJsonObject<SportsCategory['rosterRulesJson']>>;
+                  bracketRules: ExactTransferBoundary<SerializedJsonObject<SportsCategory['bracketRulesJson']>>;
+                  standingsRules: ExactTransferBoundary<SerializedJsonObject<SportsCategory['standingsRulesJson']>>;
+                }
+              : Kind extends 'sports-stage'
+                ? { settings: ExactTransferBoundary<SerializedJsonObject<SportsStage['settingsJson']>> }
+                : Kind extends
+                      | 'event-subscription'
+                      | 'group-subscription'
+                      | 'major-event-subscription'
+                      | 'event-attendance'
+                      | 'ticket-purchase'
+                  ? { person: ExactTransferBoundary<PersonTransferReferenceOwner> }
+                  : Record<never, never>;
 
 export function checkedResource<Owner, Boundaries extends Record<string, unknown> = Record<never, never>>() {
   return <const Kind extends string, const Properties extends TProperties>(
