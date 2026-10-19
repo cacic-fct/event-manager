@@ -12,6 +12,7 @@ import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-conte
 import { RealtimeInvalidationService } from '../realtime/realtime-invalidation.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
 import { TicketRealtimeService } from '../tickets/ticket-realtime.service';
+import { PublicationJobsService } from '../publishing/publishing-jobs.service';
 import { DataTransferJournalService, readTransferJournal } from './data-transfer-journal.service';
 
 type SportsRecoveryTarget = {
@@ -58,6 +59,7 @@ export class DataTransferRecoveryService implements OnApplicationBootstrap, OnMo
     private readonly realtime: RealtimeInvalidationService,
     private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService,
     @Optional() private readonly ticketRealtime?: TicketRealtimeService,
+    @Optional() private readonly publicationJobs?: PublicationJobsService,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -100,6 +102,8 @@ export class DataTransferRecoveryService implements OnApplicationBootstrap, OnMo
           try {
             const targets = this.collectTargets(metadata.mutations, metadata.undone);
             await this.collectSportsBackingTargets(targets);
+
+            await this.enqueuePublicationSchedules(targets);
 
             const searchEnabled = this.search.isEnabled();
             const searchOptions = { throwOnSearchError: searchEnabled };
@@ -213,6 +217,27 @@ export class DataTransferRecoveryService implements OnApplicationBootstrap, OnMo
       });
     } catch {
       this.logger.warn('Could not read the JSON import recovery outbox; it will retry.');
+    }
+  }
+
+  private async enqueuePublicationSchedules(targets: RecoveryTargets): Promise<void> {
+    if (!this.publicationJobs) return;
+    const select = { publicationState: true, scheduledPublishAt: true } as const;
+    for (const id of targets.eventIds) {
+      const event = await this.prisma.event.findUnique({ where: { id, deletedAt: null }, select });
+      if (event)
+        await this.publicationJobs.enqueueScheduledJobs(event.publicationState, event.scheduledPublishAt, {
+          eventIds: [id],
+          majorEventIds: [],
+        });
+    }
+    for (const id of targets.majorIds) {
+      const major = await this.prisma.majorEvent.findUnique({ where: { id, deletedAt: null }, select });
+      if (major)
+        await this.publicationJobs.enqueueScheduledJobs(major.publicationState, major.scheduledPublishAt, {
+          eventIds: [],
+          majorEventIds: [id],
+        });
     }
   }
 

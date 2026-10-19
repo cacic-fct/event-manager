@@ -58,6 +58,27 @@ test.describe('JSON transfer Storybook with real HttpClient and MSW', () => {
     storyPage = null;
   });
 
+  test('starts with upload and keeps a reviewed draft when switching tasks', async () => {
+    const page = await openTransferStory('connected-api');
+    await expect(page.getByRole('button', { name: 'Selecionar arquivo', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Exportar JSON', exact: true })).toBeHidden();
+    await expect(page.getByRole('textbox', { name: 'Conteúdo JSON', exact: true })).toBeHidden();
+    const editor = await enterTemplate(page);
+    const originalText = await editor.inputValue();
+    await page.getByRole('button', { name: 'Revisar importação', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Aplicar alterações', exact: true })).toBeEnabled();
+    await page.getByRole('tab', { name: 'Exportar', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Exportar JSON', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Aplicar alterações', exact: true })).toBeHidden();
+    await page.getByRole('tab', { name: 'Histórico', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Importações recentes', exact: true })).toBeVisible();
+    await page.getByRole('tab', { name: 'Importar', exact: true }).click();
+    await expect(editor).toHaveValue(originalText);
+    await expect(page.getByRole('button', { name: 'Aplicar alterações', exact: true })).toBeEnabled();
+    expect(await requestLog(page, '/preview')).toHaveLength(1);
+    expect(await requestLog(page, '/apply')).toHaveLength(0);
+  });
+
   test('reviews changes, forwards allocation, and reuses generated IDs', async () => {
     const page = await openTransferStory('connected-api');
     const editor = await enterTemplate(page);
@@ -88,7 +109,7 @@ test.describe('JSON transfer Storybook with real HttpClient and MSW', () => {
     expect(violations).toEqual([]);
 
     await page.getByRole('button', { name: 'Aplicar alterações', exact: true }).click();
-    await expect(page.getByText(/Importação concluída/)).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: /Importação concluída/ })).toBeVisible();
     const appliedJson = JSON.parse(await editor.inputValue()) as TransferDocument;
     expect(appliedJson.resources[0].id).toBeTruthy();
     expect(appliedJson.resources[0].key).toBeUndefined();
@@ -163,7 +184,7 @@ test.describe('JSON transfer Storybook with real HttpClient and MSW', () => {
       buffer: Buffer.from(replacement),
     });
     await expect(page.getByText('Arquivo selecionado: replacement.json', { exact: true })).toBeVisible();
-    await expect(page.getByRole('textbox', { name: 'Conteúdo JSON', exact: true })).toHaveValue(replacement);
+    await expect(page.locator('textarea')).toHaveValue(replacement);
     await expect(page.locator('.review-section')).toHaveCount(0);
     expect(await requestLog(page, '/preview')).toHaveLength(1);
     expect(await requestLog(page, '/apply')).toHaveLength(0);
@@ -175,12 +196,10 @@ test.describe('JSON transfer Storybook with real HttpClient and MSW', () => {
     await page.getByRole('button', { name: 'Revisar importação', exact: true }).click();
     await expect(page.locator('.review-section')).toBeVisible();
 
+    await page.getByRole('checkbox', { name: 'Aplicar a um contexto existente', exact: true }).click();
     await page.getByRole('button', { name: 'Selecionar Semana da Computação', exact: true }).click();
     await expect(page.locator('.review-section')).toHaveCount(0);
     expect(await requestLog(page, '/apply')).toHaveLength(0);
-    await page
-      .getByRole('checkbox', { name: 'Aplicar aos registros existentes do contexto escolhido acima', exact: true })
-      .click();
     await page.getByRole('button', { name: 'Revisar importação', exact: true }).click();
     await expect(page.locator('.review-section')).toBeVisible();
 
@@ -201,7 +220,7 @@ test.describe('JSON transfer Storybook with real HttpClient and MSW', () => {
     await expect(editor).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Revisar importação', exact: true })).toBeDisabled();
     await page.getByRole('button', { name: 'Verificar resultado / tentar novamente', exact: true }).click();
-    await expect(page.getByText(/Importação concluída/)).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: /Importação concluída/ })).toBeVisible();
     const requests = await requestLog(page, '/apply');
     expect(requests).toHaveLength(2);
     expect(requests[1].body).toEqual(requests[0].body);
@@ -211,6 +230,7 @@ test.describe('JSON transfer Storybook with real HttpClient and MSW', () => {
 
   test('rejects invalid markup as text without sending it to the API', async () => {
     const page = await openTransferStory('connected-api');
+    await page.getByRole('button', { name: 'Colar ou editar JSON', exact: true }).click();
     const editor = page.getByRole('textbox', { name: 'Conteúdo JSON', exact: true });
     await editor.fill('<img src=x onerror="window.__transferXss=true">');
     await page.getByRole('button', { name: 'Revisar importação', exact: true }).click();
@@ -239,7 +259,7 @@ test.describe('JSON transfer Storybook with real HttpClient and MSW', () => {
     });
 
     await expect(page.getByText('Arquivo selecionado: modelo.json', { exact: true })).toBeVisible();
-    await expect(page.getByRole('textbox', { name: 'Conteúdo JSON', exact: true })).toHaveValue(content);
+    await expect(page.locator('textarea')).toHaveValue(content);
     const focusState = await pickerButton.evaluate((button) => ({
       buttonFocused: document.activeElement === button,
       activeTag: document.activeElement?.tagName ?? null,
@@ -251,11 +271,14 @@ test.describe('JSON transfer Storybook with real HttpClient and MSW', () => {
 
   test('exports tickets and child participation independently from its hierarchy', async () => {
     const page = await openTransferStory('connected-api-scoped');
+    await page.getByRole('tab', { name: 'Exportar', exact: true }).click();
     await page.getByRole('checkbox', { name: 'Incluir eventos e grupos filhos', exact: true }).click();
     await page.getByRole('checkbox', { name: 'Incluir inscrições deste grande evento', exact: true }).click();
     await page.getByRole('checkbox', { name: 'Incluir inscrições dos eventos e grupos filhos', exact: true }).click();
     await page.getByRole('checkbox', { name: 'Incluir presenças dos eventos filhos', exact: true }).click();
     await page.getByRole('checkbox', { name: 'Incluir bilhetes', exact: true }).click();
+    await page.getByRole('checkbox', { name: 'Incluir estado de publicação', exact: true }).click();
+    await page.getByRole('checkbox', { name: 'Incluir convites do público-alvo', exact: true }).click();
 
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Exportar JSON', exact: true }).click();
@@ -271,6 +294,8 @@ test.describe('JSON transfer Storybook with real HttpClient and MSW', () => {
       includeChildSubscriptions: true,
       includeChildAttendances: true,
       includeTickets: true,
+      includePublishingState: true,
+      includeAudienceInvitations: true,
     });
   });
 
@@ -279,7 +304,7 @@ test.describe('JSON transfer Storybook with real HttpClient and MSW', () => {
     await enterTemplate(page);
     await page.getByRole('button', { name: 'Revisar importação', exact: true }).click();
     await page.getByRole('button', { name: 'Aplicar alterações', exact: true }).click();
-    await expect(page.getByText(/Importação concluída/)).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: /Importação concluída/ })).toBeVisible();
 
     await page.getByRole('button', { name: 'Desfazer esta importação', exact: true }).click();
     await expect(page.getByRole('group', { name: /Reverter todas as alterações do lote/ })).toBeVisible();
@@ -298,7 +323,8 @@ test.describe('JSON transfer Storybook with real HttpClient and MSW', () => {
     const page = await openTransferStory('connected-api-import-only');
     await expect(page.getByRole('heading', { name: 'Importar JSON', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Exportar JSON', exact: true })).toHaveCount(0);
-    await expect(page.getByRole('textbox', { name: 'Conteúdo JSON', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Selecionar arquivo', exact: true })).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Conteúdo JSON', exact: true })).toBeHidden();
 
     await openTransferStory('connected-api-undo-only');
     await expect(page.getByRole('heading', { name: 'Importações recentes', exact: true })).toBeVisible();
@@ -325,6 +351,7 @@ test.describe('JSON transfer Storybook with real HttpClient and MSW', () => {
 });
 
 async function enterTemplate(page: Page) {
+  await page.getByRole('button', { name: 'Colar ou editar JSON', exact: true }).click();
   const editor = page.getByRole('textbox', { name: 'Conteúdo JSON', exact: true });
   await editor.fill(JSON.stringify(createTransferTemplate('event'), null, 2));
   return editor;

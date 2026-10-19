@@ -99,6 +99,17 @@ export class DataTransferController {
         includeSubscriptions: { type: 'boolean', default: false },
         includeAttendances: { type: 'boolean', default: false },
         includeTickets: { type: 'boolean', default: false },
+        includePublishingState: {
+          type: 'boolean',
+          default: false,
+          description: 'Include publication state and lifecycle dates for exported events and major events.',
+        },
+        includeAudienceInvitations: {
+          type: 'boolean',
+          default: false,
+          description:
+            'Include invitation person IDs for each exported event, group, and major event. Import replaces the list; IDs must exist in the destination.',
+        },
         includeChildSubscriptions: { type: 'boolean', default: false },
         includeChildAttendances: { type: 'boolean', default: false },
       },

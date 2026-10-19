@@ -70,6 +70,9 @@ const compoundKeys = {
   accountUserMerge: ['oldUserId'],
 } as const satisfies Partial<{ [Model in PrismaModelProperty]: readonly PrismaScalarKeysByModel[Model][] }>;
 const deletableLeaves = new Set([
+  'eventAudienceInvitation',
+  'eventGroupAudienceInvitation',
+  'majorEventAudienceInvitation',
   'eventFormLinkPriceTier',
   'majorEventSubscriptionEventSelection',
   'eventTicketHistory',

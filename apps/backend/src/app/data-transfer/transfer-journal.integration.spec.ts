@@ -753,6 +753,32 @@ describe('durable audit-backed import rollback and undo', () => {
     expect((await client.auditLogEntry.findUnique({ where: { id: batch.batchId } }))?.['revertedAt']).toBeNull();
   });
 
+  it('atomically restores invitation additions and removals when undoing a replacement', async () => {
+    const groupId = randomUUID();
+    await client.eventGroup.create({ data: { id: groupId, name: 'Grupo existente' } });
+    await client.eventGroupAudienceInvitation.create({
+      data: { id: 'old-invitation', eventGroupId: groupId, personId: 'old-person' },
+    });
+    const doc = document([{ id: groupId, name: 'Grupo existente' }]);
+    const resource = doc.resources[0];
+    const batch = await prisma.$transaction(async (tx) => {
+      const recorder = journal.begin(tx);
+      recorder.setSource(resource, 'update', { eventGroupId: groupId });
+      await recorder.tx.eventGroupAudienceInvitation.deleteMany({ where: { eventGroupId: groupId } });
+      await recorder.tx.eventGroupAudienceInvitation.create({
+        data: { eventGroupId: groupId, personId: 'new-person' },
+      });
+      return journal.record(recorder, tx, actor, undefined, doc, items(doc, 'update'));
+    });
+    expect(await client.eventGroupAudienceInvitation.findMany()).toEqual([
+      expect.objectContaining({ personId: 'new-person' }),
+    ]);
+    await journal.undo(batch.batchId, actor);
+    expect(await client.eventGroupAudienceInvitation.findMany()).toEqual([
+      expect.objectContaining({ personId: 'old-person' }),
+    ]);
+  });
+
   it('includes an incoming audience-invitation row in the private reference snapshot', async () => {
     const id = randomUUID();
     const doc = document([{ id, name: 'Grupo criado' }]);

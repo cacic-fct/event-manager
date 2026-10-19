@@ -182,6 +182,8 @@ export class DataTransferService {
               includeSubscriptions: input.includeSubscriptions ?? false,
               includeAttendances: input.includeAttendances ?? false,
               includeTickets: input.includeTickets ?? false,
+              includePublishingState: input.includePublishingState ?? false,
+              includeAudienceInvitations: input.includeAudienceInvitations ?? false,
               includeChildSubscriptions: input.includeChildSubscriptions ?? false,
               includeChildAttendances: input.includeChildAttendances ?? false,
             },
@@ -829,6 +831,8 @@ export class DataTransferService {
       'includeSubscriptions',
       'includeAttendances',
       'includeTickets',
+      'includePublishingState',
+      'includeAudienceInvitations',
       'includeChildSubscriptions',
       'includeChildAttendances',
     ]);
@@ -841,6 +845,8 @@ export class DataTransferService {
     if (
       (input.includeSubscriptions !== undefined && typeof input.includeSubscriptions !== 'boolean') ||
       (input.includeTickets !== undefined && typeof input.includeTickets !== 'boolean') ||
+      (input.includePublishingState !== undefined && typeof input.includePublishingState !== 'boolean') ||
+      (input.includeAudienceInvitations !== undefined && typeof input.includeAudienceInvitations !== 'boolean') ||
       (input.includeAttendances !== undefined && typeof input.includeAttendances !== 'boolean') ||
       (input.includeChildSubscriptions !== undefined && typeof input.includeChildSubscriptions !== 'boolean') ||
       (input.includeChildAttendances !== undefined && typeof input.includeChildAttendances !== 'boolean')

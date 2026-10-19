@@ -114,6 +114,8 @@ export interface TransferExportRequest {
   includeSubscriptions?: boolean;
   includeAttendances?: boolean;
   includeTickets?: boolean;
+  includePublishingState?: boolean;
+  includeAudienceInvitations?: boolean;
   includeChildSubscriptions?: boolean;
   includeChildAttendances?: boolean;
 }

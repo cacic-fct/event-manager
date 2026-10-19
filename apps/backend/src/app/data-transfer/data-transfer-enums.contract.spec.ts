@@ -13,6 +13,7 @@ import {
   EventTicketIssueSource,
   EventTicketStatus,
   PriceType,
+  PublicationState,
   SportsAthleteIdentifierMode,
   SportsFormat,
   SportsLivestreamProvider,
@@ -35,6 +36,8 @@ type TransferEnumField = {
 };
 
 const transferEnumFields: TransferEnumField[] = [
+  { kind: 'event', field: 'publicationState', generatedEnum: PublicationState },
+  { kind: 'major-event', field: 'publicationState', generatedEnum: PublicationState },
   { kind: 'event', field: 'type', generatedEnum: EventType },
   { kind: 'event-ticket', field: 'source', generatedEnum: EventTicketIssueSource },
   { kind: 'event-ticket', field: 'status', generatedEnum: EventTicketStatus },

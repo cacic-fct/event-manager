@@ -1,3 +1,8 @@
+import {
+  normalizeEventTreeTransferResource,
+  validateTransferAudienceAndPublication,
+  transferPublicationActor,
+} from './event-tree-transfer-policy';
 import { TransferValidationException } from './transfer-validation.exception';
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type {
@@ -19,7 +24,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { TRANSFER_MAX_RESOURCES } from '@cacic-fct/shared-data-transfer';
 import { normalizeEventCertificateSettings, type EventCertificateSettings } from '../events/event-certificate-settings';
 import { normalizeTwitchChannel, normalizeYoutubeCode } from '@cacic-fct/shared-livestream';
-import { applyAudienceSettings, type AudienceChange } from '../audiences/audience-input';
+import { applyAudienceSettings, withAudienceAudit, type AudienceChange } from '../audiences/audience-input';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { AudienceInvitationService } from '../audiences/audience-invitation.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -42,7 +47,15 @@ import {
 import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-resource-lifecycle.service';
 import { TicketIssuanceService } from '../tickets/ticket-issuance.service';
 
+const PUBLICATION_FIELDS = ['publicationState', 'scheduledPublishAt', 'publishedAt', 'unpublishedAt'] as const;
+const INVITATION_SELECT = {
+  where: { person: { deletedAt: null, mergedIntoId: null } },
+  select: { personId: true },
+  orderBy: { personId: 'asc' },
+} as const;
+
 const EVENT_FIELDS = [
+  ...PUBLICATION_FIELDS,
   'name',
   'emoji',
   'startDate',
@@ -99,6 +112,7 @@ const EVENT_GROUP_FIELDS = [
   'shouldIssuePartialCertificate',
 ] as const;
 const MAJOR_EVENT_FIELDS = [
+  ...PUBLICATION_FIELDS,
   'name',
   'emoji',
   'startDate',
@@ -131,6 +145,9 @@ const DATE_FIELDS = new Set([
   'subscriptionEndDate',
   'onlineAttendanceStartDate',
   'onlineAttendanceEndDate',
+  'scheduledPublishAt',
+  'publishedAt',
+  'unpublishedAt',
 ]);
 const ROOT_KIND: Readonly<Record<TransferTarget['kind'], TransferResourceKind>> = {
   event: 'event',
@@ -138,12 +155,21 @@ const ROOT_KIND: Readonly<Record<TransferTarget['kind'], TransferResourceKind>> 
   'major-event': 'major-event',
 };
 
+const PUBLICATION_SELECT = {
+  publicationState: true,
+  scheduledPublishAt: true,
+  publishedAt: true,
+  unpublishedAt: true,
+} as const;
+
 const EVENT_SELECT = {
+  ...PUBLICATION_SELECT,
   id: true,
   updatedAt: true,
   deletedAt: true,
   audience: true,
   audienceCourseCodes: true,
+  audienceInvitations: INVITATION_SELECT,
   name: true,
   emoji: true,
   startDate: true,
@@ -191,6 +217,7 @@ const EVENT_GROUP_SELECT = {
   deletedAt: true,
   audience: true,
   audienceCourseCodes: true,
+  audienceInvitations: INVITATION_SELECT,
   name: true,
   emoji: true,
   majorEventId: true,
@@ -206,11 +233,13 @@ const EVENT_GROUP_SELECT = {
 } satisfies Prisma.EventGroupSelect;
 
 const MAJOR_EVENT_SELECT = {
+  ...PUBLICATION_SELECT,
   id: true,
   updatedAt: true,
   deletedAt: true,
   audience: true,
   audienceCourseCodes: true,
+  audienceInvitations: INVITATION_SELECT,
   name: true,
   emoji: true,
   startDate: true,
@@ -233,7 +262,6 @@ const MAJOR_EVENT_SELECT = {
   shouldIssueCertificateForNonPayingAttendees: true,
   shouldIssueCertificateForNonSubscribedAttendees: true,
   additionalPaymentInfo: true,
-  publicationState: true,
   sportsTournament: { select: { id: true } },
 } satisfies Prisma.MajorEventSelect;
 
@@ -529,6 +557,7 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
   }
 
   async validate(snapshot: ResolvedTransferResource, context: TransferAdapterContext): Promise<void> {
+    await validateTransferAudienceAndPublication(snapshot, context);
     const data = dataOf(snapshot.resource);
     if (snapshot.resource.kind === 'event') {
       requireNameIfCreating(snapshot, data);
@@ -571,6 +600,17 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
       validateDateRange(data, snapshot.current, 'startDate', 'endDate');
       validateDateRange(data, snapshot.current, 'subscriptionStartDate', 'subscriptionEndDate');
     }
+  }
+
+  async validatePlan(
+    snapshot: ResolvedTransferResource,
+    context: TransferAdapterContext,
+    executableResources: readonly TransferResource[],
+  ): Promise<void> {
+    await validateTransferAudienceAndPublication(snapshot, {
+      ...context,
+      document: { ...context.document, resources: [...executableResources] },
+    });
   }
 
   private async planCertificateChildren(snapshot: EventTreeSnapshot, context: TransferAdapterContext): Promise<void> {
@@ -924,6 +964,13 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
         issues.push({ kind: 'event', message: 'Um evento foi omitido por falta de acesso.' });
       }
     }
+    for (const resource of resources) {
+      const data = dataOf(resource);
+      if (!options.includePublishingState) {
+        for (const field of PUBLICATION_FIELDS) delete data[field];
+      }
+      if (!options.includeAudienceInvitations) delete data['invitationPersonIds'];
+    }
     return { resources, issues };
   }
 
@@ -937,7 +984,7 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
     > = {},
   ): ResolvedTransferResource {
     return {
-      resource,
+      resource: normalizeEventTreeTransferResource(resource, current),
       current,
       revision: revision?.toISOString() ?? null,
       scope,
@@ -1152,6 +1199,7 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
         data: {
           id: resource.id,
           ...normalized,
+          ...transferPublicationActor(raw, actorId),
           createdById: actor,
           updatedById: actor,
         } as Prisma.EventUncheckedCreateInput,
@@ -1176,7 +1224,7 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
           entityLabel: created.name,
           operation: AuditLogOperation.CREATE,
           actor: context.actor,
-          after: eventContentAuditSnapshot(created),
+          after: eventContentAuditSnapshot(withAudienceAudit(created, audienceChange)),
           scope: {
             permission: Permission.Event.Create,
             eventId: created.id,
@@ -1216,23 +1264,23 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
       where: { id: resource.id, deletedAt: null, updatedAt: new Date(snapshot.revision) },
       data: {
         ...normalized,
+        ...transferPublicationActor(raw, actorId),
         updatedById: actorId,
       } as Prisma.EventUpdateManyMutationInput,
     });
     if (updatedCount.count !== 1) {
       throw new ConflictException('O evento mudou desde a prévia. Gere uma nova prévia.');
     }
-    const audienceChange: AudienceChange | undefined =
-      raw['audience'] !== undefined || raw['audienceCourseCodes'] !== undefined
-        ? await applyAudienceSettings(
-            context.tx,
-            this.invitations,
-            { targetType: 'EVENT', targetId: resource.id },
-            raw as never,
-            before,
-            actorId,
-          )
-        : undefined;
+    const audienceChange: AudienceChange | undefined = hasAudienceInput(raw)
+      ? await applyAudienceSettings(
+          context.tx,
+          this.invitations,
+          { targetType: 'EVENT', targetId: resource.id },
+          raw as never,
+          before,
+          actorId,
+        )
+      : undefined;
     const changedEndDate =
       normalized['endDate'] instanceof Date && normalized['endDate'].getTime() !== before.endDate.getTime();
     if (changedEndDate) {
@@ -1271,8 +1319,8 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
         entityLabel: updated.name,
         operation: AuditLogOperation.UPDATE,
         actor: context.actor,
-        before: previousAudit,
-        after: eventContentAuditSnapshot(updated),
+        before: withAudienceAudit(previousAudit, audienceChange, true),
+        after: eventContentAuditSnapshot(withAudienceAudit(updated, audienceChange)),
         scope: {
           permission: Permission.Event.Update,
           eventId: updated.id,
@@ -1316,17 +1364,16 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
           updatedById: actorId,
         } as Prisma.EventGroupUncheckedCreateInput,
       });
-      const audienceChange: AudienceChange | undefined =
-        raw['audience'] !== undefined || raw['audienceCourseCodes'] !== undefined
-          ? await applyAudienceSettings(
-              context.tx,
-              this.invitations,
-              { targetType: 'EVENT_GROUP', targetId: group.id },
-              raw as never,
-              undefined,
-              actorId,
-            )
-          : undefined;
+      const audienceChange: AudienceChange | undefined = hasAudienceInput(raw)
+        ? await applyAudienceSettings(
+            context.tx,
+            this.invitations,
+            { targetType: 'EVENT_GROUP', targetId: group.id },
+            raw as never,
+            undefined,
+            actorId,
+          )
+        : undefined;
       if (audienceChange) {
         group = await context.tx.eventGroup.findUniqueOrThrow({ where: { id: group.id } });
       }
@@ -1337,7 +1384,7 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
           entityLabel: group.name,
           operation: AuditLogOperation.CREATE,
           actor: context.actor,
-          after: eventContentAuditSnapshot(group),
+          after: eventContentAuditSnapshot(withAudienceAudit(group, audienceChange)),
           scope: {
             permission: Permission.EventGroup.Create,
             eventGroupId: group.id,
@@ -1364,17 +1411,16 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
     if (updatedCount.count !== 1) {
       throw new ConflictException('O grupo mudou desde a prévia. Gere uma nova prévia.');
     }
-    const audienceChange: AudienceChange | undefined =
-      raw['audience'] !== undefined || raw['audienceCourseCodes'] !== undefined
-        ? await applyAudienceSettings(
-            context.tx,
-            this.invitations,
-            { targetType: 'EVENT_GROUP', targetId: resource.id },
-            raw as never,
-            previousGroup,
-            actorId,
-          )
-        : undefined;
+    const audienceChange: AudienceChange | undefined = hasAudienceInput(raw)
+      ? await applyAudienceSettings(
+          context.tx,
+          this.invitations,
+          { targetType: 'EVENT_GROUP', targetId: resource.id },
+          raw as never,
+          previousGroup,
+          actorId,
+        )
+      : undefined;
     const childEffects: Array<() => Promise<void>> = [];
     for (const child of (snapshot as EventTreeSnapshot).certificateChildren ?? []) {
       const result = await this.applyEvent(child, 'update', context);
@@ -1397,8 +1443,8 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
         entityLabel: updated.name,
         operation: AuditLogOperation.UPDATE,
         actor: context.actor,
-        before: previousAudit,
-        after: eventContentAuditSnapshot(updated),
+        before: withAudienceAudit(previousAudit, audienceChange, true),
+        after: eventContentAuditSnapshot(withAudienceAudit(updated, audienceChange)),
         scope: { permission: Permission.EventGroup.Update, eventGroupId: updated.id },
         summary: 'Grupo de eventos atualizado por transferência de dados.',
       },
@@ -1440,13 +1486,14 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
         data: {
           id: resource.id,
           ...normalized,
+          ...transferPublicationActor(raw, actorId),
           ...(normalized['isPaymentRequired'] === true ? { shouldIssueCertificateForNonPayingAttendees: false } : {}),
           createdById: actorId,
           updatedById: actorId,
         } as Prisma.MajorEventUncheckedCreateInput,
         select: MAJOR_EVENT_SELECT,
       });
-      if (raw['audience'] !== undefined || raw['audienceCourseCodes'] !== undefined) {
+      if (hasAudienceInput(raw)) {
         await applyAudienceSettings(
           context.tx,
           this.invitations,
@@ -1488,6 +1535,7 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
       where: { id: resource.id, deletedAt: null, updatedAt: new Date(snapshot.revision) },
       data: {
         ...normalized,
+        ...transferPublicationActor(raw, actorId),
         ...(normalized['isPaymentRequired'] === true ? { shouldIssueCertificateForNonPayingAttendees: false } : {}),
         updatedById: actorId,
       } as Prisma.MajorEventUpdateManyMutationInput,
@@ -1495,17 +1543,16 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
     if (updatedCount.count !== 1) {
       throw new ConflictException('O grande evento mudou desde a prévia. Gere uma nova prévia.');
     }
-    const audienceChange: AudienceChange | undefined =
-      raw['audience'] !== undefined || raw['audienceCourseCodes'] !== undefined
-        ? await applyAudienceSettings(
-            context.tx,
-            this.invitations,
-            { targetType: 'MAJOR_EVENT', targetId: resource.id },
-            raw as never,
-            previous,
-            actorId,
-          )
-        : undefined;
+    const audienceChange: AudienceChange | undefined = hasAudienceInput(raw)
+      ? await applyAudienceSettings(
+          context.tx,
+          this.invitations,
+          { targetType: 'MAJOR_EVENT', targetId: resource.id },
+          raw as never,
+          previous,
+          actorId,
+        )
+      : undefined;
     const updated = await context.tx.majorEvent.findUniqueOrThrow({
       where: { id: resource.id, deletedAt: null },
       select: MAJOR_EVENT_SELECT,
@@ -1605,6 +1652,11 @@ function makeResource<K extends 'event' | 'group' | 'major-event'>(
     if (value !== undefined) {
       data[field] = serializeJsonValue(value);
     }
+  }
+  if (Array.isArray(record['audienceInvitations'])) {
+    data['invitationPersonIds'] = (record['audienceInvitations'] as { personId: string }[])
+      .map((invitation) => invitation.personId)
+      .sort();
   }
   return { kind, id, revision: updatedAt.toISOString(), data } as TransferResource;
 }
@@ -1843,4 +1895,12 @@ function updatePermission(kind: TransferResourceKind): Permission {
   if (kind === 'group') return Permission.EventGroup.Update;
   if (kind === 'major-event') return Permission.MajorEvent.Update;
   throw new TransferValidationException('Tipo de recurso incompatível.');
+}
+
+function hasAudienceInput(data: Record<string, unknown>): boolean {
+  return (
+    data['audience'] !== undefined ||
+    data['audienceCourseCodes'] !== undefined ||
+    data['invitationPersonIds'] !== undefined
+  );
 }

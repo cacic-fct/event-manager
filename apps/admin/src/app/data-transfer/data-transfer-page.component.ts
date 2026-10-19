@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { DatePipe, DOCUMENT, isPlatformBrowser } from '@angular/common';
+import { DatePipe, DOCUMENT, isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
 import { Component, DestroyRef, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
@@ -12,6 +12,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
+import { MatTabsModule } from '@angular/material/tabs';
 import {
   createTransferTemplate,
   parseTransferJson,
@@ -87,6 +88,7 @@ const templateKinds: Array<{ value: TransferTarget['kind']; label: string }> = [
   selector: 'app-data-transfer-page',
   imports: [
     DatePipe,
+    NgTemplateOutlet,
     TransferPersonReviewComponent,
     EventContextPickerComponent,
     MatButtonModule,
@@ -97,11 +99,13 @@ const templateKinds: Array<{ value: TransferTarget['kind']; label: string }> = [
     MatInputModule,
     MatProgressBarModule,
     MatSelectModule,
+    MatTabsModule,
   ],
   templateUrl: './data-transfer-page.component.html',
   styleUrls: [
     '../app-shell/layout/page-layout.shared.scss',
     '../app-shell/layout/forms-feedback.shared.scss',
+    '../app-shell/layout/workspace-tabs.shared.scss',
     './data-transfer-page.component.scss',
     './data-transfer-page.feedback.scss',
     './data-transfer-page.review.scss',
@@ -138,6 +142,8 @@ export class DataTransferPageComponent {
   protected readonly includeSubscriptions = signal(false);
   protected readonly includeAttendances = signal(false);
   protected readonly includeTickets = signal(false);
+  protected readonly includePublishingState = signal(false);
+  protected readonly includeAudienceInvitations = signal(false);
   protected readonly includeChildSubscriptions = signal(false);
   protected readonly includeChildAttendances = signal(false);
   protected readonly jsonText = signal('');
@@ -192,10 +198,23 @@ export class DataTransferPageComponent {
   protected readonly canImportSubscriptions = computed(() => this.permissions.has(Permission.Subscription.Import));
   protected readonly canImportAttendances = computed(() => this.permissions.has(Permission.EventAttendance.Import));
   protected readonly canViewHistory = computed(() => this.canImport() || this.canUndoPermission());
-  protected readonly historyEntries = computed(() => {
-    const currentBatchId = this.committedResult()?.batchId;
-    return this.batchHistory().filter((batch) => batch.batchId !== currentBatchId);
+  private readonly selectedTask = signal<'import' | 'export' | 'history'>('import');
+  protected readonly activeTask = computed(() => {
+    const task = this.selectedTask();
+    if (task === 'import' && this.canImport()) return task;
+    if (task === 'export' && this.canExport()) return task;
+    if (task === 'history' && this.canViewHistory()) return task;
+    return this.canImport() ? 'import' : this.canExport() ? 'export' : 'history';
   });
+  protected readonly taskSwitchLocked = computed(
+    () =>
+      this.importLocked() ||
+      this.previewLoading() ||
+      this.fileLoading() ||
+      this.exportLoading() ||
+      this.undoLoading() ||
+      this.undoConfirmationOpen(),
+  );
   protected readonly canUndoBatch = computed(() => {
     const current = this.committedResult();
     return Boolean(current?.batchId && current.applied && this.canUndoBatchId(current.batchId));
@@ -310,6 +329,11 @@ export class DataTransferPageComponent {
     this.invalidatePreview(true);
   }
 
+  protected selectTask(task: 'import' | 'export' | 'history'): void {
+    if (this.taskSwitchLocked()) return;
+    this.selectedTask.set(task);
+  }
+
   protected clearSelectedContext(): void {
     if (this.importLocked() || this.undoLoading()) return;
     if (this.selectedContext()) {
@@ -335,6 +359,8 @@ export class DataTransferPageComponent {
       | 'includeConfiguration'
       | 'includeSubscriptions'
       | 'includeTickets'
+      | 'includePublishingState'
+      | 'includeAudienceInvitations'
       | 'includeAttendances'
       | 'includeChildSubscriptions'
       | 'includeChildAttendances',
@@ -481,6 +507,8 @@ export class DataTransferPageComponent {
       includeConfiguration: this.includeConfiguration(),
       includeSubscriptions: this.includeSubscriptions() && this.canExportSubscriptions(),
       includeTickets: this.includeTickets() && this.canExportTickets(),
+      includePublishingState: this.includePublishingState(),
+      includeAudienceInvitations: this.includeAudienceInvitations(),
       includeAttendances: target.kind === 'event' && this.includeAttendances() && this.canExportAttendances(),
       includeChildSubscriptions:
         target.kind !== 'event' && this.includeChildSubscriptions() && this.canExportSubscriptions(),
@@ -963,6 +991,8 @@ export class DataTransferPageComponent {
     this.includeSubscriptions.set(false);
     this.includeAttendances.set(false);
     this.includeTickets.set(false);
+    this.includePublishingState.set(false);
+    this.includeAudienceInvitations.set(false);
     this.includeChildSubscriptions.set(false);
     this.includeChildAttendances.set(false);
   }

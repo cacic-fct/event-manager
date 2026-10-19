@@ -334,7 +334,7 @@ export const ExportOnly: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Exportar JSON' })).toBeVisible();
-    await expect(canvas.getByText(/sua conta não tem permissão para importar arquivos/i)).toBeVisible();
+    await expect(canvas.queryByRole('tab', { name: 'Importar' })).toBeNull();
     await expect(canvas.queryByRole('textbox', { name: 'Conteúdo JSON' })).toBeNull();
   },
 };
@@ -424,6 +424,7 @@ export const ConnectedApiUndoOnly: Story = {
 };
 
 async function enterJson(canvas: ReturnType<typeof within>): Promise<void> {
+  await userEvent.click(canvas.getByRole('button', { name: 'Colar ou editar JSON' }));
   const editor = canvas.getByRole('textbox', { name: 'Conteúdo JSON' });
   await userEvent.click(editor);
   await userEvent.paste(JSON.stringify(transferDocumentFixture));
@@ -433,7 +434,25 @@ export const TicketExport: StoryObj<DataTransferStoryArgs> = {
   args: { mode: 'ready' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('tab', { name: 'Exportar' }));
     await expect(canvas.getByRole('checkbox', { name: /^Incluir bilhetes$/ })).not.toBeChecked();
     await expect(canvas.getByText(/Inclui bilhetes ativos, consumidos e revogados/)).toBeVisible();
+  },
+};
+
+export const PublishingAndInvitationsExport: Story = {
+  args: { mode: 'connected-scoped' },
+  parameters: connectedApiParameters(),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('tab', { name: 'Exportar' }));
+    const publication = canvas.getByRole('checkbox', { name: /^Incluir estado de publicação$/ });
+    const invitations = canvas.getByRole('checkbox', { name: /^Incluir convites do público-alvo$/ });
+    await expect(publication).not.toBeChecked();
+    await expect(invitations).not.toBeChecked();
+    await userEvent.click(publication);
+    await userEvent.click(invitations);
+    await expect(publication).toBeChecked();
+    await expect(invitations).toBeChecked();
   },
 };

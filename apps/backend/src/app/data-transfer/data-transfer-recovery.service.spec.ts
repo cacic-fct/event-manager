@@ -109,6 +109,45 @@ function fixture(entries: unknown[]) {
 }
 
 describe('DataTransferRecoveryService', () => {
+  it.each([false, true])(
+    'enqueues restored publication schedules after import or undo (undone: %s)',
+    async (undone) => {
+      const scheduledPublishAt = new Date(Date.now() + 60 * 60 * 1000);
+      const batch = entry(
+        'scheduled-batch',
+        metadata([mutation('event', 'event-1', {}, 'event'), mutation('major-event', 'major-1', {}, 'majorEvent')], {
+          undone,
+        }),
+      );
+      const state = fixture([batch]);
+      const scheduled = { publicationState: 'SCHEDULED', scheduledPublishAt };
+      Object.assign(state.prisma, { event: { findUnique: jest.fn().mockResolvedValue(scheduled) } });
+      state.prisma.majorEvent.findUnique.mockResolvedValue(scheduled as never);
+      const jobs = { enqueueScheduledJobs: jest.fn().mockResolvedValue(undefined) };
+      const service = new DataTransferRecoveryService(
+        state.prisma as never,
+        state.journal as never,
+        state.effects as never,
+        state.search as never,
+        state.sportsEvents as never,
+        state.realtime as never,
+        state.attendanceRealtime as never,
+        state.ticketRealtime as never,
+        jobs as never,
+      );
+      await service.recoverPending();
+      expect(jobs.enqueueScheduledJobs).toHaveBeenCalledWith('SCHEDULED', scheduledPublishAt, {
+        eventIds: ['event-1'],
+        majorEventIds: [],
+      });
+      expect(jobs.enqueueScheduledJobs).toHaveBeenCalledWith('SCHEDULED', scheduledPublishAt, {
+        eventIds: [],
+        majorEventIds: ['major-1'],
+      });
+      expect(state.journal.markSynchronized).toHaveBeenCalledWith('scheduled-batch', undone);
+    },
+  );
+
   it.each([false, true])('refreshes ticket holders and purchases after import/undo (undone: %s)', async (undone) => {
     const source = mutation('event-ticket', 'ticket-1', { eventId: 'event-1' }, 'eventTicket');
     source.before = { id: 'ticket-1', eventId: 'event-1', holderPersonId: 'old-holder' };

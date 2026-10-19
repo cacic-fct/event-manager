@@ -114,6 +114,60 @@ describe('DataTransferPageComponent', () => {
     await createFixture();
   });
 
+  it('preserves a reviewed import while switching tasks and reveals only the selected task', async () => {
+    granted.update((permissions) => new Set([...permissions, Permission.DataTransfer.Export]));
+    fixture.detectChanges();
+    setJsonText();
+    clickButton('Revisar importação');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
+    const originalText = input.value;
+    const importPanel = fixture.nativeElement.querySelector(
+      '[aria-labelledby="transfer-import-heading"]',
+    ) as HTMLElement;
+    const exportPanel = fixture.nativeElement.querySelector(
+      '[aria-labelledby="transfer-export-heading"]',
+    ) as HTMLElement;
+
+    expect(importPanel.hidden).toBe(false);
+    expect(exportPanel.hidden).toBe(true);
+    clickButton('Exportar');
+    expect(importPanel.hidden).toBe(true);
+    expect(exportPanel.hidden).toBe(false);
+    clickButton('Importar');
+    expect(input.value).toBe(originalText);
+    expect(importPanel.hidden).toBe(false);
+    expect(findButton('Aplicar alterações').disabled).toBe(false);
+    expect(api.preview).toHaveBeenCalledOnce();
+  });
+
+  it('includes the just-completed batch in the separate history view', async () => {
+    const batchId = 'just-completed-batch';
+    api.apply.mockReturnValueOnce(of({ ...createTransferResultFixture(), batchId }));
+    api.history.mockReturnValue(
+      of([
+        {
+          ...transferBatchSummaryFixture,
+          batchId,
+        },
+      ]),
+    );
+    setJsonText();
+    clickButton('Revisar importação');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    clickButton('Aplicar alterações');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    clickButton('Histórico');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const historyPanel = fixture.nativeElement.querySelector('.history-panel') as HTMLElement;
+    expect(historyPanel.hidden).toBe(false);
+    expect(historyPanel.textContent).toContain(batchId);
+  });
+
   it.each([0, 500])(
     'recovers an uncertain %s response using the exact request and blocks new imports',
     async (status) => {
@@ -129,9 +183,10 @@ describe('DataTransferPageComponent', () => {
       expect(findButton('Revisar importação').disabled).toBe(true);
       expect((fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement).disabled).toBe(true);
       expect((fixture.nativeElement.querySelector('#transfer-file') as HTMLInputElement).disabled).toBe(true);
-      const picker = fixture.debugElement.query(By.directive(EventContextPickerComponent))
-        .componentInstance as EventContextPickerComponent;
-      expect(picker.disabled()).toBe(true);
+      expect(fixture.debugElement.query(By.directive(EventContextPickerComponent))).toBeNull();
+      expect(findButton('Histórico').disabled).toBe(true);
+      const contextOption = fixture.nativeElement.querySelector('mat-checkbox input') as HTMLInputElement;
+      expect(contextOption.disabled).toBe(true);
       expect(await fixture.componentInstance.canDeactivate()).toBe(false);
       expect(fixture.nativeElement.textContent).toContain('A importação pode ter sido salva');
 
@@ -356,13 +411,13 @@ describe('DataTransferPageComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.review-section')).not.toBeNull();
 
+    toggleCheckbox('Aplicar a um contexto existente');
     const picker = fixture.debugElement.query(By.directive(EventContextPickerComponent))
       .componentInstance as EventContextPickerComponent;
     picker.choose(contextStoryMajor);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.review-section')).toBeNull();
-    toggleCheckbox('Aplicar aos registros existentes do contexto escolhido acima');
     clickButton('Revisar importação');
     await fixture.whenStable();
     fixture.detectChanges();
@@ -556,6 +611,7 @@ describe('DataTransferPageComponent', () => {
       ]),
     );
     fixture.detectChanges();
+    clickButton('Exportar');
     const picker = fixture.debugElement.query(By.directive(EventContextPickerComponent))
       .componentInstance as EventContextPickerComponent;
     picker.choose(contextStoryMajor);
@@ -575,9 +631,30 @@ describe('DataTransferPageComponent', () => {
       includeSubscriptions: true,
       includeAttendances: false,
       includeTickets: false,
+      includePublishingState: false,
+      includeAudienceInvitations: false,
       includeChildSubscriptions: true,
       includeChildAttendances: true,
     });
+  });
+
+  it('exports publishing state and audience invitations only when selected', async () => {
+    granted.set(new Set([Permission.DataTransfer.Export, Permission.MajorEvent.Read]));
+    fixture.detectChanges();
+    const picker = fixture.debugElement.query(By.directive(EventContextPickerComponent))
+      .componentInstance as EventContextPickerComponent;
+    picker.choose(contextStoryMajor);
+    fixture.detectChanges();
+    toggleCheckbox('Incluir estado de publicação');
+    toggleCheckbox('Incluir convites do público-alvo');
+    clickButton('Exportar JSON');
+    await fixture.whenStable();
+    expect(api.export).toHaveBeenCalledWith(
+      expect.objectContaining({
+        includePublishingState: true,
+        includeAudienceInvitations: true,
+      }),
+    );
   });
 
   it('exports all ticket states only after the organizer selects tickets', async () => {
@@ -611,6 +688,7 @@ describe('DataTransferPageComponent', () => {
       ]),
     );
     fixture.detectChanges();
+    clickButton('Exportar');
     const picker = fixture.debugElement.query(By.directive(EventContextPickerComponent))
       .componentInstance as EventContextPickerComponent;
     picker.choose(contextStoryMajor);
@@ -843,7 +921,7 @@ describe('DataTransferPageComponent', () => {
     fixture = TestBed.createComponent(DataTransferPageComponent);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Você pode exportar dados');
+    expect(fixture.nativeElement.querySelector('[aria-labelledby="transfer-export-heading"]').hidden).toBe(false);
     expect(fixture.nativeElement.querySelector('textarea')).toBeNull();
     expect(api.preview).not.toHaveBeenCalled();
   });

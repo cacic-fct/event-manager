@@ -87,6 +87,8 @@ Ticket exports contain issued rights, not financial purchase records, receipt ob
 - `includeConfiguration` includes supported forms, certificates, tickets, prices, and sports setup attached to the selected tree.
 - `includeSubscriptions` includes subscriptions on the selected target itself.
 - `includeAttendances` includes attendance only when the selected target is an event.
+- `includePublishingState` includes `publicationState`, `scheduledPublishAt`, `publishedAt`, and `unpublishedAt` for exported events and major events. It defaults to `false`; groups do not have their own publication state.
+- `includeAudienceInvitations` includes `invitationPersonIds` for each exported event, group, and major event. It defaults to `false` and follows the selected tree (`includeDescendants`). No person profile or delivery metadata is exported.
 - `includeTickets` independently includes all issued tickets for the selected event, or for events belonging to the selected group/major event. It defaults to `false` and requires ticket read permission in each event scope. Active, consumed, revoked, expired, manually issued, purchased, and transferred rights retain their persisted state, source, original holder ID, dates, and current holder reference. Expiration remains derived from the stored expiration date; it is not a separate persisted status.
 - `includeChildSubscriptions` independently includes subscriptions for descendant events and groups.
 - `includeChildAttendances` independently includes attendance for descendant events.
@@ -130,3 +132,9 @@ bunx nx run-many --targets=lint --projects=backend,admin,shared-data-transfer,sh
 ```
 
 The integration target uses isolated PGlite PostgreSQL fixtures to verify transaction rollback, restart recovery, exact-request replay, and guarded undo. It does not apply application migrations. CI also runs the real HttpClient/MSW browser flows and strict Storybook accessibility checks. Shared fixtures use relative dates and faker; test-only fixtures are exposed through `@cacic-fct/shared-data-transfer/testing` and are excluded from application bundles.
+
+## Publication and audience invitation imports
+
+Publication fields use the existing event/major-event read and create/update permissions, frozen checks, preview, transaction, audit, and undo flow. Omitted fields preserve the destination values; new records remain drafts when publication is omitted. A state transition clears dates belonging to other states. Supply lifecycle timestamps to retain historical publication dates; `null` is accepted when that historical date is unknown. Scheduled publication requires a future `scheduledPublishAt`; imported schedules are enqueued by durable recovery after commit and after undo. Published or scheduled records must satisfy the same audience invitation requirements as the publication editor, including inherited audiences and attendance policy.
+
+`invitationPersonIds` replaces the full invitation list. Omit it to preserve invitations or supply `[]` to remove them. IDs must identify active, unmerged people already present in the destination; invitation lists do not use participant create/merge review and cannot reference file-local resource keys. This supports backups and transfers between databases with shared person identities. Invitations remain independent of the audience mode and can also be used for invited-only attendance. Up to 1000 distinct person IDs are allowed per target. Changes refresh attendance and access data through the existing synchronization flow; invitation delivery follows the existing notification worker. Both new export options require only the selected records' existing read permissions.

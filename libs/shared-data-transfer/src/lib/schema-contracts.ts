@@ -5,11 +5,14 @@ import { resource } from './schema-helpers';
 import type {
   CertificateConfig as AdminCertificateConfig,
   Event as AdminEvent,
+  EventInput as AdminEventInput,
   EventAttendance as AdminEventAttendance,
   EventForm as AdminEventForm,
   EventFormLink as AdminEventFormLink,
   EventGroup as AdminEventGroup,
+  EventGroupInput as AdminEventGroupInput,
   MajorEvent as AdminMajorEvent,
+  MajorEventInput as AdminMajorEventInput,
   MajorEventPrice as AdminMajorEventPrice,
   MajorEventPriceTier as AdminMajorEventPriceTier,
   Person as AdminPerson,
@@ -133,7 +136,12 @@ export type MajorEventTransferOwner = Pick<
   | 'shouldIssueCertificateForNonPayingAttendees'
   | 'shouldIssueCertificateForNonSubscribedAttendees'
   | 'additionalPaymentInfo'
->;
+  | 'publicationState'
+  | 'scheduledPublishAt'
+  | 'publishedAt'
+  | 'unpublishedAt'
+> &
+  Pick<AdminMajorEventInput, 'invitationPersonIds'>;
 
 export type EventGroupTransferOwner = Pick<
   AdminEventGroup,
@@ -150,7 +158,8 @@ export type EventGroupTransferOwner = Pick<
   | 'shouldIssueCertificateForNonSubscribedAttendees'
   | 'shouldIssueCertificateForEachEvent'
   | 'shouldIssuePartialCertificate'
->;
+> &
+  Pick<AdminEventGroupInput, 'invitationPersonIds'>;
 
 export type EventTransferOwner = Pick<
   AdminEvent,
@@ -193,7 +202,12 @@ export type EventTransferOwner = Pick<
   | 'twitchChannel'
   | 'buttonText'
   | 'buttonLink'
->;
+  | 'publicationState'
+  | 'scheduledPublishAt'
+  | 'publishedAt'
+  | 'unpublishedAt'
+> &
+  Pick<AdminEventInput, 'invitationPersonIds'>;
 
 export type MajorEventPriceTransferOwner = Pick<AdminMajorEventPrice, 'id' | 'type'> & {
   majorEventId: ExactTransferBoundary<AdminMajorEvent['id']>['value'];

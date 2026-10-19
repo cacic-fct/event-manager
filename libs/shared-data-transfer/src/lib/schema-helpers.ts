@@ -59,6 +59,7 @@ export const AttendanceEligibility = enumeration(
 export const audienceFields = {
   audience: Audience,
   audienceCourseCodes: StringList,
+  invitationPersonIds: Type.Array(Id, { maxItems: 1000, uniqueItems: true }),
 };
 
 export const registrationFields = {
@@ -71,4 +72,11 @@ export const registrationFields = {
 export const certificateFlags = {
   shouldIssueCertificateForNonPayingAttendees: Type.Boolean(),
   shouldIssueCertificateForNonSubscribedAttendees: Type.Boolean(),
+};
+
+export const publicationFields = {
+  publicationState: enumeration('DRAFT', 'SCHEDULED', 'PUBLISHED', 'UNPUBLISHED'),
+  scheduledPublishAt: nullable(DateTime),
+  publishedAt: nullable(DateTime),
+  unpublishedAt: nullable(DateTime),
 };
