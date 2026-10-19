@@ -118,10 +118,11 @@ export class EventTicketTransferAdapter implements DataTransferAdapter {
     context: TransferAdapterContext,
   ): Promise<void> {
     const value = ticketSnapshot(snapshot);
+    const data = { ...value.current?.data, ...value.resource.data };
     const changesHolder =
-      value.current?.kind === 'event-ticket' &&
-      value.resource.data.person !== undefined &&
-      JSON.stringify(value.resource.data.person) !== JSON.stringify(value.current.data.person);
+      value.current?.kind === 'event-ticket'
+        ? data.person?.id !== value.current.data.person?.id
+        : !!data.originalHolderPersonId && data.originalHolderPersonId !== data.person?.id;
     await this.authorization.assertPermissions(
       context.actor,
       [
@@ -194,11 +195,17 @@ export class EventTicketTransferAdapter implements DataTransferAdapter {
           'O titular original deve estar cadastrado antes da importação do bilhete.',
         );
     }
+    if (data.source === 'EVENT_SUBSCRIPTION' || data.source === 'MAJOR_EVENT_SUBSCRIPTION') {
+      const prefix = data.source === 'EVENT_SUBSCRIPTION' ? 'event-subscription' : 'major-event-subscription';
+      if (!data.originalHolderPersonId || data.sourceKey !== `${prefix}:${data.eventId}:${data.originalHolderPersonId}`)
+        throw new TransferValidationException('A origem automática deve corresponder ao evento e ao titular original.');
+    }
     if (data.sourceKey) {
       if (
         resources.some(
           (row) =>
-            row.kind === 'event-ticket' && row.id !== snapshot.resource.id && row.data.sourceKey === data.sourceKey,
+            (row.kind === 'event-ticket' && row.id !== snapshot.resource.id && row.data.sourceKey === data.sourceKey) ||
+            (row.kind === 'ticket-purchase' && row.id === data.sourceKey),
         )
       )
         throw new TransferValidationException('A mesma origem aparece em mais de um bilhete.');
@@ -406,9 +413,8 @@ export class EventTicketTransferAdapter implements DataTransferAdapter {
 
   private exportPerson(person: People | null, includePersonData: boolean): TicketResource['data']['person'] {
     if (!person || person.deletedAt || person.mergedIntoId) return null;
-    if (!includePersonData) return { id: person.id, name: person.name };
+    if (!includePersonData) return { name: person.name };
     return {
-      id: person.id,
       name: person.name,
       ...(person.email ? { email: person.email } : {}),
       ...(person.phone ? { phone: person.phone } : {}),

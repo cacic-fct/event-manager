@@ -110,6 +110,68 @@ describe('EventTreeTransferAdapter normalization and mutations', () => {
     },
   );
 
+  it.each([
+    ['event', Permission.Event.Update, 'eventId'],
+    ['group', Permission.EventGroup.Update, 'eventGroupId'],
+    ['major-event', Permission.MajorEvent.Update, 'majorEventId'],
+  ] as const)('omits %s invitees without update permission', async (kind, permission, scopeField) => {
+    const record = eventRecord({ audienceInvitations: [{ personId: 'private-person' }], sportsCategory: null });
+    const tx = {
+      event: { findFirst: jest.fn().mockResolvedValue(record) },
+      eventGroup: { findFirst: jest.fn().mockResolvedValue(record) },
+      majorEvent: { findFirst: jest.fn().mockResolvedValue(record) },
+    };
+    const authorization = {
+      assertPermissions: jest.fn(async (_actor, permissions: readonly Permission[]) => {
+        if (permissions.includes(permission)) throw new ForbiddenException();
+      }),
+    };
+    const context = createContext(tx);
+    const result = await createAdapter(tx, authorization).exportTarget(
+      { kind, id: record.id },
+      { includeDescendants: false, includeConfiguration: false, includeAudienceInvitations: true },
+      context,
+    );
+    expect(result.resources).toHaveLength(1);
+    expect(result.resources[0].data).not.toHaveProperty('invitationPersonIds');
+    expect(result.issues).toHaveLength(1);
+    expect(authorization.assertPermissions).toHaveBeenCalledWith(context.actor, [permission], {
+      [scopeField]: record.id,
+    });
+  });
+
+  it('checks descendant invitation access independently of the root grant', async () => {
+    const group = eventRecord({
+      id: 'group-1',
+      sportsCategory: null,
+      audienceInvitations: [{ personId: 'group-invitee' }],
+    });
+    const event = eventRecord({
+      id: 'event-1',
+      eventGroupId: group.id,
+      audienceInvitations: [{ personId: 'event-invitee' }],
+    });
+    const tx = {
+      eventGroup: { findFirst: jest.fn().mockResolvedValue(group) },
+      event: { findMany: jest.fn().mockResolvedValue([event]) },
+    };
+    const authorization = {
+      assertPermissions: jest.fn(async (_actor, permissions: readonly Permission[]) => {
+        if (permissions.includes(Permission.Event.Update)) throw new ForbiddenException();
+      }),
+    };
+    const result = await createAdapter(tx, authorization).exportTarget(
+      { kind: 'group', id: group.id },
+      { includeDescendants: true, includeConfiguration: false, includeAudienceInvitations: true },
+      createContext(tx),
+    );
+    expect(result.resources.find((row) => row.kind === 'group')?.data).toHaveProperty('invitationPersonIds', [
+      'group-invitee',
+    ]);
+    expect(result.resources.find((row) => row.kind === 'event')?.data).not.toHaveProperty('invitationPersonIds');
+    expect(result.issues).toHaveLength(1);
+  });
+
   it.each(['major-event', 'group'] as const)(
     'bounds %s descendant events before authorizing each child',
     async (kind) => {

@@ -736,7 +736,7 @@ function selectUniqueSubscriptions(candidates, report) {
     report.issues.push({
       code: 'duplicate_source_registration',
       sourceKind: 'registration',
-      sourceId: winner.sourceId,
+      sourceId: replace ? existing.sourceId : candidate.sourceId,
       message:
         'Multiple source registrations resolve to the same person and major event; only the most recent ' +
         'registration was exported.',
@@ -832,7 +832,7 @@ function selectUniqueAttendances(
     report.issues.push({
       code: 'duplicate_attendance',
       sourceKind: 'attendance',
-      sourceId: replace ? candidate.sourceId : existing.sourceId,
+      sourceId: replace ? existing.sourceId : candidate.sourceId,
       message:
         'Multiple source attendance rows resolve to the same person and event; only the latest attendance ' +
         'was exported.',

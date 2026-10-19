@@ -969,7 +969,23 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
       if (!options.includePublishingState) {
         for (const field of PUBLICATION_FIELDS) delete data[field];
       }
-      if (!options.includeAudienceInvitations) delete data['invitationPersonIds'];
+      if (!options.includeAudienceInvitations) {
+        delete data['invitationPersonIds'];
+      } else {
+        const scope =
+          resource.kind === 'event'
+            ? { eventId: resource.id }
+            : resource.kind === 'group'
+              ? { eventGroupId: resource.id }
+              : { majorEventId: resource.id };
+        try {
+          await this.authorization.assertPermissions(context.actor, [updatePermission(resource.kind)], scope);
+        } catch (error: unknown) {
+          if (!(error instanceof ForbiddenException)) throw error;
+          delete data['invitationPersonIds'];
+          issues.push({ kind: resource.kind, message: 'Convites omitidos por falta de permissão no contexto.' });
+        }
+      }
     }
     return { resources, issues };
   }

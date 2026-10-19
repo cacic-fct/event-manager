@@ -229,11 +229,59 @@ describe('standalone ticket purchase transfer', () => {
 });
 
 describe('issued ticket transfer and optional export', () => {
+  it('requires transfer rights for imported lineage during preview and apply', async () => {
+    const h = harness();
+    h.ticket.data.originalHolderPersonId = 'original-1';
+    const snapshot = await h.tickets.resolve(h.ticket, h.context);
+    h.authorization.assertPermissions.mockImplementation(async (_actor, permissions) => {
+      if (permissions.includes(Permission.TicketTransfer.Manage)) throw new ForbiddenException();
+    });
+    await expect(h.tickets.assertWrite(snapshot, 'create', h.context)).rejects.toThrow(ForbiddenException);
+    await expect(h.tickets.apply(snapshot, 'create', h.context)).rejects.toThrow(ForbiddenException);
+    expect(h.tx.eventTicket.create).not.toHaveBeenCalled();
+    h.ticket.data.originalHolderPersonId = 'person-1';
+    const unchanged = await h.tickets.resolve(h.ticket, h.context);
+    await expect(h.tickets.assertWrite(unchanged, 'create', h.context)).resolves.toBeUndefined();
+  });
+
+  it.each(['EVENT_SUBSCRIPTION', 'MAJOR_EVENT_SUBSCRIPTION'] as const)(
+    'validates %s source keys against the original holder',
+    async (source) => {
+      const h = harness();
+      h.ticket.data.source = source;
+      h.ticket.data.originalHolderPersonId = 'original-1';
+      const prefix = source === 'EVENT_SUBSCRIPTION' ? 'event-subscription' : 'major-event-subscription';
+      for (const sourceKey of [null, `${prefix}:other-event:original-1`, `${prefix}:event-1:person-1`]) {
+        h.ticket.data.sourceKey = sourceKey;
+        const snapshot = await h.tickets.resolve(h.ticket, h.context);
+        await expect(h.tickets.validate(snapshot, h.context)).rejects.toThrow('origem automática');
+      }
+      h.ticket.data.sourceKey = `${prefix}:event-1:original-1`;
+      const snapshot = await h.tickets.resolve(h.ticket, h.context);
+      await expect(h.tickets.validate(snapshot, h.context)).resolves.toBeUndefined();
+    },
+  );
+
+  it('reserves planned purchase IDs even when the explicit ticket has a different holder', async () => {
+    const h = harness();
+    h.ticket.data.sourceKey = h.purchase.id;
+    const snapshot = await h.tickets.resolve(h.ticket, h.context);
+    const purchase = { ...h.purchase, data: { ...h.purchase.data, person: { id: 'other-person' } } };
+    await expect(h.tickets.validatePlan(snapshot, h.context, [purchase, snapshot.resource])).rejects.toThrow(
+      'mesma origem',
+    );
+    await expect(h.tickets.validatePlan(snapshot, h.context, [snapshot.resource])).resolves.toBeUndefined();
+  });
+
   it.each(['ADMIN', 'PURCHASE', 'EVENT_SUBSCRIPTION', 'MAJOR_EVENT_SUBSCRIPTION'] as const)(
     'imports an unsubscribed holder’s %s ticket with the original identity and state',
     async (source) => {
       const h = harness();
       h.ticket.data.source = source;
+      if (source === 'EVENT_SUBSCRIPTION' || source === 'MAJOR_EVENT_SUBSCRIPTION') {
+        const prefix = source === 'EVENT_SUBSCRIPTION' ? 'event-subscription' : 'major-event-subscription';
+        h.ticket.data.sourceKey = `${prefix}:event-1:person-1`;
+      }
       h.ticket.data.status = 'CONSUMED';
       h.ticket.data.consumedAt = new Date(h.now.getTime() - 60_000).toISOString();
       const snapshot = await h.tickets.resolve(h.ticket, h.context);
@@ -288,7 +336,7 @@ describe('issued ticket transfer and optional export', () => {
       { includeDescendants: false, includeConfiguration: false, includeTickets: true },
       h.context,
     );
-    expect(output.resources[0]?.data).toHaveProperty('person', { id: 'person-1', name: 'Ana Silva' });
+    expect(output.resources[0]?.data).toHaveProperty('person', { name: 'Ana Silva' });
     expect(h.authorization.assertPermissions).toHaveBeenCalledWith(h.context.actor, [Permission.Person.Read]);
   });
 
@@ -329,8 +377,9 @@ describe('issued ticket transfer and optional export', () => {
       h.context,
     );
     expect(output.resources).toHaveLength(2);
+    for (const resource of output.resources) expect(resource.data.person).not.toHaveProperty('id');
     expect(output.resources[0]?.data).toMatchObject({
-      person: { id: 'person-1', email: 'ana@example.com' },
+      person: { name: 'Ana Silva', email: 'ana@example.com' },
       originalHolderPersonId: 'original-1',
       source: 'PURCHASE',
       status: 'CONSUMED',

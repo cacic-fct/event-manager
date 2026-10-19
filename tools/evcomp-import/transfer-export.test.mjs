@@ -655,3 +655,38 @@ test('splits by the pretty-printed byte limit and rejects mappings that cannot r
     /require explicit eventMappings or activityMappings/,
   );
 });
+
+test('reports the discarded registration and attendance for either duplicate order', () => {
+  for (const newerFirst of [false, true]) {
+    const source = snapshot();
+    const registration = source.registrations[0];
+    const attendance = source.attendances[0];
+    const newerRegistration = {
+      ...registration,
+      sourceId: 90,
+      sourceActivityId: null,
+      createdAt: new Date(Date.now() - 3_600_000),
+    };
+    const newerAttendance = { ...attendance, sourceId: 91, recordedAt: new Date(Date.now() + 100 * 3_600_000) };
+    source.registrations = newerFirst ? [newerRegistration, registration] : [registration, newerRegistration];
+    source.attendances = newerFirst ? [newerAttendance, attendance] : [attendance, newerAttendance];
+    const result = exportTransferDocuments(source, { sourceNamespace: 'evcomp-test' });
+    for (const [code, sourceId] of [
+      ['duplicate_source_registration', '40'],
+      ['duplicate_attendance', '50'],
+    ]) {
+      assert.deepEqual(
+        result.report.issues
+          .filter((issue) => issue.code === code)
+          .map((issue) => ({ sourceId: issue.sourceId, skipped: issue.skipped })),
+        [{ sourceId, skipped: true }],
+      );
+    }
+    const resources = allResources(result);
+    assert.deepEqual(resources.find((row) => row.kind === 'major-event-subscription').data.selectedEventIds, []);
+    assert.equal(
+      resources.find((row) => row.kind === 'event-attendance').data.attendedAt,
+      newerAttendance.recordedAt.toISOString(),
+    );
+  }
+});

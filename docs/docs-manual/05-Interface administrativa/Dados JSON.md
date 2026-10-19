@@ -61,7 +61,7 @@ Arquivos de cadastro com apenas chaves locais podem criar novos recursos em uma 
 
 ### Limites do formato
 
-O formato não transfere comprovantes, convites, códigos de presença on-line, resultados de partidas nem operações esportivas. O estado de publicação também não é transferido.
+O formato não transfere comprovantes, códigos de presença on-line, resultados de partidas nem operações esportivas.
 
 Para importar presença em uma partida nova, crie a partida primeiro e importe suas presenças em outro arquivo. Para renomear uma faixa de pagamento e alterar referências ao seu nome em inscrições ou certificados, faça a renomeação antes de importar as referências atualizadas.
 
