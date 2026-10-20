@@ -91,6 +91,7 @@ jobs:
           bunx nx run shared-data-transfer:typecheck
           bun run typecheck:data-import
           bun run test:data-import
+          bun run test:data-transfer:runner
           bun run lint:data-import
 
       - name: Test Storybook library discovery
@@ -186,6 +187,35 @@ jobs:
       - name: Verify atomic JSON import and undo with isolated PostgreSQL
         if: matrix.project == 'backend'
         run: bunx nx run backend:test-data-transfer-integration
+
+      - name: Create disposable JSON transfer database
+        if: matrix.project == 'backend'
+        run: |
+          node <<'JS'
+          const { Client } = require('pg');
+          (async () => {
+            const client = new Client({ connectionString: process.env.DATABASE_URL });
+            await client.connect();
+            try {
+              await client.query('CREATE DATABASE fct_app_data_transfer_test');
+            } finally {
+              await client.end();
+            }
+          })().catch((error) => { console.error(error); process.exitCode = 1; });
+          JS
+
+      - name: Migrate disposable JSON transfer database
+        if: matrix.project == 'backend'
+        working-directory: apps/backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fct_app_data_transfer_test
+        run: bunx prisma migrate deploy
+
+      - name: Verify JSON transfer constraints and concurrency with Prisma and PostgreSQL
+        if: matrix.project == 'backend'
+        env:
+          DATA_TRANSFER_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fct_app_data_transfer_test
+        run: bunx nx run backend:test-data-transfer-postgres
 
       - name: Run public Workbox tests with coverage
         if: matrix.project == 'public'
@@ -664,6 +694,7 @@ jobs:
           bunx nx run shared-data-transfer:typecheck
           bun run typecheck:data-import
           bun run test:data-import
+          bun run test:data-transfer:runner
           bun run lint:data-import
 
       - name: Test Storybook library discovery
@@ -737,6 +768,32 @@ jobs:
 
       - name: Verify atomic JSON import and undo with isolated PostgreSQL
         run: bunx nx run backend:test-data-transfer-integration
+
+      - name: Create disposable JSON transfer database
+        run: |
+          node <<'JS'
+          const { Client } = require('pg');
+          (async () => {
+            const client = new Client({ connectionString: process.env.DATABASE_URL });
+            await client.connect();
+            try {
+              await client.query('CREATE DATABASE fct_app_data_transfer_test');
+            } finally {
+              await client.end();
+            }
+          })().catch((error) => { console.error(error); process.exitCode = 1; });
+          JS
+
+      - name: Migrate disposable JSON transfer database
+        working-directory: apps/backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fct_app_data_transfer_test
+        run: bunx prisma migrate deploy
+
+      - name: Verify JSON transfer constraints and concurrency with Prisma and PostgreSQL
+        env:
+          DATA_TRANSFER_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fct_app_data_transfer_test
+        run: bunx nx run backend:test-data-transfer-postgres
 
       - name: Run public Workbox tests with coverage
         run: bunx nx run public:test-workbox

@@ -127,11 +127,22 @@ TypeBox supplies the runtime JSON Schema and inferred transfer types. Checked sc
 
 ```sh
 bunx nx test shared-data-transfer
+bunx jest --config apps/backend/jest.config.cts --runInBand --testPathPatterns=data-transfer
 bunx nx run backend:test-data-transfer-integration
 bunx nx run-many --targets=lint --projects=backend,admin,shared-data-transfer,shared-permissions
 ```
 
 The integration target uses isolated PGlite PostgreSQL fixtures to verify transaction rollback, restart recovery, exact-request replay, and guarded undo. It does not apply application migrations. CI also runs the real HttpClient/MSW browser flows and strict Storybook accessibility checks. Shared fixtures use relative dates and faker; test-only fixtures are exposed through `@cacic-fct/shared-data-transfer/testing` and are excluded from application bundles.
+
+The same integration target runs `transfer-http.e2e.spec.ts`: a disposable Nest HTTP application with the production transfer controller and authentication guard, real planning, person matching, ticket adapter, and journal. Identity validation, authorization decisions, frozen-resource decisions, and notification delivery are controlled boundaries. These journeys cover explicit person creation, partial approval, apply retries, stale previews, permission revocation, private history, ownership checks, and undo conflicts. Rejected writes and retries compare the entire fixture database to detect unintended changes.
+
+The shared backend database fixture uses PostgreSQL transactions over test delegates with JSON rows. It verifies atomicity and journal behavior; it does not reproduce the generated Prisma client's relational constraints or concurrent multi-connection locking. The unit suite separately checks conditional-write races, duplicate ticket rights, immutable ticket lineage, pending transfers, lifecycle dates, and purchase approval. These suites supplement the PostgreSQL ticketing database tests (`bun run test:ticketing:database`) and browser journeys rather than replacing them.
+
+For actual Prisma constraints and concurrency, run `bun run test:data-transfer:database` (or `bunx nx run backend:test-data-transfer-postgres`) with `DATA_TRANSFER_TEST_DATABASE_URL` pointing to an already migrated, loopback-hosted PostgreSQL database named exactly `fct_app_data_transfer_test`. Use PostGIS 18, as in CI. The runner rejects application database names, remote hosts, and query-string connection overrides; it never falls back to `DATABASE_URL`, provisions a server, or runs migrations. Missing configuration or schema causes a failure, rather than skipped tests. Run `bun run test:data-transfer:runner` to verify these connection guards.
+
+Provisioning is explicit. After creating the disposable database and approving its migrations, apply the repository schema with `DATABASE_URL="$DATA_TRANSFER_TEST_DATABASE_URL" bunx prisma migrate deploy --config apps/backend/prisma.config.ts`. CI creates and migrates a separate database on its temporary PostGIS service before running the suite on trusted and forked PRs.
+
+The PostgreSQL suite uses the generated Prisma client, real ticket issuance, and transactional realtime outboxes. It verifies partial holder uniqueness for active/consumed tickets, globally unique source keys, foreign keys, competing purchases and ticket imports, exact-request replay with explicit and allocated IDs, rollback of whole batches and person changes, and undo after later consumption, revocation, transfers, or new references. Separate clients and transaction rendezvous force import overlap; the exact-request test also observes the waiting PostgreSQL advisory lock. An undo/consumption race pauses the actual delete and verifies that committed consumption and history survive. Cleanup deletes only each fixture's rows; it never truncates shared tables.
 
 ## Publication and audience invitation imports
 

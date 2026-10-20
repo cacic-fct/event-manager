@@ -31,10 +31,21 @@ describe('ParticipantSummaryComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Ana Silva');
     expect(fixture.nativeElement.textContent).toContain('ana@example.com');
     expect(fixture.nativeElement.textContent).toContain('RA 20261234');
-    expect(fixture.nativeElement.textContent).toContain('•••8901');
+    expect(fixture.nativeElement.textContent).toContain('•••.456.789-••');
     expect(fixture.nativeElement.textContent).toContain('Aluno da Graduação');
     expect(fixture.nativeElement.textContent).toContain('Vínculo com a Unesp não informado');
     expect(fixture.nativeElement.textContent).not.toContain('aluno-graduacao');
     expect(fixture.nativeElement.textContent).not.toContain('UNKNOWN');
+  });
+  it.each(['52998224725', '529.982.247-25'])('uses the shared CPF mask for %s', (identityDocument) => {
+    fixture.componentRef.setInput('person', { name: 'Ana Silva', identityDocument });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('•••.982.247-••');
+
+    fixture.componentRef.setInput('maskIdentityDocument', false);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain(identityDocument);
   });
 });

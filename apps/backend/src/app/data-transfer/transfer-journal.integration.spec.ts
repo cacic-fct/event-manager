@@ -1,4 +1,5 @@
-import { PGlite } from '@electric-sql/pglite';
+import type { PGlite } from '@electric-sql/pglite';
+import { createTransferDatabaseFixture, transferDatabaseDelegates } from './testing/transfer-database.fixtures';
 import { createHash, randomUUID } from 'node:crypto';
 import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
@@ -20,158 +21,9 @@ import { ConfigurationTransferAdapter } from './configuration-transfer.adapter';
 import { TicketPurchaseTransferAdapter } from './ticket-purchase-transfer.adapter';
 import { TransferKeyAllocations } from './transfer-key-allocations';
 
-type SqlClient = Pick<PGlite, 'query'>;
-type Row = Record<string, unknown>;
-
-/** A PostgreSQL-backed test adapter, deliberately isolated from the running application's database. */
-function delegates(client: SqlClient) {
-  const allRows = async (model: string): Promise<Row[]> => {
-    const result = await client.query<{ data: Row }>('SELECT data FROM transfer_fixture WHERE model = $1 ORDER BY id', [
-      model,
-    ]);
-    return result.rows.map(({ data }) => hydrate(data));
-  };
-  const modelMetadata = new Map(
-    Prisma.dmmf.datamodel.models.map((model) => [model.name.charAt(0).toLowerCase() + model.name.slice(1), model]),
-  );
-  const delegate = (model: string) => {
-    const findMany = async (args: { where?: unknown; take?: number; select?: unknown } = {}) => {
-      const rows = (await allRows(model)).filter((row) => matches(row, args.where)).slice(0, args.take);
-      const select = args.select && typeof args.select === 'object' ? (args.select as Row) : undefined;
-      if (!select) return rows;
-      const metadata = modelMetadata.get(model);
-      return Promise.all(
-        rows.map(async (row) => {
-          const projected = { ...row };
-          for (const [relationName, relationArgs] of Object.entries(select)) {
-            const relation = metadata?.fields.find((field) => field.name === relationName && field.kind === 'object');
-            if (!relation || !relationArgs || typeof relationArgs !== 'object') continue;
-            const nestedSelect = (relationArgs as Row)['select'];
-            if (!nestedSelect || typeof nestedSelect !== 'object') continue;
-            let related: Row[] = [];
-            if (model === 'eventGroup' && relationName === 'events')
-              related = (await allRows('event')).filter((candidate) => candidate['eventGroupId'] === row['id']);
-            else if (model === 'eventGroup' && relationName === 'audienceInvitations')
-              related = (await allRows('eventGroupAudienceInvitation')).filter(
-                (candidate) => candidate['eventGroupId'] === row['id'],
-              );
-            else if (model === 'people' && relationName === 'eventSubscriptions')
-              related = (await allRows('eventSubscription')).filter((candidate) => candidate['personId'] === row['id']);
-            else if (model === 'event' && relationName === 'ticketConfig')
-              related = (await allRows('ticketConfig')).filter((candidate) => candidate['eventId'] === row['id']);
-            const keys = Object.keys(nestedSelect as Row);
-            const selected = related.map((candidate) => Object.fromEntries(keys.map((key) => [key, candidate[key]])));
-            projected[relationName] = relation.isList ? selected : (selected[0] ?? null);
-          }
-          return projected;
-        }),
-      );
-    };
-    const create = async ({ data }: { data: Row }) => {
-      const now = new Date();
-      const row = { id: randomUUID(), createdAt: now, updatedAt: now, deletedAt: null, revertedAt: null, ...data };
-      await client.query('INSERT INTO transfer_fixture (model, id, data) VALUES ($1, $2, $3::jsonb)', [
-        model,
-        row.id,
-        JSON.stringify(row),
-      ]);
-      return row;
-    };
-    const updateMany = async ({ where, data }: { where: unknown; data: Row }) => {
-      const rows = await findMany({ where });
-      for (const row of rows)
-        await client.query('UPDATE transfer_fixture SET data = $3::jsonb WHERE model = $1 AND id = $2', [
-          model,
-          row['id'],
-          JSON.stringify({ ...row, ...data }),
-        ]);
-      return { count: rows.length };
-    };
-    const deleteMany = async ({ where }: { where: unknown }) => {
-      const rows = await findMany({ where });
-      for (const row of rows)
-        await client.query('DELETE FROM transfer_fixture WHERE model = $1 AND id = $2', [model, row['id']]);
-      return { count: rows.length };
-    };
-    return {
-      findMany,
-      create,
-      createMany: async ({ data }: { data: Row[] }) => {
-        for (const row of data) await create({ data: row });
-        return { count: data.length };
-      },
-      updateMany,
-      deleteMany,
-      findFirst: async (args: { where?: unknown } = {}) => (await findMany(args))[0] ?? null,
-      findUnique: async ({ where }: { where: unknown }) => (await findMany({ where }))[0] ?? null,
-      update: async ({ where, data }: { where: unknown; data: Row }) => {
-        await updateMany({ where, data });
-        return (await findMany({ where }))[0];
-      },
-    };
-  };
-  return {
-    eventGroup: delegate('eventGroup'),
-    event: delegate('event'),
-    ticketConfig: delegate('ticketConfig'),
-    ticketPurchase: delegate('ticketPurchase'),
-    eventTicket: delegate('eventTicket'),
-    ticketRealtimeOutbox: delegate('ticketRealtimeOutbox'),
-    eventGroupAudienceInvitation: delegate('eventGroupAudienceInvitation'),
-    eventSubscription: delegate('eventSubscription'),
-    people: delegate('people'),
-    user: delegate('user'),
-    eventTicketHistory: delegate('eventTicketHistory'),
-    eventFormLink: delegate('eventFormLink'),
-    placePreset: delegate('placePreset'),
-    auditLogEntry: delegate('auditLogEntry'),
-    $executeRaw: async (parts: TemplateStringsArray, ...values: unknown[]) => {
-      const sql = parts.reduce(
-        (statement, part, index) => statement + part + (index < values.length ? `$${index + 1}` : ''),
-        '',
-      );
-      await client.query(
-        sql,
-        values.map((value) => (typeof value === 'bigint' ? value.toString() : value)),
-      );
-      return 1;
-    },
-  };
-}
-
-function matches(row: Row, where: unknown): boolean {
-  if (!where || typeof where !== 'object') return true;
-  return Object.entries(where).every(([field, value]) => {
-    if (field === 'OR' && Array.isArray(value)) return value.some((entry) => matches(row, entry));
-    if (field === 'AND' && Array.isArray(value)) return value.every((entry) => matches(row, entry));
-    if (field === 'metadata' && value && typeof value === 'object' && 'path' in value && Array.isArray(value.path)) {
-      let metadataValue: unknown = row['metadata'];
-      for (const pathPart of value.path) {
-        metadataValue =
-          metadataValue && typeof metadataValue === 'object' ? (metadataValue as Row)[String(pathPart)] : undefined;
-      }
-      return JSON.stringify(metadataValue) === JSON.stringify(value.equals);
-    }
-    if (value && typeof value === 'object' && 'startsWith' in value)
-      return typeof row[field] === 'string' && row[field].startsWith(String(value.startsWith));
-    if (value && typeof value === 'object' && 'in' in value && Array.isArray(value.in))
-      return value.in.includes(row[field]);
-    return JSON.stringify(row[field]) === JSON.stringify(value);
-  });
-}
-
-function hydrate(row: Row): Row {
-  return Object.fromEntries(
-    Object.entries(row).map(([key, value]) => [
-      key,
-      /At$/.test(key) && typeof value === 'string' ? new Date(value) : value,
-    ]),
-  );
-}
-
 describe('durable audit-backed import rollback and undo', () => {
   let database: PGlite;
-  let client: ReturnType<typeof delegates>;
+  let client: ReturnType<typeof transferDatabaseDelegates>;
   let prisma: PrismaService;
   let journal: DataTransferJournalService;
   const actor = {
@@ -191,16 +43,7 @@ describe('durable audit-backed import rollback and undo', () => {
   } as unknown as FrozenResourceService;
 
   beforeEach(async () => {
-    database = new PGlite();
-    await database.exec(
-      'CREATE TABLE transfer_fixture (model text NOT NULL, id text NOT NULL, data jsonb NOT NULL, PRIMARY KEY (model, id))',
-    );
-    client = delegates(database);
-    prisma = {
-      ...client,
-      $transaction: (operation: (tx: Prisma.TransactionClient) => Promise<unknown>) =>
-        database.transaction((tx) => operation(delegates(tx) as unknown as Prisma.TransactionClient)),
-    } as unknown as PrismaService;
+    ({ database, client, prisma } = await createTransferDatabaseFixture());
     journal = new DataTransferJournalService(prisma, authorization, frozen);
     jest.clearAllMocks();
     jest.mocked(authorization.assertPermissions).mockResolvedValue(undefined);
@@ -310,7 +153,7 @@ describe('durable audit-backed import rollback and undo', () => {
             isCPF,
           });
         expect(await client.eventSubscription.findMany()).toHaveLength(1);
-        await journal.undo(result.batchId, actor);
+        await journal.undo(result.batchId ?? '', actor);
         if (action === 'create') expect(await client.people.findMany()).toEqual([]);
         else
           expect((await client.people.findMany())[0]).toMatchObject({
@@ -457,7 +300,7 @@ describe('durable audit-backed import rollback and undo', () => {
       return 1;
     });
     await journal.lockRequest({ $executeRaw: execute } as unknown as Prisma.TransactionClient, 'f'.repeat(64));
-    expect(execute.mock.calls[0][1]).toBe(-1n);
+    expect(execute.mock.calls[0][1]).toBe(BigInt(-1));
   });
 
   it('journals and undoes createMany rows when an archived row matches the creation fields', async () => {
@@ -672,7 +515,7 @@ describe('durable audit-backed import rollback and undo', () => {
         metadata: { type: 'data-transfer-batch', undone: false, synchronizationPending: true },
       });
 
-      await transfer.undo(result.batchId, actor);
+      await transfer.undo(result.batchId ?? '', actor);
       expect(await client.eventGroup.findMany()).toEqual([]);
       expect((await client.auditLogEntry.findUnique({ where: { id: result.batchId } }))?.['metadata']).toMatchObject({
         undone: true,

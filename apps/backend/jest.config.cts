@@ -8,7 +8,12 @@ module.exports = {
   },
   transformIgnorePatterns: ['node_modules/(?!@cacic-fct/form-contracts/)'],
   // PGlite loads WebAssembly through ESM; its isolated integration target enables Node's VM modules.
-  testPathIgnorePatterns: ['/node_modules/', 'transfer-journal.integration.spec.ts$'],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    'data-transfer/.*\\.integration\\.spec\\.ts$',
+    'transfer-http\\.e2e\\.spec\\.ts$',
+    'data-transfer\\.postgres\\.spec\\.ts$',
+  ],
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/apps/backend',
   coverageReporters: ['lcov', 'json', 'text', 'clover'],

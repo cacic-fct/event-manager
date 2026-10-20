@@ -755,27 +755,6 @@
       </section>
     }
 
-    @if (undoConfirmationOpen()) {
-      <section class="risk-summary undo-confirmation" aria-labelledby="undo-confirmation-heading" role="group">
-        <mat-icon>warning</mat-icon>
-        <div>
-          <h2 id="undo-confirmation-heading">Reverter todas as alterações do lote {{ undoTarget()?.batchId }}?</h2>
-          <p>
-            A reversão preserva edições feitas depois deste lote e verifica novamente as permissões do domínio antes de
-            continuar.
-          </p>
-          @if (undoError()) {
-            <p class="error-message" role="alert">{{ undoError() }}</p>
-          }
-          <div class="action-row">
-            <button mat-button type="button" [disabled]="undoLoading()" (click)="cancelUndo()">Cancelar</button>
-            <button mat-flat-button type="button" [disabled]="undoLoading()" (click)="confirmUndo()">
-              Confirmar reversão
-            </button>
-          </div>
-        </div>
-      </section>
-    }
     @if (undoLoading()) {
       <mat-progress-bar mode="indeterminate" aria-label="Desfazendo importação" />
     }
@@ -819,4 +798,23 @@
       }
     </section>
   }
+</ng-template>
+
+<ng-template #undoConfirmation>
+  <h2 mat-dialog-title>Reverter todas as alterações do lote {{ undoTarget()?.batchId }}?</h2>
+  <mat-dialog-content>
+    <p id="undo-confirmation-description">
+      A reversão preserva edições feitas depois deste lote e verifica novamente as permissões do domínio antes de
+      continuar.
+    </p>
+    @if (undoError()) {
+      <p class="error-message" role="alert">{{ undoError() }}</p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" data-undo-cancel [disabled]="undoLoading()" (click)="cancelUndo()">
+      Cancelar
+    </button>
+    <button mat-flat-button type="button" [disabled]="undoLoading()" (click)="confirmUndo()">Confirmar reversão</button>
+  </mat-dialog-actions>
 </ng-template>

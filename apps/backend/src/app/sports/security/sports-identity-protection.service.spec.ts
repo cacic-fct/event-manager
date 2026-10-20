@@ -38,6 +38,12 @@ describe('SportsIdentityProtectionService', () => {
     expect(document.displayHint).toBe('AB••••34');
   });
 
+  it.each(['52998224725', '529.982.247-25'])('uses the shared CPF mask for %s', (value) => {
+    const identity = createService('test-secret').protect(SportsIdentityType.IDENTITY_DOCUMENT, value);
+
+    expect(identity.displayHint).toBe('•••.982.247-••');
+  });
+
   it('rejects malformed, tampered, and semantically invalid values without leaking details', () => {
     const service = createService('test-secret');
     const protectedIdentity = service.protect(SportsIdentityType.EMAIL, 'maria@example.com');

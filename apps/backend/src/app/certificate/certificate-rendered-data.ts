@@ -1,3 +1,4 @@
+import { maskCPF } from '@cacic-fct/shared-utils';
 import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/shared-data-types';
 import { Prisma } from '@prisma/client';
 import { CertificateConfigRecord, EventRecord } from './certificate.constants';
@@ -365,5 +366,5 @@ function formatIdentityDocument(identityDocument?: string | null): string {
     return '';
   }
   const digits = trimmedDocument.replace(/\D/g, '');
-  return digits.length === 11 ? `•••.${digits.slice(3, 6)}.${digits.slice(6, 9)}-••` : trimmedDocument;
+  return digits.length === 11 ? maskCPF(trimmedDocument) : trimmedDocument;
 }

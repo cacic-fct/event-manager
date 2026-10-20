@@ -1,3 +1,4 @@
+import { maskCPF } from '@cacic-fct/shared-utils';
 import {
   SportsCategory,
   SportsCategoryPlacement,
@@ -368,6 +369,6 @@ export class SportsReadAdminMapper {
     if (!digits) {
       return null;
     }
-    return `•••••••${digits.slice(-4)}`;
+    return digits.length === 11 ? maskCPF(digits) : `•••••••${digits.slice(-4)}`;
   }
 }

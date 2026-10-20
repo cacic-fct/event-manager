@@ -251,6 +251,11 @@ export const RevertConfirmation: Story = {
     await expect(await screen.findByRole('heading', { name: 'Desfazer deste ponto em diante?' })).toBeVisible();
     await expect(await screen.findByText(/alterações posteriores do mesmo item/i)).toBeVisible();
     await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    const singleRevertButtons = await page.findAllByRole('button', { name: 'Desfazer alteração' });
+    await userEvent.click(singleRevertButtons[0]);
+    await expect(await screen.findByRole('heading', { name: 'Desfazer esta alteração?' })).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    await expect(singleRevertButtons[0]).toBeVisible();
   },
 };
 

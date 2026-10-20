@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
 import type { ResourceOfKind, TransferResource } from '@cacic-fct/shared-data-transfer';
 import { parseTransferDocument } from '@cacic-fct/shared-data-transfer';
 import { Permission } from '@cacic-fct/shared-permissions';
@@ -6,6 +6,10 @@ import { TicketPurchaseTransferAdapter } from './ticket-purchase-transfer.adapte
 import { EventTicketTransferAdapter } from './event-ticket-transfer.adapter';
 import type { TransferAdapterContext } from './data-transfer-adapter';
 import { transferPersonKey } from './transfer-person-creation';
+
+type EditableResource<Kind extends 'ticket-purchase' | 'event-ticket'> = Omit<ResourceOfKind<Kind>, 'data'> & {
+  data: { -readonly [Field in keyof ResourceOfKind<Kind>['data']]: ResourceOfKind<Kind>['data'][Field] };
+};
 
 function harness() {
   const now = new Date();
@@ -81,7 +85,7 @@ function harness() {
   } as unknown as TransferAdapterContext;
   const purchases = new TicketPurchaseTransferAdapter(authorization as never, people as never, issuance as never);
   const tickets = new EventTicketTransferAdapter(authorization as never, people as never, realtime as never);
-  const purchase: ResourceOfKind<'ticket-purchase'> = {
+  const purchase: EditableResource<'ticket-purchase'> = {
     kind: 'ticket-purchase',
     id: 'purchase-1',
     data: {
@@ -91,7 +95,7 @@ function harness() {
       purchasedAt: new Date(now.getTime() - 3_600_000).toISOString(),
     },
   };
-  const ticket: ResourceOfKind<'event-ticket'> = {
+  const ticket: EditableResource<'event-ticket'> = {
     kind: 'event-ticket',
     id: 'ticket-1',
     data: {
@@ -126,6 +130,107 @@ function harness() {
 }
 
 describe('standalone ticket purchase transfer', () => {
+  function storedPurchase(h: ReturnType<typeof harness>) {
+    return {
+      id: 'stored-purchase',
+      personId: 'person-1',
+      eventId: 'event-1',
+      status: 'APPROVED',
+      createdAt: new Date(h.purchase.data.purchasedAt ?? ''),
+      updatedAt: h.now,
+      amountCents: 2000,
+      priceTierName: 'Original',
+    };
+  }
+
+  it('updates an approved purchase matched by person without issuing another ticket or changing its original date', async () => {
+    const h = harness();
+    const stored = storedPurchase(h);
+    h.tx.ticketPurchase.findFirst.mockResolvedValue(stored);
+    const snapshot = await h.purchases.resolve(h.purchase, h.context);
+    await h.purchases.apply(snapshot, 'update', h.context);
+    expect(h.tx.ticketPurchase.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: stored.id,
+        updatedAt: stored.updatedAt,
+        status: 'APPROVED',
+        personId: 'person-1',
+        eventId: 'event-1',
+      },
+      data: { amountCents: 2500, priceTierName: 'Original' },
+    });
+    expect(h.issuance.issueForPerson).not.toHaveBeenCalled();
+    expect(h.tx.ticketPurchase.create).not.toHaveBeenCalled();
+    expect(h.tx.auditLogEntry.create).toHaveBeenCalledTimes(1);
+    expect(await h.purchases.readAppliedResource(snapshot, h.context)).toMatchObject({
+      id: stored.id,
+      data: { purchasedAt: h.purchase.data.purchasedAt },
+    });
+  });
+
+  it('rejects a purchase update when the conditional write loses a race', async () => {
+    const h = harness();
+    h.tx.ticketPurchase.findFirst.mockResolvedValue(storedPurchase(h));
+    const snapshot = await h.purchases.resolve(h.purchase, h.context);
+    h.tx.ticketPurchase.updateMany.mockResolvedValue({ count: 0 });
+    await expect(h.purchases.apply(snapshot, 'update', h.context)).rejects.toThrow(ConflictException);
+    expect(h.tx.ticketPurchase.updateMany).toHaveBeenCalledTimes(1);
+    expect(h.tx.auditLogEntry.create).not.toHaveBeenCalled();
+    expect(h.issuance.issueForPerson).not.toHaveBeenCalled();
+  });
+
+  it('preserves the purchase date during updates and rejects moving it', async () => {
+    const h = harness();
+    h.tx.ticketPurchase.findFirst.mockResolvedValue(storedPurchase(h));
+    h.purchase.data.purchasedAt = new Date(h.now.getTime() - 7_200_000).toISOString();
+    const snapshot = await h.purchases.resolve(h.purchase, h.context);
+    await expect(h.purchases.apply(snapshot, 'update', h.context)).rejects.toThrow('não pode ser alterada');
+    expect(h.tx.ticketPurchase.updateMany).not.toHaveBeenCalled();
+    expect(h.tx.auditLogEntry.create).not.toHaveBeenCalled();
+  });
+
+  it.each(['sourceKey', 'eventId', 'originalHolderPersonId'] as const)(
+    'rejects issuance returning a ticket with another %s instead of approving the wrong right',
+    async (field) => {
+      const h = harness();
+      const snapshot = await h.purchases.resolve(h.purchase, h.context);
+      h.issuance.issueForPerson.mockResolvedValue({
+        id: 'wrong-ticket',
+        eventId: 'event-1',
+        originalHolderPersonId: 'person-1',
+        sourceKey: 'purchase-1',
+        [field]: 'another-identity',
+      });
+      await expect(h.purchases.apply(snapshot, 'create', h.context)).rejects.toThrow(ConflictException);
+      expect(h.tx.auditLogEntry.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it('rejects a purchase when approval permission is revoked after review', async () => {
+    const h = harness();
+    const snapshot = await h.purchases.resolve(h.purchase, h.context);
+    h.authorization.assertPermissions.mockImplementation(async (_actor, permissions) => {
+      if (permissions.includes(Permission.Receipt.Approve)) throw new ForbiddenException();
+    });
+    await expect(h.purchases.apply(snapshot, 'create', h.context)).rejects.toThrow(ForbiddenException);
+    expect(h.tx.ticketPurchase.create).not.toHaveBeenCalled();
+    expect(h.issuance.issueForPerson).not.toHaveBeenCalled();
+    expect(h.tx.auditLogEntry.create).not.toHaveBeenCalled();
+  });
+
+  it.each(['future', 'expired'] as const)('rejects a %s purchase date before issuing rights', async (date) => {
+    const h = harness();
+    h.purchase.data.purchasedAt = new Date(h.now.getTime() + 60_000).toISOString();
+    if (date === 'expired') {
+      h.event.endDate = new Date(h.now.getTime() - 7_200_000);
+      h.purchase.data.purchasedAt = new Date(h.now.getTime() - 3_600_000).toISOString();
+    }
+    const snapshot = await h.purchases.resolve(h.purchase, h.context);
+    await expect(h.purchases.apply(snapshot, 'create', h.context)).rejects.toThrow('antes da expiração');
+    expect(h.tx.ticketPurchase.create).not.toHaveBeenCalled();
+    expect(h.issuance.issueForPerson).not.toHaveBeenCalled();
+  });
+
   it('records an approved purchase and issues its right without reading or creating a subscription', async () => {
     const h = harness();
     const snapshot = await h.purchases.resolve(h.purchase, h.context);
@@ -225,6 +330,187 @@ describe('standalone ticket purchase transfer', () => {
     expect(snapshot.dependencies).toContainEqual({ kind: 'ticket-config', id: 'new-config' });
     await expect(h.purchases.validatePlan(snapshot, h.context, parents)).resolves.toBeUndefined();
     await expect(h.purchases.validatePlan(snapshot, h.context, parents.slice(0, 1))).rejects.toThrow('Habilite');
+  });
+});
+
+describe('ticket lifecycle import safety', () => {
+  it.each([
+    ['disabled configuration', 'Habilite a configuração'],
+    ['missing original holder', 'titular original'],
+    ['reserved source', 'origem já pertence'],
+    ['duplicate holder', 'já possui outro bilhete'],
+  ] as const)('rejects %s before granting a ticket', async (conflict, message) => {
+    const h = harness();
+    const snapshot = await h.tickets.resolve(h.ticket, h.context);
+    if (conflict === 'disabled configuration') h.config.enabled = false;
+    if (conflict === 'missing original holder') h.tx.people.findFirst.mockResolvedValue(null);
+    if (conflict === 'reserved source') {
+      // Source keys are globally unique, even when the conflicting ticket has another holder.
+      Object.assign(snapshot.resource.data, { sourceKey: 'reserved-source' });
+      h.tx.eventTicket.findUnique.mockImplementation(async ({ where }) =>
+        where.sourceKey ? { id: 'another-ticket' } : null,
+      );
+    }
+    if (conflict === 'duplicate holder') h.tx.eventTicket.findFirst.mockResolvedValue({ id: 'another-ticket' });
+    await expect(h.tickets.apply(snapshot, 'create', h.context)).rejects.toThrow(message);
+    expect(h.tx.eventTicket.create).not.toHaveBeenCalled();
+    expect(h.tx.eventTicketHistory.create).not.toHaveBeenCalled();
+    expect(h.realtime.enqueueForUsers).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['future issuance', { issuedAt: 60_000 }, 'emissão'],
+    ['expiration equal to issuance', { expiresAt: -3_600_000 }, 'emissão'],
+    ['consumption before issuance', { status: 'CONSUMED', consumedAt: -7_200_000 }, 'consumo'],
+    ['future consumption', { status: 'CONSUMED', consumedAt: 60_000 }, 'consumo'],
+    ['missing consumption', { status: 'CONSUMED' }, 'consumo'],
+    ['consumption on active ticket', { consumedAt: -60_000 }, 'consumo'],
+    ['revocation before issuance', { status: 'REVOKED', revokedAt: -7_200_000 }, 'revogação'],
+    ['future revocation', { status: 'REVOKED', revokedAt: 60_000 }, 'revogação'],
+    ['missing revocation', { status: 'REVOKED' }, 'revogação'],
+    ['revocation on active ticket', { revokedAt: -60_000 }, 'revogação'],
+    ['revocation reason on active ticket', { revokedReason: 'Cancelado' }, 'revogação'],
+  ] as const)('rejects %s before ticket, history, audit or notification writes', async (_name, fields, message) => {
+    const h = harness();
+    Object.assign(
+      h.ticket.data,
+      Object.fromEntries(
+        Object.entries(fields).map(([key, value]) => [
+          key,
+          typeof value === 'number' ? new Date(h.now.getTime() + value).toISOString() : value,
+        ]),
+      ),
+    );
+    const snapshot = await h.tickets.resolve(h.ticket, h.context);
+    await expect(h.tickets.apply(snapshot, 'create', h.context)).rejects.toThrow(message);
+    expect(h.tx.eventTicket.create).not.toHaveBeenCalled();
+    expect(h.tx.eventTicketHistory.create).not.toHaveBeenCalled();
+    expect(h.tx.auditLogEntry.create).not.toHaveBeenCalled();
+    expect(h.realtime.enqueueForUsers).not.toHaveBeenCalled();
+  });
+
+  function existingTicket(h: ReturnType<typeof harness>) {
+    return {
+      id: h.ticket.id,
+      eventId: h.event.id,
+      holderPersonId: 'person-1',
+      originalHolderPersonId: 'person-1',
+      source: 'ADMIN',
+      sourceKey: null,
+      status: 'ACTIVE',
+      issuedAt: new Date(h.ticket.data.issuedAt ?? ''),
+      expiresAt: h.event.endDate,
+      consumedAt: null,
+      revokedAt: null,
+      revokedReason: null,
+      updatedAt: h.now,
+    };
+  }
+
+  it('hides tickets from another event before resolving holder identities', async () => {
+    const h = harness();
+    h.tx.eventTicket.findUnique.mockResolvedValue({ ...existingTicket(h), eventId: 'other-event' } as never);
+    await expect(h.tickets.resolve(h.ticket, h.context)).rejects.toThrow(ForbiddenException);
+    expect(h.people.match).not.toHaveBeenCalled();
+  });
+
+  it('rejects a changed revision between resolution and application without writing ticket history', async () => {
+    const h = harness();
+    h.tx.eventTicket.findUnique.mockResolvedValue(existingTicket(h) as never);
+    const snapshot = await h.tickets.resolve(h.ticket, h.context);
+    h.tx.eventTicket.findUnique.mockResolvedValue({
+      ...existingTicket(h),
+      updatedAt: new Date(h.now.getTime() + 1),
+    } as never);
+    await expect(h.tickets.apply(snapshot, 'update', h.context)).rejects.toThrow(ConflictException);
+    expect(h.tx.eventTicket.updateMany).not.toHaveBeenCalled();
+    expect(h.tx.eventTicketHistory.create).not.toHaveBeenCalled();
+  });
+
+  it('records an explicit revocation with its historical date and reason', async () => {
+    const h = harness();
+    const revokedAt = new Date(h.now.getTime() - 60_000);
+    Object.assign(h.ticket.data, { status: 'REVOKED', revokedAt: revokedAt.toISOString(), revokedReason: 'Cancelado' });
+    const snapshot = await h.tickets.resolve(h.ticket, h.context);
+    await h.tickets.apply(snapshot, 'create', h.context);
+    expect(h.tx.eventTicket.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        status: 'REVOKED',
+        revokedAt,
+        revokedReason: 'Cancelado',
+        consumedAt: null,
+      }),
+    });
+    expect(h.tx.eventTicketHistory.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ operation: 'REVOKED' }),
+    });
+  });
+
+  it.each([
+    ['source', 'PURCHASE'],
+    ['sourceKey', 'another-purchase'],
+    ['originalHolderPersonId', 'another-person'],
+    ['issuedAt', 'earlier'],
+  ] as const)('keeps an existing ticket’s %s immutable', async (field, value) => {
+    const h = harness();
+    h.tx.eventTicket.findUnique.mockResolvedValue(existingTicket(h) as never);
+    Object.assign(h.ticket.data, {
+      [field]: value === 'earlier' ? new Date(h.now.getTime() - 7_200_000).toISOString() : value,
+    });
+    const snapshot = await h.tickets.resolve(h.ticket, h.context);
+    await expect(h.tickets.apply(snapshot, 'update', h.context)).rejects.toThrow('imutáveis');
+    expect(h.tx.eventTicket.updateMany).not.toHaveBeenCalled();
+    expect(h.tx.eventTicketHistory.create).not.toHaveBeenCalled();
+  });
+
+  it('blocks holder replacement while a transfer is pending', async () => {
+    const h = harness();
+    h.tx.eventTicket.findUnique.mockResolvedValue(existingTicket(h) as never);
+    h.people.match.mockResolvedValue({ id: 'next-holder' });
+    h.tx.ticketTransfer.findFirst.mockResolvedValue({ id: 'pending-transfer' } as never);
+    const snapshot = await h.tickets.resolve(h.ticket, h.context);
+    await expect(h.tickets.apply(snapshot, 'update', h.context)).rejects.toThrow('transferência pendente');
+    expect(h.tx.eventTicket.updateMany).not.toHaveBeenCalled();
+    expect(h.realtime.enqueueForUsers).not.toHaveBeenCalled();
+  });
+
+  it('rejects a revision race at the conditional write without recording a false successful transfer', async () => {
+    const h = harness();
+    h.tx.eventTicket.findUnique.mockResolvedValue(existingTicket(h) as never);
+    h.people.match.mockResolvedValue({ id: 'next-holder' });
+    h.tx.eventTicket.updateMany.mockResolvedValue({ count: 0 });
+    const snapshot = await h.tickets.resolve(h.ticket, h.context);
+    await expect(h.tickets.apply(snapshot, 'update', h.context)).rejects.toThrow(ConflictException);
+    expect(h.tx.eventTicket.updateMany).toHaveBeenCalledWith({
+      where: { id: h.ticket.id, updatedAt: h.now },
+      data: expect.objectContaining({ holderPersonId: 'next-holder' }),
+    });
+    expect(h.tx.eventTicketHistory.create).not.toHaveBeenCalled();
+    expect(h.tx.auditLogEntry.create).not.toHaveBeenCalled();
+    expect(h.realtime.enqueueForUsers).not.toHaveBeenCalled();
+  });
+
+  it('notifies both holders and records lineage when a reviewed replacement succeeds', async () => {
+    const h = harness();
+    h.tx.eventTicket.findUnique.mockResolvedValue(existingTicket(h) as never);
+    h.people.match.mockResolvedValue({ id: 'next-holder' });
+    h.tx.people.findUnique
+      .mockResolvedValueOnce({ userId: 'next-user' })
+      .mockResolvedValueOnce({ userId: 'previous-user' });
+    const snapshot = await h.tickets.resolve(h.ticket, h.context);
+    await h.tickets.apply(snapshot, 'update', h.context);
+    expect(h.tx.eventTicketHistory.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        operation: 'TRANSFERRED',
+        previousHolderPersonId: 'person-1',
+        newHolderPersonId: 'next-holder',
+      }),
+    });
+    expect(h.realtime.enqueueForUsers).toHaveBeenCalledWith(h.tx, ['next-user', 'previous-user'], {
+      type: 'TICKETS_CHANGED',
+      eventId: h.event.id,
+      ticketId: h.ticket.id,
+    });
   });
 });
 
@@ -377,7 +663,10 @@ describe('issued ticket transfer and optional export', () => {
       h.context,
     );
     expect(output.resources).toHaveLength(2);
-    for (const resource of output.resources) expect(resource.data.person).not.toHaveProperty('id');
+    for (const resource of output.resources) {
+      if (resource.kind !== 'event-ticket') throw new Error('Unexpected exported resource.');
+      expect(resource.data.person).not.toHaveProperty('id');
+    }
     expect(output.resources[0]?.data).toMatchObject({
       person: { name: 'Ana Silva', email: 'ana@example.com' },
       originalHolderPersonId: 'original-1',

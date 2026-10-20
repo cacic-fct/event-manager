@@ -343,12 +343,13 @@ export const UndoConfirmation: Story = {
   args: { mode: 'completed' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
     await enterJson(canvas);
     await userEvent.click(canvas.getByRole('button', { name: /revisar importação/i }));
     await userEvent.click(await canvas.findByRole('button', { name: /aplicar alterações/i }));
     await userEvent.click(await canvas.findByRole('button', { name: /desfazer esta importação/i }));
-    await expect(await canvas.findByRole('group', { name: /reverter todas as alterações/i })).toBeVisible();
-    await userEvent.click(canvas.getByRole('button', { name: /confirmar reversão/i }));
+    await expect(await page.findByRole('dialog', { name: /reverter todas as alterações/i })).toBeVisible();
+    await userEvent.click(page.getByRole('button', { name: /confirmar reversão/i }));
     await expect(await canvas.findByText(/importação revertida/i)).toBeVisible();
     await expect(canvas.getByText('story-undo-audit-entry')).toBeVisible();
   },
@@ -358,11 +359,12 @@ export const UndoOnlyHistory: Story = {
   args: { mode: 'undo-only' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
     await expect(await canvas.findByRole('heading', { name: 'Importações recentes' })).toBeVisible();
     await expect(canvas.getByText('story-history-batch')).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: /desfazer este lote/i }));
-    await expect(await canvas.findByRole('group', { name: /reverter todas as alterações/i })).toBeVisible();
-    await userEvent.click(canvas.getByRole('button', { name: /confirmar reversão/i }));
+    await expect(await page.findByRole('dialog', { name: /reverter todas as alterações/i })).toBeVisible();
+    await userEvent.click(page.getByRole('button', { name: /confirmar reversão/i }));
     await expect(await canvas.findByText(/importação revertida/i)).toBeVisible();
   },
 };

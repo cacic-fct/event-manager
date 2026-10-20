@@ -307,13 +307,19 @@ test.describe('JSON transfer Storybook with real HttpClient and MSW', () => {
     await expect(page.getByRole('status').filter({ hasText: /Importação concluída/ })).toBeVisible();
 
     await page.getByRole('button', { name: 'Desfazer esta importação', exact: true }).click();
-    await expect(page.getByRole('group', { name: /Reverter todas as alterações do lote/ })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: /Reverter todas as alterações do lote/ })).toBeVisible();
     expect(await requestLog(page, '/undo')).toHaveLength(0);
-    await page.getByRole('button', { name: 'Cancelar', exact: true }).click();
-    await expect(page.getByRole('group', { name: /Reverter todas as alterações do lote/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Cancelar', exact: true })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: /Reverter todas as alterações do lote/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Desfazer esta importação', exact: true })).toBeFocused();
     expect(await requestLog(page, '/undo')).toHaveLength(0);
     await page.getByRole('button', { name: 'Desfazer esta importação', exact: true }).click();
-    await expect(page.getByRole('group', { name: /Reverter todas as alterações do lote/ })).toBeVisible();
+    await page.getByRole('button', { name: 'Cancelar', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: /Reverter todas as alterações do lote/ })).toHaveCount(0);
+    expect(await requestLog(page, '/undo')).toHaveLength(0);
+    await page.getByRole('button', { name: 'Desfazer esta importação', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: /Reverter todas as alterações do lote/ })).toBeVisible();
     await page.getByRole('button', { name: 'Confirmar reversão', exact: true }).click();
     await expect(page.getByRole('alert')).toContainText('um registro foi alterado depois da importação');
     expect(await requestLog(page, '/undo')).toHaveLength(1);

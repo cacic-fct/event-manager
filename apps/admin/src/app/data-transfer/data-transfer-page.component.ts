@@ -1,11 +1,22 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { DatePipe, DOCUMENT, isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
-import { Component, DestroyRef, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  PLATFORM_ID,
+  TemplateRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import type { MatButton } from '@angular/material/button';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -93,6 +104,7 @@ const templateKinds: Array<{ value: TransferTarget['kind']; label: string }> = [
     EventContextPickerComponent,
     MatButtonModule,
     MatCheckboxModule,
+    MatDialogModule,
     MatExpansionModule,
     MatFormFieldModule,
     MatIconModule,
@@ -114,6 +126,9 @@ const templateKinds: Array<{ value: TransferTarget['kind']; label: string }> = [
 })
 export class DataTransferPageComponent {
   private readonly api = inject(DataTransferApiService);
+  private readonly dialog = inject(MatDialog);
+  private readonly undoConfirmationTemplate = viewChild.required<TemplateRef<unknown>>('undoConfirmation');
+  private undoDialogRef: MatDialogRef<unknown> | null = null;
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly platformId = inject(PLATFORM_ID);
@@ -302,6 +317,7 @@ export class DataTransferPageComponent {
 
     this.destroyRef.onDestroy(() => {
       this.pendingRegistration.destroy();
+      this.undoDialogRef?.close();
       const browserWindow = this.document.defaultView;
       if (browserWindow && this.allocationExpiryTimer !== null) {
         browserWindow.clearTimeout(this.allocationExpiryTimer);
@@ -731,6 +747,7 @@ export class DataTransferPageComponent {
       !targetBatchId ||
       !this.canUndoBatchId(targetBatchId) ||
       this.undoLoading() ||
+      this.undoConfirmationOpen() ||
       this.importLocked() ||
       this.previewLoading()
     ) {
@@ -741,13 +758,26 @@ export class DataTransferPageComponent {
     this.undoError.set('');
     this.undoTarget.set({ batchId: targetBatchId });
     this.undoConfirmationOpen.set(true);
+    const dialogRef = this.dialog.open(this.undoConfirmationTemplate(), {
+      width: 'min(560px, calc(100vw - 32px))',
+      autoFocus: '[data-undo-cancel]',
+      ariaDescribedBy: 'undo-confirmation-description',
+    });
+    this.undoDialogRef = dialogRef;
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        if (this.undoDialogRef === dialogRef) {
+          this.undoDialogRef = null;
+          this.resetUndoState();
+        }
+      });
   }
 
   protected cancelUndo(): void {
     if (!this.undoLoading()) {
-      this.undoConfirmationOpen.set(false);
-      this.undoError.set('');
-      this.undoTarget.set(null);
+      this.resetUndoState();
     }
   }
 
@@ -755,6 +785,8 @@ export class DataTransferPageComponent {
     const batchId = this.undoTarget()?.batchId;
     if (
       !batchId ||
+      !this.undoConfirmationOpen() ||
+      !this.undoDialogRef ||
       !this.canUndoBatchId(batchId) ||
       this.undoLoading() ||
       this.importLocked() ||
@@ -763,6 +795,7 @@ export class DataTransferPageComponent {
       return;
     }
     this.undoLoading.set(true);
+    this.undoDialogRef.disableClose = true;
     this.undoError.set('');
     try {
       const response = await firstValueFrom(this.api.undo(batchId));
@@ -772,13 +805,13 @@ export class DataTransferPageComponent {
       this.undoAuditEntryId.set(response.auditEntryId);
       this.undoneBatchIds.update((batchIds) => new Set(batchIds).add(batchId));
       this.undoSuccessMessage.set('Importação revertida. Edições feitas depois do lote foram preservadas.');
-      this.undoConfirmationOpen.set(false);
-      this.undoTarget.set(null);
+      this.resetUndoState();
       void this.loadHistory();
     } catch (error: unknown) {
       this.undoError.set(firstIssueMessage(error, 'Não foi possível desfazer esta importação. Tente novamente.'));
     } finally {
       this.undoLoading.set(false);
+      if (this.undoDialogRef) this.undoDialogRef.disableClose = false;
     }
   }
 
@@ -998,6 +1031,9 @@ export class DataTransferPageComponent {
   }
 
   private resetUndoState(): void {
+    const dialogRef = this.undoDialogRef;
+    this.undoDialogRef = null;
+    dialogRef?.close();
     this.undoConfirmationOpen.set(false);
     this.undoError.set('');
     this.undoTarget.set(null);

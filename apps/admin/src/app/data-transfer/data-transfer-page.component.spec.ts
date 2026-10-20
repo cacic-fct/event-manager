@@ -1,5 +1,7 @@
 import { PLATFORM_ID, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
+import { OverlayContainer } from '@angular/cdk/overlay';
 import { By } from '@angular/platform-browser';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
@@ -746,8 +748,8 @@ describe('DataTransferPageComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Este lote contém alterações posteriores.');
-    expect(fixture.nativeElement.querySelector('.undo-confirmation')).not.toBeNull();
+    expect(undoDialog()?.textContent).toContain('Este lote contém alterações posteriores.');
+    expect(undoDialog()).not.toBeNull();
     expect(findButton('Confirmar reversão').disabled).toBe(false);
 
     clickButton('Confirmar reversão');
@@ -770,7 +772,7 @@ describe('DataTransferPageComponent', () => {
 
     clickButton('Desfazer esta importação');
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Reverter todas as alterações do lote fixture-import-batch?');
+    expect(undoDialog()?.textContent).toContain('Reverter todas as alterações do lote fixture-import-batch?');
     expect(api.undo).not.toHaveBeenCalled();
 
     clickButton('Confirmar reversão');
@@ -835,7 +837,7 @@ describe('DataTransferPageComponent', () => {
     expect(activeButton).not.toBeNull();
     activeButton?.click();
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain(`Reverter todas as alterações do lote ${activeBatch.batchId}?`);
+    expect(undoDialog()?.textContent).toContain(`Reverter todas as alterações do lote ${activeBatch.batchId}?`);
     expect(api.undo).not.toHaveBeenCalled();
 
     clickButton('Cancelar');
@@ -844,6 +846,26 @@ describe('DataTransferPageComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Nenhuma importação recente disponível');
     expect(fixture.nativeElement.querySelector('.batch-history')).toBeNull();
+  });
+
+  it.each([false, undefined])('does not undo a history batch when the dialog is dismissed with %s', async (result) => {
+    granted.set(new Set([Permission.DataTransfer.Undo]));
+    fixture.detectChanges();
+    clickButton('Desfazer este lote');
+    expect(undoDialog()).not.toBeNull();
+    expect(api.undo).not.toHaveBeenCalled();
+
+    TestBed.inject(MatDialog).openDialogs[0].close(result);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(undoDialog()).toBeNull();
+    expect(api.undo).not.toHaveBeenCalled();
+
+    clickButton('Desfazer este lote');
+    expect(undoDialog()?.textContent).toContain('fixture-history-batch');
+    clickButton('Cancelar');
+    await fixture.whenStable();
+    expect(api.undo).not.toHaveBeenCalled();
   });
 
   it('locks undo while it is running and removes the action after success', async () => {
@@ -949,10 +971,16 @@ describe('DataTransferPageComponent', () => {
     fixture.detectChanges();
   }
 
+  function undoDialog(): HTMLElement | null {
+    return TestBed.inject(OverlayContainer).getContainerElement().querySelector('[role="dialog"]');
+  }
+
   function findButton(name: string): HTMLButtonElement {
-    const button = [...fixture.nativeElement.querySelectorAll('button')].find((node) =>
-      node.textContent.includes(name),
-    );
+    const buttons = [
+      ...(undoDialog()?.querySelectorAll('button') ?? []),
+      ...fixture.nativeElement.querySelectorAll('button'),
+    ];
+    const button = buttons.find((node) => node.textContent.includes(name));
     if (!button) {
       throw new Error(`Button ${name} was not found.`);
     }
