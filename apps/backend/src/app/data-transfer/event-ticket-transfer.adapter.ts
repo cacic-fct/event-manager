@@ -1,6 +1,11 @@
 import { ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
 import type { EventTicket, People, Prisma } from '@prisma/client';
-import { TRANSFER_MAX_RESOURCES, type ResourceOfKind, type TransferResource } from '@cacic-fct/shared-data-transfer';
+import {
+  canonicalTransferJson,
+  TRANSFER_MAX_RESOURCES,
+  type ResourceOfKind,
+  type TransferResource,
+} from '@cacic-fct/shared-data-transfer';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { recordTicketAudit } from '../tickets/ticket-audit';
@@ -50,6 +55,43 @@ function ticketResource(
       revokedReason: row.revokedReason,
     },
   };
+}
+
+/** Only expiry alignment by an earlier reviewed parent write can advance this ticket's revision. */
+function hasRecordedExpiryAlignment(
+  snapshot: TicketSnapshot,
+  current: TicketResource,
+  context: TransferAdapterContext,
+): boolean {
+  const mutations = context.priorMutations?.filter(
+    (mutation) => mutation.model === 'eventTicket' && mutation.key['id'] === snapshot.resource.id,
+  );
+  if (!mutations?.length) return false;
+  let revision = snapshot.revision;
+  for (const mutation of mutations) {
+    const { before, after, source } = mutation;
+    if (
+      !before ||
+      !after ||
+      before['updatedAt'] !== revision ||
+      before['status'] !== 'ACTIVE' ||
+      before['eventId'] !== snapshot.resource.data.eventId ||
+      source.action !== 'update' ||
+      !(
+        (source.kind === 'event' && source.id === before['eventId']) ||
+        (source.kind === 'ticket-config' && source.id === before['ticketConfigId'])
+      ) ||
+      typeof after['updatedAt'] !== 'string'
+    )
+      return false;
+    const fields = new Set([...Object.keys(before), ...Object.keys(after)]);
+    for (const field of fields) {
+      if (field === 'expiresAt' || field === 'updatedAt') continue;
+      if (canonicalTransferJson(before[field] ?? null) !== canonicalTransferJson(after[field] ?? null)) return false;
+    }
+    revision = after['updatedAt'];
+  }
+  return revision === current.revision;
 }
 
 @Injectable()
@@ -283,7 +325,10 @@ export class EventTicketTransferAdapter implements DataTransferAdapter {
   async apply(snapshot: ResolvedTransferResource, action: TransferWriteAction, context: TransferAdapterContext) {
     const value = ticketSnapshot(snapshot);
     const current = await this.loadCurrent(value.resource, context.tx);
-    if ((current?.revision ?? null) !== value.revision)
+    if (
+      (current?.revision ?? null) !== value.revision &&
+      (!current || !hasRecordedExpiryAlignment(value, current, context))
+    )
       throw new ConflictException('O bilhete mudou. Gere uma nova prévia.');
     await this.assertWrite(value, action, context);
     await lockEventTicketExpiration(context.tx, value.resource.data.eventId ?? '', 'SHARE');
@@ -310,9 +355,9 @@ export class EventTicketTransferAdapter implements DataTransferAdapter {
         data: { id: value.resource.id, eventId: data.eventId, ticketConfigId: state.config.id, ...fields },
       });
     } else {
-      if (!value.revision) throw new ConflictException('O bilhete mudou. Gere uma nova prévia.');
+      if (!current?.revision) throw new ConflictException('O bilhete mudou. Gere uma nova prévia.');
       const updated = await context.tx.eventTicket.updateMany({
-        where: { id: value.resource.id, updatedAt: new Date(value.revision) },
+        where: { id: value.resource.id, updatedAt: new Date(current.revision) },
         data: fields,
       });
       if (updated.count !== 1) throw new ConflictException('O bilhete mudou. Gere uma nova prévia.');

@@ -10,6 +10,7 @@ import { DataTransferService } from '../data-transfer.service';
 import { EventTicketTransferAdapter } from '../event-ticket-transfer.adapter';
 import { PersonTransferMatcherService } from '../person-transfer-matcher.service';
 import { TransferKeyAllocations } from '../transfer-key-allocations';
+import type { DataTransferAdapter } from '../data-transfer-adapter';
 import { createTransferDatabaseFixture } from './transfer-database.fixtures';
 
 /** Real planning, matching, ticket writes and journaling; external authorization and delivery are controlled. */
@@ -58,12 +59,12 @@ export async function createTicketTransferFixture() {
   const policy = authorization as unknown as AuthorizationPolicyService;
   const frozenResources = frozen as unknown as FrozenResourceService;
   const adapter = new EventTicketTransferAdapter(policy, new PersonTransferMatcherService(prisma), realtime as never);
-  const createService = () =>
+  const createService = (additionalAdapters: readonly DataTransferAdapter[] = []) =>
     new DataTransferService(
       prisma,
       policy,
       frozenResources,
-      [adapter],
+      [...additionalAdapters, adapter],
       new TransferKeyAllocations(),
       new DataTransferJournalService(prisma, policy, frozenResources),
     );
@@ -77,7 +78,9 @@ export async function createTicketTransferFixture() {
       majorEventId: null,
     },
   });
-  await client.ticketConfig.create({ data: { id: 'config-1', eventId: 'event-1', enabled: true } });
+  await client.ticketConfig.create({
+    data: { id: 'config-1', eventId: 'event-1', enabled: true, expirationMode: 'EVENT_END', customExpiresAt: null },
+  });
   for (const id of ['person-1', 'person-2']) {
     await client.people.create({
       data: {

@@ -44,6 +44,7 @@ interface MappedMajorEvent {
 
 interface MappedEventGroup {
   id: string;
+  majorEventId: string;
   type: 'PALESTRA' | 'MINICURSO';
   data: Record<string, unknown>;
 }
@@ -194,8 +195,10 @@ export async function buildPayload(sqlPath: string): Promise<ImportPayload> {
   const parsed = await parseInsertRowsByTable(sqlPath, REQUIRED_TABLES);
   const now = utcNow();
   const majorEventIdByYearRef = mapMajorEventIds(tableRows(parsed, 'ano_referencia'));
-  const eventGroups = buildEventGroups();
-  const eventGroupIdByType = new Map<string, string>(eventGroups.map((row) => [row.type, row.id]));
+  const eventGroups = buildEventGroups(majorEventIdByYearRef.values());
+  const eventGroupIdByMajorEventAndType = new Map(
+    eventGroups.map((row) => [`${row.majorEventId}:${row.type}`, row.id]),
+  );
   const minicursoSeeds = mapMinicursos(tableRows(parsed, 'minicurso'), majorEventIdByYearRef, now);
   const palestraSeeds = mapPalestras(tableRows(parsed, 'palestra'), majorEventIdByYearRef, now);
   const allReferencedCpfs = collectReferencedCpfs(parsed, palestraSeeds);
@@ -218,7 +221,7 @@ export async function buildPayload(sqlPath: string): Promise<ImportPayload> {
     minicursoSeeds,
     now,
   );
-  const events = buildEventRows(minicursoSeeds, palestraSeeds, eventGroupIdByType);
+  const events = buildEventRows(minicursoSeeds, palestraSeeds, eventGroupIdByMajorEventAndType);
   const majorEvents = buildMajorEventRows(
     tableRows(parsed, 'ano_referencia'),
     majorEventIdByYearRef,
@@ -628,15 +631,16 @@ export function mapEventAttendances(
   };
 }
 
-export function buildEventGroups(): MappedEventGroup[] {
-  return [
+export function buildEventGroups(majorEventIds: Iterable<string>): MappedEventGroup[] {
+  return [...new Set(majorEventIds)].sort().flatMap((majorEventId) => [
     {
-      id: buildPrefixedId(PREFIX, 'event-group', 'palestras'),
+      id: buildPrefixedId(`${majorEventId}-`, 'event-group', 'palestras'),
+      majorEventId,
       type: 'PALESTRA',
       data: {
         name: 'Palestras (SECOMPP legado 2)',
         emoji: '🎤',
-        majorEventId: null,
+        majorEventId,
         audience: 'PUBLIC',
         audienceCourseCodes: [],
         interestEnabled: false,
@@ -650,12 +654,13 @@ export function buildEventGroups(): MappedEventGroup[] {
       },
     },
     {
-      id: buildPrefixedId(PREFIX, 'event-group', 'minicursos'),
+      id: buildPrefixedId(`${majorEventId}-`, 'event-group', 'minicursos'),
+      majorEventId,
       type: 'MINICURSO',
       data: {
         name: 'Minicursos (SECOMPP legado 2)',
         emoji: '🧪',
-        majorEventId: null,
+        majorEventId,
         audience: 'PUBLIC',
         audienceCourseCodes: [],
         interestEnabled: false,
@@ -668,13 +673,13 @@ export function buildEventGroups(): MappedEventGroup[] {
         shouldIssuePartialCertificate: false,
       },
     },
-  ];
+  ]);
 }
 
 export function buildEventRows(
   minicursoSeeds: ReadonlyMap<number, EventSeed>,
   palestraSeeds: ReadonlyMap<number, EventSeed>,
-  eventGroupIdByType: ReadonlyMap<string, string>,
+  eventGroupIdByMajorEventAndType: ReadonlyMap<string, string>,
 ): MappedEvent[] {
   const rows: MappedEvent[] = [];
   for (const seed of [...minicursoSeeds.values(), ...palestraSeeds.values()]) {
@@ -693,7 +698,7 @@ export function buildEventRows(
         longitude: null,
         locationDescription: seed.locationDescription,
         majorEventId: seed.majorEventId,
-        eventGroupId: eventGroupIdByType.get(seed.type) ?? null,
+        eventGroupId: eventGroupIdByMajorEventAndType.get(`${seed.majorEventId}:${seed.type}`) ?? null,
         audience: 'PUBLIC',
         audienceCourseCodes: [],
         interestEnabled: false,

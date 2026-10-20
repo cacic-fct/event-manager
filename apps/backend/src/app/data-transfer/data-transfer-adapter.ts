@@ -14,6 +14,7 @@ import type { AuthenticatedUser } from '../auth/interfaces/authenticated-user.in
 import type { AuthorizationResourceContext } from '../authorization/authorization-policy.service';
 import type { FrozenOperation, FrozenResourceService } from '../common/frozen-resource.service';
 import type { Prisma } from '@prisma/client';
+import type { JournalMutation } from './transfer-journal-recorder';
 
 /** A stable reference to another resource in the same transfer document. */
 export interface TransferResourceReference {
@@ -41,6 +42,7 @@ export interface TransferAdapterContext {
   document: ResolvedTransferDocument;
   requestedScope?: TransferTarget;
   personDecisions?: readonly TransferPersonDecision[];
+  priorMutations?: readonly JournalMutation[];
   frozenResources: FrozenResourceService;
 }
 

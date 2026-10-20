@@ -6,6 +6,7 @@ import { TicketPurchaseTransferAdapter } from './ticket-purchase-transfer.adapte
 import { EventTicketTransferAdapter } from './event-ticket-transfer.adapter';
 import type { TransferAdapterContext } from './data-transfer-adapter';
 import { transferPersonKey } from './transfer-person-creation';
+import { journalJson, type JournalMutation } from './transfer-journal-recorder';
 
 type EditableResource<Kind extends 'ticket-purchase' | 'event-ticket'> = Omit<ResourceOfKind<Kind>, 'data'> & {
   data: { -readonly [Field in keyof ResourceOfKind<Kind>['data']]: ResourceOfKind<Kind>['data'][Field] };
@@ -393,6 +394,7 @@ describe('ticket lifecycle import safety', () => {
     return {
       id: h.ticket.id,
       eventId: h.event.id,
+      ticketConfigId: h.config.id,
       holderPersonId: 'person-1',
       originalHolderPersonId: 'person-1',
       source: 'ADMIN',
@@ -426,6 +428,112 @@ describe('ticket lifecycle import safety', () => {
     expect(h.tx.eventTicket.updateMany).not.toHaveBeenCalled();
     expect(h.tx.eventTicketHistory.create).not.toHaveBeenCalled();
   });
+
+  function expiryMutation(
+    h: ReturnType<typeof harness>,
+    before: ReturnType<typeof existingTicket>,
+    after: ReturnType<typeof existingTicket>,
+    kind: 'event' | 'ticket-config',
+  ): JournalMutation {
+    return {
+      model: 'eventTicket',
+      key: { id: before.id },
+      before: journalJson(before),
+      after: journalJson(after),
+      source: {
+        kind,
+        id: kind === 'event' ? h.event.id : h.config.id,
+        action: 'update',
+        scope: { eventId: h.event.id },
+      },
+    };
+  }
+
+  it.each(['event', 'ticket-config'] as const)(
+    'accepts expiry alignment recorded by an earlier %s write and preserves an omitted expiry',
+    async (kind) => {
+      const h = harness();
+      const before = existingTicket(h);
+      const after = {
+        ...before,
+        expiresAt: new Date(h.event.endDate.getTime() + 86_400_000),
+        updatedAt: new Date(h.now.getTime() + 1),
+      };
+      delete h.ticket.data.expiresAt;
+      h.tx.eventTicket.findUnique.mockResolvedValue(before as never);
+      const snapshot = await h.tickets.resolve(h.ticket, h.context);
+      h.tx.eventTicket.findUnique.mockResolvedValue(after as never);
+      h.context.priorMutations = [expiryMutation(h, before, after, kind)];
+
+      await h.tickets.apply(snapshot, 'update', h.context);
+
+      expect(h.tx.eventTicket.updateMany).toHaveBeenCalledWith({
+        where: { id: before.id, updatedAt: after.updatedAt },
+        data: expect.objectContaining({ expiresAt: after.expiresAt }),
+      });
+      expect(h.tx.eventTicketHistory.create).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('accepts consecutive parent alignments while retaining an explicitly imported expiry', async () => {
+    const h = harness();
+    const before = existingTicket(h);
+    const first = {
+      ...before,
+      expiresAt: new Date(h.now.getTime() + 172_800_000),
+      updatedAt: new Date(h.now.getTime() + 1),
+    };
+    const last = {
+      ...first,
+      expiresAt: new Date(h.now.getTime() + 259_200_000),
+      updatedAt: new Date(h.now.getTime() + 2),
+    };
+    const explicitExpiry = new Date(h.now.getTime() + 345_600_000);
+    h.ticket.data.expiresAt = explicitExpiry.toISOString();
+    h.tx.eventTicket.findUnique.mockResolvedValue(before as never);
+    const snapshot = await h.tickets.resolve(h.ticket, h.context);
+    h.tx.eventTicket.findUnique.mockResolvedValue(last as never);
+    h.context.priorMutations = [
+      expiryMutation(h, before, first, 'event'),
+      expiryMutation(h, first, last, 'ticket-config'),
+    ];
+
+    await h.tickets.apply(snapshot, 'update', h.context);
+
+    expect(h.tx.eventTicket.updateMany).toHaveBeenCalledWith({
+      where: { id: before.id, updatedAt: last.updatedAt },
+      data: expect.objectContaining({ expiresAt: explicitExpiry }),
+    });
+  });
+
+  it.each(['holder', 'status', 'source', 'parent', 'before-revision', 'after-revision'] as const)(
+    'still rejects a changed ticket when expiry provenance has a different %s',
+    async (change) => {
+      const h = harness();
+      const before = existingTicket(h);
+      const after = {
+        ...before,
+        expiresAt: new Date(h.now.getTime() + 172_800_000),
+        updatedAt: new Date(h.now.getTime() + 1),
+      };
+      h.tx.eventTicket.findUnique.mockResolvedValue(before as never);
+      const snapshot = await h.tickets.resolve(h.ticket, h.context);
+      const mutation = expiryMutation(h, before, after, 'event');
+      if (!mutation.before || !mutation.after) throw new Error('Expected an update mutation.');
+      if (change === 'holder') mutation.after['holderPersonId'] = 'another-person';
+      if (change === 'status') mutation.after['status'] = 'CONSUMED';
+      if (change === 'source') mutation.source.kind = 'event-ticket';
+      if (change === 'parent') mutation.source.id = 'another-event';
+      if (change === 'before-revision') mutation.before['updatedAt'] = new Date(h.now.getTime() - 1).toISOString();
+      if (change === 'after-revision') mutation.after['updatedAt'] = new Date(h.now.getTime() + 2).toISOString();
+      h.context.priorMutations = [mutation];
+      h.tx.eventTicket.findUnique.mockResolvedValue(after as never);
+
+      await expect(h.tickets.apply(snapshot, 'update', h.context)).rejects.toThrow(ConflictException);
+      expect(h.tx.eventTicket.updateMany).not.toHaveBeenCalled();
+      expect(h.tx.eventTicketHistory.create).not.toHaveBeenCalled();
+    },
+  );
 
   it('records an explicit revocation with its historical date and reason', async () => {
     const h = harness();

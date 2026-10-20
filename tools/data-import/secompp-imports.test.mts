@@ -89,7 +89,7 @@ test('SECOMPP 1 writes supported transfer resources with stable catalog IDs and 
   assert.match(String(requireRecord(payload.report['notes'])['timestamps']), /interpreted as UTC/);
   assert.ok(event);
   assert.equal(event.data['onlineAttendanceCode'], undefined);
-  assert.equal(event.data['eventGroupId'], 'SYSCOMPP-1-event-group-minicursos');
+  assert.equal(event.data['eventGroupId'], 'SYSCOMPP-1-major-event-10-event-group-minicursos');
   const person = majorSubscription.data['person'];
   assert.deepEqual(person, {
     name: 'Ana da Silva',
@@ -227,6 +227,67 @@ test('SECOMPP 2 preserves source child selections and converts BRL payment amoun
   assert.equal(requireRecord(payload.report['unsupported']).unknownAttendanceStates !== undefined, true);
   assert.match(String(requireRecord(payload.report['notes'])['timestamps']), /interpreted as UTC/);
   assert.equal(payload.counts['unsupportedLecturerAssignments'], 2);
+});
+
+test('both SECOMPP catalogs keep groups and their events under the same major event across editions', async () => {
+  const sourceDate = daysFromNow(-30);
+  const year = Number(sourceDate.slice(0, 4));
+  const first = await buildPayloadFromSql(
+    [
+      insert(
+        'events',
+        ['idEvent', 'name', 'start', 'end'],
+        [
+          [10, 'Primeira edição', sourceDate, sourceDate],
+          [20, 'Segunda edição', sourceDate, sourceDate],
+        ],
+      ),
+      insert(
+        'lectures',
+        ['idLecture', 'idEventFK', 'name'],
+        [
+          [1, 10, 'Palestra da primeira edição'],
+          [2, 20, 'Palestra da segunda edição'],
+        ],
+      ),
+    ].join('\n'),
+    buildSecompp1Payload,
+  );
+  const second = await buildPayloadFromSql(
+    [
+      insert(
+        'ano_referencia',
+        ['idAno_Referencia', 'ano'],
+        [
+          [1, year - 1],
+          [2, year],
+        ],
+      ),
+      insert(
+        'palestra',
+        ['idPalestra', 'idAno_ReferenciaFK', 'data', 'hora_inicio', 'hora_termino', 'nome'],
+        [
+          [1, 1, sourceDate, '09:00', '10:00', 'Palestra da primeira edição'],
+          [2, 2, sourceDate, '09:00', '10:00', 'Palestra da segunda edição'],
+        ],
+      ),
+    ].join('\n'),
+    buildSecompp2Payload,
+  );
+
+  for (const payload of [first, second]) {
+    createTransferDocuments(payload.resources);
+    const groups = new Map(payload.resources.filter((row) => row.kind === 'group').map((row) => [row.id, row]));
+    const events = payload.resources.filter((row) => row.kind === 'event');
+    assert.equal(events.length, 2);
+    assert.equal(new Set(events.map((event) => event.data['eventGroupId'])).size, 2);
+    for (const event of events) {
+      const group = groups.get(String(event.data['eventGroupId']));
+      assert.ok(group);
+      assert.equal(group.data['majorEventId'], event.data['majorEventId']);
+      assert.ok(payload.resources.some((row) => row.kind === 'major-event' && row.id === group.data['majorEventId']));
+    }
+  }
 });
 
 function requireResource(resources: readonly TransferResource[], kind: string): TransferResource {

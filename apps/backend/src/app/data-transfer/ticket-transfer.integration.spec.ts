@@ -1,7 +1,13 @@
 import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
-import type { ResourceOfKind, TransferApplyRequest, TransferPersonDecision } from '@cacic-fct/shared-data-transfer';
+import type {
+  ResourceOfKind,
+  TransferApplyRequest,
+  TransferDocument,
+  TransferPersonDecision,
+} from '@cacic-fct/shared-data-transfer';
 import { createTicketTransferFixture } from './testing/ticket-transfer.fixtures';
+import type { DataTransferAdapter } from './data-transfer-adapter';
 
 describe('ticket imports with transactional storage and the durable undo journal', () => {
   let fixture: Awaited<ReturnType<typeof createTicketTransferFixture>>;
@@ -76,6 +82,87 @@ describe('ticket imports with transactional storage and the durable undo journal
     const preview = await fixture.transfer.preview({ document: fixture.document }, fixture.actor);
     expect(preview).toMatchObject({ canApply: false, summary: { skip: 1 } });
     expect(await fixture.state()).toEqual(before);
+  });
+
+  it('applies and undoes a ticket update after a reviewed configuration write aligns its expiry', async () => {
+    await fixture.transfer.apply(await reviewedRequest(), fixture.actor);
+    const originalTicket = (await fixture.client.eventTicket.findMany())[0];
+    if (!originalTicket) throw new Error('Expected an existing ticket.');
+    const originalRevision = originalTicket['updatedAt'];
+    if (!(originalRevision instanceof Date)) throw new Error('Expected a persisted ticket revision.');
+    const originalConfig = await fixture.client.ticketConfig.findUnique({ where: { id: 'config-1' } });
+    const expiresAt = new Date(Date.now() + 172_800_000);
+    // Model the parent's alignment writes, including Prisma's automatic updatedAt advance,
+    // against the transactional fixture so the real service and journal coordinate them.
+    const configuration: DataTransferAdapter = {
+      kinds: ['ticket-config'],
+      dependencyOrder: 80,
+      resolve: async (resource, context) => {
+        const config = await context.tx.ticketConfig.findUnique({ where: { id: resource.id } });
+        if (!config) throw new Error('Expected ticket configuration.');
+        return {
+          resource,
+          current: { kind: 'ticket-config', id: config.id, data: { eventId: config.eventId } },
+          revision: config.updatedAt.toISOString(),
+          scope: { eventId: config.eventId },
+          dependencies: [],
+        };
+      },
+      assertRead: async () => undefined,
+      assertWrite: async () => undefined,
+      assertMutable: async () => undefined,
+      validate: async () => undefined,
+      apply: async (snapshot, _action, context) => {
+        await context.tx.ticketConfig.updateMany({
+          where: { id: snapshot.resource.id, updatedAt: new Date(snapshot.revision ?? '') },
+          data: { expirationMode: 'CUSTOM', customExpiresAt: expiresAt },
+        });
+        await context.tx.eventTicket.updateMany({
+          where: { id: String(originalTicket['id']) },
+          data: {
+            expiresAt,
+            updatedAt: new Date(originalRevision.getTime() + 1),
+          },
+        });
+        return {};
+      },
+      exportTarget: async () => ({ resources: [], issues: [] }),
+    };
+    const transfer = fixture.createService([configuration]);
+    const document: TransferDocument = {
+      format: 'cacic-event-data',
+      version: 1,
+      resources: [
+        {
+          kind: 'ticket-config',
+          id: 'config-1',
+          data: { eventId: 'event-1', expirationMode: 'CUSTOM', customExpiresAt: expiresAt.toISOString() },
+        },
+        {
+          kind: 'event-ticket',
+          id: String(originalTicket['id']),
+          data: { eventId: 'event-1', expiresAt: expiresAt.toISOString() },
+        },
+      ],
+    };
+    const preview = await transfer.preview({ document }, fixture.actor);
+    expect(preview).toMatchObject({ canApply: true, summary: { update: 2, skip: 0 } });
+
+    const applied = await transfer.apply({ document, planHash: preview.planHash, allowPartial: false }, fixture.actor);
+    expect(applied.applied).toBe(true);
+    expect(await fixture.client.eventTicket.findUnique({ where: { id: originalTicket['id'] } })).toMatchObject({
+      expiresAt,
+    });
+
+    await transfer.undo(applied.batchId ?? '', fixture.actor);
+    expect(await fixture.client.eventTicket.findUnique({ where: { id: originalTicket['id'] } })).toEqual({
+      ...originalTicket,
+      updatedAt: expect.any(Date),
+    });
+    expect(await fixture.client.ticketConfig.findUnique({ where: { id: 'config-1' } })).toEqual({
+      ...originalConfig,
+      updatedAt: expect.any(Date),
+    });
   });
 
   it('rolls back the ticket, history, audit and outbox if notification enqueueing fails after its write', async () => {

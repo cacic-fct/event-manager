@@ -356,11 +356,10 @@ export class DataTransferService {
           }
           if (row.snapshot.ownedBy) continue;
           recorder.setSource(row.snapshot.resource, row.action, row.snapshot.scope);
-          const result = await row.adapter.apply(
-            row.snapshot,
-            row.action,
-            this.adapterContext(recorder.tx, user, document, input.scope),
-          );
+          const result = await row.adapter.apply(row.snapshot, row.action, {
+            ...this.adapterContext(recorder.tx, user, document, input.scope),
+            priorMutations: recorder.mutations,
+          });
           effects.push(...(result.postCommitEffects ?? []));
           row.item = { ...row.item, status: 'applied', message: row.action === 'create' ? 'Criado.' : 'Atualizado.' };
         }
