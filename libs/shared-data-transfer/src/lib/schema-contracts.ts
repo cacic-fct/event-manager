@@ -425,6 +425,7 @@ export type EventAttendanceTransferOwner = Pick<AdminEventAttendance, 'eventId' 
 export type EventTicketTransferOwner = {
   eventId: TicketConfig['eventId'];
   person: PersonTransferReferenceOwner | null;
+  originalHolder: PersonTransferReferenceOwner | null;
   originalHolderPersonId: string | null;
   source: TicketIssueSource;
   sourceKey: string | null;

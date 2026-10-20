@@ -15,6 +15,7 @@ tmp
 
 docker
 import
+tools/evcomp-import
 *.csv
 *.sql
 

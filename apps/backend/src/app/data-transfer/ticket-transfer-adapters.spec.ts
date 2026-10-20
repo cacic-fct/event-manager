@@ -515,6 +515,31 @@ describe('ticket lifecycle import safety', () => {
 });
 
 describe('issued ticket transfer and optional export', () => {
+  it.each([
+    [null, 'ACTIVE', false],
+    [null, 'CONSUMED', false],
+    [null, 'REVOKED', true],
+    ['ACTIVE', 'ACTIVE', false],
+    ['ACTIVE', 'REVOKED', true],
+    ['REVOKED', 'REVOKED', false],
+  ] as const)('requires revoke access only for a revocation (%s → %s)', async (previous, status, revokes) => {
+    const h = harness();
+    h.ticket.data.status = status;
+    const snapshot = await h.tickets.resolve(h.ticket, h.context);
+    if (previous) {
+      snapshot.current = {
+        ...snapshot.resource,
+        data: { ...snapshot.resource.data, status: previous },
+      } as ResourceOfKind<'event-ticket'>;
+    }
+    h.authorization.assertPermissions.mockImplementation(async (_actor, permissions) => {
+      if (permissions.includes(Permission.Ticket.Revoke)) throw new ForbiddenException();
+    });
+    const check = h.tickets.assertWrite(snapshot, previous ? 'update' : 'create', h.context);
+    if (revokes) await expect(check).rejects.toThrow(ForbiddenException);
+    else await expect(check).resolves.toBeUndefined();
+  });
+
   it('requires transfer rights for imported lineage during preview and apply', async () => {
     const h = harness();
     h.ticket.data.originalHolderPersonId = 'original-1';
@@ -643,6 +668,13 @@ describe('issued ticket transfer and optional export', () => {
       revokedReason: null,
       updatedAt: h.now,
       holder: { id: 'person-1', name: 'Ana Silva', email: 'ana@example.com', deletedAt: null, mergedIntoId: null },
+      originalHolder: {
+        id: 'original-1',
+        name: 'Bruno Santos',
+        email: 'bruno@example.com',
+        deletedAt: null,
+        mergedIntoId: null,
+      },
     };
     h.tx.eventTicket.findMany.mockResolvedValue([
       base,
@@ -669,7 +701,7 @@ describe('issued ticket transfer and optional export', () => {
     }
     expect(output.resources[0]?.data).toMatchObject({
       person: { name: 'Ana Silva', email: 'ana@example.com' },
-      originalHolderPersonId: 'original-1',
+      originalHolder: { name: 'Bruno Santos', email: 'bruno@example.com' },
       source: 'PURCHASE',
       status: 'CONSUMED',
     });
@@ -695,5 +727,93 @@ describe('issued ticket transfer and optional export', () => {
         { ...h.purchase, data: { ...h.purchase.data, person: { id: 'person-1' } } },
       ]),
     ).rejects.toThrow('já possui outro bilhete');
+  });
+
+  it.each(['EVENT_SUBSCRIPTION', 'MAJOR_EVENT_SUBSCRIPTION'] as const)(
+    'round-trips portable %s lineage with different destination person IDs',
+    async (source) => {
+      const h = harness();
+      const originalHolder = { id: 'source-original', name: 'Bruno Santos', email: 'bruno@example.com' };
+      const holder = { id: 'source-holder', name: 'Ana Silva', email: 'ana@example.com' };
+      const prefix = source === 'EVENT_SUBSCRIPTION' ? 'event-subscription' : 'major-event-subscription';
+      h.tx.eventTicket.findMany.mockResolvedValue([
+        {
+          id: h.ticket.id,
+          eventId: h.event.id,
+          holderPersonId: holder.id,
+          originalHolderPersonId: originalHolder.id,
+          source,
+          sourceKey: `${prefix}:event-1:${originalHolder.id}`,
+          status: 'ACTIVE',
+          issuedAt: new Date(h.ticket.data.issuedAt ?? ''),
+          expiresAt: h.event.endDate,
+          consumedAt: null,
+          revokedAt: null,
+          revokedReason: null,
+          updatedAt: h.now,
+          holder,
+          originalHolder,
+        },
+      ]);
+      const output = await h.tickets.exportTarget(
+        { kind: 'event', id: h.event.id },
+        { includeDescendants: false, includeConfiguration: false, includeTickets: true },
+        h.context,
+      );
+      const exported = parseTransferDocument({
+        format: 'cacic-event-data',
+        version: 1,
+        resources: output.resources,
+      }).resources[0];
+      if (!exported || exported.kind !== 'event-ticket' || !exported.id) throw new Error('Missing exported ticket.');
+      expect(exported.data).not.toHaveProperty('originalHolderPersonId');
+      expect(exported.data).not.toHaveProperty('sourceKey');
+      expect(exported.data.originalHolder).not.toHaveProperty('id');
+      h.people.match.mockImplementation(async (reference) => ({
+        id: reference.email === 'bruno@example.com' ? 'destination-original' : 'destination-holder',
+      }));
+      const snapshot = await h.tickets.resolve({ ...exported, id: exported.id }, h.context);
+      await h.tickets.apply(snapshot, 'create', h.context);
+      expect(h.tx.eventTicket.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          holderPersonId: 'destination-holder',
+          originalHolderPersonId: 'destination-original',
+          sourceKey: `${prefix}:event-1:destination-original`,
+        }),
+      });
+      expect(h.tx.eventTicketHistory.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          operation: 'TRANSFERRED',
+          previousHolderPersonId: 'destination-original',
+          newHolderPersonId: 'destination-holder',
+        }),
+      });
+    },
+  );
+
+  it('reuses a newly reviewed current holder as the portable original holder', async () => {
+    const h = harness();
+    const reference = { name: 'Carla Souza', email: 'carla@example.com' };
+    delete h.ticket.data.originalHolderPersonId;
+    delete h.ticket.data.sourceKey;
+    h.ticket.data.person = reference;
+    h.ticket.data.originalHolder = reference;
+    h.ticket.data.source = 'EVENT_SUBSCRIPTION';
+    h.people.match.mockResolvedValue({ missing: true, message: 'Não encontrada.' });
+    h.context.personDecisions = [{ key: transferPersonKey(reference), action: 'create', data: reference }];
+    const snapshot = await h.tickets.resolve(h.ticket, h.context);
+    expect(snapshot.resource.data).toMatchObject({ originalHolderPersonId: snapshot.personCreation?.id });
+    await h.tickets.validate(snapshot, h.context);
+  });
+
+  it('blocks ambiguous original holders and conflicting lineage fields', async () => {
+    const h = harness();
+    h.ticket.data.originalHolder = { name: 'Bruno Santos' };
+    await expect(h.tickets.resolve(h.ticket, h.context)).rejects.toThrow('nunca ambos');
+    delete h.ticket.data.originalHolderPersonId;
+    h.people.match
+      .mockResolvedValueOnce({ id: 'person-1' })
+      .mockResolvedValueOnce({ reviewIds: ['original-1', 'original-2'], message: 'Mais de uma pessoa.' });
+    await expect(h.tickets.resolve(h.ticket, h.context)).rejects.toThrow('titular original');
   });
 });

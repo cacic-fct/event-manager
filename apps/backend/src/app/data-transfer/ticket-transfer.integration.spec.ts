@@ -24,6 +24,60 @@ describe('ticket imports with transactional storage and the durable undo journal
     };
   }
 
+  it('imports portable automatic lineage with destination identities and issue permission alone', async () => {
+    fixture.denied.add(Permission.Ticket.Revoke);
+    const resource = fixture.document.resources[0] as ResourceOfKind<'event-ticket'>;
+    const data = { ...resource.data };
+    delete data.sourceKey;
+    fixture.document = {
+      ...fixture.document,
+      resources: [
+        {
+          ...resource,
+          data: {
+            ...data,
+            person: { name: 'Ana Silva' },
+            originalHolder: { name: 'Ana Silva' },
+            source: 'EVENT_SUBSCRIPTION',
+          },
+        },
+      ],
+    };
+    await fixture.transfer.apply(await reviewedRequest(), fixture.actor);
+    expect(await fixture.client.eventTicket.findMany()).toEqual([
+      expect.objectContaining({
+        holderPersonId: 'person-1',
+        originalHolderPersonId: 'person-1',
+        sourceKey: 'event-subscription:event-1:person-1',
+      }),
+    ]);
+    expect(await fixture.client.eventTicketHistory.findMany()).toEqual([
+      expect.objectContaining({ operation: 'ISSUED' }),
+    ]);
+  });
+
+  it('requires transfer permission after resolving a portable original holder', async () => {
+    fixture.denied.add(Permission.TicketTransfer.Manage);
+    const resource = fixture.document.resources[0] as ResourceOfKind<'event-ticket'>;
+    fixture.document = {
+      ...fixture.document,
+      resources: [
+        {
+          ...resource,
+          data: {
+            ...resource.data,
+            person: { name: 'Ana Silva' },
+            originalHolder: { name: 'Bruno Santos' },
+          },
+        },
+      ],
+    };
+    const before = await fixture.state();
+    const preview = await fixture.transfer.preview({ document: fixture.document }, fixture.actor);
+    expect(preview).toMatchObject({ canApply: false, summary: { skip: 1 } });
+    expect(await fixture.state()).toEqual(before);
+  });
+
   it('rolls back the ticket, history, audit and outbox if notification enqueueing fails after its write', async () => {
     const request = await reviewedRequest();
     const before = await fixture.state();

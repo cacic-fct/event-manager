@@ -94,6 +94,7 @@ export const EventTicketResourceSchema = checkedResource<EventTicketTransferOwne
   {
     eventId: Id,
     person: nullable(PersonReferenceSchema),
+    originalHolder: nullable(PersonReferenceSchema),
     originalHolderPersonId: nullable(Id),
     source: enumeration('EVENT_SUBSCRIPTION', 'MAJOR_EVENT_SUBSCRIPTION', 'ADMIN', 'PURCHASE'),
     sourceKey: nullable(Id),

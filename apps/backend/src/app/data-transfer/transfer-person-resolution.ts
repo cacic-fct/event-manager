@@ -26,7 +26,14 @@ export async function resolveTransferPerson<Snapshot extends ResolvedTransferRes
   if ('message' in match) {
     if (!match.missing && !match.reviewIds?.length) return { ...base, skip: { message: match.message } };
     await authorization.assertPermissions(context.actor, [Permission.Person.Read]);
-    await adapter.assertWrite(base, 'create', context);
+    // The selected person may already own this participation. The planner checks
+    // the actual action after resolution; either write right can open review.
+    try {
+      await adapter.assertWrite(base, 'create', context);
+    } catch (error) {
+      if (!(error instanceof ForbiddenException)) throw error;
+      await adapter.assertWrite(base, 'update', context);
+    }
     await adapter.assertMutable(base, 'edit', context);
     const submittedData = { ...reference, ...(decision ? decision.data : {}) };
     const data = normalizeTransferPerson(submittedData);

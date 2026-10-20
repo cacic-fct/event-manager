@@ -20,6 +20,8 @@ Escolha se deseja incluir os eventos e grupos filhos e as configurações relaci
 
 As opções de participação são independentes da inclusão da estrutura dos filhos. Por exemplo, é possível exportar presenças das atividades sem exportar seus cadastros.
 
+As opções `includePublishingState` e `includeAudienceInvitations` começam desativadas. Quando selecionadas, incluem, respectivamente, o estado e as datas de publicação de eventos e grandes eventos e as listas `invitationPersonIds` dos recursos exportados. Exportar convites exige permissão de atualização em cada evento, grupo ou grande evento. Os IDs das pessoas convidadas devem existir no destino. Na importação, uma lista informada substitui todos os convites; campos omitidos preservam os valores atuais, e novos recursos sem estado de publicação começam como rascunho.
+
 Confira os avisos de exportação: registros sem acesso podem ser omitidos. Guarde os arquivos com inscrições ou presenças como dados pessoais.
 
 ## Preparar o arquivo
@@ -89,4 +91,6 @@ A opção **Incluir bilhetes** exporta os bilhetes dos eventos do contexto selec
 
 Para importar uma compra já paga fora do sistema, use `ticket-purchase` com `eventId`, `person`, `amountCents` e `purchasedAt`. A compra é registrada como aprovada e o bilhete é emitido na mesma operação, sem exigir inscrição da pessoa no grande evento. O evento deve pertencer a um grande evento e ter a configuração de bilhetes habilitada. A criação ou mesclagem de uma pessoa exige a mesma revisão manual dos demais registros. São necessárias as permissões de emissão de bilhetes e aprovação de comprovantes.
 
-Os registros `event-ticket` representam os bilhetes emitidos e podem ser reimportados. O titular original deve existir no destino quando seu ID for informado. Uma compra em `ticket-purchase` já emite seu próprio bilhete; não inclua outro bilhete ativo para a mesma pessoa e evento no arquivo.
+Os registros `event-ticket` representam os bilhetes emitidos e podem ser reimportados. A exportação identifica o titular original por `originalHolder`, com dados portáveis como nome e e-mail. A importação encontra seu cadastro no destino e recalcula a chave de origem dos bilhetes derivados de inscrição. Se o titular original for diferente do atual, seu cadastro já deve existir e corresponder a uma única pessoa. Quando os dois usam a mesma referência, a criação revisada do titular atual também vale para o original. Arquivos antigos podem informar `originalHolderPersonId` com um ID do destino; não use os dois campos juntos.
+
+A emissão exige permissão de emissão de bilhetes. A permissão de revogação é exigida ao criar um bilhete revogado ou mudar seu estado para revogado. A troca de titular, inclusive na criação de um bilhete já transferido, exige gerenciar transferências. Uma compra em `ticket-purchase` já emite seu próprio bilhete; não inclua outro bilhete ativo para a mesma pessoa e evento no arquivo.

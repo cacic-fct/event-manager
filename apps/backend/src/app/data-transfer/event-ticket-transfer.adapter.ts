@@ -8,6 +8,7 @@ import { TicketRealtimeService } from '../tickets/ticket-realtime.service';
 import { lockEventTicketExpiration } from '../tickets/ticket-expiration-lock';
 import { PersonTransferMatcherService } from './person-transfer-matcher.service';
 import { resolveTransferPerson } from './transfer-person-resolution';
+import { transferPersonKey } from './transfer-person-creation';
 import { ticketTransferContext, ticketTransferEventScope } from './ticket-transfer-context';
 import { TransferValidationException } from './transfer-validation.exception';
 import type {
@@ -75,16 +76,39 @@ export class EventTicketTransferAdapter implements DataTransferAdapter {
     };
     await this.assertRead(base, context);
     const current = await this.loadCurrent(input, context.tx);
+    base.current = current;
+    base.revision = current?.revision ?? null;
     const reference = input.data.person === undefined && current?.data.person ? current.data.person : input.data.person;
     const resolved = reference
       ? await resolveTransferPerson(reference, base, context, this.authorization, this.people, this)
       : base;
     if (resolved.skip) return resolved;
+    const { originalHolder, ...data } = input.data;
+    if (originalHolder !== undefined && data.originalHolderPersonId !== undefined)
+      throw new TransferValidationException('Informe o titular original por referência ou por ID, nunca ambos.');
+    if (originalHolder === null) data.originalHolderPersonId = null;
+    else if (originalHolder) {
+      if (reference && transferPersonKey(originalHolder) === transferPersonKey(reference)) {
+        data.originalHolderPersonId = resolved.personId;
+      } else {
+        const original = await this.people.match(originalHolder, context.tx);
+        if ('message' in original)
+          throw new TransferValidationException(
+            `Identifique uma pessoa existente para o titular original. ${original.message}`,
+          );
+        data.originalHolderPersonId = original.id;
+      }
+      const source = data.source ?? current?.data.source;
+      if (data.sourceKey === undefined && (source === 'EVENT_SUBSCRIPTION' || source === 'MAJOR_EVENT_SUBSCRIPTION')) {
+        const prefix = source === 'EVENT_SUBSCRIPTION' ? 'event-subscription' : 'major-event-subscription';
+        data.sourceKey = `${prefix}:${data.eventId}:${data.originalHolderPersonId}`;
+      }
+    }
     const resource: TicketResource = {
       ...input,
       data: {
-        ...input.data,
-        ...(!current && input.data.originalHolderPersonId === undefined && resolved.personId
+        ...data,
+        ...(!current && data.originalHolderPersonId === undefined && resolved.personId
           ? { originalHolderPersonId: resolved.personId }
           : {}),
         ...(reference ? { person: { id: resolved.personId } } : {}),
@@ -123,12 +147,14 @@ export class EventTicketTransferAdapter implements DataTransferAdapter {
       value.current?.kind === 'event-ticket'
         ? data.person?.id !== value.current.data.person?.id
         : !!data.originalHolderPersonId && data.originalHolderPersonId !== data.person?.id;
+    const revokes =
+      data.status === 'REVOKED' && (value.current?.kind !== 'event-ticket' || value.current.data.status !== 'REVOKED');
     await this.authorization.assertPermissions(
       context.actor,
       [
         Permission.DataTransfer.Import,
         Permission.Ticket.Issue,
-        Permission.Ticket.Revoke,
+        ...(revokes ? [Permission.Ticket.Revoke] : []),
         ...(changesHolder ? [Permission.TicketTransfer.Manage] : []),
       ],
       snapshot.scope,
@@ -399,14 +425,30 @@ export class EventTicketTransferAdapter implements DataTransferAdapter {
       }
       const rows = await context.tx.eventTicket.findMany({
         where: { eventId: event.id },
-        include: { holder: true },
+        include: { holder: true, originalHolder: true },
         orderBy: { id: 'asc' },
         take: TRANSFER_MAX_RESOURCES + 1,
       });
       if (rows.length + result.resources.length > TRANSFER_MAX_RESOURCES)
         throw new TransferValidationException('Os bilhetes excedem o limite de registros por arquivo.');
-      for (const row of rows)
-        result.resources.push(ticketResource(row, this.exportPerson(row.holder, includePersonData)));
+      for (const row of rows) {
+        const resource = ticketResource(row, this.exportPerson(row.holder, includePersonData));
+        const { originalHolderPersonId, sourceKey, ...data } = resource.data;
+        const automatic = row.source === 'EVENT_SUBSCRIPTION' || row.source === 'MAJOR_EVENT_SUBSCRIPTION';
+        const originalHolder = this.exportPerson(row.originalHolder, includePersonData);
+        if (originalHolderPersonId && !originalHolder) {
+          result.issues.push({
+            kind: 'event-ticket',
+            id: row.id,
+            message: 'Bilhete omitido porque o titular original não está disponível.',
+          });
+          continue;
+        }
+        result.resources.push({
+          ...resource,
+          data: { ...data, originalHolder, ...(!automatic ? { sourceKey } : {}) },
+        });
+      }
     }
     return result;
   }
