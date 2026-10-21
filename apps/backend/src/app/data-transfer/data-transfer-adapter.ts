@@ -5,12 +5,16 @@ import type {
   TransferResourceKind,
   TransferChange,
   TransferTarget,
+  TransferPersonDecision,
+  TransferPersonPrompt,
+  TransferPersonData,
   ResolvedTransferDocument,
 } from '@cacic-fct/shared-data-transfer';
 import type { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import type { AuthorizationResourceContext } from '../authorization/authorization-policy.service';
 import type { FrozenOperation, FrozenResourceService } from '../common/frozen-resource.service';
 import type { Prisma } from '@prisma/client';
+import type { JournalMutation } from './transfer-journal-recorder';
 
 /** A stable reference to another resource in the same transfer document. */
 export interface TransferResourceReference {
@@ -37,6 +41,8 @@ export interface TransferAdapterContext {
   actor: AuthenticatedUser;
   document: ResolvedTransferDocument;
   requestedScope?: TransferTarget;
+  personDecisions?: readonly TransferPersonDecision[];
+  priorMutations?: readonly JournalMutation[];
   frozenResources: FrozenResourceService;
 }
 
@@ -54,6 +60,13 @@ export interface ResolvedTransferResource {
   revision: string | null;
   /** Canonical target identity when source IDs resolve to an existing natural key. */
   identityKey?: string;
+  personPrompt?: TransferPersonPrompt;
+  personCreation?: { id: string; data: TransferPersonData & { name: string } };
+  personMerge?: {
+    id: string;
+    revision: string;
+    data: { secondaryEmails: string[]; phone?: string; identityDocument?: string; academicId?: string };
+  };
   /** Actual database ID when an external participation row resolves by its natural key. */
   resolvedId?: string;
   scope: TransferAuthorizationScope;

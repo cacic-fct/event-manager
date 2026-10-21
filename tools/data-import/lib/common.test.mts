@@ -4,29 +4,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import {
-  chunks,
-  databaseUrlFromOptions,
   decodePrismaPostgresUrl,
-  formatCounter,
   normalizeWgs84Coordinates,
   sanitizePostgresUrl,
   resolveDatabaseUrlFromEnvOptions,
 } from './common.mts';
-
-test('builds a PostgreSQL URL from the shared defaults and options', () => {
-  assert.equal(databaseUrlFromOptions({}), 'postgresql://postgres:postgres@localhost:5432/postgres');
-  assert.equal(
-    databaseUrlFromOptions({
-      dbUser: 'user@example.com',
-      dbPassword: 'p@ss word',
-      dbHost: 'db',
-      dbPort: 5433,
-      dbName: 'fct',
-    }),
-    'postgresql://user%40example.com:p%40ss%20word@db:5433/fct',
-  );
-  assert.equal(databaseUrlFromOptions({ databaseUrl: 'postgresql://direct/db' }), 'postgresql://direct/db');
-});
 
 test('normalizes only complete WGS 84 coordinate pairs', () => {
   assert.deepEqual(normalizeWgs84Coordinates(-22.1211, -51.4086), {
@@ -55,18 +37,4 @@ test('resolves a DATABASE_URL from the requested env file', () => {
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
-});
-
-test('chunks arrays and formats sorted counters', () => {
-  assert.deepEqual([...chunks([1, 2, 3, 4, 5], 2)], [[1, 2], [3, 4], [5]]);
-  assert.equal(
-    formatCounter(
-      new Map([
-        ['REGULAR', 2],
-        ['NON_PAYING', 1],
-      ]),
-    ),
-    'NON_PAYING=1, REGULAR=2',
-  );
-  assert.throws(() => [...chunks([1], 0)], /positive integer/);
 });

@@ -35,6 +35,8 @@ type DataTransferStoryMode =
   | 'error'
   | 'completed'
   | 'readonly'
+  | 'person-creation'
+  | 'person-merge'
   | 'import-only'
   | 'undo-only'
   | 'connected'
@@ -56,13 +58,31 @@ let storyBatchUndone = false;
 const dataTransferApi = {
   getSchema: () => of({ $schema: 'https://json-schema.org/draft/2020-12/schema', type: 'object' }),
   export: () => of({ document: transferDocumentFixture, issues: [] }),
-  preview: () => {
+  preview: (request: { personDecisions?: unknown[] }) => {
     if (activeMode === 'loading') {
       return NEVER;
     }
     if (activeMode === 'error') {
       return throwError(() => new Error('O servidor recusou a revisão. Confira o arquivo e tente novamente.'));
     }
+    if (['person-creation', 'person-merge'].includes(activeMode) && !request.personDecisions?.length)
+      return of({
+        ...createTransferPreviewFixture(),
+        canApply: false,
+        personPrompts: [
+          {
+            key: 'a'.repeat(64),
+            data:
+              activeMode === 'person-merge' ? { name: 'Ana Silva', email: 'new@example.com' } : { name: 'Ana Silva' },
+            message: 'Revise os dados antes de importar.',
+            canCreate: true,
+            canMerge: activeMode === 'person-merge',
+            ...(activeMode === 'person-merge'
+              ? { candidates: [{ id: 'existing-person', name: 'Ana Silva', email: 'old@example.com' }] }
+              : {}),
+          },
+        ],
+      });
     return of(createTransferPreviewFixture(activeMode === 'blocked'));
   },
   apply: () => of(createTransferResultFixture(activeMode === 'blocked')),
@@ -120,7 +140,17 @@ const meta: Meta<DataTransferStoryArgs> = {
   argTypes: {
     mode: {
       control: 'select',
-      options: ['ready', 'blocked', 'loading', 'error', 'completed', 'readonly', 'undo-only'],
+      options: [
+        'ready',
+        'person-creation',
+        'person-merge',
+        'blocked',
+        'loading',
+        'error',
+        'completed',
+        'readonly',
+        'undo-only',
+      ],
     },
   },
   decorators: [
@@ -214,6 +244,37 @@ export const ReadyPreview: Story = {
   },
 };
 
+export const PersonCreation: Story = {
+  args: { mode: 'person-creation' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await enterJson(canvas);
+    await userEvent.click(canvas.getByRole('button', { name: 'Revisar importação' }));
+    await expect(await canvas.findByRole('heading', { name: 'Pessoas que precisam de revisão' })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Confirmar criação' })).toBeDisabled();
+    await userEvent.type(canvas.getByRole('textbox', { name: 'E-mail' }), 'ana@example.com');
+    await userEvent.click(canvas.getByRole('button', { name: 'Confirmar criação' }));
+    await expect(canvas.getByText(/Criação confirmada/)).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: 'Revisar importação' }));
+    await expect(await canvas.findByRole('button', { name: 'Aplicar alterações' })).toBeEnabled();
+  },
+};
+
+export const PersonMergeReview: Story = {
+  args: { mode: 'person-merge' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await enterJson(canvas);
+    await userEvent.click(canvas.getByRole('button', { name: 'Revisar importação' }));
+    await userEvent.click(await canvas.findByRole('combobox', { name: 'Pessoa existente' }));
+    await userEvent.click(within(document.body).getByRole('option', { name: /old@example.com/ }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Confirmar mesclagem' }));
+    await expect(canvas.getByText(/Mesclagem confirmada/)).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: 'Revisar importação' }));
+    await expect(await canvas.findByRole('button', { name: 'Aplicar alterações' })).toBeEnabled();
+  },
+};
+
 export const BlockedRows: Story = {
   args: { mode: 'blocked' },
   play: async ({ canvasElement }) => {
@@ -273,7 +334,7 @@ export const ExportOnly: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Exportar JSON' })).toBeVisible();
-    await expect(canvas.getByText(/sua conta não tem permissão para importar arquivos/i)).toBeVisible();
+    await expect(canvas.queryByRole('tab', { name: 'Importar' })).toBeNull();
     await expect(canvas.queryByRole('textbox', { name: 'Conteúdo JSON' })).toBeNull();
   },
 };
@@ -282,12 +343,13 @@ export const UndoConfirmation: Story = {
   args: { mode: 'completed' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
     await enterJson(canvas);
     await userEvent.click(canvas.getByRole('button', { name: /revisar importação/i }));
     await userEvent.click(await canvas.findByRole('button', { name: /aplicar alterações/i }));
     await userEvent.click(await canvas.findByRole('button', { name: /desfazer esta importação/i }));
-    await expect(await canvas.findByRole('group', { name: /reverter todas as alterações/i })).toBeVisible();
-    await userEvent.click(canvas.getByRole('button', { name: /confirmar reversão/i }));
+    await expect(await page.findByRole('dialog', { name: /reverter todas as alterações/i })).toBeVisible();
+    await userEvent.click(page.getByRole('button', { name: /confirmar reversão/i }));
     await expect(await canvas.findByText(/importação revertida/i)).toBeVisible();
     await expect(canvas.getByText('story-undo-audit-entry')).toBeVisible();
   },
@@ -297,11 +359,12 @@ export const UndoOnlyHistory: Story = {
   args: { mode: 'undo-only' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
     await expect(await canvas.findByRole('heading', { name: 'Importações recentes' })).toBeVisible();
     await expect(canvas.getByText('story-history-batch')).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: /desfazer este lote/i }));
-    await expect(await canvas.findByRole('group', { name: /reverter todas as alterações/i })).toBeVisible();
-    await userEvent.click(canvas.getByRole('button', { name: /confirmar reversão/i }));
+    await expect(await page.findByRole('dialog', { name: /reverter todas as alterações/i })).toBeVisible();
+    await userEvent.click(page.getByRole('button', { name: /confirmar reversão/i }));
     await expect(await canvas.findByText(/importação revertida/i)).toBeVisible();
   },
 };
@@ -363,7 +426,35 @@ export const ConnectedApiUndoOnly: Story = {
 };
 
 async function enterJson(canvas: ReturnType<typeof within>): Promise<void> {
+  await userEvent.click(canvas.getByRole('button', { name: 'Colar ou editar JSON' }));
   const editor = canvas.getByRole('textbox', { name: 'Conteúdo JSON' });
   await userEvent.click(editor);
   await userEvent.paste(JSON.stringify(transferDocumentFixture));
 }
+
+export const TicketExport: StoryObj<DataTransferStoryArgs> = {
+  args: { mode: 'ready' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('tab', { name: 'Exportar' }));
+    await expect(canvas.getByRole('checkbox', { name: /^Incluir bilhetes$/ })).not.toBeChecked();
+    await expect(canvas.getByText(/Inclui bilhetes ativos, consumidos e revogados/)).toBeVisible();
+  },
+};
+
+export const PublishingAndInvitationsExport: Story = {
+  args: { mode: 'connected-scoped' },
+  parameters: connectedApiParameters(),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('tab', { name: 'Exportar' }));
+    const publication = canvas.getByRole('checkbox', { name: /^Incluir estado de publicação$/ });
+    const invitations = canvas.getByRole('checkbox', { name: /^Incluir convites do público-alvo$/ });
+    await expect(publication).not.toBeChecked();
+    await expect(invitations).not.toBeChecked();
+    await userEvent.click(publication);
+    await userEvent.click(invitations);
+    await expect(publication).toBeChecked();
+    await expect(invitations).toBeChecked();
+  },
+};

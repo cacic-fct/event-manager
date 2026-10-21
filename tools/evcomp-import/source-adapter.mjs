@@ -71,12 +71,20 @@ export const defaultSourceSchema = {
     userId: 'idUsuário',
     activityId: 'idAtividade',
   },
+  payments: {
+    table: 'pagamento',
+    id: 'idPagamento',
+    registrationId: 'idInscrição',
+    status: 'status_pagamento',
+    submittedAt: 'data_envio',
+    evaluatedAt: 'data_avaliacao',
+  },
 };
 
 export async function readEvcompSnapshot(connection, override = {}, timezoneOffset = '-03:00') {
   const schema = mergeSchema(defaultSourceSchema, override);
-  const { catalogMode, modalityMode } = await validateSourceSchema(connection, schema);
-  const effectiveSchema = schemaForModes(schema, { catalogMode, modalityMode });
+  const { catalogMode, modalityMode, paymentsMode } = await validateSourceSchema(connection, schema);
+  const effectiveSchema = schemaForModes(schema, { catalogMode, modalityMode, paymentsMode });
   const events =
     catalogMode === 'current'
       ? (await rows(connection, eventsSql(effectiveSchema))).map((row) => normalizeEventRow(row, timezoneOffset))
@@ -95,13 +103,26 @@ export async function readEvcompSnapshot(connection, override = {}, timezoneOffs
   }
   const attendances = await rows(connection, attendancesSql(effectiveSchema));
   const lecturers = await rows(connection, lecturersSql(effectiveSchema));
+  const payments =
+    paymentsMode === 'current'
+      ? (await rows(connection, paymentsSql(effectiveSchema))).map((row) => normalizePaymentRow(row, timezoneOffset))
+      : undefined;
   const referencedPersonIds = new Set(
     [...registrations, ...attendances, ...lecturers].map((row) => String(row.sourcePersonId)),
   );
   const people = (await rows(connection, peopleSql(effectiveSchema), [schema.users.includedTypes])).filter((person) =>
     referencedPersonIds.has(String(person.sourceId)),
   );
-  return { people, events, activities, modalities, registrations, attendances, lecturers };
+  return {
+    people,
+    events,
+    activities,
+    modalities,
+    registrations,
+    attendances,
+    lecturers,
+    ...(payments === undefined ? {} : { payments }),
+  };
 }
 
 export async function validateSourceSchema(connection, schema) {
@@ -150,9 +171,18 @@ export async function validateSourceSchema(connection, schema) {
     : presentModalityRequirements.length === modalityRequirements.length
       ? 'current'
       : 'partial';
+  const paymentRequirements = paymentRequirementsFor(schema);
+  const paymentTable = schema.payments?.table;
+  const paymentsMode =
+    !paymentTable || !availableTables.has(paymentTable)
+      ? 'absent'
+      : paymentRequirements.every((item) => available.has(`${item.table}\0${item.column}`))
+        ? 'current'
+        : 'partial';
   const legacyKeys = new Set([
     ...(catalogMode === 'legacy' ? catalogKeys : []),
     ...(modalityMode === 'legacy' ? modalityKeys : []),
+    ...(paymentsMode === 'absent' ? paymentRequirements.map((item) => `${item.table}\0${item.column}`) : []),
   ]);
   const requiredForValidation = required.filter((item) => !legacyKeys.has(`${item.table}\0${item.column}`));
   const missing = requiredForValidation.filter((item) => !available.has(`${item.table}\0${item.column}`));
@@ -163,7 +193,7 @@ export async function validateSourceSchema(connection, schema) {
         .join(', ')}`,
     );
   }
-  return { catalogMode, modalityMode };
+  return { catalogMode, modalityMode, paymentsMode };
 }
 
 export function mergeSchema(base, override) {
@@ -236,6 +266,16 @@ export function normalizeModalityRow(row) {
   };
 }
 
+export function normalizePaymentRow(row, timezoneOffset = '-03:00') {
+  return {
+    sourceId: row.sourceId,
+    sourceRegistrationId: row.sourceRegistrationId,
+    status: row.status,
+    submittedAt: parseSourceDate(row.submittedAt, timezoneOffset),
+    evaluatedAt: parseSourceDate(row.evaluatedAt, timezoneOffset),
+  };
+}
+
 function peopleSql({ users: u }) {
   return `SELECT ${q(u.id)} sourceId, ${q(u.name)} name, ${q(u.email)} email, ${q(u.academicId)} academicId
     FROM ${q(u.table)} WHERE ${q(u.type)} IN (?)`;
@@ -292,6 +332,12 @@ function lecturersSql({ lecturers: l }) {
     FROM ${q(l.table)}`;
 }
 
+function paymentsSql({ payments: p }) {
+  return `SELECT ${q(p.id)} sourceId, ${q(p.registrationId)} sourceRegistrationId,
+      ${q(p.status)} status, ${q(p.submittedAt)} submittedAt,
+      ${q(p.evaluatedAt)} evaluatedAt FROM ${q(p.table)}`;
+}
+
 async function rows(connection, sql, parameters = []) {
   const [result] = await connection.query(sql, parameters);
   return result;
@@ -315,6 +361,16 @@ function modalityRequirementsFor(schema) {
   return requirements;
 }
 
+export function paymentRequirementsFor(schema) {
+  const payments = schema.payments;
+  if (!payments) {
+    return [];
+  }
+  return Object.entries(payments)
+    .filter(([fieldName]) => fieldName !== 'table')
+    .map(([fieldName, column]) => ({ sectionName: 'payments', fieldName, table: payments.table, column }));
+}
+
 export function catalogRequirementsFor(schema) {
   return ['events', 'activities'].flatMap((sectionName) => {
     const section = schema[sectionName];
@@ -327,13 +383,18 @@ export function catalogRequirementsFor(schema) {
   });
 }
 
-export function schemaForModes(schema, { catalogMode, modalityMode }) {
+export function schemaForModes(schema, { catalogMode, modalityMode, paymentsMode }) {
   let effectiveSchema = schema;
   if (catalogMode !== 'current') {
     effectiveSchema = Object.fromEntries(
       Object.entries(effectiveSchema).filter(
         ([sectionName]) => sectionName !== 'events' && sectionName !== 'activities',
       ),
+    );
+  }
+  if (paymentsMode !== 'current') {
+    effectiveSchema = Object.fromEntries(
+      Object.entries(effectiveSchema).filter(([sectionName]) => sectionName !== 'payments'),
     );
   }
   if (modalityMode === 'current') {

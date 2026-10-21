@@ -1,3 +1,4 @@
+import { maskCPF } from '@cacic-fct/shared-utils';
 import { EventAttendanceScannerFeedItem } from '@cacic-fct/shared-data-types';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -284,8 +285,7 @@ function maskIdentityDocument(value: string | null, isCpf: boolean | null): stri
   if (isCpf !== true) {
     return value;
   }
-  const digits = value.replace(/\D/g, '');
-  return digits.length === 11 ? `•••.${digits.slice(3, 6)}.${digits.slice(6, 9)}-••` : '••••••••';
+  return maskCPF(value);
 }
 
 function firstName(name: string): string {

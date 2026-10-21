@@ -24,7 +24,7 @@ A área **Minhas permissões** mostra o acesso efetivo da pessoa autenticada.
 
 Ela combina cargos diretos, participação em grupos, herança entre cargos, escopos ativos e acessos externos. Use essa visão para entender o resultado, não para editar a autorização.
 
-Os detalhes técnicos ficam recolhidos para diagnóstico. O catálogo completo não é reproduzido no manual porque a própria aplicação é a fonte de verdade.
+Os detalhes técnicos ficam recolhidos e podem ser consultados para diagnóstico.
 
 ## Gerenciamento de permissões
 
@@ -86,6 +86,8 @@ Eventos, grupos e grandes eventos antigos podem ficar protegidos contra atualiza
 A permissão comum continua necessária. Além dela, a pessoa precisa estar autorizada a alterar recursos congelados.
 
 Use esse acesso apenas para correções justificadas. Mudanças tardias podem afetar inscrições, presenças, resultados esportivos, comprovantes e certificados já emitidos.
+
+Em [Dados JSON](./Dados%20JSON.md), exportar, importar e desfazer têm permissões separadas. Cada linha continua sujeita às permissões do recurso e ao seu escopo; liberar a transferência não libera acesso a todos os dados do arquivo.
 
 ## Quando o acesso não funciona
 

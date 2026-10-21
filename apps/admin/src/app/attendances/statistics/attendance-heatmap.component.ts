@@ -4,9 +4,8 @@ import {
   ElementRef,
   OnDestroy,
   PLATFORM_ID,
-  afterNextRender,
+  afterRenderEffect,
   computed,
-  effect,
   inject,
   input,
   viewChild,
@@ -18,7 +17,6 @@ import Map from 'ol/Map';
 import View from 'ol/View';
 import { boundingExtent } from 'ol/extent';
 import Point from 'ol/geom/Point';
-import type BaseLayer from 'ol/layer/Base';
 import Heatmap from 'ol/layer/Heatmap';
 import TileLayer from 'ol/layer/Tile';
 import VectorLayer from 'ol/layer/Vector';
@@ -50,7 +48,8 @@ import { Circle as CircleStyle, Fill, Stroke, Style } from 'ol/style';
     }
     .attendance-heatmap {
       width: 100%;
-      min-height: 360px;
+      /* OpenLayers' percentage-height viewport needs a definite container height. */
+      height: 360px;
       background: var(--mat-sys-surface-container);
     }
     .map-empty {
@@ -70,7 +69,7 @@ import { Circle as CircleStyle, Fill, Stroke, Style } from 'ol/style';
     }
     @media (max-width: 720px) {
       .attendance-heatmap {
-        min-height: 300px;
+        height: 300px;
       }
     }
   `,
@@ -86,45 +85,26 @@ export class AttendanceHeatmapComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly mapTarget = viewChild<ElementRef<HTMLElement>>('mapTarget');
   private map: Map | null = null;
-  private hasRendered = false;
-  private mapRenderFrame?: number;
+  private mapElement?: HTMLElement;
+  private heatSource?: VectorSource<Feature<Point>>;
+  private eventSource?: VectorSource<Feature<Point>>;
+  private locationKey?: string;
+  private mapSizeFrame?: number;
   private mapResizeObserver?: ResizeObserver;
   private observedMapTarget?: HTMLElement;
 
   constructor() {
-    afterNextRender(() => {
-      this.hasRendered = true;
-      this.scheduleMapRender();
-    });
-
-    effect(() => {
+    afterRenderEffect(() => {
       this.points();
       this.eventLatitude();
       this.eventLongitude();
-
-      if (this.hasRendered) {
-        this.scheduleMapRender();
-      }
+      this.renderCurrentMap();
     });
   }
 
   ngOnDestroy(): void {
-    if (this.mapRenderFrame !== undefined) {
-      cancelAnimationFrame(this.mapRenderFrame);
-    }
     this.stopObservingMapTarget();
     this.destroyMap();
-  }
-
-  private scheduleMapRender(): void {
-    if (!this.isBrowser || this.mapRenderFrame !== undefined) {
-      return;
-    }
-
-    this.mapRenderFrame = requestAnimationFrame(() => {
-      this.mapRenderFrame = undefined;
-      this.renderCurrentMap();
-    });
   }
 
   private renderCurrentMap(): void {
@@ -139,7 +119,20 @@ export class AttendanceHeatmapComponent implements OnDestroy {
       return;
     }
 
-    this.destroyMap();
+    if (this.mapElement !== target) {
+      this.destroyMap();
+    }
+
+    // Live snapshots have new array identities even when all locations are unchanged.
+    const locationKey = JSON.stringify([
+      points.map(({ latitude, longitude, count }) => [latitude, longitude, count]),
+      eventLatitude,
+      eventLongitude,
+    ]);
+    if (this.locationKey === locationKey) {
+      return;
+    }
+
     const maxCount = Math.max(1, ...points.map((point) => point.count));
     const heatFeatures = points.map((point) => {
       const feature = new Feature({ geometry: new Point(fromLonLat([point.longitude, point.latitude])) });
@@ -150,16 +143,11 @@ export class AttendanceHeatmapComponent implements OnDestroy {
     const eventCenter =
       eventLatitude != null && eventLongitude != null ? fromLonLat([eventLongitude, eventLatitude]) : null;
     const center = eventCenter ?? projectedPoints[0];
-    const layers: BaseLayer[] = [
-      new TileLayer({ source: new OSM({ referrerPolicy: OPENSTREETMAP_TILE_REFERRER_POLICY }) }),
-      new Heatmap({
-        source: new VectorSource({ features: heatFeatures }),
-        blur: 24,
-        radius: 18,
-        weight: 'weight',
-        gradient: ['#e8f5e9', '#81c784', '#fdd835', '#fb8c00', '#c62828'],
-      }),
-    ];
+    this.heatSource ??= new VectorSource<Feature<Point>>();
+    this.heatSource.clear();
+    this.heatSource.addFeatures(heatFeatures);
+    this.eventSource ??= new VectorSource<Feature<Point>>();
+    this.eventSource.clear();
 
     if (eventLatitude != null && eventLongitude != null) {
       const eventFeature = new Feature({
@@ -174,16 +162,33 @@ export class AttendanceHeatmapComponent implements OnDestroy {
           }),
         }),
       );
-      layers.push(new VectorLayer({ source: new VectorSource({ features: [eventFeature] }) }));
+      this.eventSource.addFeatures([eventFeature]);
+    }
+
+    this.locationKey = locationKey;
+    // Keep the tile cache and the user's pan/zoom when live data changes.
+    if (this.map) {
+      return;
     }
 
     const view = new View({ center, zoom: 17, maxZoom: 19 });
     this.map = new Map({
       target,
-      layers,
+      layers: [
+        new TileLayer({ source: new OSM({ referrerPolicy: OPENSTREETMAP_TILE_REFERRER_POLICY }) }),
+        new Heatmap({
+          source: this.heatSource,
+          blur: 24,
+          radius: 18,
+          weight: 'weight',
+          gradient: ['#e8f5e9', '#81c784', '#fdd835', '#fb8c00', '#c62828'],
+        }),
+        new VectorLayer({ source: this.eventSource }),
+      ],
       view,
       controls: [],
     });
+    this.mapElement = target;
     this.observeMapTarget(target);
 
     const visibleCoordinates = eventCenter ? [...projectedPoints, eventCenter] : projectedPoints;
@@ -193,7 +198,10 @@ export class AttendanceHeatmapComponent implements OnDestroy {
         padding: [32, 32, 32, 32],
       });
     }
-    requestAnimationFrame(() => this.map?.updateSize());
+    this.mapSizeFrame = requestAnimationFrame(() => {
+      this.mapSizeFrame = undefined;
+      this.map?.updateSize();
+    });
   }
 
   private observeMapTarget(target: HTMLElement): void {
@@ -217,7 +225,16 @@ export class AttendanceHeatmapComponent implements OnDestroy {
   }
 
   private destroyMap(): void {
+    if (this.mapSizeFrame !== undefined) {
+      cancelAnimationFrame(this.mapSizeFrame);
+      this.mapSizeFrame = undefined;
+    }
     this.map?.setTarget(undefined);
+    this.map?.dispose();
     this.map = null;
+    this.mapElement = undefined;
+    this.heatSource = undefined;
+    this.eventSource = undefined;
+    this.locationKey = undefined;
   }
 }

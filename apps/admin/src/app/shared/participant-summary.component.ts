@@ -1,6 +1,6 @@
 import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { formatUnespRole } from '@cacic-fct/shared-utils';
+import { formatUnespRole, maskCPF } from '@cacic-fct/shared-utils';
 export interface ParticipantIdentity {
   id?: string;
   name: string;
@@ -105,9 +105,12 @@ export class ParticipantSummaryComponent {
     if (!document) {
       return null;
     }
-    if (!this.maskIdentityDocument() || document.length <= 4) {
+    if (!this.maskIdentityDocument()) {
       return document;
     }
-    return `•••${document.slice(-4)}`;
+    if (document.replace(/\D/g, '').length === 11) {
+      return maskCPF(document);
+    }
+    return document.length <= 4 ? document : `•••${document.slice(-4)}`;
   });
 }

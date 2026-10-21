@@ -197,7 +197,7 @@ describe('SportsReadAdminMapper', () => {
   });
 
   it('censors identity documents while keeping only the final four digits', () => {
-    expect(mapper.censorIdentityDocument('123.456.789-00')).toBe('•••••••8900');
+    expect(mapper.censorIdentityDocument('123.456.789-00')).toBe('•••.456.789-••');
     expect(mapper.censorIdentityDocument('letters only')).toBeNull();
     expect(mapper.censorIdentityDocument(null)).toBeNull();
   });

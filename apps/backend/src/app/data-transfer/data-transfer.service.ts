@@ -10,6 +10,7 @@ import {
   Inject,
 } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { isValidCPF } from '@cacic-fct/shared-utils';
 import {
   TRANSFER_FORMAT,
   TRANSFER_SCHEMA_ID,
@@ -33,7 +34,14 @@ import type {
   TransferResourceKind,
   TransferResult,
   TransferTarget,
+  TransferPreviewRequest,
+  TransferPersonDecision,
 } from '@cacic-fct/shared-data-transfer';
+import {
+  validatePersonDecisions,
+  assertCompatiblePersonChanges,
+  plannedPersonMerges,
+} from './transfer-person-creation';
 import { createHash } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
@@ -173,6 +181,9 @@ export class DataTransferService {
               includeConfiguration: input.includeConfiguration,
               includeSubscriptions: input.includeSubscriptions ?? false,
               includeAttendances: input.includeAttendances ?? false,
+              includeTickets: input.includeTickets ?? false,
+              includePublishingState: input.includePublishingState ?? false,
+              includeAudienceInvitations: input.includeAudienceInvitations ?? false,
               includeChildSubscriptions: input.includeChildSubscriptions ?? false,
               includeChildAttendances: input.includeChildAttendances ?? false,
             },
@@ -200,12 +211,10 @@ export class DataTransferService {
     return result;
   }
 
-  async preview(
-    input: { document: unknown; scope?: TransferTarget },
-    user: AuthenticatedUser | undefined,
-  ): Promise<TransferPreview> {
+  async preview(input: TransferPreviewRequest, user: AuthenticatedUser | undefined): Promise<TransferPreview> {
     await this.assertGate(Permission.DataTransfer.Import, user);
     const rawDocument = this.parseDocument(input.document);
+    const personDecisions = validatePersonDecisions(input.personDecisions);
     this.assertScope(input.scope);
     if (input.scope) {
       await this.assertScopeReadable(input.scope, user);
@@ -215,7 +224,8 @@ export class DataTransferService {
     const preview = await runSerializablePrismaTransaction(
       this.prisma,
       async (tx) => {
-        return (await this.buildPlan(allocationResult.document, input.scope, user, tx, allocatedIds)).preview;
+        return (await this.buildPlan(allocationResult.document, input.scope, user, tx, allocatedIds, personDecisions))
+          .preview;
       },
       TRANSFER_TRANSACTION_OPTIONS,
     );
@@ -242,6 +252,7 @@ export class DataTransferService {
       );
     const journal = this.journal;
     const rawDocument = this.parseDocument(input.document);
+    const personDecisions = validatePersonDecisions(input.personDecisions);
     this.assertScope(input.scope);
     if (input.scope) {
       await this.assertScopeReadable(input.scope, user);
@@ -266,6 +277,7 @@ export class DataTransferService {
       planHash: input.planHash,
       allowPartial: input.allowPartial,
       allocationToken: input.allocationToken ?? null,
+      personDecisions,
     });
     const committedRequest = await journal.findCommittedRequest(user, requestFingerprint);
     if (committedRequest) return this.replayCommittedRequest(committedRequest, input);
@@ -278,10 +290,14 @@ export class DataTransferService {
         if (replay) return { replay, replayed: true as const };
         const document = this.keyAllocations.apply(rawDocument, actorId, input.allocationToken);
         const allocatedIds = allocatedIdsFor(rawDocument, document);
-        const plan = await this.buildPlan(document, input.scope, user, tx, allocatedIds);
+        const plan = await this.buildPlan(document, input.scope, user, tx, allocatedIds, personDecisions);
         if (!timingSafeEqualHex(plan.preview.planHash, input.planHash)) {
           throw new ConflictException('Os dados ou permissões mudaram desde a prévia. Gere uma nova prévia.');
         }
+        if (plan.preview.personPrompts?.length)
+          throw new ConflictException(
+            'Confirme a criação, a mesclagem ou ignore todas as pessoas pendentes antes de aplicar.',
+          );
         if (!input.allowPartial && plan.preview.summary.skip > 0) {
           throw new ConflictException('Há linhas bloqueadas. Revise a prévia ou confirme a aplicação parcial.');
         }
@@ -291,9 +307,47 @@ export class DataTransferService {
           );
         }
 
+        const sortedRows = sortRowsForApply(plan.rows);
         const effects: Array<() => Promise<void>> = [];
         const recorder = journal.begin(tx);
-        for (const row of sortRowsForApply(plan.rows)) {
+        const executableSnapshots = sortedRows.flatMap((row) =>
+          row.status === 'ready' && row.snapshot ? [row.snapshot] : [],
+        );
+        const mergedPeople = plannedPersonMerges(executableSnapshots);
+        const createdPeople = new Set<string>();
+        // The full plan, identities, permissions and dependencies were checked before the first write.
+        for (const row of sortedRows) {
+          const creation = row.status === 'ready' ? row.snapshot?.personCreation : undefined;
+          if (!creation || createdPeople.has(creation.id) || !row.snapshot) continue;
+          recorder.setSource(row.snapshot.resource, row.action as TransferWriteAction, row.snapshot.scope);
+          await recorder.tx.people.create({
+            data: {
+              id: creation.id,
+              ...creation.data,
+              secondaryEmails: [],
+              isCPF: creation.data.identityDocument ? isValidCPF(creation.data.identityDocument) : null,
+              createdById: actorId,
+              updatedById: actorId,
+            },
+          });
+          createdPeople.add(creation.id);
+        }
+        for (const row of sortedRows) {
+          const merge = row.snapshot?.personMerge;
+          const planned = merge ? mergedPeople.get(merge.id) : undefined;
+          if (row.status !== 'ready' || !planned || !row.snapshot) continue;
+          recorder.setSource(row.snapshot.resource, row.action as TransferWriteAction, row.snapshot.scope);
+          await recorder.tx.people.update({
+            where: { id: planned.id },
+            data: {
+              ...planned.data,
+              ...(planned.data.identityDocument ? { isCPF: isValidCPF(planned.data.identityDocument) } : {}),
+              updatedById: actorId,
+            },
+          });
+          mergedPeople.delete(planned.id);
+        }
+        for (const row of sortedRows) {
           if (row.status !== 'ready' || (row.action !== 'create' && row.action !== 'update')) {
             continue;
           }
@@ -302,11 +356,10 @@ export class DataTransferService {
           }
           if (row.snapshot.ownedBy) continue;
           recorder.setSource(row.snapshot.resource, row.action, row.snapshot.scope);
-          const result = await row.adapter.apply(
-            row.snapshot,
-            row.action,
-            this.adapterContext(recorder.tx, user, document, input.scope),
-          );
+          const result = await row.adapter.apply(row.snapshot, row.action, {
+            ...this.adapterContext(recorder.tx, user, document, input.scope),
+            priorMutations: recorder.mutations,
+          });
           effects.push(...(result.postCommitEffects ?? []));
           row.item = { ...row.item, status: 'applied', message: row.action === 'create' ? 'Criado.' : 'Atualizado.' };
         }
@@ -446,8 +499,9 @@ export class DataTransferService {
     user: AuthenticatedUser | undefined,
     tx: Prisma.TransactionClient,
     allocatedIds: ReadonlySet<string> = new Set(),
+    personDecisions: readonly TransferPersonDecision[] = [],
   ): Promise<Plan> {
-    const context = this.adapterContext(tx, user, document, scope);
+    const context = { ...this.adapterContext(tx, user, document, scope), personDecisions };
     const rows: Row[] = [];
 
     for (const [sourceIndex, resource] of document.resources.entries()) {
@@ -537,6 +591,16 @@ export class DataTransferService {
     this.applyOwnerAndDependencyState(rows);
     await this.validateExecutablePlan(rows, context);
 
+    assertCompatiblePersonChanges(
+      rows.flatMap((row) => (row.status === 'ready' && row.snapshot ? [row.snapshot] : [])),
+    );
+    const personPrompts = [
+      ...new Map(
+        rows.flatMap((row) =>
+          row.snapshot?.personPrompt ? [[row.snapshot.personPrompt.key, row.snapshot.personPrompt] as const] : [],
+        ),
+      ).values(),
+    ];
     const items = rows.map((row) => row.item);
     const revisions = rows.map((row) => ({
       kind: row.item.kind,
@@ -550,15 +614,21 @@ export class DataTransferService {
       writeDependencies: row.snapshot?.writeDependencies ?? [],
       relatedRevisions: row.snapshot?.relatedRevisions ?? [],
       ownedBy: row.snapshot?.ownedBy ?? null,
+      personCreation: row.snapshot?.personCreation ?? null,
+      personMerge: row.snapshot?.personMerge ?? null,
+      personPrompt: row.snapshot?.personPrompt ?? null,
     }));
     const planHash = createHash('sha256')
-      .update(canonicalTransferJson({ document, scope: scope ?? null, rows: revisions }))
+      .update(canonicalTransferJson({ document, scope: scope ?? null, rows: revisions, personDecisions }))
       .digest('hex');
     const preview: TransferPreview = {
       items,
       summary: summarize(items),
       planHash,
-      canApply: rows.some((row) => row.status === 'ready' && (row.action === 'create' || row.action === 'update')),
+      canApply:
+        personPrompts.length === 0 &&
+        rows.some((row) => row.status === 'ready' && (row.action === 'create' || row.action === 'update')),
+      ...(personPrompts.length ? { personPrompts } : {}),
     };
     return { document, scope, rows, preview };
   }
@@ -759,6 +829,9 @@ export class DataTransferService {
       'includeConfiguration',
       'includeSubscriptions',
       'includeAttendances',
+      'includeTickets',
+      'includePublishingState',
+      'includeAudienceInvitations',
       'includeChildSubscriptions',
       'includeChildAttendances',
     ]);
@@ -770,6 +843,9 @@ export class DataTransferService {
     }
     if (
       (input.includeSubscriptions !== undefined && typeof input.includeSubscriptions !== 'boolean') ||
+      (input.includeTickets !== undefined && typeof input.includeTickets !== 'boolean') ||
+      (input.includePublishingState !== undefined && typeof input.includePublishingState !== 'boolean') ||
+      (input.includeAudienceInvitations !== undefined && typeof input.includeAudienceInvitations !== 'boolean') ||
       (input.includeAttendances !== undefined && typeof input.includeAttendances !== 'boolean') ||
       (input.includeChildSubscriptions !== undefined && typeof input.includeChildSubscriptions !== 'boolean') ||
       (input.includeChildAttendances !== undefined && typeof input.includeChildAttendances !== 'boolean')
@@ -1045,6 +1121,7 @@ function fingerprintApplyRequest(input: {
   planHash: string;
   allowPartial: boolean;
   allocationToken: string | null;
+  personDecisions: readonly TransferPersonDecision[];
 }): string {
   return createHash('sha256').update(canonicalTransferJson(input)).digest('hex');
 }
@@ -1065,7 +1142,8 @@ function normalizeReplayResource(resource: TransferResource): TransferResource {
     resource.kind !== 'event-subscription' &&
     resource.kind !== 'group-subscription' &&
     resource.kind !== 'major-event-subscription' &&
-    resource.kind !== 'event-attendance'
+    resource.kind !== 'event-attendance' &&
+    resource.kind !== 'ticket-purchase'
   ) {
     return normalized;
   }

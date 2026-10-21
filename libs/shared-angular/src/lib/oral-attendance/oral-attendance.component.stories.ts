@@ -1,3 +1,4 @@
+import { maskCPF } from '@cacic-fct/shared-utils';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { Component, computed, input, linkedSignal } from '@angular/core';
 import { applicationConfig, moduleMetadata, type Meta, type StoryObj } from '@storybook/angular';
@@ -28,7 +29,7 @@ function buildPeople(
     identityDocument:
       args.missingDocumentEvery > 0 && (index + 1) % Math.round(args.missingDocumentEvery) === 0
         ? null
-        : `•••.${faker.string.numeric(3)}.${faker.string.numeric(3)}-••`,
+        : maskCPF(`000${faker.string.numeric(3)}${faker.string.numeric(3)}00`),
     unespRole:
       args.missingRoleEvery > 0 && (index + 1) % Math.round(args.missingRoleEvery) === 0
         ? null

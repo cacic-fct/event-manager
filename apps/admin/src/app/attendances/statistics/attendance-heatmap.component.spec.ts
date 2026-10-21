@@ -5,6 +5,7 @@ import { AttendanceHeatmapComponent } from './attendance-heatmap.component';
 const openLayers = vi.hoisted(() => {
   const maps: Array<{
     options: Record<string, unknown>;
+    dispose: ReturnType<typeof vi.fn>;
     render: ReturnType<typeof vi.fn>;
     setTarget: ReturnType<typeof vi.fn>;
     updateSize: ReturnType<typeof vi.fn>;
@@ -25,7 +26,13 @@ const openLayers = vi.hoisted(() => {
     readonly fit = vi.fn();
   }
 
+  class VectorSource {
+    readonly clear = vi.fn();
+    readonly addFeatures = vi.fn();
+  }
+
   class Map {
+    readonly dispose = vi.fn();
     readonly render = vi.fn();
     readonly setTarget = vi.fn();
     readonly updateSize = vi.fn();
@@ -35,7 +42,7 @@ const openLayers = vi.hoisted(() => {
     }
   }
 
-  return { Feature, Layer, Map, View, maps };
+  return { Feature, Layer, Map, View, VectorSource, maps };
 });
 
 vi.mock('ol/Feature', () => ({ default: openLayers.Feature }));
@@ -58,8 +65,8 @@ vi.mock('ol/proj', () => ({ fromLonLat: (coordinates: number[]) => coordinates }
 vi.mock('ol/proj.js', () => ({ fromLonLat: (coordinates: number[]) => coordinates }));
 vi.mock('ol/source/OSM', () => ({ default: openLayers.Layer }));
 vi.mock('ol/source/OSM.js', () => ({ default: openLayers.Layer }));
-vi.mock('ol/source/Vector', () => ({ default: openLayers.Layer }));
-vi.mock('ol/source/Vector.js', () => ({ default: openLayers.Layer }));
+vi.mock('ol/source/Vector', () => ({ default: openLayers.VectorSource }));
+vi.mock('ol/source/Vector.js', () => ({ default: openLayers.VectorSource }));
 vi.mock('ol/style', () => ({
   Circle: openLayers.Layer,
   Fill: openLayers.Layer,
@@ -249,5 +256,80 @@ describe('AttendanceHeatmapComponent', () => {
       () => openLayers.maps[0]?.setTarget.mock.calls.some(([target]) => target === undefined) ?? false,
     );
     expect(fixture.nativeElement.querySelector('.attendance-heatmap')).toBeNull();
+    expect(openLayers.maps[0].dispose).toHaveBeenCalledOnce();
+  });
+
+  it('updates live locations without recreating the map or resetting the view', async () => {
+    const fixture = createFixture('browser');
+    fixture.componentRef.setInput('points', [
+      { latitude: -20.76, longitude: -41.53, count: 4, averageAccuracyMeters: 12 },
+      { latitude: -20.77, longitude: -41.54, count: 2, averageAccuracyMeters: 18 },
+    ]);
+    fixture.detectChanges();
+    await flushAnimationFramesUntil(() => openLayers.maps.length === 1);
+
+    const map = openLayers.maps[0];
+    const layers = map.options['layers'] as InstanceType<typeof openLayers.Layer>[];
+    const source = layers[1].options['source'] as InstanceType<typeof openLayers.VectorSource>;
+    const eventSource = layers[2].options['source'] as InstanceType<typeof openLayers.VectorSource>;
+    const view = map.options['view'] as InstanceType<typeof openLayers.View>;
+    fixture.componentRef.setInput('points', [
+      { latitude: -20.78, longitude: -41.55, count: 8, averageAccuracyMeters: 12 },
+    ]);
+    fixture.componentRef.setInput('eventLatitude', -20.79);
+    fixture.componentRef.setInput('eventLongitude', -41.56);
+    fixture.detectChanges();
+    await flushAnimationFramesUntil(() => source.addFeatures.mock.calls.length === 2);
+
+    expect(openLayers.maps).toHaveLength(1);
+    expect(map.setTarget).not.toHaveBeenCalled();
+    expect(map.dispose).not.toHaveBeenCalled();
+    expect(view.fit).toHaveBeenCalledOnce();
+    expect(source.clear).toHaveBeenCalledTimes(2);
+    const [features] = source.addFeatures.mock.lastCall as [InstanceType<typeof openLayers.Feature>[]];
+    expect(features).toHaveLength(1);
+    expect(features[0].options['geometry']).toMatchObject({ options: [-41.55, -20.78] });
+    expect(features[0].set).toHaveBeenCalledWith('weight', 1);
+    expect(eventSource.addFeatures).toHaveBeenCalledOnce();
+  });
+
+  it('ignores equivalent location data in new live snapshots', async () => {
+    const fixture = createFixture('browser');
+    const point = { latitude: -20.76, longitude: -41.53, count: 4, averageAccuracyMeters: 12 };
+    fixture.componentRef.setInput('points', [point]);
+    fixture.detectChanges();
+    await flushAnimationFramesUntil(() => openLayers.maps.length === 1);
+    const layers = openLayers.maps[0].options['layers'] as InstanceType<typeof openLayers.Layer>[];
+    const source = layers[1].options['source'] as InstanceType<typeof openLayers.VectorSource>;
+
+    fixture.componentRef.setInput('points', [{ ...point, averageAccuracyMeters: 18 }]);
+    fixture.detectChanges();
+    await flushAnimationFramesUntil(() => animationFrameCallbacks.length === 0);
+
+    expect(openLayers.maps).toHaveLength(1);
+    expect(source.clear).toHaveBeenCalledOnce();
+    expect(source.addFeatures).toHaveBeenCalledOnce();
+  });
+
+  it('removes the event marker in place when event coordinates are cleared', async () => {
+    const fixture = createFixture('browser');
+    fixture.componentRef.setInput('points', [
+      { latitude: -20.76, longitude: -41.53, count: 4, averageAccuracyMeters: 12 },
+    ]);
+    fixture.componentRef.setInput('eventLatitude', -20.76162);
+    fixture.componentRef.setInput('eventLongitude', -41.53316);
+    fixture.detectChanges();
+    await flushAnimationFramesUntil(() => openLayers.maps.length === 1);
+    const layers = openLayers.maps[0].options['layers'] as InstanceType<typeof openLayers.Layer>[];
+    const eventSource = layers[2].options['source'] as InstanceType<typeof openLayers.VectorSource>;
+
+    fixture.componentRef.setInput('eventLatitude', null);
+    fixture.componentRef.setInput('eventLongitude', null);
+    fixture.detectChanges();
+    await flushAnimationFramesUntil(() => eventSource.clear.mock.calls.length === 2);
+
+    expect(openLayers.maps).toHaveLength(1);
+    expect(eventSource.addFeatures).toHaveBeenCalledOnce();
+    expect(openLayers.maps[0].setTarget).not.toHaveBeenCalled();
   });
 });

@@ -1,3 +1,4 @@
+import { maskCPF } from '@cacic-fct/shared-utils';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import {
   DeletionResult,
@@ -709,7 +710,11 @@ export class PeopleResolver {
     if (!value) {
       return null;
     }
-    const visible = value.replace(/\D/g, '').slice(-4);
+    const digits = value.replace(/\D/g, '');
+    if (digits.length === 11) {
+      return maskCPF(value);
+    }
+    const visible = digits.slice(-4);
     return visible ? `••••${visible}` : '••••';
   }
 

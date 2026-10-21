@@ -1,3 +1,4 @@
+import { maskCPF } from '@cacic-fct/shared-utils';
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SportsIdentityType } from '@prisma/client';
@@ -120,6 +121,9 @@ export class SportsIdentityProtectionService {
       return `••••${normalizedValue.slice(-4)}`;
     }
 
+    if (/^\d{11}$/.test(normalizedValue)) {
+      return maskCPF(normalizedValue);
+    }
     return `${normalizedValue.slice(0, 2)}••••${normalizedValue.slice(-2)}`;
   }
 }

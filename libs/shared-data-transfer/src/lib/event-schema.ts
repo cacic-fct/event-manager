@@ -12,6 +12,7 @@ import {
   enumeration,
   nullable,
   registrationFields,
+  publicationFields,
 } from './schema-helpers';
 import {
   type BoundaryMap,
@@ -25,6 +26,7 @@ import {
 } from './schema-contracts';
 
 export const EventResourceSchema = checkedResource<EventTransferOwner>()('event', {
+  ...publicationFields,
   name: Name,
   emoji: Type.String({ maxLength: 64 }),
   startDate: DateTime,
@@ -76,6 +78,7 @@ export const GroupResourceSchema = checkedResource<EventGroupTransferOwner>()('g
 });
 
 export const MajorEventResourceSchema = checkedResource<MajorEventTransferOwner>()('major-event', {
+  ...publicationFields,
   name: Name,
   emoji: Type.String({ maxLength: 64 }),
   startDate: DateTime,

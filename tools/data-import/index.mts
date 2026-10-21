@@ -5,13 +5,11 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 const commands = [
-  'cross-csv-people-info',
-  'firestore-to-postgres',
-  'reevaluate-attendance-categories',
-  'reevaluate-secompp-attendance-categories',
-  'secompp25-csv-events-to-subscriptions',
-  'secompp-to-postgres',
-  'secompp2-to-postgres',
+  'cross-csv-to-json',
+  'firestore-to-json',
+  'secompp25-to-json',
+  'secompp-to-json',
+  'secompp2-to-json',
 ] as const;
 type DataImportCommand = (typeof commands)[number];
 

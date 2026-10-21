@@ -59,7 +59,7 @@ describe('DataTransferService security gates', () => {
     const document = eventDocument();
     const resource = document.resources[0];
     if (!resource) throw new Error('Test document needs an event resource.');
-    resource.data['publicationState'] = 'PUBLISHED';
+    resource.data['publicationUpdatedBy'] = 'forged-user';
 
     await expect(service.preview({ document }, user())).rejects.toBeInstanceOf(BadRequestException);
     expect(adapter.resolve).not.toHaveBeenCalled();

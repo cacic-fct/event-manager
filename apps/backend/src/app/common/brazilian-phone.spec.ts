@@ -28,3 +28,10 @@ describe('getBrazilianPhoneCandidates', () => {
     expect(getBrazilianPhoneCandidates('123456789')).toEqual([]);
   });
 });
+
+describe('international phone separation', () => {
+  it('does not reinterpret a foreign country prefix as a Brazilian area code', () => {
+    expect(getBrazilianPhoneCandidates('+12025550123')).toEqual([]);
+    expect(getBrazilianPhoneCandidates('+442071838750')).toEqual([]);
+  });
+});

@@ -1,35 +1,11 @@
-import { createHash, randomBytes } from 'node:crypto';
-
-export function createUuidV7(now = Date.now()) {
-  if (!Number.isSafeInteger(now) || now < 0 || now > 0xffffffffffff) {
-    throw new Error('UUIDv7 timestamp must be a non-negative 48-bit integer.');
-  }
-  const bytes = randomBytes(16);
-  bytes.writeUIntBE(now, 0, 6);
-  bytes[6] = 0x70 | (bytes[6] & 0x0f);
-  bytes[8] = 0x80 | (bytes[8] & 0x3f);
-  const hex = bytes.toString('hex');
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
-
-export function normalizeEmail(value) {
-  return typeof value === 'string' ? value.trim().toLowerCase() : '';
-}
-
-export function normalizeAcademicId(value) {
-  return value == null ? '' : String(value).replace(/\s+/g, '').toUpperCase();
-}
-
-export function normalizeName(value) {
-  return typeof value === 'string'
-    ? value
-        .normalize('NFD')
-        .replace(/\p{Diacritic}/gu, '')
-        .trim()
-        .replace(/\s+/g, ' ')
-        .toLowerCase()
-    : '';
-}
+const CONFIG_FIELDS = new Set([
+  'sourceNamespace',
+  'sourceSchema',
+  'eventMappings',
+  'activityMappings',
+  'modalityMappings',
+  'personMappings',
+]);
 
 export function toSourceBoolean(value) {
   if (value === true || value === 1 || value === '1') {
@@ -53,56 +29,17 @@ export function toAmountInCents(value) {
   return cents;
 }
 
-export function resolvePerson(sourcePerson, targetPeople) {
-  const sourceAcademicId = normalizeAcademicId(sourcePerson.academicId);
-  const sourceEmail = normalizeEmail(sourcePerson.email);
-
-  const academicMatches = sourceAcademicId
-    ? targetPeople.filter((person) => normalizeAcademicId(person.academicId) === sourceAcademicId)
-    : [];
-  const emailMatches = sourceEmail
-    ? targetPeople.filter((person) =>
-        [person.email, ...(person.secondaryEmails ?? [])].some((email) => normalizeEmail(email) === sourceEmail),
-      )
-    : [];
-  const identifierCandidates = [
-    ...new Map([...academicMatches, ...emailMatches].map((item) => [item.id, item])).values(),
-  ];
-  if (academicMatches.length > 1 || emailMatches.length > 1) {
-    return { status: 'ambiguous', candidates: identifierCandidates, matchedBy: 'identifier' };
-  }
-  if (academicMatches.length === 1 && emailMatches.length === 1 && academicMatches[0].id !== emailMatches[0].id) {
-    return { status: 'conflict', candidates: identifierCandidates, matchedBy: 'identifier' };
-  }
-  if (emailMatches.length === 1) {
-    const targetAcademicId = normalizeAcademicId(emailMatches[0].academicId);
-    if (sourceAcademicId && targetAcademicId && sourceAcademicId !== targetAcademicId) {
-      return { status: 'conflict', candidates: identifierCandidates, matchedBy: 'identifier' };
-    }
-    return {
-      status: 'matched',
-      person: emailMatches[0],
-      matchedBy: academicMatches.length ? 'email+academicId' : 'email',
-    };
-  }
-  if (academicMatches.length === 1) {
-    return { status: 'matched', person: academicMatches[0], matchedBy: 'academicId' };
-  }
-
-  const sourceName = normalizeName(sourcePerson.name);
-  const nameCandidates = sourceName ? targetPeople.filter((person) => normalizeName(person.name) === sourceName) : [];
-  return { status: 'unmatched', nameCandidates };
-}
-
 export function assertConfig(config) {
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
     throw new Error('Configuration must be a JSON object.');
   }
-  for (const field of ['eventMappings', 'activityMappings', 'personMappings', 'modalityMappings']) {
-    if (config[field] !== undefined && !Array.isArray(config[field])) {
-      throw new Error(`${field} must be an array.`);
+
+  for (const field of Object.keys(config)) {
+    if (!CONFIG_FIELDS.has(field)) {
+      throw new Error(`Unsupported configuration option: ${field}.`);
     }
   }
+
   if (
     config.sourceNamespace !== undefined &&
     (typeof config.sourceNamespace !== 'string' ||
@@ -112,56 +49,39 @@ export function assertConfig(config) {
     throw new Error('sourceNamespace must be a nonempty, trimmed string.');
   }
 
-  const sourceEventIds = new Set();
-  for (const mapping of config.eventMappings ?? []) {
-    requireValue(mapping.sourceEventId, 'eventMappings[].sourceEventId');
-    requireUuid(mapping.targetMajorEventId, 'eventMappings[].targetMajorEventId');
-    const key = String(mapping.sourceEventId);
-    if (sourceEventIds.has(key)) {
-      throw new Error(`Duplicate source event mapping: ${key}`);
-    }
-    sourceEventIds.add(key);
+  if (
+    config.sourceSchema !== undefined &&
+    (!config.sourceSchema || typeof config.sourceSchema !== 'object' || Array.isArray(config.sourceSchema))
+  ) {
+    throw new Error('sourceSchema must be a JSON object.');
   }
 
-  const sourceActivityIds = new Set();
-  for (const mapping of config.activityMappings ?? []) {
-    requireValue(mapping.sourceActivityId, 'activityMappings[].sourceActivityId');
-    requireUuid(mapping.targetEventId, 'activityMappings[].targetEventId');
-    const key = String(mapping.sourceActivityId);
-    if (sourceActivityIds.has(key)) {
-      throw new Error(`Duplicate source activity mapping: ${key}`);
+  const mappings = [
+    ['eventMappings', 'event', 'sourceEventId', 'targetMajorEventId'],
+    ['activityMappings', 'activity', 'sourceActivityId', 'targetEventId'],
+    ['modalityMappings', 'modality', 'sourceModalityId', 'targetPriceTierId'],
+    ['personMappings', 'person', 'sourcePersonId', 'targetPersonId'],
+  ];
+  for (const [field, label, sourceField, targetField] of mappings) {
+    const rows = config[field];
+    if (rows !== undefined && !Array.isArray(rows)) {
+      throw new Error(`${field} must be an array.`);
     }
-    sourceActivityIds.add(key);
-  }
 
-  const sourcePersonIds = new Set();
-  for (const mapping of config.personMappings ?? []) {
-    requireValue(mapping.sourcePersonId, 'personMappings[].sourcePersonId');
-    requireUuid(mapping.targetPersonId, 'personMappings[].targetPersonId');
-    const key = String(mapping.sourcePersonId);
-    if (sourcePersonIds.has(key)) {
-      throw new Error(`Duplicate source person mapping: ${key}`);
+    const sourceIds = new Set();
+    for (const mapping of rows ?? []) {
+      if (!mapping || typeof mapping !== 'object' || Array.isArray(mapping)) {
+        throw new Error(`${field} entries must be objects.`);
+      }
+      requireValue(mapping[sourceField], `${field}[].${sourceField}`);
+      requireUuid(mapping[targetField], `${field}[].${targetField}`);
+      const key = String(mapping[sourceField]);
+      if (sourceIds.has(key)) {
+        throw new Error(`Duplicate source ${label} mapping: ${key}`);
+      }
+      sourceIds.add(key);
     }
-    sourcePersonIds.add(key);
   }
-
-  if (config.modalityMappings !== undefined && !Array.isArray(config.modalityMappings)) {
-    throw new Error('modalityMappings must be an array.');
-  }
-  const sourceModalityIds = new Set();
-  for (const mapping of config.modalityMappings ?? []) {
-    requireValue(mapping.sourceModalityId, 'modalityMappings[].sourceModalityId');
-    requireUuid(mapping.targetPriceTierId, 'modalityMappings[].targetPriceTierId');
-    const key = String(mapping.sourceModalityId);
-    if (sourceModalityIds.has(key)) {
-      throw new Error(`Duplicate source modality mapping: ${key}`);
-    }
-    sourceModalityIds.add(key);
-  }
-}
-
-export function configFingerprint(config) {
-  return createHash('sha256').update(JSON.stringify(config)).digest('hex').slice(0, 16);
 }
 
 export function quoteMysqlIdentifier(identifier) {

@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
-import { parseCsvText, serializeCsv } from './csv.mts';
+import { parseCsvText, readCsvFile } from './csv.mts';
 
 test('parses BOM headers, CRLF records, escaped quotes, and multiline fields', () => {
   const result = parseCsvText(
@@ -18,9 +21,18 @@ test('skips empty physical lines but retains empty CSV rows', () => {
   assert.deepEqual(result.rows, [{ a: '', b: '' }]);
 });
 
-test('serializes cells with commas, quotes, and line breaks using CRLF', () => {
-  const output = serializeCsv(['name', 'note'], [{ name: 'Ana', note: 'a,"b"\nnext' }]);
-  assert.equal(output, 'name,note\r\nAna,"a,""b""\nnext"\r\n');
+test('reads CSV source files as UTF-8 documents', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'fct-csv-'));
+  try {
+    const path = join(directory, 'source.csv');
+    await writeFile(path, '\uFEFFnome,email\r\nAna,ana@example.com\r\n');
+    assert.deepEqual(await readCsvFile(path), {
+      headers: ['nome', 'email'],
+      rows: [{ nome: 'Ana', email: 'ana@example.com' }],
+    });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test('rejects unclosed fields and oversized fields', () => {

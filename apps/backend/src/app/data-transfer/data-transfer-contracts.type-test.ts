@@ -334,3 +334,17 @@ export type DataTransferBackendStorageContract =
   | _PersonReferenceId
   | _EventDateMatchesStorage
   | _SportsDateMatchesStorage;
+
+// Issued rights retain persisted ticket state; external payments retain their amount/date types.
+type StoredTicket = Prisma.EventTicketGetPayload<Record<never, never>>;
+type StoredPurchase = Prisma.TicketPurchaseGetPayload<Record<never, never>>;
+export type TicketTransferStorageContractTests =
+  | AssertContract<CheckSame<DataField<'event-ticket', 'source'>, StoredTicket['source']>>
+  | AssertContract<CheckSame<DataField<'event-ticket', 'status'>, StoredTicket['status']>>
+  | AssertContract<
+      CheckSame<DataField<'event-ticket', 'originalHolderPersonId'>, StoredTicket['originalHolderPersonId']>
+    >
+  | AssertContract<CheckSame<DataField<'event-ticket', 'issuedAt'>, DbField<StoredTicket, 'issuedAt'>>>
+  | AssertContract<CheckSame<DataField<'event-ticket', 'expiresAt'>, DbField<StoredTicket, 'expiresAt'>>>
+  | AssertContract<CheckSame<DataField<'ticket-purchase', 'amountCents'>, StoredPurchase['amountCents']>>
+  | AssertContract<CheckSame<DataField<'ticket-purchase', 'purchasedAt'>, DbField<StoredPurchase, 'createdAt'>>>;

@@ -56,8 +56,8 @@ export function buildTargetMigrationData(
 
 export function mergeSecondaryEmails(
   migrateFields: PersonMergeField[],
-  targetPerson: People,
-  sourcePerson: People,
+  targetPerson: Pick<People, 'email' | 'secondaryEmails'>,
+  sourcePerson: Pick<People, 'email'>,
 ): string[] {
   const finalPrimaryEmail = migrateFields.includes('EMAIL')
     ? ensureMigratableValue(sourcePerson.email, 'EMAIL')

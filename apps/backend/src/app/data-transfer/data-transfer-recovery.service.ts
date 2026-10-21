@@ -1,4 +1,4 @@
-import { Injectable, Logger, type OnApplicationBootstrap, type OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, Optional, type OnApplicationBootstrap, type OnModuleDestroy } from '@nestjs/common';
 import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -11,6 +11,8 @@ import {
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { RealtimeInvalidationService } from '../realtime/realtime-invalidation.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
+import { TicketRealtimeService } from '../tickets/ticket-realtime.service';
+import { PublicationJobsService } from '../publishing/publishing-jobs.service';
 import { DataTransferJournalService, readTransferJournal } from './data-transfer-journal.service';
 
 type SportsRecoveryTarget = {
@@ -27,6 +29,7 @@ type RecoveryTargets = {
   sportsEntities: Map<string, SportsRecoveryTarget>;
   formIds: Set<string>;
   placeIds: Set<string>;
+  personIds: Set<string>;
   attendanceEventIds: Set<string>;
   attendanceSettingsChanged: boolean;
 };
@@ -55,6 +58,8 @@ export class DataTransferRecoveryService implements OnApplicationBootstrap, OnMo
     private readonly sportsEvents: SportsMutationEventsService,
     private readonly realtime: RealtimeInvalidationService,
     private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService,
+    @Optional() private readonly ticketRealtime?: TicketRealtimeService,
+    @Optional() private readonly publicationJobs?: PublicationJobsService,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -98,6 +103,8 @@ export class DataTransferRecoveryService implements OnApplicationBootstrap, OnMo
             const targets = this.collectTargets(metadata.mutations, metadata.undone);
             await this.collectSportsBackingTargets(targets);
 
+            await this.enqueuePublicationSchedules(targets);
+
             const searchEnabled = this.search.isEnabled();
             const searchOptions = { throwOnSearchError: searchEnabled };
             await this.effects.syncEvents([...targets.eventIds], searchOptions);
@@ -118,6 +125,26 @@ export class DataTransferRecoveryService implements OnApplicationBootstrap, OnMo
               });
               if (!major || major.deletedAt) await this.search.deleteMajorEvent(id, searchEnabled);
               else await this.search.upsertMajorEvent(major, searchEnabled);
+            }
+
+            for (const id of targets.personIds) {
+              const person = await this.prisma.people.findUnique({
+                where: { id },
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  secondaryEmails: true,
+                  phone: true,
+                  identityDocument: true,
+                  academicId: true,
+                  userId: true,
+                  deletedAt: true,
+                  mergedIntoId: true,
+                },
+              });
+              if (!person || person.deletedAt || person.mergedIntoId) await this.search.deletePerson(id, searchEnabled);
+              else await this.search.upsertPerson(person, searchEnabled);
             }
 
             for (const id of targets.placeIds) {
@@ -151,6 +178,35 @@ export class DataTransferRecoveryService implements OnApplicationBootstrap, OnMo
               await this.attendanceRealtime.notifyAllConnectedPeople();
             }
 
+            if (this.ticketRealtime) {
+              const ticketEvents = new Map<string, Set<string>>();
+              for (const mutation of metadata.mutations) {
+                if (mutation.model !== 'eventTicket' && mutation.model !== 'ticketPurchase') continue;
+                for (const row of [mutation.before, mutation.after]) {
+                  if (!row || typeof row['eventId'] !== 'string') continue;
+                  const ids = ticketEvents.get(row['eventId']) ?? new Set<string>();
+                  const personId = row['holderPersonId'] ?? row['personId'];
+                  if (typeof personId === 'string') ids.add(personId);
+                  ticketEvents.set(row['eventId'], ids);
+                }
+              }
+              for (const [eventId, ids] of ticketEvents) {
+                const holders = await this.prisma.people.findMany({
+                  where: { id: { in: [...ids] } },
+                  select: { userId: true },
+                });
+                await this.ticketRealtime.enqueueForUsers(
+                  this.prisma,
+                  holders.map((person) => person.userId),
+                  { type: 'TICKETS_CHANGED', eventId },
+                );
+                await this.ticketRealtime.enqueueForUsers(
+                  this.prisma,
+                  holders.map((person) => person.userId),
+                  { type: 'PURCHASES_CHANGED', eventId },
+                );
+              }
+            }
             await this.effects.refreshCatalogsAndSitemap();
             await this.syncAuditEntries(entry, metadata.auditEntryIds ?? []);
             await this.journal.markSynchronized(entry.id, metadata.undone);
@@ -161,6 +217,27 @@ export class DataTransferRecoveryService implements OnApplicationBootstrap, OnMo
       });
     } catch {
       this.logger.warn('Could not read the JSON import recovery outbox; it will retry.');
+    }
+  }
+
+  private async enqueuePublicationSchedules(targets: RecoveryTargets): Promise<void> {
+    if (!this.publicationJobs) return;
+    const select = { publicationState: true, scheduledPublishAt: true } as const;
+    for (const id of targets.eventIds) {
+      const event = await this.prisma.event.findUnique({ where: { id, deletedAt: null }, select });
+      if (event)
+        await this.publicationJobs.enqueueScheduledJobs(event.publicationState, event.scheduledPublishAt, {
+          eventIds: [id],
+          majorEventIds: [],
+        });
+    }
+    for (const id of targets.majorIds) {
+      const major = await this.prisma.majorEvent.findUnique({ where: { id, deletedAt: null }, select });
+      if (major)
+        await this.publicationJobs.enqueueScheduledJobs(major.publicationState, major.scheduledPublishAt, {
+          eventIds: [],
+          majorEventIds: [id],
+        });
     }
   }
 
@@ -180,6 +257,7 @@ export class DataTransferRecoveryService implements OnApplicationBootstrap, OnMo
       sportsEntities: new Map(),
       formIds: new Set(),
       placeIds: new Set(),
+      personIds: new Set(),
       attendanceEventIds: new Set(),
       attendanceSettingsChanged: false,
     };
@@ -197,6 +275,7 @@ export class DataTransferRecoveryService implements OnApplicationBootstrap, OnMo
         if (mutation.model === 'event') this.addTarget(targets.eventIds, row['id']);
         if (mutation.model === 'eventGroup') this.addTarget(targets.groupIds, row['id']);
         if (mutation.model === 'majorEvent') this.addTarget(targets.majorIds, row['id']);
+        if (mutation.model === 'people') this.addTarget(targets.personIds, row['id']);
         if (mutation.model === 'placePreset') this.addTarget(targets.placeIds, row['id']);
         this.addTarget(targets.eventIds, row['eventId']);
         this.addTarget(targets.groupIds, row['eventGroupId']);

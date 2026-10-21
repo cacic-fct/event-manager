@@ -1,4 +1,5 @@
-import { PGlite } from '@electric-sql/pglite';
+import type { PGlite } from '@electric-sql/pglite';
+import { createTransferDatabaseFixture, transferDatabaseDelegates } from './testing/transfer-database.fixtures';
 import { createHash, randomUUID } from 'node:crypto';
 import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
@@ -17,153 +18,12 @@ import type { AuthenticatedUser } from '../auth/interfaces/authenticated-user.in
 import type { DataTransferAdapter } from './data-transfer-adapter';
 import { DataTransferService } from './data-transfer.service';
 import { ConfigurationTransferAdapter } from './configuration-transfer.adapter';
+import { TicketPurchaseTransferAdapter } from './ticket-purchase-transfer.adapter';
 import { TransferKeyAllocations } from './transfer-key-allocations';
-
-type SqlClient = Pick<PGlite, 'query'>;
-type Row = Record<string, unknown>;
-
-/** A PostgreSQL-backed test adapter, deliberately isolated from the running application's database. */
-function delegates(client: SqlClient) {
-  const allRows = async (model: string): Promise<Row[]> => {
-    const result = await client.query<{ data: Row }>('SELECT data FROM transfer_fixture WHERE model = $1 ORDER BY id', [
-      model,
-    ]);
-    return result.rows.map(({ data }) => hydrate(data));
-  };
-  const modelMetadata = new Map(
-    Prisma.dmmf.datamodel.models.map((model) => [model.name.charAt(0).toLowerCase() + model.name.slice(1), model]),
-  );
-  const delegate = (model: string) => {
-    const findMany = async (args: { where?: unknown; take?: number; select?: unknown } = {}) => {
-      const rows = (await allRows(model)).filter((row) => matches(row, args.where)).slice(0, args.take);
-      const select = args.select && typeof args.select === 'object' ? (args.select as Row) : undefined;
-      if (!select) return rows;
-      const metadata = modelMetadata.get(model);
-      return Promise.all(
-        rows.map(async (row) => {
-          const projected = { ...row };
-          for (const [relationName, relationArgs] of Object.entries(select)) {
-            const relation = metadata?.fields.find((field) => field.name === relationName && field.kind === 'object');
-            if (!relation || !relationArgs || typeof relationArgs !== 'object') continue;
-            const nestedSelect = (relationArgs as Row)['select'];
-            if (!nestedSelect || typeof nestedSelect !== 'object') continue;
-            let related: Row[] = [];
-            if (model === 'eventGroup' && relationName === 'events')
-              related = (await allRows('event')).filter((candidate) => candidate['eventGroupId'] === row['id']);
-            else if (model === 'eventGroup' && relationName === 'audienceInvitations')
-              related = (await allRows('eventGroupAudienceInvitation')).filter(
-                (candidate) => candidate['eventGroupId'] === row['id'],
-              );
-            else if (model === 'event' && relationName === 'ticketConfig')
-              related = (await allRows('ticketConfig')).filter((candidate) => candidate['eventId'] === row['id']);
-            const keys = Object.keys(nestedSelect as Row);
-            const selected = related.map((candidate) => Object.fromEntries(keys.map((key) => [key, candidate[key]])));
-            projected[relationName] = relation.isList ? selected : (selected[0] ?? null);
-          }
-          return projected;
-        }),
-      );
-    };
-    const create = async ({ data }: { data: Row }) => {
-      const now = new Date();
-      const row = { id: randomUUID(), createdAt: now, updatedAt: now, deletedAt: null, revertedAt: null, ...data };
-      await client.query('INSERT INTO transfer_fixture (model, id, data) VALUES ($1, $2, $3::jsonb)', [
-        model,
-        row.id,
-        JSON.stringify(row),
-      ]);
-      return row;
-    };
-    const updateMany = async ({ where, data }: { where: unknown; data: Row }) => {
-      const rows = await findMany({ where });
-      for (const row of rows)
-        await client.query('UPDATE transfer_fixture SET data = $3::jsonb WHERE model = $1 AND id = $2', [
-          model,
-          row['id'],
-          JSON.stringify({ ...row, ...data }),
-        ]);
-      return { count: rows.length };
-    };
-    const deleteMany = async ({ where }: { where: unknown }) => {
-      const rows = await findMany({ where });
-      for (const row of rows)
-        await client.query('DELETE FROM transfer_fixture WHERE model = $1 AND id = $2', [model, row['id']]);
-      return { count: rows.length };
-    };
-    return {
-      findMany,
-      create,
-      createMany: async ({ data }: { data: Row[] }) => {
-        for (const row of data) await create({ data: row });
-        return { count: data.length };
-      },
-      updateMany,
-      deleteMany,
-      findFirst: async (args: { where?: unknown } = {}) => (await findMany(args))[0] ?? null,
-      findUnique: async ({ where }: { where: unknown }) => (await findMany({ where }))[0] ?? null,
-      update: async ({ where, data }: { where: unknown; data: Row }) => {
-        await updateMany({ where, data });
-        return (await findMany({ where }))[0];
-      },
-    };
-  };
-  return {
-    eventGroup: delegate('eventGroup'),
-    event: delegate('event'),
-    ticketConfig: delegate('ticketConfig'),
-    eventGroupAudienceInvitation: delegate('eventGroupAudienceInvitation'),
-    eventSubscription: delegate('eventSubscription'),
-    eventTicketHistory: delegate('eventTicketHistory'),
-    eventFormLink: delegate('eventFormLink'),
-    placePreset: delegate('placePreset'),
-    auditLogEntry: delegate('auditLogEntry'),
-    $executeRaw: async (parts: TemplateStringsArray, ...values: unknown[]) => {
-      const sql = parts.reduce(
-        (statement, part, index) => statement + part + (index < values.length ? `$${index + 1}` : ''),
-        '',
-      );
-      await client.query(
-        sql,
-        values.map((value) => (typeof value === 'bigint' ? value.toString() : value)),
-      );
-      return 1;
-    },
-  };
-}
-
-function matches(row: Row, where: unknown): boolean {
-  if (!where || typeof where !== 'object') return true;
-  return Object.entries(where).every(([field, value]) => {
-    if (field === 'OR' && Array.isArray(value)) return value.some((entry) => matches(row, entry));
-    if (field === 'AND' && Array.isArray(value)) return value.every((entry) => matches(row, entry));
-    if (field === 'metadata' && value && typeof value === 'object' && 'path' in value && Array.isArray(value.path)) {
-      let metadataValue: unknown = row['metadata'];
-      for (const pathPart of value.path) {
-        metadataValue =
-          metadataValue && typeof metadataValue === 'object' ? (metadataValue as Row)[String(pathPart)] : undefined;
-      }
-      return JSON.stringify(metadataValue) === JSON.stringify(value.equals);
-    }
-    if (value && typeof value === 'object' && 'startsWith' in value)
-      return typeof row[field] === 'string' && row[field].startsWith(String(value.startsWith));
-    if (value && typeof value === 'object' && 'in' in value && Array.isArray(value.in))
-      return value.in.includes(row[field]);
-    return JSON.stringify(row[field]) === JSON.stringify(value);
-  });
-}
-
-function hydrate(row: Row): Row {
-  return Object.fromEntries(
-    Object.entries(row).map(([key, value]) => [
-      key,
-      /At$/.test(key) && typeof value === 'string' ? new Date(value) : value,
-    ]),
-  );
-}
 
 describe('durable audit-backed import rollback and undo', () => {
   let database: PGlite;
-  let client: ReturnType<typeof delegates>;
+  let client: ReturnType<typeof transferDatabaseDelegates>;
   let prisma: PrismaService;
   let journal: DataTransferJournalService;
   const actor = {
@@ -178,26 +38,259 @@ describe('durable audit-backed import rollback and undo', () => {
   } as unknown as AuthorizationPolicyService;
   const frozen = {
     assertEventGroupMutable: jest.fn().mockResolvedValue(undefined),
+    assertMajorEventMutable: jest.fn().mockResolvedValue(undefined),
     assertEventMutable: jest.fn().mockResolvedValue(undefined),
   } as unknown as FrozenResourceService;
 
   beforeEach(async () => {
-    database = new PGlite();
-    await database.exec(
-      'CREATE TABLE transfer_fixture (model text NOT NULL, id text NOT NULL, data jsonb NOT NULL, PRIMARY KEY (model, id))',
-    );
-    client = delegates(database);
-    prisma = {
-      ...client,
-      $transaction: (operation: (tx: Prisma.TransactionClient) => Promise<unknown>) =>
-        database.transaction((tx) => operation(delegates(tx) as unknown as Prisma.TransactionClient)),
-    } as unknown as PrismaService;
+    ({ database, client, prisma } = await createTransferDatabaseFixture());
     journal = new DataTransferJournalService(prisma, authorization, frozen);
     jest.clearAllMocks();
     jest.mocked(authorization.assertPermissions).mockResolvedValue(undefined);
   });
   afterEach(async () => {
     await database.close();
+  });
+
+  it.each([
+    { action: 'create', identityDocument: undefined, isCPF: null },
+    { action: 'merge', identityDocument: undefined, isCPF: null },
+    { action: 'merge', identityDocument: '52998224725', isCPF: true },
+    { action: 'merge', identityDocument: 'AB12345', isCPF: false },
+  ] as const)(
+    'rolls back person $action with document $identityDocument and journals atomic undo',
+    async ({ action, identityDocument, isCPF }) => {
+      const personId = randomUUID();
+      const eventId = randomUUID();
+      await client.event.create({ data: { id: eventId, name: 'Evento existente' } });
+      const beforePeople =
+        action === 'merge'
+          ? [
+              await client.people.create({
+                data: {
+                  id: personId,
+                  name: 'Ana Silva',
+                  email: 'old@example.com',
+                  secondaryEmails: [],
+                  identityDocument: null,
+                  isCPF: null,
+                },
+              }),
+            ]
+          : [];
+      let fail = true;
+      const adapter: DataTransferAdapter = {
+        kinds: ['event-subscription'],
+        dependencyOrder: 90,
+        resolve: async (resource) => ({
+          resource: { ...resource, data: { eventId, person: { id: personId } } } as typeof resource,
+          current: null,
+          revision: null,
+          scope: { eventId },
+          dependencies: [],
+          ...(action === 'create'
+            ? { personCreation: { id: personId, data: { name: 'Ana Silva', email: 'ana@example.com' } } }
+            : {
+                personMerge: {
+                  id: personId,
+                  revision: 'previous-person-revision',
+                  data: {
+                    secondaryEmails: ['ana@example.com'],
+                    ...(identityDocument ? { identityDocument } : {}),
+                  },
+                },
+              }),
+          additionalChanges: [
+            { field: 'Nova pessoa', before: null, after: { name: 'Ana Silva', email: 'ana@example.com' } },
+          ],
+        }),
+        assertRead: async () => undefined,
+        assertWrite: async () => undefined,
+        assertMutable: async () => undefined,
+        validate: async () => undefined,
+        apply: async (snapshot, _action, context) => {
+          await context.tx.eventSubscription.create({ data: { id: snapshot.resource.id, eventId, personId } });
+          if (fail) throw new Error('Participation write failed');
+          return {};
+        },
+        exportTarget: async () => ({ resources: [], issues: [] }),
+      };
+      const transfer = new DataTransferService(
+        prisma,
+        authorization,
+        frozen,
+        [adapter],
+        new TransferKeyAllocations(),
+        journal,
+      );
+      const replay = jest.spyOn(journal, 'findCommittedRequest').mockResolvedValue(null);
+      const doc: ResolvedTransferDocument = {
+        format: 'cacic-event-data',
+        version: 1,
+        resources: [
+          {
+            kind: 'event-subscription',
+            id: randomUUID(),
+            data: { eventId, person: { name: 'Ana Silva', email: 'ana@example.com' } },
+          },
+        ],
+      };
+      try {
+        const preview = await transfer.preview({ document: doc }, actor);
+        const request = { document: doc, planHash: preview.planHash, allowPartial: false };
+        await expect(transfer.apply(request, actor)).rejects.toThrow('Participation write failed');
+        expect(await client.people.findMany()).toEqual(beforePeople);
+        expect(await client.eventSubscription.findMany()).toEqual([]);
+        expect(await client.auditLogEntry.findMany()).toEqual([]);
+        fail = false;
+        const result = await transfer.apply(request, actor);
+        expect(await client.people.findMany()).toHaveLength(1);
+        if (action === 'merge')
+          expect((await client.people.findMany())[0]).toMatchObject({
+            email: 'old@example.com',
+            secondaryEmails: ['ana@example.com'],
+            identityDocument: identityDocument ?? null,
+            isCPF,
+          });
+        expect(await client.eventSubscription.findMany()).toHaveLength(1);
+        await journal.undo(result.batchId ?? '', actor);
+        if (action === 'create') expect(await client.people.findMany()).toEqual([]);
+        else
+          expect((await client.people.findMany())[0]).toMatchObject({
+            id: personId,
+            email: 'old@example.com',
+            secondaryEmails: [],
+            identityDocument: null,
+            isCPF: null,
+          });
+        expect(await client.eventSubscription.findMany()).toEqual([]);
+        expect(await client.event.findMany()).toHaveLength(1);
+        expect(authorization.assertPermissions).toHaveBeenCalledWith(actor, [
+          Permission.Person.Read,
+          action === 'create' ? Permission.Person.Delete : Permission.Person.Update,
+        ]);
+      } finally {
+        replay.mockRestore();
+      }
+    },
+  );
+
+  it('atomically imports and undoes an unsubscribed person’s paid ticket after notification delivery', async () => {
+    const now = new Date();
+    await client.event.create({
+      data: {
+        id: 'dinner-event',
+        name: 'Jantar',
+        endDate: new Date(now.getTime() + 86400000),
+        majorEventId: 'major-1',
+        eventGroupId: null,
+      },
+    });
+    await client.ticketConfig.create({
+      data: {
+        id: 'ticket-config',
+        eventId: 'dinner-event',
+        enabled: true,
+        expirationMode: 'EVENT_END',
+        customExpiresAt: null,
+      },
+    });
+    await client.people.create({ data: { id: 'person-1', name: 'Ana Silva', email: 'ana@example.com' } });
+    let failIssuance = true;
+    const issuance = {
+      issueForPerson: jest.fn(
+        async (
+          tx: Prisma.TransactionClient,
+          eventId: string,
+          personId: string,
+          source: 'PURCHASE',
+          sourceKey: string,
+        ) => {
+          if (failIssuance) throw new Error('Ticket issuance failed');
+          const ticket = await tx.eventTicket.create({
+            data: {
+              id: 'imported-ticket',
+              eventId,
+              ticketConfigId: 'ticket-config',
+              holderPersonId: personId,
+              originalHolderPersonId: personId,
+              source,
+              sourceKey,
+              status: 'ACTIVE',
+              expiresAt: new Date(now.getTime() + 86400000),
+            },
+          });
+          await tx.eventTicketHistory.create({ data: { ticketId: ticket.id, operation: 'ISSUED' } });
+          await tx.ticketRealtimeOutbox.createMany({
+            data: [{ recipientUserId: 'user-1', type: 'TICKETS_CHANGED', eventId }],
+          });
+          return ticket;
+        },
+      ),
+    };
+    const adapter = new TicketPurchaseTransferAdapter(
+      authorization,
+      { match: async () => ({ id: 'person-1' }) } as never,
+      issuance as never,
+    );
+    const transfer = new DataTransferService(
+      prisma,
+      authorization,
+      frozen,
+      [adapter],
+      new TransferKeyAllocations(),
+      journal,
+    );
+    const replay = jest.spyOn(journal, 'findCommittedRequest').mockResolvedValue(null);
+    const doc = {
+      format: 'cacic-event-data',
+      version: 1,
+      resources: [
+        {
+          kind: 'ticket-purchase',
+          key: 'DINNER-1',
+          data: {
+            eventId: 'dinner-event',
+            person: { email: 'ana@example.com' },
+            amountCents: 2500,
+            purchasedAt: new Date(now.getTime() - 3600000).toISOString(),
+          },
+        },
+      ],
+    };
+    try {
+      const preview = await transfer.preview({ document: doc }, actor);
+      expect(preview.canApply).toBe(true);
+      const request = {
+        document: doc,
+        planHash: preview.planHash,
+        allocationToken: preview.allocation?.token,
+        allowPartial: false,
+      };
+      await expect(transfer.apply(request, actor)).rejects.toThrow('Ticket issuance failed');
+      expect(await client.ticketPurchase.findMany()).toEqual([]);
+      failIssuance = false;
+      const result = await transfer.apply(request, actor);
+      expect(result.document?.resources[0]).toMatchObject({
+        kind: 'ticket-purchase',
+        data: { person: { id: 'person-1' }, amountCents: 2500 },
+      });
+      expect(await client.ticketPurchase.findMany()).toEqual([
+        expect.objectContaining({ status: 'APPROVED', majorEventSubscriptionId: null }),
+      ]);
+      expect(await client.eventTicket.findMany()).toHaveLength(1);
+      expect(await client.eventSubscription.findMany()).toEqual([]);
+      const notifications = await client.ticketRealtimeOutbox.findMany();
+      await client.ticketRealtimeOutbox.updateMany({ where: {}, data: { publishedAt: new Date() } });
+      await transfer.undo(result.batchId ?? '', actor);
+      expect(await client.ticketPurchase.findMany()).toEqual([]);
+      expect(await client.eventTicket.findMany()).toEqual([]);
+      expect(await client.eventTicketHistory.findMany()).toEqual([]);
+      expect(await client.ticketRealtimeOutbox.findMany()).toHaveLength(notifications.length);
+      expect(await client.people.findMany()).toHaveLength(1);
+    } finally {
+      replay.mockRestore();
+    }
   });
 
   it('executes the exact-request lock as a signed PostgreSQL advisory key', async () => {
@@ -207,7 +300,7 @@ describe('durable audit-backed import rollback and undo', () => {
       return 1;
     });
     await journal.lockRequest({ $executeRaw: execute } as unknown as Prisma.TransactionClient, 'f'.repeat(64));
-    expect(execute.mock.calls[0][1]).toBe(-1n);
+    expect(execute.mock.calls[0][1]).toBe(BigInt(-1));
   });
 
   it('journals and undoes createMany rows when an archived row matches the creation fields', async () => {
@@ -422,7 +515,7 @@ describe('durable audit-backed import rollback and undo', () => {
         metadata: { type: 'data-transfer-batch', undone: false, synchronizationPending: true },
       });
 
-      await transfer.undo(result.batchId, actor);
+      await transfer.undo(result.batchId ?? '', actor);
       expect(await client.eventGroup.findMany()).toEqual([]);
       expect((await client.auditLogEntry.findUnique({ where: { id: result.batchId } }))?.['metadata']).toMatchObject({
         undone: true,
@@ -501,6 +594,32 @@ describe('durable audit-backed import rollback and undo', () => {
     expect(await client.eventGroup.findUnique({ where: { id } })).not.toBeNull();
     expect(await client.event.findUnique({ where: { id: 'later-event' } })).not.toBeNull();
     expect((await client.auditLogEntry.findUnique({ where: { id: batch.batchId } }))?.['revertedAt']).toBeNull();
+  });
+
+  it('atomically restores invitation additions and removals when undoing a replacement', async () => {
+    const groupId = randomUUID();
+    await client.eventGroup.create({ data: { id: groupId, name: 'Grupo existente' } });
+    await client.eventGroupAudienceInvitation.create({
+      data: { id: 'old-invitation', eventGroupId: groupId, personId: 'old-person' },
+    });
+    const doc = document([{ id: groupId, name: 'Grupo existente' }]);
+    const resource = doc.resources[0];
+    const batch = await prisma.$transaction(async (tx) => {
+      const recorder = journal.begin(tx);
+      recorder.setSource(resource, 'update', { eventGroupId: groupId });
+      await recorder.tx.eventGroupAudienceInvitation.deleteMany({ where: { eventGroupId: groupId } });
+      await recorder.tx.eventGroupAudienceInvitation.create({
+        data: { eventGroupId: groupId, personId: 'new-person' },
+      });
+      return journal.record(recorder, tx, actor, undefined, doc, items(doc, 'update'));
+    });
+    expect(await client.eventGroupAudienceInvitation.findMany()).toEqual([
+      expect.objectContaining({ personId: 'new-person' }),
+    ]);
+    await journal.undo(batch.batchId, actor);
+    expect(await client.eventGroupAudienceInvitation.findMany()).toEqual([
+      expect.objectContaining({ personId: 'old-person' }),
+    ]);
   });
 
   it('includes an incoming audience-invitation row in the private reference snapshot', async () => {

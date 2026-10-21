@@ -1,3 +1,4 @@
+import { resolveTransferPerson } from './transfer-person-resolution';
 import { TransferValidationException } from './transfer-validation.exception';
 import { createHash } from 'node:crypto';
 import {
@@ -229,9 +230,9 @@ export class ParticipationTransferAdapter implements DataTransferAdapter {
         : {}),
     };
     if (!reference) return { ...base, skip: { message: 'Informe os dados para identificar uma pessoa existente.' } };
-    const match = await this.people.match(reference, context.tx);
-    if ('message' in match) return { ...base, skip: { message: match.message } };
-    const personId = match.id;
+    const personSnapshot = await resolveTransferPerson(reference, base, context, this.authorization, this.people, this);
+    if (!personSnapshot.personId) return personSnapshot;
+    const personId = personSnapshot.personId;
     const normalized: ParticipationResource = { ...resource, data: { ...resource.data, person: { id: personId } } };
     const current = await this.loadCurrent(normalized, target, personId, context.tx);
     const presenceRecorded = recordsPresence(resource, current);
@@ -240,7 +241,7 @@ export class ParticipationTransferAdapter implements DataTransferAdapter {
       await this.authorization.assertPermissions(context.actor, [Permission.Ticket.Read], scope);
     }
     const snapshot: ParticipationSnapshot = {
-      ...base,
+      ...personSnapshot,
       resource: normalized,
       personId,
       storedId: current?.id,
@@ -278,15 +279,18 @@ export class ParticipationTransferAdapter implements DataTransferAdapter {
         sportsMatch.majorEventId,
       );
       snapshot.revision = participationPlanRevision(snapshot.attendanceRevision ?? null, snapshot.sportsAttendance);
-      snapshot.additionalChanges = willTransition
-        ? [
-            {
-              field: 'Estado da partida após presença de atleta',
-              before: { state: sportsMatch.state, revision: sportsMatch.revision },
-              after: { state: 'CHECK_IN', revision: sportsMatch.revision + 1 },
-            },
-          ]
-        : [];
+      snapshot.additionalChanges = [
+        ...(snapshot.additionalChanges ?? []),
+        ...(willTransition
+          ? [
+              {
+                field: 'Estado da partida após presença de atleta',
+                before: { state: sportsMatch.state, revision: sportsMatch.revision },
+                after: { state: 'CHECK_IN', revision: sportsMatch.revision + 1 },
+              },
+            ]
+          : []),
+      ];
     }
     if (consumesTicket) {
       snapshot.additionalChanges = [
@@ -313,6 +317,7 @@ export class ParticipationTransferAdapter implements DataTransferAdapter {
       const previousSelections = current.data.selectedEventIds ?? [];
       if (canonicalTransferJson(proposedSelections) !== canonicalTransferJson(previousSelections)) {
         snapshot.additionalChanges = [
+          ...(snapshot.additionalChanges ?? []),
           { field: 'Inscrições nos eventos selecionados', before: previousSelections, after: proposedSelections },
         ];
       }
@@ -457,7 +462,10 @@ export class ParticipationTransferAdapter implements DataTransferAdapter {
       const after = nextStatus === 'CONFIRMED' ? selected : [];
       const before = active.map((row) => row.eventId).sort();
       if (canonicalTransferJson(before) !== canonicalTransferJson([...after].sort())) {
-        value.additionalChanges = [{ field: 'Inscrições ativas relacionadas', before, after: [...after].sort() }];
+        value.additionalChanges = [
+          ...(value.additionalChanges ?? []),
+          { field: 'Inscrições ativas relacionadas', before, after: [...after].sort() },
+        ];
       }
       return;
     }
@@ -817,7 +825,38 @@ export class ParticipationTransferAdapter implements DataTransferAdapter {
     }
     const resources = await this.listCurrent(kind, target, context.tx);
     this.assertBound(resources);
-    result.resources.push(...resources.map((resource) => ({ ...resource, revision: participationRevision(resource) })));
+    if (!resources.length) return;
+    const personIds = resources.map((resource) => resource.data.person?.id).filter((id): id is string => !!id);
+    const people = await context.tx.people.findMany({
+      where: {
+        id: { in: [...new Set(personIds)] },
+        deletedAt: null,
+        mergedIntoId: null,
+      },
+      select: { id: true, name: true, email: true, phone: true, academicId: true, identityDocument: true },
+    });
+    const peopleById = new Map(people.map((person) => [person.id, person]));
+    for (const resource of resources) {
+      const person = peopleById.get(resource.data.person?.id ?? '');
+      result.resources.push({
+        ...resource,
+        // Keep the revision tied to persisted participation data, before adding portable identity fields.
+        revision: participationRevision(resource),
+        data: {
+          ...resource.data,
+          // Source person IDs would prevent matching or creating people in another database.
+          person: person
+            ? {
+                name: person.name,
+                ...(person.email ? { email: person.email } : {}),
+                ...(person.phone ? { phone: person.phone } : {}),
+                ...(person.academicId ? { academicId: person.academicId } : {}),
+                ...(person.identityDocument ? { identityDocument: person.identityDocument } : {}),
+              }
+            : resource.data.person,
+        },
+      });
+    }
   }
 
   private async listCurrent(

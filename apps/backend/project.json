@@ -65,6 +65,13 @@
         "coverage": true
       }
     },
+    "test-data-transfer-postgres": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node tools/run-data-transfer-database-tests.mjs"
+      }
+    },
     "test-data-transfer-integration": {
       "executor": "nx:run-commands",
       "options": {

@@ -1,6 +1,4 @@
-import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
-import { dirname, basename, join } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 
 export const DEFAULT_CSV_FIELD_SIZE_LIMIT = 10_000_000;
 
@@ -149,36 +147,4 @@ export function parseCsvText(
 export async function readCsvFile(filePath: string, options: ParseCsvOptions = {}): Promise<CsvDocument> {
   const contents = await readFile(filePath, 'utf8');
   return parseCsvText(contents, options);
-}
-
-export function escapeCsvCell(value: unknown): string {
-  const cell = value == null ? '' : String(value);
-  if (!/[",\r\n]/u.test(cell)) {
-    return cell;
-  }
-  return `"${cell.replaceAll('"', '""')}"`;
-}
-
-export function serializeCsv(fieldnames: readonly string[], rows: readonly CsvRow[]): string {
-  const lines = [fieldnames.map(escapeCsvCell).join(',')];
-  for (const row of rows) {
-    lines.push(fieldnames.map((fieldname) => escapeCsvCell(row?.[fieldname])).join(','));
-  }
-  return `${lines.join('\r\n')}\r\n`;
-}
-
-export async function writeCsvAtomic(
-  filePath: string,
-  fieldnames: readonly string[],
-  rows: readonly CsvRow[],
-): Promise<void> {
-  await mkdir(dirname(filePath), { recursive: true });
-  const temporaryPath = join(dirname(filePath), `.${basename(filePath)}.${process.pid}.${randomUUID()}.tmp`);
-  try {
-    await writeFile(temporaryPath, serializeCsv(fieldnames, rows), { encoding: 'utf8', mode: 0o600 });
-    await rename(temporaryPath, filePath);
-  } catch (error) {
-    await unlink(temporaryPath).catch(() => undefined);
-    throw error;
-  }
 }

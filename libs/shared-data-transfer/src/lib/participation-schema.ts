@@ -7,6 +7,8 @@ import {
   type EventSubscriptionTransferOwner,
   type GroupSubscriptionTransferOwner,
   type MajorEventSubscriptionTransferOwner,
+  type TicketPurchaseTransferOwner,
+  type EventTicketTransferOwner,
 } from './schema-contracts';
 
 export const PersonReferenceSchema = Type.Partial(
@@ -74,3 +76,33 @@ export const AttendanceResourceSchema = checkedResource<
   attendedAt: DateTime,
   status: enumeration('PRESENT', 'ABSENT'),
 });
+
+/** A paid external purchase; receipt storage and approval state are owned by the server. */
+export const TicketPurchaseResourceSchema = checkedResource<
+  TicketPurchaseTransferOwner,
+  BoundaryMap<'ticket-purchase'>
+>()('ticket-purchase', {
+  eventId: Id,
+  person: PersonReferenceSchema,
+  amountCents: Count,
+  priceTierName: nullable(Name),
+  purchasedAt: DateTime,
+});
+
+export const EventTicketResourceSchema = checkedResource<EventTicketTransferOwner, BoundaryMap<'event-ticket'>>()(
+  'event-ticket',
+  {
+    eventId: Id,
+    person: nullable(PersonReferenceSchema),
+    originalHolder: nullable(PersonReferenceSchema),
+    originalHolderPersonId: nullable(Id),
+    source: enumeration('EVENT_SUBSCRIPTION', 'MAJOR_EVENT_SUBSCRIPTION', 'ADMIN', 'PURCHASE'),
+    sourceKey: nullable(Id),
+    status: enumeration('ACTIVE', 'CONSUMED', 'REVOKED'),
+    issuedAt: DateTime,
+    expiresAt: DateTime,
+    consumedAt: nullable(DateTime),
+    revokedAt: nullable(DateTime),
+    revokedReason: nullable(Type.String({ maxLength: 1000 })),
+  },
+);

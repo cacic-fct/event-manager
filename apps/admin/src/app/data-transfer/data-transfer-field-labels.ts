@@ -1,4 +1,6 @@
 const labels: Readonly<Record<string, string>> = {
+  purchasedAt: 'Data da compra',
+  priceTierName: 'Faixa de pagamento da compra',
   name: 'Nome',
   emoji: 'Emoji',
   startDate: 'Início',
@@ -14,6 +16,11 @@ const labels: Readonly<Record<string, string>> = {
   eventGroupId: 'Grupo de eventos',
   eventId: 'Evento',
   audience: 'Público-alvo',
+  invitationPersonIds: 'Pessoas convidadas',
+  publicationState: 'Estado de publicação',
+  scheduledPublishAt: 'Publicação agendada para',
+  publishedAt: 'Publicado em',
+  unpublishedAt: 'Despublicado em',
   audienceCourseCodes: 'Cursos do público-alvo',
   interestEnabled: 'Manifestação de interesse',
   allowSubscription: 'Permitir inscrições',

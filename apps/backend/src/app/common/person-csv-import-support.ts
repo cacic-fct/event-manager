@@ -268,7 +268,7 @@ export abstract class PersonCsvImportSupport {
     return isValidCPF(compactValue) || /^[A-Za-z0-9]{5,20}$/.test(compactValue);
   }
 
-  private buildPeopleMatchFilters(values: string[], matchType: AttendanceImportMatchType): Prisma.PeopleWhereInput[] {
+  protected buildPeopleMatchFilters(values: string[], matchType: AttendanceImportMatchType): Prisma.PeopleWhereInput[] {
     switch (matchType) {
       case AttendanceImportMatchType.EMAIL:
         return values.map((value) => ({

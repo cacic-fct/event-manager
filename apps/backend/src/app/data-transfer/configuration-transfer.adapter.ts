@@ -537,7 +537,14 @@ export class ConfigurationTransferAdapter implements DataTransferAdapter {
       }
       return;
     }
-    const scope = snapshot.current ? snapshot.scope : await this.scopeForPersistedAncestor(snapshot.scope, context);
+    const scope = snapshot.current
+      ? { ...snapshot.scope }
+      : await this.scopeForPersistedAncestor(snapshot.scope, context);
+    if (snapshot.resource.kind === 'event-form') {
+      // Shared-form IDs expand authorization to linked targets. Writes must use
+      // the persisted owner's scope so a linked target cannot grant edit access.
+      delete scope.eventFormId;
+    }
     let permission = writePermission(snapshot.resource.kind, action);
     if (snapshot.resource.kind === 'ticket-price-option') {
       const configId = asId(dataOf(snapshot.resource)['ticketConfigId']);

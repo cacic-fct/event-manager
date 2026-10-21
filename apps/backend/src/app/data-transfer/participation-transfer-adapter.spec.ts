@@ -5,6 +5,7 @@ import type { AuthenticatedUser } from '../auth/interfaces/authenticated-user.in
 import type { ResolvedTransferResource, TransferAdapterContext } from './data-transfer-adapter';
 import { PersonTransferMatcherService } from './person-transfer-matcher.service';
 import { ParticipationTransferAdapter } from './participation-transfer-adapter';
+import { transferPersonKey } from './transfer-person-creation';
 import { participationRevision } from './participation-transfer-adapter';
 
 const actor = { sub: 'organizer-1' } as AuthenticatedUser;
@@ -28,7 +29,11 @@ function participationResource(
 
 function createHarness() {
   const authorization = { assertPermissions: jest.fn().mockResolvedValue(undefined) };
-  const people = { match: jest.fn().mockResolvedValue({ id: 'person-1' }) };
+  const people = {
+    match: jest.fn().mockResolvedValue({ id: 'person-1' }),
+    hasReservedIdentity: jest.fn().mockResolvedValue(false),
+    reviewCandidates: jest.fn().mockResolvedValue([]),
+  };
   const audit = { record: jest.fn().mockResolvedValue(undefined) };
   const categories = {
     refreshForAttendance: jest.fn().mockResolvedValue(undefined),
@@ -90,6 +95,88 @@ function activeEventTransaction(overrides: Record<string, unknown> = {}) {
 }
 
 describe('ParticipationTransferAdapter', () => {
+  it.each(['event-subscription', 'event-attendance'] as const)(
+    'allows person review for an existing %s with update access alone',
+    async (kind) => {
+      const harness = createHarness();
+      const denied = kind === 'event-attendance' ? Permission.EventAttendance.Collect : Permission.Subscription.Create;
+      harness.authorization.assertPermissions.mockImplementation(async (_actor, permissions) => {
+        if (permissions.includes(denied)) throw new ForbiddenException();
+      });
+      harness.people.match.mockResolvedValue({ reviewIds: ['person-1'], message: 'Revisar dados.' });
+      harness.people.reviewCandidates.mockResolvedValue([
+        {
+          id: 'person-1',
+          name: 'Ana Silva',
+          email: 'old@example.com',
+          secondaryEmails: [],
+          phone: null,
+          academicId: null,
+          identityDocument: null,
+          updatedAt: new Date(),
+        },
+      ]);
+      const reference = { name: 'Ana Silva', email: 'new@example.com' };
+      const resource = participationResource(kind, 'source-participation', {
+        eventId: 'event-1',
+        person: reference,
+        status: 'ABSENT',
+        imageLicenseAgreementAccepted: true,
+      });
+      const stored = {
+        id: 'stored-participation',
+        eventId: 'event-1',
+        personId: 'person-1',
+        status: 'PRESENT',
+        attendedAt: new Date(),
+        imageLicenseAgreementAccepted: false,
+      };
+      const ctx = context(
+        activeEventTransaction({
+          eventSubscription: {
+            findUnique: jest.fn().mockResolvedValue(null),
+            findFirst: jest.fn().mockResolvedValue(stored),
+          },
+          eventAttendance: { findUnique: jest.fn().mockResolvedValue(stored) },
+        }),
+      );
+      const pending = await harness.adapter.resolve(resource, ctx);
+      expect(pending.personPrompt?.canMerge).toBe(true);
+      ctx.personDecisions = [
+        {
+          key: transferPersonKey(reference),
+          action: 'merge',
+          personId: 'person-1',
+          data: {},
+          reviewHash: pending.personPrompt?.reviewHash,
+        },
+      ];
+      const ready = await harness.adapter.resolve(resource, ctx);
+      expect(ready.current).not.toBeNull();
+      expect(ready.personMerge?.id).toBe('person-1');
+      await expect(harness.adapter.assertWrite(ready, 'update', ctx)).resolves.toBeUndefined();
+      // Opening review with update access must never authorize creating a participation.
+      await expect(harness.adapter.assertWrite(ready, 'create', ctx)).rejects.toThrow(ForbiddenException);
+    },
+  );
+
+  it('denies person review when neither participation write action is permitted', async () => {
+    const harness = createHarness();
+    harness.people.match.mockResolvedValue({ reviewIds: ['person-1'], message: 'Revisar dados.' });
+    harness.authorization.assertPermissions.mockImplementation(async (_actor, permissions) => {
+      if (permissions.includes(Permission.Subscription.Create) || permissions.includes(Permission.Subscription.Update))
+        throw new ForbiddenException();
+    });
+    const resource = participationResource('event-subscription', 'source-participation', {
+      eventId: 'event-1',
+      person: { name: 'Ana Silva' },
+    });
+    await expect(harness.adapter.resolve(resource, context(activeEventTransaction()))).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(harness.people.reviewCandidates).not.toHaveBeenCalled();
+  });
+
   it('authorizes the target before resolving a person and never creates one', async () => {
     const order: string[] = [];
     const harness = createHarness();
@@ -117,6 +204,245 @@ describe('ParticipationTransferAdapter', () => {
     expect(harness.people.match).toHaveBeenCalledWith({ email: 'ada@example.com' }, tx);
     expect('personId' in resolved && resolved.personId).toBe('person-1');
     expect((tx as { people?: { create?: jest.Mock } }).people?.create).toBeUndefined();
+  });
+
+  it('requires confirmation and additional data without writing during resolution', async () => {
+    const harness = createHarness();
+    harness.people.match.mockResolvedValue({ missing: true, message: 'Não encontrada.' });
+    const tx = activeEventTransaction({ people: { create: jest.fn() } });
+    const reference = { name: 'Ana Silva' };
+    const resource = participationResource('event-subscription', 'subscription-new', {
+      eventId: 'event-1',
+      person: reference,
+    });
+    const pending = await harness.adapter.resolve(resource, context(tx));
+    expect(pending.personPrompt).toMatchObject({ key: transferPersonKey(reference), data: reference });
+    const ctx = context(tx);
+    ctx.personDecisions = [{ key: transferPersonKey(reference), action: 'create', data: reference }];
+    expect((await harness.adapter.resolve(resource, ctx)).personCreation).toBeUndefined();
+    ctx.personDecisions = [{ key: transferPersonKey(reference), action: 'create', data: { email: 'ana@example.com' } }];
+    const ready = await harness.adapter.resolve(resource, ctx);
+    expect(ready.personCreation).toMatchObject({ data: { name: 'Ana Silva', email: 'ana@example.com' } });
+    expect(harness.authorization.assertPermissions).toHaveBeenCalledWith(actor, [Permission.Person.Create]);
+    expect((tx.people as { create: jest.Mock }).create).not.toHaveBeenCalled();
+  });
+
+  it('reviews changed email against matching names and merges using the existing secondary-email rules', async () => {
+    const harness = createHarness();
+    harness.people.match.mockResolvedValue({ reviewIds: ['person-1'], message: 'Dados diferentes.' });
+    harness.people.reviewCandidates.mockResolvedValue([
+      {
+        id: 'person-1',
+        name: 'Ana Silva',
+        email: 'old@example.com',
+        secondaryEmails: ['other@example.com'],
+        phone: null,
+        identityDocument: null,
+        academicId: null,
+        updatedAt: new Date(),
+      },
+    ]);
+    const reference = { name: 'Ana Silva', email: 'new@example.com' };
+    const resource = participationResource('event-subscription', 'subscription-new', {
+      eventId: 'event-1',
+      person: reference,
+    });
+    const ctx = context(activeEventTransaction());
+    const pending = await harness.adapter.resolve(resource, ctx);
+    expect(pending.personPrompt?.candidates).toMatchObject([{ id: 'person-1', email: 'old@example.com' }]);
+    ctx.personDecisions = [
+      {
+        key: transferPersonKey(reference),
+        action: 'merge',
+        personId: 'person-1',
+        data: {},
+        reviewHash: pending.personPrompt?.reviewHash,
+      },
+    ];
+    const ready = await harness.adapter.resolve(resource, ctx);
+    expect(ready.personMerge?.data.secondaryEmails).toEqual(['other@example.com', 'new@example.com']);
+    expect(ready.personMerge?.data).not.toHaveProperty('email');
+    expect(ready.personCreation).toBeUndefined();
+    expect(harness.authorization.assertPermissions).toHaveBeenCalledWith(actor, [Permission.Person.Update]);
+    harness.people.hasReservedIdentity.mockResolvedValue(true);
+    expect((await harness.adapter.resolve(resource, ctx)).personMerge).toBeUndefined();
+  });
+
+  it.each([
+    { field: 'phone', current: '+5518912345678', proposed: '+5518912345679' },
+    { field: 'phone', current: null, proposed: '+5518912345679' },
+    { field: 'identityDocument', current: null, proposed: '52998224725' },
+    { field: 'academicId', current: null, proposed: 'RA123' },
+  ])('blocks changing account-managed $field data during a merge ($current)', async ({ field, current, proposed }) => {
+    const harness = createHarness();
+    harness.people.match.mockResolvedValue({ reviewIds: ['person-1'], message: 'Revisar.' });
+    harness.people.reviewCandidates.mockResolvedValue([
+      {
+        id: 'person-1',
+        name: 'Ana Silva',
+        email: 'old@example.com',
+        secondaryEmails: [],
+        phone: null,
+        identityDocument: null,
+        academicId: null,
+        [field]: current,
+        userId: 'linked-user',
+        updatedAt: new Date(),
+      },
+    ]);
+    const reference = { name: 'Ana Silva', email: 'new@example.com' };
+    const resource = participationResource('event-subscription', 'subscription-new', {
+      eventId: 'event-1',
+      person: reference,
+    });
+    const ctx = context(activeEventTransaction());
+    const pending = await harness.adapter.resolve(resource, ctx);
+    ctx.personDecisions = [
+      {
+        key: transferPersonKey(reference),
+        action: 'merge',
+        personId: 'person-1',
+        data: { [field]: proposed },
+        reviewHash: pending.personPrompt?.reviewHash,
+      },
+    ];
+
+    const resolved = await harness.adapter.resolve(resource, ctx);
+
+    expect(resolved.personMerge).toBeUndefined();
+    expect(resolved.personPrompt?.message).toContain('vinculada a uma conta');
+  });
+
+  it('preserves linked-account fields while merging a secondary email with equivalent identifiers', async () => {
+    const harness = createHarness();
+    harness.people.match.mockResolvedValue({ reviewIds: ['person-1'], message: 'Revisar.' });
+    harness.people.reviewCandidates.mockResolvedValue([
+      {
+        id: 'person-1',
+        name: 'Ana Silva',
+        email: 'old@example.com',
+        secondaryEmails: [],
+        phone: '(18) 91234-5678',
+        identityDocument: '529.982.247-25',
+        academicId: 'ra123',
+        userId: 'linked-user',
+        updatedAt: new Date(),
+      },
+    ]);
+    const reference = {
+      name: 'Ana Silva',
+      email: 'new@example.com',
+      phone: '+5518912345678',
+      identityDocument: '52998224725',
+      academicId: 'RA123',
+    };
+    const resource = participationResource('event-subscription', 'subscription-new', {
+      eventId: 'event-1',
+      person: reference,
+    });
+    const ctx = context(activeEventTransaction());
+    const pending = await harness.adapter.resolve(resource, ctx);
+    ctx.personDecisions = [
+      {
+        key: transferPersonKey(reference),
+        action: 'merge',
+        personId: 'person-1',
+        data: {},
+        reviewHash: pending.personPrompt?.reviewHash,
+      },
+    ];
+
+    const resolved = await harness.adapter.resolve(resource, ctx);
+
+    expect(resolved.personMerge?.data).toEqual({ secondaryEmails: ['new@example.com'] });
+  });
+
+  it('requires another manual review when extra form data reveals an existing name match', async () => {
+    const harness = createHarness();
+    harness.people.match.mockImplementation(async (reference) =>
+      reference.name
+        ? { reviewIds: ['existing-person'], message: 'Revisar nome.' }
+        : { missing: true, message: 'Não encontrada.' },
+    );
+    harness.people.reviewCandidates.mockResolvedValue([
+      {
+        id: 'existing-person',
+        name: 'Ana Silva',
+        email: 'old@example.com',
+        secondaryEmails: [],
+        phone: null,
+        identityDocument: null,
+        academicId: null,
+        updatedAt: new Date(),
+      },
+    ]);
+    const reference = { email: 'new@example.com' };
+    const resource = participationResource('event-subscription', 'subscription-new', {
+      eventId: 'event-1',
+      person: reference,
+    });
+    const ctx = context(activeEventTransaction());
+    ctx.personDecisions = [{ key: transferPersonKey(reference), action: 'create', data: { name: 'Ana Silva' } }];
+    const pending = await harness.adapter.resolve(resource, ctx);
+    expect(pending.personCreation).toBeUndefined();
+    expect(pending.personPrompt?.candidates).toMatchObject([{ id: 'existing-person' }]);
+    expect(pending.personPrompt?.lockedFields).toEqual(['email']);
+    ctx.personDecisions = [
+      {
+        key: transferPersonKey(reference),
+        action: 'create',
+        data: { name: 'Ana Silva' },
+        reviewHash: pending.personPrompt?.reviewHash,
+      },
+    ];
+    expect((await harness.adapter.resolve(resource, ctx)).personCreation).toBeDefined();
+    harness.authorization.assertPermissions.mockImplementation(async (_actor, permissions) => {
+      if (permissions.includes(Permission.Person.Update)) throw new ForbiddenException();
+    });
+    ctx.personDecisions = [
+      {
+        key: transferPersonKey(reference),
+        action: 'merge',
+        personId: 'existing-person',
+        data: { name: 'Ana Silva' },
+        reviewHash: pending.personPrompt?.reviewHash,
+      },
+    ];
+    await expect(harness.adapter.resolve(resource, ctx)).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('supports an explicit new person with the same name but refuses duplicate identifiers', async () => {
+    const harness = createHarness();
+    harness.people.match.mockResolvedValue({ reviewIds: ['person-1'], message: 'Revisar.' });
+    const reference = { name: 'Ana Silva', email: 'new@example.com' };
+    const resource = participationResource('event-subscription', 'subscription-new', {
+      eventId: 'event-1',
+      person: reference,
+    });
+    const ctx = context(activeEventTransaction());
+    ctx.personDecisions = [{ key: transferPersonKey(reference), action: 'create', data: {} }];
+    expect((await harness.adapter.resolve(resource, ctx)).personCreation).toBeDefined();
+    harness.people.hasReservedIdentity.mockResolvedValue(true);
+    expect((await harness.adapter.resolve(resource, ctx)).personCreation).toBeUndefined();
+  });
+
+  it('does not offer creation without global people creation permission and supports skipping', async () => {
+    const harness = createHarness();
+    harness.people.match.mockResolvedValue({ missing: true, message: 'Não encontrada.' });
+    harness.authorization.assertPermissions.mockImplementation(async (_actor, permissions) => {
+      if (permissions.includes(Permission.Person.Create)) throw new ForbiddenException();
+    });
+    const reference = { name: 'Ana Silva', email: 'ana@example.com' };
+    const resource = participationResource('event-subscription', 'subscription-new', {
+      eventId: 'event-1',
+      person: reference,
+    });
+    const ctx = context(activeEventTransaction());
+    const blocked = await harness.adapter.resolve(resource, ctx);
+    expect(blocked.personPrompt).toBeUndefined();
+    expect(blocked.personCreation).toBeUndefined();
+    ctx.personDecisions = [{ key: transferPersonKey(reference), action: 'skip' }];
+    expect((await harness.adapter.resolve(resource, ctx)).skip?.message).toContain('sua escolha');
   });
 
   it('does not inspect people when the target is unauthorized', async () => {
@@ -231,9 +557,99 @@ describe('ParticipationTransferAdapter', () => {
     await expect(harness.adapter.resolve(resource, context(tx))).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it.each(['event-attendance', 'event-subscription', 'group-subscription', 'major-event-subscription'] as const)(
+    'exports portable, authorized person identifiers for %s without tying matching to source person IDs',
+    async (kind) => {
+      const harness = createHarness();
+      const person = {
+        id: 'source-person',
+        name: 'Ana Silva',
+        email: 'ana@example.test',
+        phone: '18999999999',
+        academicId: '123',
+        identityDocument: '12345678901',
+      };
+      const row = {
+        id: 'subscription-1',
+        personId: person.id,
+        eventId: 'event-1',
+        eventGroupId: 'group-1',
+        majorEventId: 'major-1',
+        attendedAt: new Date(),
+        status: 'VALID',
+        imageLicenseAgreementAccepted: true,
+        subscriptionStatus: 'CONFIRMED',
+        amountPaid: null,
+        paymentDate: null,
+        paymentTier: null,
+        selectedEvents: [],
+      };
+      const tx = {
+        event: { findFirst: jest.fn().mockResolvedValue({ id: 'event-1' }) },
+        eventGroup: { findFirst: jest.fn().mockResolvedValue({ id: 'group-1' }) },
+        majorEvent: { findFirst: jest.fn().mockResolvedValue({ id: 'major-1' }) },
+        eventAttendance: { findMany: jest.fn().mockResolvedValue([row]) },
+        eventSubscription: { findMany: jest.fn().mockResolvedValue([row]) },
+        eventGroupSubscription: { findMany: jest.fn().mockResolvedValue([row]) },
+        majorEventSubscription: { findMany: jest.fn().mockResolvedValue([row]) },
+        people: { findMany: jest.fn().mockResolvedValue([person]) },
+      };
+      const target =
+        kind === 'major-event-subscription'
+          ? { kind: 'major-event' as const, id: 'major-1' }
+          : kind === 'group-subscription'
+            ? { kind: 'group' as const, id: 'group-1' }
+            : { kind: 'event' as const, id: 'event-1' };
+      const options = {
+        includeDescendants: false,
+        includeConfiguration: false,
+        includeSubscriptions: kind !== 'event-attendance',
+        includeAttendances: kind === 'event-attendance',
+      };
+      const exported = await harness.adapter.exportTarget(target, options, context(tx));
+      const resource = exported.resources[0];
+      expect(resource?.kind).toBe(kind);
+      expect(resource?.data).toHaveProperty('person', {
+        name: person.name,
+        email: person.email,
+        phone: person.phone,
+        academicId: person.academicId,
+        identityDocument: person.identityDocument,
+      });
+      expect(resource?.revision).toBe(
+        participationRevision({
+          ...resource,
+          data: { ...resource?.data, person: { id: person.id } },
+        } as TransferResource),
+      );
+      expect(harness.authorization.assertPermissions).toHaveBeenCalledWith(
+        actor,
+        [kind === 'event-attendance' ? Permission.EventAttendance.Read : Permission.Subscription.Read],
+        expect.any(Object),
+      );
+
+      harness.authorization.assertPermissions.mockRejectedValue(new ForbiddenException());
+      tx.people.findMany.mockClear();
+      expect((await harness.adapter.exportTarget(target, options, context(tx))).resources).toEqual([]);
+      expect(tx.people.findMany).not.toHaveBeenCalled();
+    },
+  );
+
   it('exports parent subscriptions independently from child subscriptions', async () => {
     const harness = createHarness();
     const tx = {
+      people: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'person-1',
+            name: 'Ana Silva',
+            email: 'ana@example.test',
+            phone: null,
+            academicId: null,
+            identityDocument: null,
+          },
+        ]),
+      },
       majorEvent: { findFirst: jest.fn().mockResolvedValue({ id: 'major-1' }) },
       majorEventSubscription: {
         findMany: jest.fn().mockResolvedValue([
@@ -270,6 +686,7 @@ describe('ParticipationTransferAdapter', () => {
     );
 
     expect(exported.resources.map((resource) => resource.kind)).toEqual(['major-event-subscription']);
+    expect(exported.resources[0]?.data).toHaveProperty('person', { name: 'Ana Silva', email: 'ana@example.test' });
     expect(tx.event.findMany).not.toHaveBeenCalled();
     expect(tx.eventSubscription.findMany).not.toHaveBeenCalled();
     expect(tx.eventGroupSubscription.findMany).not.toHaveBeenCalled();
@@ -278,6 +695,18 @@ describe('ParticipationTransferAdapter', () => {
   it('exports child subscriptions only when the child option is selected', async () => {
     const harness = createHarness();
     const tx = {
+      people: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'person-1',
+            name: 'Ana Silva',
+            email: 'ana@example.test',
+            phone: null,
+            academicId: null,
+            identityDocument: null,
+          },
+        ]),
+      },
       majorEvent: { findFirst: jest.fn().mockResolvedValue({ id: 'major-1' }) },
       event: {
         findFirst: jest.fn().mockResolvedValue({ id: 'event-1' }),

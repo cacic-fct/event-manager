@@ -1,5 +1,7 @@
 import { PLATFORM_ID, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
+import { OverlayContainer } from '@angular/cdk/overlay';
 import { By } from '@angular/platform-browser';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
@@ -14,6 +16,7 @@ import {
   type TransferUndoResult,
 } from '@cacic-fct/shared-data-transfer';
 import { DataTransferApiService } from './data-transfer-api.service';
+import { TransferPersonReviewComponent } from './transfer-person-review.component';
 import { DataTransferPageComponent } from './data-transfer-page.component';
 import {
   createTransferPreviewFixture,
@@ -113,6 +116,60 @@ describe('DataTransferPageComponent', () => {
     await createFixture();
   });
 
+  it('preserves a reviewed import while switching tasks and reveals only the selected task', async () => {
+    granted.update((permissions) => new Set([...permissions, Permission.DataTransfer.Export]));
+    fixture.detectChanges();
+    setJsonText();
+    clickButton('Revisar importação');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
+    const originalText = input.value;
+    const importPanel = fixture.nativeElement.querySelector(
+      '[aria-labelledby="transfer-import-heading"]',
+    ) as HTMLElement;
+    const exportPanel = fixture.nativeElement.querySelector(
+      '[aria-labelledby="transfer-export-heading"]',
+    ) as HTMLElement;
+
+    expect(importPanel.hidden).toBe(false);
+    expect(exportPanel.hidden).toBe(true);
+    clickButton('Exportar');
+    expect(importPanel.hidden).toBe(true);
+    expect(exportPanel.hidden).toBe(false);
+    clickButton('Importar');
+    expect(input.value).toBe(originalText);
+    expect(importPanel.hidden).toBe(false);
+    expect(findButton('Aplicar alterações').disabled).toBe(false);
+    expect(api.preview).toHaveBeenCalledOnce();
+  });
+
+  it('includes the just-completed batch in the separate history view', async () => {
+    const batchId = 'just-completed-batch';
+    api.apply.mockReturnValueOnce(of({ ...createTransferResultFixture(), batchId }));
+    api.history.mockReturnValue(
+      of([
+        {
+          ...transferBatchSummaryFixture,
+          batchId,
+        },
+      ]),
+    );
+    setJsonText();
+    clickButton('Revisar importação');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    clickButton('Aplicar alterações');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    clickButton('Histórico');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const historyPanel = fixture.nativeElement.querySelector('.history-panel') as HTMLElement;
+    expect(historyPanel.hidden).toBe(false);
+    expect(historyPanel.textContent).toContain(batchId);
+  });
+
   it.each([0, 500])(
     'recovers an uncertain %s response using the exact request and blocks new imports',
     async (status) => {
@@ -128,9 +185,10 @@ describe('DataTransferPageComponent', () => {
       expect(findButton('Revisar importação').disabled).toBe(true);
       expect((fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement).disabled).toBe(true);
       expect((fixture.nativeElement.querySelector('#transfer-file') as HTMLInputElement).disabled).toBe(true);
-      const picker = fixture.debugElement.query(By.directive(EventContextPickerComponent))
-        .componentInstance as EventContextPickerComponent;
-      expect(picker.disabled()).toBe(true);
+      expect(fixture.debugElement.query(By.directive(EventContextPickerComponent))).toBeNull();
+      expect(findButton('Histórico').disabled).toBe(true);
+      const contextOption = fixture.nativeElement.querySelector('mat-checkbox input') as HTMLInputElement;
+      expect(contextOption.disabled).toBe(true);
       expect(await fixture.componentInstance.canDeactivate()).toBe(false);
       expect(fixture.nativeElement.textContent).toContain('A importação pode ter sido salva');
 
@@ -355,13 +413,13 @@ describe('DataTransferPageComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.review-section')).not.toBeNull();
 
+    toggleCheckbox('Aplicar a um contexto existente');
     const picker = fixture.debugElement.query(By.directive(EventContextPickerComponent))
       .componentInstance as EventContextPickerComponent;
     picker.choose(contextStoryMajor);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.review-section')).toBeNull();
-    toggleCheckbox('Aplicar aos registros existentes do contexto escolhido acima');
     clickButton('Revisar importação');
     await fixture.whenStable();
     fixture.detectChanges();
@@ -555,6 +613,7 @@ describe('DataTransferPageComponent', () => {
       ]),
     );
     fixture.detectChanges();
+    clickButton('Exportar');
     const picker = fixture.debugElement.query(By.directive(EventContextPickerComponent))
       .componentInstance as EventContextPickerComponent;
     picker.choose(contextStoryMajor);
@@ -573,9 +632,52 @@ describe('DataTransferPageComponent', () => {
       includeConfiguration: true,
       includeSubscriptions: true,
       includeAttendances: false,
+      includeTickets: false,
+      includePublishingState: false,
+      includeAudienceInvitations: false,
       includeChildSubscriptions: true,
       includeChildAttendances: true,
     });
+  });
+
+  it('exports publishing state and audience invitations only when selected', async () => {
+    granted.set(new Set([Permission.DataTransfer.Export, Permission.MajorEvent.Read]));
+    fixture.detectChanges();
+    const picker = fixture.debugElement.query(By.directive(EventContextPickerComponent))
+      .componentInstance as EventContextPickerComponent;
+    picker.choose(contextStoryMajor);
+    fixture.detectChanges();
+    toggleCheckbox('Incluir estado de publicação');
+    toggleCheckbox('Incluir convites do público-alvo');
+    clickButton('Exportar JSON');
+    await fixture.whenStable();
+    expect(api.export).toHaveBeenCalledWith(
+      expect.objectContaining({
+        includePublishingState: true,
+        includeAudienceInvitations: true,
+      }),
+    );
+  });
+
+  it('exports all ticket states only after the organizer selects tickets', async () => {
+    granted.set(new Set([Permission.DataTransfer.Export, Permission.MajorEvent.Read, Permission.Ticket.Read]));
+    fixture.detectChanges();
+    const picker = fixture.debugElement.query(By.directive(EventContextPickerComponent))
+      .componentInstance as EventContextPickerComponent;
+    picker.choose(contextStoryMajor);
+    fixture.detectChanges();
+    toggleCheckbox('Incluir bilhetes');
+    clickButton('Exportar JSON');
+    await fixture.whenStable();
+    expect(api.export).toHaveBeenCalledWith(
+      expect.objectContaining({ includeTickets: true, includeSubscriptions: false, includeAttendances: false }),
+    );
+    granted.set(new Set([Permission.DataTransfer.Export, Permission.MajorEvent.Read]));
+    fixture.detectChanges();
+    const checkbox = fixture.debugElement
+      .queryAll(By.css('mat-checkbox'))
+      .find((element) => element.nativeElement.textContent.includes('Incluir bilhetes'));
+    expect(checkbox?.componentInstance.disabled).toBe(true);
   });
 
   it('keeps export available after a server failure so the user can retry', async () => {
@@ -588,6 +690,7 @@ describe('DataTransferPageComponent', () => {
       ]),
     );
     fixture.detectChanges();
+    clickButton('Exportar');
     const picker = fixture.debugElement.query(By.directive(EventContextPickerComponent))
       .componentInstance as EventContextPickerComponent;
     picker.choose(contextStoryMajor);
@@ -645,8 +748,8 @@ describe('DataTransferPageComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Este lote contém alterações posteriores.');
-    expect(fixture.nativeElement.querySelector('.undo-confirmation')).not.toBeNull();
+    expect(undoDialog()?.textContent).toContain('Este lote contém alterações posteriores.');
+    expect(undoDialog()).not.toBeNull();
     expect(findButton('Confirmar reversão').disabled).toBe(false);
 
     clickButton('Confirmar reversão');
@@ -669,7 +772,7 @@ describe('DataTransferPageComponent', () => {
 
     clickButton('Desfazer esta importação');
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Reverter todas as alterações do lote fixture-import-batch?');
+    expect(undoDialog()?.textContent).toContain('Reverter todas as alterações do lote fixture-import-batch?');
     expect(api.undo).not.toHaveBeenCalled();
 
     clickButton('Confirmar reversão');
@@ -734,7 +837,7 @@ describe('DataTransferPageComponent', () => {
     expect(activeButton).not.toBeNull();
     activeButton?.click();
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain(`Reverter todas as alterações do lote ${activeBatch.batchId}?`);
+    expect(undoDialog()?.textContent).toContain(`Reverter todas as alterações do lote ${activeBatch.batchId}?`);
     expect(api.undo).not.toHaveBeenCalled();
 
     clickButton('Cancelar');
@@ -743,6 +846,26 @@ describe('DataTransferPageComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Nenhuma importação recente disponível');
     expect(fixture.nativeElement.querySelector('.batch-history')).toBeNull();
+  });
+
+  it.each([false, undefined])('does not undo a history batch when the dialog is dismissed with %s', async (result) => {
+    granted.set(new Set([Permission.DataTransfer.Undo]));
+    fixture.detectChanges();
+    clickButton('Desfazer este lote');
+    expect(undoDialog()).not.toBeNull();
+    expect(api.undo).not.toHaveBeenCalled();
+
+    TestBed.inject(MatDialog).openDialogs[0].close(result);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(undoDialog()).toBeNull();
+    expect(api.undo).not.toHaveBeenCalled();
+
+    clickButton('Desfazer este lote');
+    expect(undoDialog()?.textContent).toContain('fixture-history-batch');
+    clickButton('Cancelar');
+    await fixture.whenStable();
+    expect(api.undo).not.toHaveBeenCalled();
   });
 
   it('locks undo while it is running and removes the action after success', async () => {
@@ -778,13 +901,49 @@ describe('DataTransferPageComponent', () => {
     ).toBe(false);
   });
 
+  it.each(['create', 'skip', 'merge'] as const)(
+    'collects a person %s choice and requires a new full preview before applying',
+    async (action) => {
+      const initial = {
+        ...createTransferPreviewFixture(),
+        canApply: false,
+        personPrompts: [{ key: 'a'.repeat(64), data: { name: 'Ana Silva' }, message: 'Revise a pessoa.' }],
+      };
+      api.preview.mockReturnValueOnce(of(initial)).mockReturnValueOnce(of(createTransferPreviewFixture()));
+      setJsonText();
+      clickButton('Revisar importação');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(findButton('Aplicar alterações').disabled).toBe(true);
+      const review = fixture.debugElement.query(By.directive(TransferPersonReviewComponent))
+        .componentInstance as TransferPersonReviewComponent;
+      const decision =
+        action === 'skip'
+          ? { key: 'a'.repeat(64), action }
+          : action === 'merge'
+            ? { key: 'a'.repeat(64), action, personId: 'person-1', data: { email: 'ana@example.com' } }
+            : { key: 'a'.repeat(64), action, data: { email: 'ana@example.com' } };
+      review.decision.emit(decision);
+      fixture.detectChanges();
+      expect(api.apply).not.toHaveBeenCalled();
+      expect(fixture.nativeElement.querySelector('.review-section')).toBeNull();
+      clickButton('Revisar importação');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(api.preview).toHaveBeenNthCalledWith(2, expect.objectContaining({ personDecisions: [decision] }));
+      clickButton('Aplicar alterações');
+      await fixture.whenStable();
+      expect(api.apply.mock.calls[0][0]).toMatchObject({ personDecisions: [decision] });
+    },
+  );
+
   it('uses only the user’s authorized transfer action', () => {
     granted.set(new Set([Permission.DataTransfer.Export, Permission.Event.Read]));
     fixture.destroy();
     fixture = TestBed.createComponent(DataTransferPageComponent);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Você pode exportar dados');
+    expect(fixture.nativeElement.querySelector('[aria-labelledby="transfer-export-heading"]').hidden).toBe(false);
     expect(fixture.nativeElement.querySelector('textarea')).toBeNull();
     expect(api.preview).not.toHaveBeenCalled();
   });
@@ -812,10 +971,16 @@ describe('DataTransferPageComponent', () => {
     fixture.detectChanges();
   }
 
+  function undoDialog(): HTMLElement | null {
+    return TestBed.inject(OverlayContainer).getContainerElement().querySelector('[role="dialog"]');
+  }
+
   function findButton(name: string): HTMLButtonElement {
-    const button = [...fixture.nativeElement.querySelectorAll('button')].find((node) =>
-      node.textContent.includes(name),
-    );
+    const buttons = [
+      ...(undoDialog()?.querySelectorAll('button') ?? []),
+      ...fixture.nativeElement.querySelectorAll('button'),
+    ];
+    const button = buttons.find((node) => node.textContent.includes(name));
     if (!button) {
       throw new Error(`Button ${name} was not found.`);
     }

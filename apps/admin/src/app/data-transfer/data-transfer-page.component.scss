@@ -12,9 +12,7 @@
   display: grid;
   gap: 1rem;
   min-width: 0;
-  border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 8px;
-  padding: 1rem;
+  padding: 0;
   background: var(--mat-sys-surface);
 }
 
@@ -69,4 +67,80 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 0.75rem;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.transfer-task {
+  display: grid;
+  gap: 1rem;
+  padding-block-start: 1rem;
+}
+
+.scope-panel {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.export-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem 2rem;
+  padding-block: 0.5rem;
+}
+
+.export-group {
+  min-width: 0;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  padding-block-start: 1rem;
+}
+
+.export-group:first-child {
+  grid-column: 1 / -1;
+}
+
+.export-group h3 {
+  margin: 0 0 0.75rem;
+  font: var(--mat-sys-title-medium);
+}
+
+.transfer-disclosure {
+  box-shadow: none;
+  border: 1px solid var(--mat-sys-outline-variant);
+  background: var(--mat-sys-surface);
+}
+
+.transfer-disclosure mat-panel-title {
+  gap: 0.75rem;
+  font: var(--mat-sys-title-small);
+}
+
+.transfer-disclosure mat-panel-title mat-icon {
+  flex-shrink: 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.import-help p,
+.import-documentation .matching-note {
+  max-width: 72ch;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+}
+
+@media (max-width: 720px) {
+  [mat-tab-link] {
+    padding-inline: 0.5rem;
+  }
+
+  .export-options {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .transfer-disclosure mat-expansion-panel-header {
+    padding-inline: 1rem;
+  }
 }

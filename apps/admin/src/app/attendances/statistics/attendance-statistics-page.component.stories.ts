@@ -1,7 +1,7 @@
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import type { EventAttendanceAnalyticsSnapshot } from '@cacic-fct/event-manager-admin-contracts';
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { NEVER, delay, of, throwError } from 'rxjs';
 import { AttendanceApiService } from '../../graphql/attendance-api.service';
 import { PermissionsService } from '../../permissions/permissions.service';
@@ -85,6 +85,14 @@ export const Playground: Story = {
     await expect(await canvas.findByRole('heading', { name: defaultArgs.eventName })).toBeVisible();
     await expect(canvas.getByLabelText('Resumo geral de presença e destaque do período em foco')).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Atualizar' })).toBeEnabled();
+    const map = await canvas.findByRole('img', {
+      name: 'Mapa de calor dos locais onde as presenças foram coletadas',
+    });
+    await waitFor(() => {
+      const viewport = map.querySelector('.ol-viewport');
+      expect(viewport).not.toBeNull();
+      expect(viewport?.getBoundingClientRect().height).toBeGreaterThan(0);
+    });
   },
 };
 

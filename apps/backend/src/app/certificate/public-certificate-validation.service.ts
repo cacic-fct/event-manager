@@ -6,7 +6,7 @@ import {
   PublicCertificateValidationEvent,
   PublicCertificateValidationEventSection,
 } from '@cacic-fct/shared-data-types';
-import { isValidCPF } from '@cacic-fct/shared-utils';
+import { isValidCPF, maskCPF } from '@cacic-fct/shared-utils';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -629,6 +629,6 @@ export class PublicCertificateValidationService {
       return undefined;
     }
 
-    return `•••.${digits.slice(3, 6)}.${digits.slice(6, 9)}-••`;
+    return maskCPF(digits);
   }
 }

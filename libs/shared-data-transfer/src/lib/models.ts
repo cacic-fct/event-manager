@@ -39,12 +39,38 @@ export interface TransferSummary {
   skip: number;
 }
 
+export interface TransferPersonData {
+  name?: string;
+  academicId?: string;
+  identityDocument?: string;
+  email?: string;
+  phone?: string;
+}
+
+/** An explicit choice made after the server has checked the source identifiers. */
+export type TransferPersonDecision =
+  | { key: string; action: 'skip' }
+  | { key: string; action: 'create'; data: TransferPersonData; reviewHash?: string }
+  | { key: string; action: 'merge'; personId: string; data: TransferPersonData; reviewHash?: string };
+
+export interface TransferPersonPrompt {
+  key: string;
+  data: TransferPersonData;
+  message: string;
+  candidates?: Array<TransferPersonData & { id: string }>;
+  canCreate?: boolean;
+  canMerge?: boolean;
+  reviewHash?: string;
+  lockedFields?: Array<keyof TransferPersonData>;
+}
+
 export interface TransferPreview {
   items: TransferItem[];
   summary: TransferSummary;
   planHash: string;
   canApply: boolean;
   allocation?: TransferAllocation;
+  personPrompts?: TransferPersonPrompt[];
 }
 
 export interface TransferAllocation {
@@ -87,6 +113,9 @@ export interface TransferExportRequest {
   includeConfiguration: boolean;
   includeSubscriptions?: boolean;
   includeAttendances?: boolean;
+  includeTickets?: boolean;
+  includePublishingState?: boolean;
+  includeAudienceInvitations?: boolean;
   includeChildSubscriptions?: boolean;
   includeChildAttendances?: boolean;
 }
@@ -94,6 +123,7 @@ export interface TransferExportRequest {
 export interface TransferPreviewRequest {
   document: unknown;
   scope?: TransferTarget;
+  personDecisions?: TransferPersonDecision[];
 }
 
 export interface TransferApplyRequest extends TransferPreviewRequest {

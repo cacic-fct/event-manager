@@ -1,17 +1,29 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { DatePipe, DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { Component, DestroyRef, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
+import { DatePipe, DOCUMENT, isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
+import {
+  Component,
+  DestroyRef,
+  PLATFORM_ID,
+  TemplateRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import type { MatButton } from '@angular/material/button';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
+import { MatTabsModule } from '@angular/material/tabs';
 import {
   createTransferTemplate,
   parseTransferJson,
@@ -22,6 +34,8 @@ import {
   type TransferIssue,
   type TransferItem,
   type TransferPreview,
+  type TransferPersonDecision,
+  type TransferPersonPrompt,
   type TransferResourceKind,
   type TransferResult,
   type TransferTarget,
@@ -29,6 +43,7 @@ import {
 } from '@cacic-fct/shared-data-transfer';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom } from 'rxjs';
+import { TransferPersonReviewComponent } from './transfer-person-review.component';
 import { DataTransferApiService } from './data-transfer-api.service';
 import { EventContextPickerComponent, type EventContextRef } from '../shared/event-context-picker.component';
 import { WorkspacePendingChangesService } from '../app-shell/workspace-pending-changes.service';
@@ -56,6 +71,8 @@ const resourceLabels: Record<TransferResourceKind, string> = {
   'group-subscription': 'Inscrição em grupo de eventos',
   'major-event-subscription': 'Inscrição em grande evento',
   'event-attendance': 'Presença em evento',
+  'ticket-purchase': 'Compra avulsa de bilhete',
+  'event-ticket': 'Bilhete emitido',
 };
 
 const actionLabels: Record<TransferItem['action'], string> = {
@@ -82,20 +99,25 @@ const templateKinds: Array<{ value: TransferTarget['kind']; label: string }> = [
   selector: 'app-data-transfer-page',
   imports: [
     DatePipe,
+    NgTemplateOutlet,
+    TransferPersonReviewComponent,
     EventContextPickerComponent,
     MatButtonModule,
     MatCheckboxModule,
+    MatDialogModule,
     MatExpansionModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
     MatProgressBarModule,
     MatSelectModule,
+    MatTabsModule,
   ],
   templateUrl: './data-transfer-page.component.html',
   styleUrls: [
     '../app-shell/layout/page-layout.shared.scss',
     '../app-shell/layout/forms-feedback.shared.scss',
+    '../app-shell/layout/workspace-tabs.shared.scss',
     './data-transfer-page.component.scss',
     './data-transfer-page.feedback.scss',
     './data-transfer-page.review.scss',
@@ -104,6 +126,9 @@ const templateKinds: Array<{ value: TransferTarget['kind']; label: string }> = [
 })
 export class DataTransferPageComponent {
   private readonly api = inject(DataTransferApiService);
+  private readonly dialog = inject(MatDialog);
+  private readonly undoConfirmationTemplate = viewChild.required<TemplateRef<unknown>>('undoConfirmation');
+  private undoDialogRef: MatDialogRef<unknown> | null = null;
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly platformId = inject(PLATFORM_ID);
@@ -131,6 +156,9 @@ export class DataTransferPageComponent {
   protected readonly includeConfiguration = signal(true);
   protected readonly includeSubscriptions = signal(false);
   protected readonly includeAttendances = signal(false);
+  protected readonly includeTickets = signal(false);
+  protected readonly includePublishingState = signal(false);
+  protected readonly includeAudienceInvitations = signal(false);
   protected readonly includeChildSubscriptions = signal(false);
   protected readonly includeChildAttendances = signal(false);
   protected readonly jsonText = signal('');
@@ -138,6 +166,8 @@ export class DataTransferPageComponent {
   protected readonly sourceDocument = signal<ReturnType<typeof parseTransferJson> | null>(null);
   protected readonly validationIssues = signal<TransferIssue[]>([]);
   protected readonly serverIssues = signal<TransferIssue[]>([]);
+  protected readonly personPrompts = signal<TransferPersonPrompt[]>([]);
+  protected readonly personDecisions = signal<TransferPersonDecision[]>([]);
   protected readonly preview = signal<TransferPreview | null>(null);
   protected readonly result = signal<TransferResult | null>(null);
   protected readonly committedResult = signal<TransferResult | null>(null);
@@ -178,14 +208,28 @@ export class DataTransferPageComponent {
   protected readonly canImport = computed(() => this.permissions.has(Permission.DataTransfer.Import));
   protected readonly canUndoPermission = computed(() => this.permissions.has(Permission.DataTransfer.Undo));
   protected readonly canExportSubscriptions = computed(() => this.permissions.has(Permission.Subscription.Read));
+  protected readonly canExportTickets = computed(() => this.permissions.has(Permission.Ticket.Read));
   protected readonly canExportAttendances = computed(() => this.permissions.has(Permission.EventAttendance.Read));
   protected readonly canImportSubscriptions = computed(() => this.permissions.has(Permission.Subscription.Import));
   protected readonly canImportAttendances = computed(() => this.permissions.has(Permission.EventAttendance.Import));
   protected readonly canViewHistory = computed(() => this.canImport() || this.canUndoPermission());
-  protected readonly historyEntries = computed(() => {
-    const currentBatchId = this.committedResult()?.batchId;
-    return this.batchHistory().filter((batch) => batch.batchId !== currentBatchId);
+  private readonly selectedTask = signal<'import' | 'export' | 'history'>('import');
+  protected readonly activeTask = computed(() => {
+    const task = this.selectedTask();
+    if (task === 'import' && this.canImport()) return task;
+    if (task === 'export' && this.canExport()) return task;
+    if (task === 'history' && this.canViewHistory()) return task;
+    return this.canImport() ? 'import' : this.canExport() ? 'export' : 'history';
   });
+  protected readonly taskSwitchLocked = computed(
+    () =>
+      this.importLocked() ||
+      this.previewLoading() ||
+      this.fileLoading() ||
+      this.exportLoading() ||
+      this.undoLoading() ||
+      this.undoConfirmationOpen(),
+  );
   protected readonly canUndoBatch = computed(() => {
     const current = this.committedResult();
     return Boolean(current?.batchId && current.applied && this.canUndoBatchId(current.batchId));
@@ -225,6 +269,7 @@ export class DataTransferPageComponent {
       this.undoLoading() ||
       this.previewLoading() ||
       this.allocationExpired() ||
+      !!current.personPrompts?.length ||
       !this.hasImportableChanges()
     ) {
       return false;
@@ -272,6 +317,7 @@ export class DataTransferPageComponent {
 
     this.destroyRef.onDestroy(() => {
       this.pendingRegistration.destroy();
+      this.undoDialogRef?.close();
       const browserWindow = this.document.defaultView;
       if (browserWindow && this.allocationExpiryTimer !== null) {
         browserWindow.clearTimeout(this.allocationExpiryTimer);
@@ -299,6 +345,11 @@ export class DataTransferPageComponent {
     this.invalidatePreview(true);
   }
 
+  protected selectTask(task: 'import' | 'export' | 'history'): void {
+    if (this.taskSwitchLocked()) return;
+    this.selectedTask.set(task);
+  }
+
   protected clearSelectedContext(): void {
     if (this.importLocked() || this.undoLoading()) return;
     if (this.selectedContext()) {
@@ -323,12 +374,16 @@ export class DataTransferPageComponent {
       | 'includeDescendants'
       | 'includeConfiguration'
       | 'includeSubscriptions'
+      | 'includeTickets'
+      | 'includePublishingState'
+      | 'includeAudienceInvitations'
       | 'includeAttendances'
       | 'includeChildSubscriptions'
       | 'includeChildAttendances',
     enabled: boolean,
   ): void {
     if (this.importLocked() || this.undoLoading()) return;
+    if (option === 'includeTickets' && enabled && !this.canExportTickets()) return;
     if (option === 'includeSubscriptions' && enabled && !this.canExportSubscriptions()) {
       return;
     }
@@ -467,6 +522,9 @@ export class DataTransferPageComponent {
       includeDescendants: this.includeDescendants(),
       includeConfiguration: this.includeConfiguration(),
       includeSubscriptions: this.includeSubscriptions() && this.canExportSubscriptions(),
+      includeTickets: this.includeTickets() && this.canExportTickets(),
+      includePublishingState: this.includePublishingState(),
+      includeAudienceInvitations: this.includeAudienceInvitations(),
       includeAttendances: target.kind === 'event' && this.includeAttendances() && this.canExportAttendances(),
       includeChildSubscriptions:
         target.kind !== 'event' && this.includeChildSubscriptions() && this.canExportSubscriptions(),
@@ -508,6 +566,18 @@ export class DataTransferPageComponent {
     this.downloadJson(`modelo-cacic-${kind}.json`, template);
   }
 
+  protected choosePerson(decision: TransferPersonDecision): void {
+    if (this.importLocked() || this.previewLoading() || this.undoLoading()) return;
+    this.personDecisions.update((choices) => [...choices.filter((choice) => choice.key !== decision.key), decision]);
+    this.invalidatePreview(false);
+  }
+
+  protected editPerson(key: string): void {
+    if (this.importLocked() || !this.personDecisions().some((decision) => decision.key === key)) return;
+    this.personDecisions.update((choices) => choices.filter((choice) => choice.key !== key));
+    this.invalidatePreview(false);
+  }
+
   protected async previewImport(): Promise<void> {
     if (!this.canImport() || this.previewLoading() || this.importLocked() || this.undoLoading()) {
       return;
@@ -532,12 +602,17 @@ export class DataTransferPageComponent {
     this.previewLoading.set(true);
     try {
       const preview = await firstValueFrom(
-        this.api.preview({ document, ...(requestScope ? { scope: requestScope } : {}) }),
+        this.api.preview({
+          document,
+          ...(requestScope ? { scope: requestScope } : {}),
+          ...(this.personDecisions().length ? { personDecisions: this.personDecisions() } : {}),
+        }),
       );
       if (request !== this.previewRequest || this.destroyRef.destroyed) {
         return;
       }
       this.preview.set(preview);
+      this.personPrompts.set(preview.personPrompts ?? []);
       this.scheduleAllocationExpiry(preview.allocation?.expiresAt);
       this.offerPartialApproval.set(
         preview.items.some((item) => item.status === 'blocked' || item.action === 'skip') || preview.summary.skip > 0,
@@ -566,6 +641,7 @@ export class DataTransferPageComponent {
     const requestBody: TransferApplyRequest = {
       document,
       ...(target ? { scope: target } : {}),
+      ...(this.personDecisions().length ? { personDecisions: this.personDecisions() } : {}),
       planHash: preview.planHash,
       allowPartial: this.allowPartial(),
       ...(preview.allocation ? { allocationToken: preview.allocation.token } : {}),
@@ -671,6 +747,7 @@ export class DataTransferPageComponent {
       !targetBatchId ||
       !this.canUndoBatchId(targetBatchId) ||
       this.undoLoading() ||
+      this.undoConfirmationOpen() ||
       this.importLocked() ||
       this.previewLoading()
     ) {
@@ -681,13 +758,26 @@ export class DataTransferPageComponent {
     this.undoError.set('');
     this.undoTarget.set({ batchId: targetBatchId });
     this.undoConfirmationOpen.set(true);
+    const dialogRef = this.dialog.open(this.undoConfirmationTemplate(), {
+      width: 'min(560px, calc(100vw - 32px))',
+      autoFocus: '[data-undo-cancel]',
+      ariaDescribedBy: 'undo-confirmation-description',
+    });
+    this.undoDialogRef = dialogRef;
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        if (this.undoDialogRef === dialogRef) {
+          this.undoDialogRef = null;
+          this.resetUndoState();
+        }
+      });
   }
 
   protected cancelUndo(): void {
     if (!this.undoLoading()) {
-      this.undoConfirmationOpen.set(false);
-      this.undoError.set('');
-      this.undoTarget.set(null);
+      this.resetUndoState();
     }
   }
 
@@ -695,6 +785,8 @@ export class DataTransferPageComponent {
     const batchId = this.undoTarget()?.batchId;
     if (
       !batchId ||
+      !this.undoConfirmationOpen() ||
+      !this.undoDialogRef ||
       !this.canUndoBatchId(batchId) ||
       this.undoLoading() ||
       this.importLocked() ||
@@ -703,6 +795,7 @@ export class DataTransferPageComponent {
       return;
     }
     this.undoLoading.set(true);
+    this.undoDialogRef.disableClose = true;
     this.undoError.set('');
     try {
       const response = await firstValueFrom(this.api.undo(batchId));
@@ -712,13 +805,13 @@ export class DataTransferPageComponent {
       this.undoAuditEntryId.set(response.auditEntryId);
       this.undoneBatchIds.update((batchIds) => new Set(batchIds).add(batchId));
       this.undoSuccessMessage.set('Importação revertida. Edições feitas depois do lote foram preservadas.');
-      this.undoConfirmationOpen.set(false);
-      this.undoTarget.set(null);
+      this.resetUndoState();
       void this.loadHistory();
     } catch (error: unknown) {
       this.undoError.set(firstIssueMessage(error, 'Não foi possível desfazer esta importação. Tente novamente.'));
     } finally {
       this.undoLoading.set(false);
+      if (this.undoDialogRef) this.undoDialogRef.disableClose = false;
     }
   }
 
@@ -920,6 +1013,8 @@ export class DataTransferPageComponent {
     this.serverIssues.set([]);
     this.importSuccessMessage.set('');
     if (resetPartialApproval) {
+      this.personPrompts.set([]);
+      this.personDecisions.set([]);
       this.allowPartial.set(false);
       this.offerPartialApproval.set(false);
     }
@@ -928,11 +1023,17 @@ export class DataTransferPageComponent {
   private resetParticipationOptions(): void {
     this.includeSubscriptions.set(false);
     this.includeAttendances.set(false);
+    this.includeTickets.set(false);
+    this.includePublishingState.set(false);
+    this.includeAudienceInvitations.set(false);
     this.includeChildSubscriptions.set(false);
     this.includeChildAttendances.set(false);
   }
 
   private resetUndoState(): void {
+    const dialogRef = this.undoDialogRef;
+    this.undoDialogRef = null;
+    dialogRef?.close();
     this.undoConfirmationOpen.set(false);
     this.undoError.set('');
     this.undoTarget.set(null);

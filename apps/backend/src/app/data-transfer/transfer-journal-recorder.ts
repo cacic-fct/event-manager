@@ -70,6 +70,9 @@ const compoundKeys = {
   accountUserMerge: ['oldUserId'],
 } as const satisfies Partial<{ [Model in PrismaModelProperty]: readonly PrismaScalarKeysByModel[Model][] }>;
 const deletableLeaves = new Set([
+  'eventAudienceInvitation',
+  'eventGroupAudienceInvitation',
+  'majorEventAudienceInvitation',
   'eventFormLinkPriceTier',
   'majorEventSubscriptionEventSelection',
   'eventTicketHistory',
@@ -406,6 +409,9 @@ export class TransferJournalRecorder {
   ): Promise<unknown> {
     const args = object(input);
     const source = this.requireSource();
+    // Delivery workers mutate this outbox independently. Ticket mutations remain journaled;
+    // recovery emits fresh invalidations after both import and undo.
+    if (model === 'ticketRealtimeOutbox' && ['event-ticket', 'ticket-purchase'].includes(source.kind)) return perform();
     const where = journalReadWhere(model, args['where'] ?? this.createWhere(model, args['data']));
     const nestedData = args['data'] ?? { ...object(args['create']), ...object(args['update']) };
     this.assertNoNestedMutation(model, nestedData);

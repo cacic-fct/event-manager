@@ -1,4 +1,4 @@
-import type { TransferResource } from '@cacic-fct/shared-data-transfer';
+import { TRANSFER_MAX_RESOURCES, type TransferResource } from '@cacic-fct/shared-data-transfer';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { diffResourceData } from './data-transfer.service';
 import type { TransferAdapterContext } from './data-transfer-adapter';
@@ -9,6 +9,218 @@ import { DataTransferService } from './data-transfer.service';
 import { TransferKeyAllocations } from './transfer-key-allocations';
 
 describe('EventTreeTransferAdapter normalization and mutations', () => {
+  it('persists an imported schedule with lifecycle dates and the current publication actor', async () => {
+    const before = eventRecord({ publicationState: 'PUBLISHED', publishedAt: new Date() });
+    const scheduledPublishAt = relativeDate(1);
+    const tx = eventUpdateTransaction(before, before);
+    const adapter = createAdapter(tx);
+    const resource: TransferResource = {
+      kind: 'event',
+      id: before.id,
+      data: { publicationState: 'SCHEDULED', scheduledPublishAt },
+    };
+    const context = createContext(tx, [resource]);
+    const snapshot = await adapter.resolve(resource, context);
+    await adapter.validate(snapshot, context);
+    await adapter.apply(snapshot, 'update', context);
+    expect(tx.event.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          publicationState: 'SCHEDULED',
+          scheduledPublishAt: new Date(scheduledPublishAt),
+          publishedAt: null,
+          unpublishedAt: null,
+          publicationUpdatedBy: 'organizer-1',
+          publicationScheduledBy: 'organizer-1',
+        }),
+      }),
+    );
+  });
+
+  it('applies an invitation-only update and refreshes attendance without other audience fields', async () => {
+    const before = eventRecord({ audienceInvitations: [{ personId: 'old-person' }] });
+    const updated = { ...before, audienceInvitations: [{ personId: 'person-1' }] };
+    const tx = {
+      ...eventUpdateTransaction(before, updated),
+      event: {
+        ...eventUpdateTransaction(before, updated).event,
+        update: jest.fn().mockResolvedValue(updated),
+      },
+    };
+    const invitations = {
+      replaceInvitations: jest.fn().mockResolvedValue({
+        invitations: [{ personId: 'person-1' }],
+        addedPersonIds: ['person-1'],
+        removedPersonIds: ['old-person'],
+      }),
+    };
+    const adapter = createAdapter(tx, undefined, undefined, invitations);
+    const resource: TransferResource = { kind: 'event', id: before.id, data: { invitationPersonIds: ['person-1'] } };
+    const context = createContext(tx, [resource]);
+    const snapshot = await adapter.resolve(resource, context);
+    expect(diffResourceData(snapshot.current, snapshot.resource)).toContainEqual({
+      field: 'invitationPersonIds',
+      before: ['old-person'],
+      after: ['person-1'],
+    });
+    const result = await adapter.apply(snapshot, 'update', context);
+    expect(invitations.replaceInvitations).toHaveBeenCalledWith(
+      { targetType: 'EVENT', targetId: before.id },
+      ['person-1'],
+      'organizer-1',
+      tx,
+    );
+    expect(result.postCommitEffects).toHaveLength(2);
+  });
+
+  it.each(['event', 'group', 'major-event'] as const)(
+    'exports %s publication and invitees only when requested',
+    async (kind) => {
+      const record = eventRecord({
+        audienceInvitations: [{ personId: 'person-2' }, { personId: 'person-1' }],
+        publicationState: 'PUBLISHED',
+        publishedAt: relativeDate(-1),
+        scheduledPublishAt: null,
+        unpublishedAt: null,
+        sportsCategory: null,
+      });
+      const tx = {
+        event: { findFirst: jest.fn().mockResolvedValue(record) },
+        eventGroup: { findFirst: jest.fn().mockResolvedValue(record) },
+        majorEvent: { findFirst: jest.fn().mockResolvedValue(record) },
+      };
+      const adapter = createAdapter(tx);
+      const options = { includeDescendants: false, includeConfiguration: false };
+      const defaults = await adapter.exportTarget({ kind, id: record.id }, options, createContext(tx));
+      expect(defaults.resources[0].data).not.toHaveProperty('publicationState');
+      expect(defaults.resources[0].data).not.toHaveProperty('invitationPersonIds');
+      const selected = await adapter.exportTarget(
+        { kind, id: record.id },
+        {
+          ...options,
+          includePublishingState: true,
+          includeAudienceInvitations: true,
+        },
+        createContext(tx),
+      );
+      expect(selected.resources[0].data).toMatchObject({ invitationPersonIds: ['person-1', 'person-2'] });
+      if (kind === 'group') expect(selected.resources[0].data).not.toHaveProperty('publicationState');
+      else
+        expect(selected.resources[0].data).toMatchObject({ publicationState: 'PUBLISHED', scheduledPublishAt: null });
+    },
+  );
+
+  it.each([
+    ['event', Permission.Event.Update, 'eventId'],
+    ['group', Permission.EventGroup.Update, 'eventGroupId'],
+    ['major-event', Permission.MajorEvent.Update, 'majorEventId'],
+  ] as const)('omits %s invitees without update permission', async (kind, permission, scopeField) => {
+    const record = eventRecord({ audienceInvitations: [{ personId: 'private-person' }], sportsCategory: null });
+    const tx = {
+      event: { findFirst: jest.fn().mockResolvedValue(record) },
+      eventGroup: { findFirst: jest.fn().mockResolvedValue(record) },
+      majorEvent: { findFirst: jest.fn().mockResolvedValue(record) },
+    };
+    const authorization = {
+      assertPermissions: jest.fn(async (_actor, permissions: readonly Permission[]) => {
+        if (permissions.includes(permission)) throw new ForbiddenException();
+      }),
+    };
+    const context = createContext(tx);
+    const result = await createAdapter(tx, authorization).exportTarget(
+      { kind, id: record.id },
+      { includeDescendants: false, includeConfiguration: false, includeAudienceInvitations: true },
+      context,
+    );
+    expect(result.resources).toHaveLength(1);
+    expect(result.resources[0].data).not.toHaveProperty('invitationPersonIds');
+    expect(result.issues).toHaveLength(1);
+    expect(authorization.assertPermissions).toHaveBeenCalledWith(context.actor, [permission], {
+      [scopeField]: record.id,
+    });
+  });
+
+  it('checks descendant invitation access independently of the root grant', async () => {
+    const group = eventRecord({
+      id: 'group-1',
+      sportsCategory: null,
+      audienceInvitations: [{ personId: 'group-invitee' }],
+    });
+    const event = eventRecord({
+      id: 'event-1',
+      eventGroupId: group.id,
+      audienceInvitations: [{ personId: 'event-invitee' }],
+    });
+    const tx = {
+      eventGroup: { findFirst: jest.fn().mockResolvedValue(group) },
+      event: { findMany: jest.fn().mockResolvedValue([event]) },
+    };
+    const authorization = {
+      assertPermissions: jest.fn(async (_actor, permissions: readonly Permission[]) => {
+        if (permissions.includes(Permission.Event.Update)) throw new ForbiddenException();
+      }),
+    };
+    const result = await createAdapter(tx, authorization).exportTarget(
+      { kind: 'group', id: group.id },
+      { includeDescendants: true, includeConfiguration: false, includeAudienceInvitations: true },
+      createContext(tx),
+    );
+    expect(result.resources.find((row) => row.kind === 'group')?.data).toHaveProperty('invitationPersonIds', [
+      'group-invitee',
+    ]);
+    expect(result.resources.find((row) => row.kind === 'event')?.data).not.toHaveProperty('invitationPersonIds');
+    expect(result.issues).toHaveLength(1);
+  });
+
+  it.each(['major-event', 'group'] as const)(
+    'bounds %s descendant events before authorizing each child',
+    async (kind) => {
+      const tx = {
+        majorEvent: { findFirst: jest.fn().mockResolvedValue({ id: 'root-1', updatedAt: new Date() }) },
+        eventGroup: {
+          findFirst: jest.fn().mockResolvedValue({ id: 'root-1', updatedAt: new Date(), sportsCategory: null }),
+          findMany: jest.fn().mockResolvedValue([]),
+        },
+        event: {
+          findMany: jest
+            .fn()
+            .mockResolvedValue(Array.from({ length: TRANSFER_MAX_RESOURCES + 1 }, () => eventRecord())),
+        },
+      };
+      const authorization = { assertPermissions: jest.fn().mockResolvedValue(undefined) };
+      await expect(
+        createAdapter(tx, authorization).exportTarget(
+          { kind, id: 'root-1' },
+          { includeDescendants: true, includeConfiguration: false },
+          createContext(tx),
+        ),
+      ).rejects.toThrow('limite de recursos');
+      expect(tx.event.findMany).toHaveBeenCalledWith(expect.objectContaining({ take: TRANSFER_MAX_RESOURCES + 1 }));
+      expect(authorization.assertPermissions).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('bounds descendant groups before querying their events', async () => {
+    const tx = {
+      majorEvent: { findFirst: jest.fn().mockResolvedValue({ id: 'root-1', updatedAt: new Date() }) },
+      eventGroup: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue(Array.from({ length: TRANSFER_MAX_RESOURCES + 1 }, () => ({ id: 'group-1' }))),
+      },
+      event: { findMany: jest.fn() },
+    };
+    await expect(
+      createAdapter(tx).exportTarget(
+        { kind: 'major-event', id: 'root-1' },
+        { includeDescendants: true, includeConfiguration: false },
+        createContext(tx),
+      ),
+    ).rejects.toThrow('limite de recursos');
+    expect(tx.eventGroup.findMany).toHaveBeenCalledWith(expect.objectContaining({ take: TRANSFER_MAX_RESOURCES + 1 }));
+    expect(tx.event.findMany).not.toHaveBeenCalled();
+  });
+
   it('enforces the existing and proposed parent certificate settings', async () => {
     const event = eventRecord({ eventGroupId: 'group-1', shouldIssueCertificate: true });
     const tx = {
@@ -573,13 +785,14 @@ function createAdapter(
     assertEventGroupMutable: jest.fn().mockResolvedValue(undefined),
     assertMajorEventMutable: jest.fn().mockResolvedValue(undefined),
   },
+  invitations: Record<string, unknown> = {},
 ): EventTreeTransferAdapter {
   return new EventTreeTransferAdapter(
     tx as never,
     (authorization ?? { assertPermissions: jest.fn().mockResolvedValue(undefined) }) as never,
     frozen as never,
     { record: jest.fn().mockResolvedValue(undefined) } as never,
-    {} as never,
+    invitations as never,
     {
       syncEvent: jest.fn().mockResolvedValue(undefined),
       syncEventGroup: jest.fn().mockResolvedValue(undefined),

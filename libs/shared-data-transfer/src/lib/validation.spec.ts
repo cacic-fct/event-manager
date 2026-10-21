@@ -63,7 +63,7 @@ describe('portable event data contract', () => {
     );
     for (const field of [
       'id',
-      'publicationState',
+      'publicationUpdatedBy',
       'createdById',
       'onlineAttendanceCode',
       'deletedAt',
@@ -75,6 +75,45 @@ describe('portable event data contract', () => {
         parseTransferDocument({
           ...document,
           resources: [{ ...resource, data: { ...resource.data, [field]: 'forged' } }],
+        }),
+      ).toThrow(TransferValidationError);
+    }
+  });
+
+  it('round-trips publication snapshots and invitation lists without delivery metadata', () => {
+    const document = createTransferTreeFixture();
+    const publishedAt = new Date(Date.now() - 60_000).toISOString();
+    for (const kind of ['event', 'major-event'] as const) {
+      const resources = [
+        {
+          kind,
+          id: 'publication-record',
+          data: {
+            publicationState: 'PUBLISHED',
+            publishedAt,
+            scheduledPublishAt: null,
+            unpublishedAt: null,
+            invitationPersonIds: ['person-1'],
+          },
+        },
+      ];
+      expect(parseTransferDocument({ ...document, resources }).resources).toEqual(resources);
+    }
+    expect(
+      parseTransferDocument({
+        ...document,
+        resources: [{ kind: 'group', id: 'group-1', data: { invitationPersonIds: [] } }],
+      }).resources[0].data,
+    ).toEqual({ invitationPersonIds: [] });
+    for (const invitationPersonIds of [
+      null,
+      ['person-1', 'person-1'],
+      Array.from({ length: 1001 }, (_, i) => `p-${i}`),
+    ]) {
+      expect(() =>
+        parseTransferDocument({
+          ...document,
+          resources: [{ kind: 'event', id: 'event-1', data: { invitationPersonIds } }],
         }),
       ).toThrow(TransferValidationError);
     }

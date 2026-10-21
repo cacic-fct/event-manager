@@ -8,6 +8,7 @@ import {
   normalizeActivityRow,
   normalizeEventRow,
   normalizeModalityRow,
+  paymentRequirementsFor,
   schemaForModes,
   validateRegistrationModalities,
 } from './source-adapter.mjs';
@@ -24,9 +25,11 @@ export async function readEvcompSqlDump(filePath, override = {}, timezoneOffset 
 export function parseEvcompSqlDump(sql, override = {}, timezoneOffset = '-03:00') {
   const schema = mergeSchema(defaultSourceSchema, override);
   const includedTables = new Set(Object.values(schema).map((section) => section.table));
-  const tables = parseMysqlDump(sql, includedTables);
-  const { catalogMode, modalityMode } = detectDumpModes(tables, schema);
-  const effectiveSchema = schemaForModes(schema, { catalogMode, modalityMode });
+  const paymentColumns = new Set(paymentRequirementsFor(schema).map((item) => item.column));
+  const selectedColumnsByTable = schema.payments ? new Map([[schema.payments.table, paymentColumns]]) : null;
+  const tables = parseMysqlDump(sql, includedTables, selectedColumnsByTable);
+  const { catalogMode, modalityMode, paymentsMode } = detectDumpModes(tables, schema);
+  const effectiveSchema = schemaForModes(schema, { catalogMode, modalityMode, paymentsMode });
   validateDumpSchema(tables, effectiveSchema);
 
   const events =
@@ -126,6 +129,16 @@ export function parseEvcompSqlDump(sql, override = {}, timezoneOffset = '-03:00'
     sourcePersonId: item[schema.lecturers.userId],
     sourceActivityId: item[schema.lecturers.activityId],
   }));
+  const payments =
+    paymentsMode === 'current'
+      ? rowsFor(tables, schema.payments.table).map((item) => ({
+          sourceId: item[schema.payments.id],
+          sourceRegistrationId: item[schema.payments.registrationId],
+          status: item[schema.payments.status],
+          submittedAt: parseDumpDate(item[schema.payments.submittedAt], timezoneOffset),
+          evaluatedAt: parseDumpDate(item[schema.payments.evaluatedAt], timezoneOffset),
+        }))
+      : undefined;
   const referencedPersonIds = new Set(
     [...registrations, ...attendances, ...lecturers].map((item) => String(item.sourcePersonId)),
   );
@@ -142,7 +155,16 @@ export function parseEvcompSqlDump(sql, override = {}, timezoneOffset = '-03:00'
       email: item[effectiveSchema.users.email],
       academicId: item[effectiveSchema.users.academicId],
     }));
-  return { people, events, activities, modalities, registrations, attendances, lecturers };
+  return {
+    people,
+    events,
+    activities,
+    modalities,
+    registrations,
+    attendances,
+    lecturers,
+    ...(payments === undefined ? {} : { payments }),
+  };
 }
 
 function parseDumpDate(value, timezoneOffset) {
@@ -158,7 +180,7 @@ function parseDumpDate(value, timezoneOffset) {
   return parsed;
 }
 
-export function parseMysqlDump(sql, includedTables = null) {
+export function parseMysqlDump(sql, includedTables = null, selectedColumnsByTable = null) {
   const tables = new Map();
   for (const statement of splitSqlStatements(sql)) {
     const create = statement.match(
@@ -194,11 +216,21 @@ export function parseMysqlDump(sql, includedTables = null) {
     if (!columns.length) {
       throw new Error(`SQL dump INSERT for ${name} has no column list or preceding CREATE TABLE.`);
     }
-    for (const tuple of parseValueTuples(insert[3])) {
+    const selectedColumns = selectedColumnsByTable?.get(name);
+    const selectedIndexes = selectedColumns
+      ? new Set(columns.flatMap((column, index) => (selectedColumns.has(column) ? [index] : [])))
+      : null;
+    for (const tuple of parseValueTuples(insert[3], selectedIndexes)) {
       if (tuple.length !== columns.length) {
         throw new Error(`SQL dump INSERT for ${name} has ${tuple.length} values; expected ${columns.length}.`);
       }
-      knownTable.rows.push(Object.fromEntries(columns.map((column, index) => [column, tuple[index]])));
+      knownTable.rows.push(
+        Object.fromEntries(
+          columns.flatMap((column, index) =>
+            selectedIndexes && !selectedIndexes.has(index) ? [] : [[column, tuple[index]]],
+          ),
+        ),
+      );
     }
     knownTable.columns = [...new Set([...knownTable.columns, ...columns])];
     tables.set(name, knownTable);
@@ -229,12 +261,14 @@ function validateDumpSchema(tables, schema) {
 }
 
 function detectDumpModes(tables, schema) {
+  const paymentMode = detectDumpFeatureMode(tables, paymentRequirementsFor(schema), [schema.payments?.table]);
   return {
     catalogMode: detectDumpFeatureMode(tables, catalogRequirementsFor(schema), [
       schema.events?.table,
       schema.activities?.table,
     ]),
     modalityMode: detectDumpFeatureMode(tables, modalityRequirementsFor(schema), [schema.modalities?.table]),
+    paymentsMode: paymentMode === 'current' ? 'current' : 'absent',
   };
 }
 
@@ -349,7 +383,7 @@ function splitSqlStatements(sql) {
   return statements;
 }
 
-function parseValueTuples(valueSql) {
+function parseValueTuples(valueSql, selectedIndexes = null) {
   const tuples = [];
   let index = 0;
   while (index < valueSql.length) {
@@ -360,7 +394,11 @@ function parseValueTuples(valueSql) {
       throw new Error(`Unsupported SQL dump VALUES syntax near: ${valueSql.slice(index, index + 30)}`);
     }
     const end = findClosingParenthesis(valueSql, index);
-    tuples.push(splitTopLevel(valueSql.slice(index + 1, end)).map(parseMysqlValue));
+    tuples.push(
+      splitTopLevel(valueSql.slice(index + 1, end)).map((token, valueIndex) =>
+        selectedIndexes && !selectedIndexes.has(valueIndex) ? undefined : parseMysqlValue(token),
+      ),
+    );
     index = end + 1;
   }
   return tuples;

@@ -6,7 +6,7 @@ const SUPPRESSION_ENTITY_TYPE = 'person_suppression';
 const KEY_ENTITY_TYPE = 'person_suppression_key';
 const SUPPRESSION_VERSION = 'v1';
 
-// Keep this versioned encoding in sync with tools/evcomp-import/suppression.mjs.
+// Preserve this versioned encoding for suppression records from previous imports.
 function digest(secret: string, purpose: string, namespace: string, sourceId?: string): string {
   return createHmac('sha256', secret)
     .update(

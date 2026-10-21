@@ -21,6 +21,44 @@ import { RequireCollectionPermissions } from '../auth/decorators/require-collect
 import type { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { DataTransferService } from './data-transfer.service';
 
+const personDecisionsSchema: Extract<Parameters<typeof ApiBody>[0], { schema: unknown }>['schema'] = {
+  type: 'array',
+  description:
+    'Explicit create/merge/skip choices for server-issued missing-person keys. Creation requires global people read/create permissions, a full name and another identifier. All identities are checked again before the atomic write.',
+  items: {
+    type: 'object',
+    required: ['key', 'action'],
+    additionalProperties: false,
+    properties: {
+      key: { type: 'string', pattern: '^[a-f0-9]{64}$' },
+      action: { type: 'string', enum: ['create', 'merge', 'skip'] },
+      reviewHash: {
+        type: 'string',
+        pattern: '^[a-f0-9]{64}$',
+        description: 'Fingerprint of the existing candidates explicitly reviewed by the organizer.',
+      },
+      personId: { type: 'string', description: 'Selected existing candidate for a manual merge.' },
+      data: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          name: { type: 'string', maxLength: 300 },
+          academicId: { type: 'string', maxLength: 40 },
+          identityDocument: { type: 'string', maxLength: 40 },
+          email: { type: 'string', format: 'email', maxLength: 300 },
+          phone: {
+            type: 'string',
+            maxLength: 40,
+            description:
+              'Complete phone number in E.164 format (country prefix), or a Brazilian local number with area code.',
+          },
+        },
+      },
+    },
+    example: { key: '0'.repeat(64), action: 'create', data: { name: 'Ana Silva', email: 'ana@example.com' } },
+  },
+};
+
 type AuthenticatedRequest = Request & { user?: AuthenticatedUser };
 
 @ApiTags('admin-data-transfer')
@@ -60,6 +98,18 @@ export class DataTransferController {
         includeConfiguration: { type: 'boolean' },
         includeSubscriptions: { type: 'boolean', default: false },
         includeAttendances: { type: 'boolean', default: false },
+        includeTickets: { type: 'boolean', default: false },
+        includePublishingState: {
+          type: 'boolean',
+          default: false,
+          description: 'Include publication state and lifecycle dates for exported events and major events.',
+        },
+        includeAudienceInvitations: {
+          type: 'boolean',
+          default: false,
+          description:
+            'Include invitation person IDs for each exported event, group, and major event. Import replaces the list; IDs must exist in the destination.',
+        },
         includeChildSubscriptions: { type: 'boolean', default: false },
         includeChildAttendances: { type: 'boolean', default: false },
       },
@@ -82,6 +132,7 @@ export class DataTransferController {
       required: ['document'],
       properties: {
         document: { type: 'object' },
+        personDecisions: personDecisionsSchema,
         scope: {
           type: 'object',
           required: ['kind', 'id'],
@@ -111,6 +162,7 @@ export class DataTransferController {
       required: ['document', 'planHash', 'allowPartial'],
       properties: {
         document: { type: 'object' },
+        personDecisions: personDecisionsSchema,
         scope: {
           type: 'object',
           required: ['kind', 'id'],

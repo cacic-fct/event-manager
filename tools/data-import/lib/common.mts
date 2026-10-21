@@ -17,11 +17,6 @@ const UNSUPPORTED_POSTGRES_URL_PARAMS = new Set([
 
 export interface DatabaseOptions {
   databaseUrl?: string;
-  dbUser?: string;
-  dbPassword?: string;
-  dbHost?: string;
-  dbPort?: number | string;
-  dbName?: string;
   envFile?: string;
 }
 
@@ -62,47 +57,9 @@ function isNodeError(value: unknown): value is NodeJS.ErrnoException {
   return value instanceof Error && 'code' in value && typeof value.code === 'string';
 }
 
-export function databaseUrlFromOptions(options: DatabaseOptions = {}): string {
-  if (options?.databaseUrl) {
-    return options.databaseUrl;
-  }
-
-  const user = encodeURIComponent(options?.dbUser ?? 'postgres');
-  const password = encodeURIComponent(options?.dbPassword ?? 'postgres');
-  const host = options?.dbHost ?? 'localhost';
-  const port = options?.dbPort ?? 5432;
-  const name = options?.dbName ?? 'postgres';
-  return `postgresql://${user}:${password}@${host}:${port}/${name}`;
-}
-
 export function connectPostgres(databaseUrl: string): Promise<PgClient> {
   const client = new Client({ connectionString: databaseUrl });
   return client.connect().then(() => client);
-}
-
-export function chunks<T>(items: readonly T[], size: number): IterableIterator<T[]> {
-  if (!Number.isInteger(size) || size <= 0) {
-    throw new Error('Chunk size must be a positive integer.');
-  }
-
-  return (function* chunkGenerator() {
-    for (let index = 0; index < items.length; index += size) {
-      yield items.slice(index, index + size);
-    }
-  })();
-}
-
-export function formatCounter(
-  counter: ReadonlyMap<string, number> | Readonly<Record<string, number>> | null | undefined,
-): string {
-  const entries = counter instanceof Map ? [...counter.entries()] : Object.entries(counter ?? {});
-  if (entries.length === 0) {
-    return 'none';
-  }
-  return entries
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([key, value]) => `${key}=${value}`)
-    .join(', ');
 }
 
 export function parseEnvFile(envPath: string): Record<string, string> {
@@ -169,9 +126,7 @@ export function sanitizePostgresUrl(databaseUrl: string): string {
   return parsed.toString();
 }
 
-export function resolveDatabaseUrlFromEnvOptions(
-  options: Pick<DatabaseOptions, 'databaseUrl' | 'envFile'> = {},
-): string {
+export function resolveDatabaseUrlFromEnvOptions(options: DatabaseOptions = {}): string {
   if (options?.databaseUrl) {
     return options.databaseUrl;
   }

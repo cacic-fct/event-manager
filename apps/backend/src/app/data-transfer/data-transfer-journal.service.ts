@@ -159,6 +159,16 @@ const permissionsByKind = {
     update: Permission.Subscription.Update,
     remove: Permission.Subscription.Delete,
   },
+  'event-ticket': {
+    read: Permission.Ticket.Read,
+    update: Permission.Ticket.Issue,
+    remove: Permission.Ticket.Revoke,
+  },
+  'ticket-purchase': {
+    read: Permission.Receipt.Read,
+    update: Permission.Receipt.Undo,
+    remove: Permission.Receipt.Undo,
+  },
   'event-attendance': {
     read: Permission.EventAttendance.Read,
     update: Permission.EventAttendance.Update,
@@ -463,6 +473,14 @@ export class DataTransferJournalService {
     undo: boolean,
     allowUndoFallback = !undo,
   ): Promise<void> {
+    const personMutations = metadata.mutations.filter((mutation) => mutation.model === 'people');
+    if (personMutations.length) {
+      await this.authorization.assertPermissions(actor, [
+        Permission.Person.Read,
+        ...(undo && personMutations.some((mutation) => mutation.before === null) ? [Permission.Person.Delete] : []),
+        ...(undo && personMutations.some((mutation) => mutation.before !== null) ? [Permission.Person.Update] : []),
+      ]);
+    }
     const sources = new Map(
       metadata.mutations.map((mutation) => [`${mutation.source.kind}:${mutation.source.id}`, mutation.source]),
     );
@@ -642,6 +660,8 @@ export class DataTransferJournalService {
         [Permission.Subscription.Read, creatingUndo ? Permission.Subscription.Delete : Permission.Subscription.Update],
         scope,
       );
+    } else if (mutation.model === 'ticketPurchase') {
+      await this.authorization.assertPermissions(actor, [Permission.Receipt.Read, Permission.Receipt.Undo], scope);
     } else if (mutation.model === 'certificateConfig') {
       await this.authorization.assertPermissions(
         actor,
@@ -669,7 +689,16 @@ export class DataTransferJournalService {
       if (!Object.keys(scope).length) Object.assign(scope, mutation.source.scope);
       await this.authorization.assertPermissions(
         actor,
-        [Permission.Ticket.Read, creatingUndo ? Permission.Ticket.Revoke : Permission.Ticket.Issue],
+        [
+          Permission.Ticket.Read,
+          creatingUndo ? Permission.Ticket.Revoke : Permission.Ticket.Issue,
+          ...(mutation.model === 'eventTicket' &&
+          mutation.before &&
+          mutation.after &&
+          mutation.before['holderPersonId'] !== mutation.after['holderPersonId']
+            ? [Permission.TicketTransfer.Manage]
+            : []),
+        ],
         scope,
       );
     }

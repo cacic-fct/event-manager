@@ -1,5 +1,5 @@
 import { IncludePastParticipation } from '../../audiences/past-participation.decorator';
-import { isValidCPF } from '@cacic-fct/shared-utils';
+import { isValidCPF, maskCPF } from '@cacic-fct/shared-utils';
 import { BadRequestException, ConflictException, NotFoundException, Optional, UseGuards } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AttendanceCreationMethod, Prisma, SubscriptionStatus } from '@prisma/client';
@@ -671,7 +671,7 @@ export class CurrentUserEventAttendanceResolver {
       return identityDocument;
     }
 
-    return `•••.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-••`;
+    return maskCPF(cpf);
   }
 
   private escapeCsvValue(value: string): string {

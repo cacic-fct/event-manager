@@ -2,34 +2,17 @@
 title: Página inicial
 ---
 
-A página inicial reúne sinais operacionais para ajudar o administrador a priorizar o trabalho.
+A página inicial reúne eventos próximos e pendências. Os atalhos levam às telas onde você pode consultar e corrigir os registros.
 
-Ela mostra eventos próximos, atalhos para ações relevantes e pendências que podem impedir inscrições, presença, pagamento ou emissão de certificados.
-
-## Como interpretar
-
-Use a página inicial como fila de atenção, não como única fonte de conferência.
-
-Se um item aparece como pendente, abra a tela indicada e corrija a origem do problema.
+O conteúdo depende dos dados disponíveis e das permissões da conta.
 
 ## Eventos próximos
 
-Eventos do dia e dos próximos dias ajudam a identificar o que precisa ser acompanhado.
+Os eventos de hoje e dos próximos dias aparecem com um atalho para a coleta de presença, quando disponível. Para coleta em campo, prefira a interface pública quando possível.
 
-Quando a coleta de presença já pode acontecer, o painel exibe um atalho para a tela de presenças. Esse atalho é útil para correções administrativas, mas a coleta em campo deve continuar usando a interface pública quando possível.
+## Itens para revisar
 
-## Pendências
-
-A página pode destacar, conforme o estado do sistema:
-
-- Comprovantes aguardando validação;
-- Certificados pendentes;
-- Pessoas possivelmente duplicadas;
-- Inconsistências na configuração de eventos.
-
-Pendências de comprovante devem ser tratadas pela tela de validação.  
-Pendências de certificado devem ser tratadas pela tela de certificados do alvo correspondente.  
-Duplicidades devem ser revisadas antes de qualquer unificação.
+As pendências incluem tarefas da organização e problemas nos dados. Abra o detalhe de cada item para conferir a situação antes de corrigir ou aprovar um registro.
 
 ## Clima
 
