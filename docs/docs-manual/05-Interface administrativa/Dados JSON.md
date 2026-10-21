@@ -2,15 +2,15 @@
 title: Dados JSON
 ---
 
-A área **Dados JSON** permite exportar e importar estruturas de eventos, configurações e registros de participação. Use-a para preparar cadastros ou revisar alterações em lote.
+A área **Dados JSON** permite exportar e importar eventos, configurações e registros de participação, com revisão das alterações antes de salvar.
 
-O arquivo não é um backup completo do sistema. Ele contém somente os dados aceitos pelo formato e permitidos para a conta que fez a exportação.
+O arquivo contém os dados aceitos pelo formato e acessíveis à conta que fez a exportação. Ele não substitui um backup do sistema.
 
 ## Contexto e permissões
 
 Escolha um evento, grupo de eventos ou grande evento para exportar. Quando a tela é aberta dentro de um contexto, esse contexto também limita a importação.
 
-Na área geral, escolher um contexto para exportação não limita automaticamente a importação. Para isso, marque **Aplicar aos registros existentes do contexto escolhido acima**. Essa opção limita os registros alcançados; ela não move os recursos do arquivo para outro evento.
+Na área geral, a seleção para exportação só limita a importação se você ativar essa opção. Os vínculos do arquivo são mantidos: selecionar outro contexto não move os registros para ele.
 
 Exportar, importar e desfazer exigem permissões próprias, além das permissões sobre cada recurso. Inscrições e presenças exigem suas autorizações específicas. Recursos congelados continuam protegidos.
 
@@ -20,13 +20,15 @@ Escolha se deseja incluir os eventos e grupos filhos e as configurações relaci
 
 As opções de participação são independentes da inclusão da estrutura dos filhos. Por exemplo, é possível exportar presenças das atividades sem exportar seus cadastros.
 
-As opções `includePublishingState` e `includeAudienceInvitations` começam desativadas. Quando selecionadas, incluem, respectivamente, o estado e as datas de publicação de eventos e grandes eventos e as listas `invitationPersonIds` dos recursos exportados. Exportar convites exige permissão de atualização em cada evento, grupo ou grande evento. Os IDs das pessoas convidadas devem existir no destino. Na importação, uma lista informada substitui todos os convites; campos omitidos preservam os valores atuais, e novos recursos sem estado de publicação começam como rascunho.
+Você também pode incluir o estado de publicação e os convites do público-alvo. Essas opções começam desativadas. Exportar convites exige permissão de atualização no evento, grupo ou grande evento.
 
-Confira os avisos de exportação: registros sem acesso podem ser omitidos. Guarde os arquivos com inscrições ou presenças como dados pessoais.
+Ao importar convites, as pessoas convidadas precisam existir no destino e a lista substitui todos os convites atuais. Se o arquivo omitir os convites ou o estado de publicação, os valores existentes são preservados. Novos eventos e grandes eventos sem estado de publicação começam como rascunho.
+
+Confira os avisos de exportação: registros sem acesso podem ser omitidos. Arquivos com inscrições ou presenças contêm dados pessoais; guarde-os em local seguro.
 
 ## Preparar o arquivo
 
-Use **Baixar modelo JSON** para começar um cadastro ou edite um arquivo exportado. **Baixar schema JSON** fornece o contrato aceito pelo sistema, incluindo campos e limites. Não acrescente campos que não estejam nesse contrato.
+Comece pelo modelo JSON disponível na tela ou edite um arquivo exportado. O schema, também disponível para download, descreve os campos e limites aceitos.
 
 | Conteúdo | Efeito ao importar |
 | --- | --- |
@@ -37,21 +39,23 @@ Use **Baixar modelo JSON** para começar um cadastro ou edite um arquivo exporta
 | Lista informada | Substitui a lista ou seleção correspondente. |
 | Recurso ausente | Não exclui o registro existente. |
 
-Os dados de pessoas são cruzados com os cadastros existentes antes da importação. Pessoas não encontradas exigem confirmação para criar ou a escolha de ignorar. Quando o nome corresponde a um cadastro, mas outro dado difere, revise manualmente: crie outra pessoa, mescle com uma pessoa apresentada ou ignore. Para criar, são necessários nome completo e matrícula, documento, e-mail ou telefone completo em formato internacional E.164 (ou número brasileiro com DDD), além das permissões globais de leitura e criação de pessoas. Para mesclar, são necessárias leitura e atualização de pessoas. O e-mail principal é preservado e o importado é acrescentado aos endereços secundários; matrícula e documento existentes devem ser compatíveis. Uma inscrição pode corresponder ao vínculo já existente entre pessoa e evento, mesmo quando o arquivo usa uma chave local.
+O sistema compara os dados de pessoas com os cadastros existentes. Quando não encontra uma correspondência ou há dúvida, a revisão permite criar uma pessoa, mesclar com um dos cadastros sugeridos ou ignorar o registro. As opções dependem dos dados disponíveis e das permissões da conta.
+
+Ao mesclar, o e-mail principal é mantido e o importado é acrescentado aos endereços secundários. Matrícula e documento não podem entrar em conflito. Uma inscrição pode corresponder a um vínculo já existente entre pessoa e evento, mesmo quando o arquivo usa uma chave local.
 
 ## Revisar e aplicar
 
 1. Carregue o arquivo ou cole seu conteúdo;
 1. Confira o contexto da importação;
 1. Use **Revisar importação** e compare os valores atuais e propostos, incluindo efeitos em registros relacionados;
-1. Resolva todas as pessoas pendentes e use **Revisar importação** novamente. Nada será salvo até aplicar o plano completo;
+1. Resolva todas as pessoas pendentes e revise novamente;
 1. Corrija as linhas bloqueadas. Se quiser aplicar somente as linhas liberadas, marque **Ignorar registros bloqueados** e revise novamente;
 1. Use **Aplicar alterações**;
 1. Confira o relatório e baixe o **JSON com IDs gerados** para futuras atualizações.
 
 A revisão não salva alterações. Se o arquivo, os dados ou as permissões mudarem, será necessário revisar novamente. As reservas de IDs também expiram; a tela informa quando é preciso renovar a revisão.
 
-Uma linha bloqueada pode bloquear outras que dependem dela. A aplicação parcial não força esses vínculos nem ignora as regras de negócio; somente os registros liberados são gravados, em uma única transação.
+Uma linha bloqueada também bloqueia as que dependem dela. Na aplicação parcial, somente os registros liberados são salvos, em uma única transação.
 
 :::warning[Aviso]
 
@@ -79,7 +83,7 @@ Uma importação salva pode continuar com sincronização pendente. Nesse caso, 
 
 ## Histórico e reversão
 
-O histórico apresenta os lotes acessíveis à conta. Guarde a identificação do lote e o relatório para conferência ou suporte.
+O histórico mostra as importações acessíveis à conta, com a identificação e o relatório de cada lote.
 
 **Desfazer esta importação** reverte o lote inteiro. A ação exige permissão de reversão e as permissões atuais sobre todos os recursos afetados. Somente quem importou ou um superadministrador pode desfazer o lote.
 
@@ -87,10 +91,10 @@ A reversão é bloqueada se os registros afetados ou seus vínculos tiverem muda
 
 ## Bilhetes e compras avulsas
 
-A opção **Incluir bilhetes** exporta os bilhetes dos eventos do contexto selecionado, incluindo os ativos, consumidos e revogados, com o titular atual, o titular original, a origem e as datas. A opção começa desmarcada e exige permissão de leitura de bilhetes. Ela funciona independentemente das opções de inscrições e presenças. Comprovantes e o histórico completo de transferências não são incluídos.
+A exportação de bilhetes inclui os titulares, a origem, as datas e a situação de cada bilhete. Ela começa desativada, exige permissão de leitura de bilhetes e independe das opções de inscrições e presenças. Comprovantes e o histórico completo de transferências ficam de fora.
 
-Para importar uma compra já paga fora do sistema, use `ticket-purchase` com `eventId`, `person`, `amountCents` e `purchasedAt`. A compra é registrada como aprovada e o bilhete é emitido na mesma operação, sem exigir inscrição da pessoa no grande evento. O evento deve pertencer a um grande evento e ter a configuração de bilhetes habilitada. A criação ou mesclagem de uma pessoa exige a mesma revisão manual dos demais registros. São necessárias as permissões de emissão de bilhetes e aprovação de comprovantes.
+Uma compra já paga fora do sistema pode ser importada como `ticket-purchase`. A compra é registrada como aprovada e emite o bilhete, sem exigir inscrição da pessoa no grande evento. O evento deve pertencer a um grande evento e ter bilhetes habilitados. A operação exige permissões de emissão de bilhetes e aprovação de comprovantes.
 
-Os registros `event-ticket` representam os bilhetes emitidos e podem ser reimportados. A exportação identifica o titular original por `originalHolder`, com dados portáveis como nome e e-mail. A importação encontra seu cadastro no destino e recalcula a chave de origem dos bilhetes derivados de inscrição. Se o titular original for diferente do atual, seu cadastro já deve existir e corresponder a uma única pessoa. Quando os dois usam a mesma referência, a criação revisada do titular atual também vale para o original. Arquivos antigos podem informar `originalHolderPersonId` com um ID do destino; não use os dois campos juntos.
+Bilhetes já emitidos podem ser reimportados como `event-ticket`. A importação identifica os titulares no destino; se o titular original for diferente do atual, seu cadastro precisa existir. O schema disponível na tela descreve os campos de bilhetes e compras.
 
-A emissão exige permissão de emissão de bilhetes. A permissão de revogação é exigida ao criar um bilhete revogado ou mudar seu estado para revogado. A troca de titular, inclusive na criação de um bilhete já transferido, exige gerenciar transferências. Uma compra em `ticket-purchase` já emite seu próprio bilhete; não inclua outro bilhete ativo para a mesma pessoa e evento no arquivo.
+Importar bilhetes exige permissão de emissão. Bilhetes revogados e trocas de titular também exigem as permissões dessas operações. Como uma compra já emite seu bilhete, não inclua outro bilhete ativo para a mesma pessoa e evento no arquivo.

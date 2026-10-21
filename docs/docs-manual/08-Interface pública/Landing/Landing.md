@@ -4,8 +4,8 @@ title: Landing
 
 A página inicial pública apresenta o CACiC Eventos e permite escolher entre entrar no aplicativo ou explorar a programação.
 
-Pessoas que já estão autenticadas e abrem a página inicial são encaminhadas à tela indicada para sua conta. Notificações não lidas ou um fluxo esportivo associado à conta também podem alterar o destino, de forma dinâmica.
+Se você já estiver autenticado, será encaminhado à tela correspondente à sua conta. O destino pode variar conforme as notificações não lidas e a participação em atividades esportivas.
 
 ## Demonstrações
 
-As demonstrações usam dados de exemplo e servem para conhecer o aplicativo.
+As demonstrações permitem conhecer o aplicativo com dados de exemplo.

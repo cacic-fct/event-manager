@@ -48,7 +48,7 @@ Quando possível, faça importações primeiro em ambiente local ou com um arqui
 
 Se o grande evento tiver regras de atividades ou limites por faixa de pagamento, informe a faixa aplicável ao arquivo. Sem uma faixa informada, inscrições existentes preservam a faixa atual; novas inscrições precisam de uma faixa válida quando essas regras estiverem ativas. O CSV também respeita a seleção completa dos grupos e os limites da faixa.
 
-Para transferir inscrições junto com configurações ou revisar diferenças antes de aplicar, use [Dados JSON](./Dados%20JSON.md). Nesse formato, as pessoas precisam existir previamente; elas não são criadas pela importação.
+Para transferir inscrições junto com configurações ou revisar diferenças antes de aplicar, use [Dados JSON](./Dados%20JSON.md). A importação permite revisar pessoas não encontradas ou ambíguas antes de salvar.
 
 ## Exportação
 

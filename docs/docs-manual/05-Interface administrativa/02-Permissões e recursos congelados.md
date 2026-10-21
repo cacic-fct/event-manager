@@ -24,7 +24,7 @@ A área **Minhas permissões** mostra o acesso efetivo da pessoa autenticada.
 
 Ela combina cargos diretos, participação em grupos, herança entre cargos, escopos ativos e acessos externos. Use essa visão para entender o resultado, não para editar a autorização.
 
-Os detalhes técnicos ficam recolhidos para diagnóstico. O catálogo completo não é reproduzido no manual porque a própria aplicação é a fonte de verdade.
+Os detalhes técnicos ficam recolhidos e podem ser consultados para diagnóstico.
 
 ## Gerenciamento de permissões
 

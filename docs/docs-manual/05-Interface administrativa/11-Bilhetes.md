@@ -2,7 +2,7 @@
 title: Bilhetes
 ---
 
-Bilhetes são direitos de acesso associados a um evento. A inscrição e a presença continuam sendo registros próprios; o bilhete pode ser emitido a partir de uma inscrição, de uma compra aprovada ou manualmente pela organização.
+Bilhetes dão acesso a um evento e podem ser emitidos por uma inscrição, uma compra aprovada ou manualmente pela organização. Inscrição e presença são registradas separadamente.
 
 ## Configurar e emitir
 
@@ -10,9 +10,9 @@ No menu **Bilhetes**, escolha o evento que receberá a configuração. Dentro de
 
 Defina quando a emissão automática deve acontecer: após a confirmação da inscrição no evento ou junto da inscrição confirmada no grande evento. Nesta última opção, a emissão pode depender da faixa de inscrição. Defina também se o bilhete expira no encerramento do evento ou em uma data própria.
 
-Se permitir transferências, configure quem pode receber conforme as regras da organização. A compra adicional pode ser oferecida em um grande evento a pessoas com inscrição e pagamento aprovados, sujeita aos critérios e à disponibilidade configurados. Compras em análise ou aprovadas reservam uma vaga; compras recusadas liberam a reserva.
+Ao permitir transferências, defina quem pode receber o bilhete. Também é possível oferecer compras adicionais a pessoas com inscrição e pagamento aprovados em um grande evento, conforme os critérios e a disponibilidade configurados. Compras em análise ou aprovadas reservam uma vaga; compras recusadas liberam a reserva.
 
-Com a configuração ativa, a área **Bilhetes emitidos** permite localizar titulares e consultar situações. A emissão manual pode prosseguir mesmo quando os critérios configurados não forem atendidos; confira os avisos e registre o motivo exigido para auditoria. A revogação também exige motivo.
+Com a configuração ativa, consulte os titulares e a situação dos bilhetes emitidos. A emissão manual permite abrir exceções aos critérios configurados e exige um motivo para auditoria. A revogação também exige motivo.
 
 ## Compras adicionais
 
