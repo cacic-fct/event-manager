@@ -1,11 +1,13 @@
+import { jest as jestEsm } from '@jest/globals';
 import { Readable } from 'stream';
-import { S3Service, S3ServiceError } from './s3.service';
+import type { S3ServiceError } from './s3.service';
+const { jest } = import.meta;
 
 const sendMock = jest.fn();
 const uploadDoneMock = jest.fn();
 const destroyMock = jest.fn();
 
-jest.mock('@aws-sdk/client-s3', () => ({
+jestEsm.unstable_mockModule('@aws-sdk/client-s3', () => ({
   S3Client: jest.fn().mockImplementation(() => ({
     send: sendMock,
     destroy: destroyMock,
@@ -16,12 +18,15 @@ jest.mock('@aws-sdk/client-s3', () => ({
   ListObjectsV2Command: jest.fn().mockImplementation((input) => ({ kind: 'ListObjectsV2Command', input })),
 }));
 
-jest.mock('@aws-sdk/lib-storage', () => ({
+jestEsm.unstable_mockModule('@aws-sdk/lib-storage', () => ({
   Upload: jest.fn().mockImplementation((input) => ({
     input,
     done: uploadDoneMock,
   })),
 }));
+
+const { S3Client } = await import('@aws-sdk/client-s3');
+const { S3Service } = await import('./s3.service');
 
 describe('S3Service', () => {
   beforeEach(() => {
@@ -29,11 +34,9 @@ describe('S3Service', () => {
   });
 
   it('configures the AWS S3 client for SeaweedFS path-style buckets', () => {
-    const { S3Client } = jest.requireMock('@aws-sdk/client-s3') as { S3Client: jest.Mock };
-
     new S3Service(configServiceMock() as never);
 
-    expect(S3Client).toHaveBeenCalledWith({
+    expect(S3Client as unknown as jest.Mock).toHaveBeenCalledWith({
       endpoint: 'http://localhost:8333',
       region: 'sa-east-1',
       credentials: {

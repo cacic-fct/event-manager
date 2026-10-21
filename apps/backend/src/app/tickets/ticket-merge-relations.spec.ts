@@ -5,6 +5,7 @@ import {
   reassignTicketUserRelations,
   restoreTicketPersonRelations,
 } from './ticket-merge-relations';
+const { jest } = import.meta;
 
 describe('ticket relations during People merges', () => {
   it('moves a non-colliding holder while retaining ticket identity and provenance', async () => {

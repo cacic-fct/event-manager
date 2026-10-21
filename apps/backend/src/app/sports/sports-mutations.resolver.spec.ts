@@ -2,6 +2,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { SportsMatchActionType } from '@prisma/client';
 import { verifySportsOfflineCollectorCredential } from './security/sports-offline-collector-credential';
 import { SportsMutationsResolver } from './sports-mutations.resolver';
+const { jest } = import.meta;
 
 describe('SportsMutationsResolver security boundaries', () => {
   const actor = {

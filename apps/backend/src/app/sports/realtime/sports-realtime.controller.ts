@@ -1,11 +1,11 @@
-import { Controller, Headers, MessageEvent, NotFoundException, Param, Req, Sse, UseGuards } from '@nestjs/common';
+import { Controller, Headers, type MessageEvent, NotFoundException, Param, Req, Sse, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiProduces, ApiTags } from '@nestjs/swagger';
 import { PublicationState, SportsTournamentStatus } from '@prisma/client';
 import type { Request } from 'express';
 import { defer, map, NEVER, Observable, switchMap } from 'rxjs';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { Public } from '../../auth/decorators/public.decorator';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { CurrentUserContextService } from '../../current-user/context.service';
 import { PrismaService } from '../../prisma/prisma.service';

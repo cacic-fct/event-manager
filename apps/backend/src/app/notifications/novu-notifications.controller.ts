@@ -11,9 +11,9 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { NovuSubscriberSession } from '@cacic-fct/shared-data-types';
-import { Request } from 'express';
+import { type Request } from 'express';
 import { AUTH_SESSION_COOKIE_NAME } from '../auth/auth.constants';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { CurrentUserContextService } from '../current-user/context.service';
 import { NovuNotificationsService } from './novu-notifications.service';
 

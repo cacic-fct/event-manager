@@ -2,10 +2,10 @@ import { EventForm as EventFormModel } from '@cacic-fct/shared-data-types';
 import { Logger, NotFoundException } from '@nestjs/common';
 import { AuditLogOperation, PublicationState } from '@prisma/client';
 import { AuditLogService } from '../audit-log/audit-log.service';
-import { AuditRecordOptions } from '../audit-log/audit-log.types';
+import { type AuditRecordOptions } from '../audit-log/audit-log.types';
 import { PrismaService } from '../prisma/prisma.service';
 import { eventFormAuditRecord } from './event-form-audit';
-import { eventFormInclude, EventFormRecord } from './event-form-records';
+import { eventFormInclude, type EventFormRecord } from './event-form-records';
 import { EventFormNotificationService } from './event-form-notification.service';
 import { toEventFormModel } from './event-form-model.mapper';
 

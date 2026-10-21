@@ -1,13 +1,13 @@
 import { BadRequestException, Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { PublicationState as PrismaPublicationState } from '@prisma/client';
 import { PublicationState, PublicationTargetType } from '@cacic-fct/shared-data-types';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { describeBulkOperation, describeStateChange } from './publishing-labels';
 import { PublicationBulkInput, PublicationBulkOperation, PublicationStateInput } from './publishing.models';
 import { PublicationSearchSyncService } from './publishing-search-sync.service';
 import { PublicationStateWriterService } from './publishing-state-writer.service';
 import { PublicationTargetService } from './publishing-target.service';
-import { PublicationTransitionOutcome, TargetSync } from './publishing.types';
+import { type PublicationTransitionOutcome, type TargetSync } from './publishing.types';
 import { EventSitemapService } from '../public-events/event-sitemap.service';
 import {
   PUBLIC_CATALOG_REALTIME_CHANNEL,

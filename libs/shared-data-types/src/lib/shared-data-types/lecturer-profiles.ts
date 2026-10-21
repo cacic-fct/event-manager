@@ -1,6 +1,7 @@
 import { Field, ObjectType } from '@nestjs/graphql';
 
 import { Person } from './people';
+import type { Relation } from './relation';
 
 @ObjectType()
 export class LecturerProfile {
@@ -11,7 +12,7 @@ export class LecturerProfile {
   personId!: string;
 
   @Field(() => Person, { nullable: true })
-  person?: Person;
+  person?: Relation<Person>;
 
   @Field(() => String)
   displayName!: string;

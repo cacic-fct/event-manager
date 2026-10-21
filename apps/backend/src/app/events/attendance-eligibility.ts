@@ -1,7 +1,7 @@
 import { AttendanceCurrentAssessment } from '@cacic-fct/shared-data-types';
 import {
   AttendanceEligibility,
-  AttendancePolicyContext,
+  type AttendancePolicyContext,
   isAttendanceEligible,
   resolveAttendanceEligibility,
 } from '@cacic-fct/shared-event-participation';

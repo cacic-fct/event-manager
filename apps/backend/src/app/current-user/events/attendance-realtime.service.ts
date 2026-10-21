@@ -8,8 +8,8 @@ import {
   Inject,
   Injectable,
   Logger,
-  MessageEvent,
-  OnModuleDestroy,
+  type MessageEvent,
+  type OnModuleDestroy,
   Query,
   Req,
   Sse,
@@ -43,6 +43,7 @@ import {
   PublicEventSubscriptionSummary,
 } from '../../public-events/models';
 import { CurrentUserContextService } from '../context.service';
+import type { DeferredInjection } from '../../common/deferred-injection';
 import { PublicEventsResolver } from '../../public-events/events.resolver';
 import { SseReplayService } from '../../realtime/sse-replay.service';
 import { AudienceInvitationService, invitationFactForAttendance } from '../../audiences/audience-invitation.service';
@@ -145,11 +146,12 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
   constructor(
     private readonly auth: KeycloakAuthService,
     @Inject(forwardRef(() => CurrentUserContextService))
-    private readonly currentUserContext: CurrentUserContextService,
+    private readonly currentUserContext: DeferredInjection<CurrentUserContextService>,
     private readonly mapper: CurrentUserEventMapperService,
     private readonly prisma: PrismaService,
     private readonly publicEvents: PublicEventsResolver,
-    private readonly audienceInvitations: AudienceInvitationService,
+    @Inject(forwardRef(() => AudienceInvitationService))
+    private readonly audienceInvitations: DeferredInjection<AudienceInvitationService>,
   ) {}
 
   onModuleDestroy(): void {

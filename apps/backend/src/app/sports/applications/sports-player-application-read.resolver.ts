@@ -3,7 +3,7 @@ import { SportsApplicationStatus } from '@cacic-fct/shared-data-types';
 import { Args, Context, Int, Query, Resolver } from '@nestjs/graphql';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CurrentUserContextService } from '../../current-user/context.service';
-import { GraphqlContext } from '../../current-user/selects';
+import { type GraphqlContext } from '../../current-user/selects';
 import {
   AdminSportsPlayerApplicationRead,
   CurrentUserSportsPlayerApplicationRead,

@@ -16,6 +16,7 @@ import {
   sportsRosterWriteInput,
 } from '../testing/sports-backend.fixtures';
 import { SportsMatchRosterService } from './sports-match-roster.service';
+const { jest } = import.meta;
 
 describe('SportsMatchRosterWriteService', () => {
   const actor = { id: 'actor-1', name: 'Pessoa Administradora', type: 'USER' };

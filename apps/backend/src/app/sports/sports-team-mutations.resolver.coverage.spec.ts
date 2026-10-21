@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '@nes
 import { Permission } from '@cacic-fct/shared-permissions';
 import { REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { SportsTeamMutationsResolver } from './sports-team-mutations.resolver';
+const { jest } = import.meta;
 
 describe('SportsTeamMutationsResolver team boundary operations', () => {
   it('declares scoped permission metadata for every team mutation', () => {

@@ -1,4 +1,5 @@
 import { LgpdStorageCleanupService } from './lgpd-storage-cleanup.service';
+const { jest } = import.meta;
 
 describe('LgpdStorageCleanupService', () => {
   function createHarness() {

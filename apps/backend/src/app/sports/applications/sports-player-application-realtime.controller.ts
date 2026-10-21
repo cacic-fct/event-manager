@@ -1,8 +1,8 @@
-import { Controller, Headers, MessageEvent, Req, Sse } from '@nestjs/common';
+import { Controller, Headers, type MessageEvent, Req, Sse } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiOkResponse, ApiProduces, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { defer, Observable, switchMap } from 'rxjs';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { CurrentUserContextService } from '../../current-user/context.service';
 import { SseReplayService } from '../../realtime/sse-replay.service';
 import { SportsRealtimeService } from '../realtime/sports-realtime.service';

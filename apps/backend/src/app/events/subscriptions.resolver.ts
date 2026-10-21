@@ -12,7 +12,7 @@ import {
   WorkspaceMajorEventSubscriptionUpdateInput,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
@@ -20,7 +20,7 @@ import { resolvePagination } from '../common/pagination';
 import { runSerializablePrismaTransaction } from '../common/serializable-prisma-transaction';
 import { PrismaService } from '../prisma/prisma.service';
 import {
-  MajorEventSubscriptionNotificationRecord,
+  type MajorEventSubscriptionNotificationRecord,
   NovuNotificationsService,
 } from '../notifications/novu-notifications.service';
 import { AttendanceCategoryService } from './attendance-category.service';

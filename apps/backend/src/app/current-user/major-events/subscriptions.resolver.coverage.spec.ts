@@ -13,6 +13,7 @@ import {
 import { RATE_LIMIT_METADATA_KEY } from '../../rate-limit/rate-limit.decorator';
 import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
 import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
+const { jest } = import.meta;
 
 describe('CurrentUserMajorEventSubscriptionsResolver', () => {
   it('declares the mutation rate-limit guard and resource identity metadata', () => {

@@ -3,6 +3,7 @@ import { METHOD_METADATA, PATH_METADATA, SSE_METADATA } from '@nestjs/common/con
 import { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom, of, take } from 'rxjs';
 import { SportsRealtimeController } from './sports-realtime.controller';
+const { jest } = import.meta;
 
 describe('SportsRealtimeController uncovered authenticated streams', () => {
   let prisma: {

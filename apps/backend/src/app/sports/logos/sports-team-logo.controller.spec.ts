@@ -6,6 +6,7 @@ import { RATE_LIMIT_METADATA_KEY, RateLimitMetadata } from '../../rate-limit/rat
 import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
 import { Readable } from 'node:stream';
 import { PublicSportsTeamLogoController, SportsTeamLogoController } from './sports-team-logo.controller';
+const { jest } = import.meta;
 
 describe('SportsTeamLogoController', () => {
   const actor = {

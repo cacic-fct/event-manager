@@ -6,6 +6,7 @@ import { AuditLogExplorerRevertedStatus } from './audit-log.models';
 import { AuditLogService } from './audit-log.service';
 import { AuditLogMetadataCategory } from './audit-log.types';
 import { AUDIT_BATCH_TRANSACTION } from './audit-transaction-context';
+const { jest } = import.meta;
 
 describe('AuditLogService', () => {
   let prisma: ReturnType<typeof createPrisma>;

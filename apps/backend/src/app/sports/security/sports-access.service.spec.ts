@@ -5,6 +5,7 @@ import {
   SportsTeamMemberStatus,
 } from '@prisma/client';
 import { SportsAccessService } from './sports-access.service';
+const { jest } = import.meta;
 
 describe('SportsAccessService', () => {
   const actor = { id: 'person-1', name: 'Pessoa Um' };

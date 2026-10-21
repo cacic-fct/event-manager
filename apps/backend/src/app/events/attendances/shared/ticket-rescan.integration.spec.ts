@@ -3,6 +3,8 @@ import { AttendanceCategoryService } from '../../attendance-category.service';
 import { TicketIssuanceService } from '../../../tickets/ticket-issuance.service';
 import { createOrRestoreEventAttendance } from './event-attendance-writer';
 
+const { jest } = import.meta;
+
 /** Exercises the writer and category service against the actual ticket redemption policy. */
 describe('non-regular attendance ticket rescan', () => {
   it.each(['issued', 'transferred'] as const)(

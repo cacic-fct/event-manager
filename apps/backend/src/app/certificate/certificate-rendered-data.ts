@@ -1,8 +1,8 @@
 import { maskCPF } from '@cacic-fct/shared-utils';
 import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/shared-data-types';
 import { Prisma } from '@prisma/client';
-import { CertificateConfigRecord, EventRecord } from './certificate.constants';
-import { EligibleCertificateRecipient } from './certificate-eligibility.service';
+import { type CertificateConfigRecord, type EventRecord } from './certificate.constants';
+import { type EligibleCertificateRecipient } from './certificate-eligibility.service';
 import { sportsCertificateTypeLabel, sportsParticipationText } from './certificate-sports-roles';
 
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';

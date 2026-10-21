@@ -1,5 +1,7 @@
 import { TicketTransferService } from '../ticket-transfer.service';
 
+const { jest } = import.meta;
+
 export function createTicketTransferServiceFixture() {
   const now = new Date();
   const holder = {

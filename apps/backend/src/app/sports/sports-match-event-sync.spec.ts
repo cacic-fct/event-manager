@@ -6,6 +6,7 @@ import {
   syncSportsMatchEventName,
   updateSportsMatchBackingEvent,
 } from './sports-match-event-sync';
+const { jest } = import.meta;
 
 describe('sports match backing events', () => {
   it('creates an event with the shared sports invariants and venue projection', async () => {

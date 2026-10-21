@@ -12,8 +12,8 @@ import { RequirePermissions } from '../../auth/decorators/require-permissions.de
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../attendance-category.service';
-import { EventAttendancesResolverBase, GraphqlContext } from './event-attendances.shared';
-import { PersonMatch } from './shared/types';
+import { EventAttendancesResolverBase, type GraphqlContext } from './event-attendances.shared';
+import { type PersonMatch } from './shared/types';
 import {
   notifySportsMatchAttendanceMutation,
   startSportsMatchCheckInFromAthleteAttendance,

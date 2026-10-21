@@ -8,6 +8,7 @@ import {
   sportsTestDate,
 } from '../testing/sports-backend.fixtures';
 import { SportsRegistrationAdminService } from './sports-registration-admin.service';
+const { jest } = import.meta;
 
 describe('SportsRegistrationAdminService', () => {
   const actor = { sub: 'actor-1' };

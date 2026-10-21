@@ -1,7 +1,7 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { type CanActivate, type ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { GqlExecutionContext } from '@nestjs/graphql';
-import { Request } from 'express';
+import { type Request } from 'express';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import {
   ALLOW_NON_ONBOARDED_KEY,
@@ -13,7 +13,7 @@ import {
   REQUIRED_ROLES_KEY,
 } from '../auth.constants';
 import { readAuthCookie } from '../auth-cookie-utils';
-import { AuthenticatedUser } from '../interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../interfaces/authenticated-user.interface';
 import { KeycloakAuthService } from '../keycloak-auth.service';
 import { assertUserOnboarded } from '../onboarding';
 

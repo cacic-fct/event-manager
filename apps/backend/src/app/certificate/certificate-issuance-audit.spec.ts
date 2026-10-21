@@ -1,6 +1,7 @@
 import { AuditLogOperation } from '@prisma/client';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { CertificateIssuanceAudit } from './certificate-issuance-audit';
+const { jest } = import.meta;
 
 describe('CertificateIssuanceAudit', () => {
   it('does not record a reissue when only ignored bookkeeping fields changed', async () => {

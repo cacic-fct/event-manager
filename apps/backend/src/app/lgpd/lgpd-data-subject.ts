@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { DataSubjectResolution, LgpdUserLookup } from './lgpd-records';
+import { type DataSubjectResolution, type LgpdUserLookup } from './lgpd-records';
 
 export async function resolveDataSubject(prisma: PrismaService, input: LgpdUserLookup): Promise<DataSubjectResolution> {
   const userIds = new Set<string>();

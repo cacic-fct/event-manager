@@ -1,4 +1,5 @@
 import { PublicationScheduler } from './publishing.scheduler';
+const { jest } = import.meta;
 
 describe('PublicationScheduler', () => {
   it('registers every recurring publication job during module initialization', async () => {

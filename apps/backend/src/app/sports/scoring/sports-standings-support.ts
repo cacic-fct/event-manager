@@ -15,7 +15,7 @@ import { createHash } from 'node:crypto';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { SportsBracketAdvancementService } from '../brackets/sports-bracket-advancement.service';
 import { planSportsGrandFinalOutcome } from '../domain/sports-double-elimination';
-import { SportsStructuralInvalidation } from '../realtime/sports-structural-invalidation';
+import { type SportsStructuralInvalidation } from '../realtime/sports-structural-invalidation';
 
 interface StandingAccumulator {
   registrationId: string;

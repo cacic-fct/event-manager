@@ -1,5 +1,6 @@
 import { AttendanceCategory, AttendanceCreationMethod, EventAttendanceStatus, Prisma } from '@prisma/client';
 import { createOrRestoreEventAttendance, upsertPresentEventAttendance } from './event-attendance-writer';
+const { jest } = import.meta;
 
 describe('event attendance writer', () => {
   const attendanceCategories = {

@@ -1,4 +1,5 @@
 import { HealthService } from './health.service';
+const { jest } = import.meta;
 
 describe('HealthService', () => {
   it('keeps liveness independent from external dependencies', () => {

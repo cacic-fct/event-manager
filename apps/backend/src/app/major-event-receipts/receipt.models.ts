@@ -1,5 +1,5 @@
 import { Field, Float, InputType, Int, ObjectType } from '@nestjs/graphql';
-import { ReceiptRejectionCode } from './receipt.types';
+import { type ReceiptRejectionCode } from './receipt.types';
 
 @ObjectType()
 export class CurrentUserReceipt {

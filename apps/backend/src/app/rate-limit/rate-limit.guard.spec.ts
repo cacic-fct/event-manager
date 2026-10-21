@@ -8,6 +8,7 @@ import { RATE_LIMIT_METADATA_KEY, RateLimitMetadata } from './rate-limit.decorat
 import { RateLimitGuard } from './rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from './rate-limit.policies';
 import { RateLimitDecision, RateLimitService } from './rate-limit.service';
+const { jest } = import.meta;
 
 describe('RateLimitGuard', () => {
   let reflector: jest.Mocked<Pick<Reflector, 'getAllAndOverride'>>;

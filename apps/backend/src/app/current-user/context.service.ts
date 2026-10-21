@@ -8,13 +8,17 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { AccountMergeService } from '../account-merge/account-merge.service';
-import { AuthenticatedUserSyncService, InferredAuthenticatedProfile } from '../auth/authenticated-user-sync.service';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import {
+  AuthenticatedUserSyncService,
+  type InferredAuthenticatedProfile,
+} from '../auth/authenticated-user-sync.service';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { assertUserOnboarded } from '../auth/onboarding';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { reassignTicketUserRelations } from '../tickets/ticket-merge-relations';
-import { GraphqlContext, PERSON_SELECT, PersonRecord, USER_SELECT, UserRecord } from './selects';
+import type { DeferredInjection } from '../common/deferred-injection';
+import { type GraphqlContext, PERSON_SELECT, type PersonRecord, USER_SELECT, type UserRecord } from './selects';
 
 @Injectable()
 export class CurrentUserContextService {
@@ -23,9 +27,9 @@ export class CurrentUserContextService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => CertificateIssuingService))
-    private readonly certificateIssuingService: CertificateIssuingService,
+    private readonly certificateIssuingService: DeferredInjection<CertificateIssuingService>,
     @Inject(forwardRef(() => AccountMergeService))
-    private readonly accountMergeService: AccountMergeService,
+    private readonly accountMergeService: DeferredInjection<AccountMergeService>,
     private readonly authenticatedUserSync: AuthenticatedUserSyncService,
   ) {}
 

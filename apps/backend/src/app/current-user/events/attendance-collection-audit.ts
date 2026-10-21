@@ -7,7 +7,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { CurrentUserContextService } from '../context.service';
-import { GraphqlContext } from '../selects';
+import { type GraphqlContext } from '../selects';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { getAuthenticatedUser } from './attendance-collection-context';

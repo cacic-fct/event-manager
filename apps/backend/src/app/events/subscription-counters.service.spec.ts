@@ -1,4 +1,5 @@
 import { EventSubscriptionCountersService } from './subscription-counters.service';
+const { jest } = import.meta;
 
 describe('EventSubscriptionCountersService', () => {
   function createService() {

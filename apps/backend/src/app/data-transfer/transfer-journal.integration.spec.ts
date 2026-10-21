@@ -1,3 +1,4 @@
+import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import type { PGlite } from '@electric-sql/pglite';
 import { createTransferDatabaseFixture, transferDatabaseDelegates } from './testing/transfer-database.fixtures';
 import { createHash, randomUUID } from 'node:crypto';
@@ -20,6 +21,8 @@ import { DataTransferService } from './data-transfer.service';
 import { ConfigurationTransferAdapter } from './configuration-transfer.adapter';
 import { TicketPurchaseTransferAdapter } from './ticket-purchase-transfer.adapter';
 import { TransferKeyAllocations } from './transfer-key-allocations';
+
+const { jest } = import.meta;
 
 describe('durable audit-backed import rollback and undo', () => {
   let database: PGlite;

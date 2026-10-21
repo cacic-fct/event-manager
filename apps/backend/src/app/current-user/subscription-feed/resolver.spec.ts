@@ -1,4 +1,5 @@
 import { CurrentUserSubscriptionFeedResolver } from './resolver';
+const { jest } = import.meta;
 
 describe('CurrentUserSubscriptionFeedResolver', () => {
   const authenticatedUser = { sub: 'user-1' };

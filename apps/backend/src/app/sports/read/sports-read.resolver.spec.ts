@@ -9,6 +9,7 @@ import { IS_PUBLIC_KEY } from '../../auth/auth.constants';
 import { RATE_LIMIT_METADATA_KEY } from '../../rate-limit/rate-limit.decorator';
 import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
 import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
+const { jest } = import.meta;
 
 describe('sports read resolvers', () => {
   it('marks only public sports reads as public and rate-limits both public operations', () => {

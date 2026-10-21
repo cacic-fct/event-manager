@@ -26,7 +26,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import { AUTH_SESSION_COOKIE_NAME } from './auth.constants';
 import { REST_VALIDATION_PIPE } from '../common/rest-validation.pipe';
 import { RateLimit } from '../rate-limit/rate-limit.decorator';
@@ -37,7 +37,7 @@ import { AllowNonOnboarded } from './decorators/allow-non-onboarded.decorator';
 import { Public } from './decorators/public.decorator';
 import { LogoutDto } from './dto/logout.dto';
 import { KeycloakAuthService } from './keycloak-auth.service';
-import { PublicAuthenticatedUser, toPublicAuthenticatedUser } from './public-authenticated-user';
+import { type PublicAuthenticatedUser, toPublicAuthenticatedUser } from './public-authenticated-user';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import {
   clearCacicTrackingCookies,
@@ -65,7 +65,7 @@ import {
   PermissionEvaluationResponseDto,
   RefreshSessionResponseDto,
 } from './auth.swagger-dtos';
-import { AuthenticatedRequest, PermissionEvaluationBody } from './auth-controller.types';
+import { type AuthenticatedRequest, type PermissionEvaluationBody } from './auth-controller.types';
 
 const INVALID_AUTHORIZATION_STATE_MESSAGE = 'Invalid authorization state.';
 const AUTH_QUERY_LIMITS = {

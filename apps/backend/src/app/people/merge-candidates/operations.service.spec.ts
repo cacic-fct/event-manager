@@ -2,6 +2,7 @@ import { ConflictException, NotFoundException, UnprocessableEntityException } fr
 import { AuditLogActorType, AuditLogEntityType, AuditLogOperation, type People } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { MergeCandidateOperationsService } from './operations.service';
+const { jest } = import.meta;
 
 describe('MergeCandidateOperationsService', () => {
   let prisma: ReturnType<typeof createPrisma>;

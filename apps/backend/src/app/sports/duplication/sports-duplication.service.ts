@@ -9,7 +9,7 @@ import {
   SportsTournamentStatus,
 } from '@prisma/client';
 import { AuditLogService } from '../../audit-log/audit-log.service';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { runSerializableSportsTransaction } from '../sports-transaction';

@@ -1,14 +1,14 @@
 import { CertificateIssuedTo, CertificateReissueResult, CertificateScope } from '@cacic-fct/shared-data-types';
 import { AuditLogOperation } from '@prisma/client';
-import { AuditActor, AuditPrismaClient } from '../audit-log/audit-log.types';
+import { type AuditActor, type AuditPrismaClient } from '../audit-log/audit-log.types';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CERTIFICATE_CONFIG_SELECT,
   CERTIFICATE_SELECT,
-  CertificateConfigRecord,
-  CertificateRecord,
+  type CertificateConfigRecord,
+  type CertificateRecord,
 } from './certificate.constants';
-import { CertificateEligibilityService, EligibleCertificateRecipient } from './certificate-eligibility.service';
+import { CertificateEligibilityService, type EligibleCertificateRecipient } from './certificate-eligibility.service';
 import { CertificateIssuanceAudit } from './certificate-issuance-audit';
 import { isManualCertificateIssuedTo } from './certificate-sports-roles';
 import { CertificateValidationService } from './certificate-validation.service';

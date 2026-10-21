@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { AUTH_SESSION_COOKIE_NAME } from './auth.constants';
 import { createDocsAuthGate } from './docs-auth.middleware';
 import { KeycloakAuthService } from './keycloak-auth.service';
+const { jest } = import.meta;
 
 type MockRequest = Partial<Request> & {
   cookies?: Record<string, unknown>;

@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { SubscriptionStatus } from '@prisma/client';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
-import { ReceiptRejectionCode } from '../receipt.types';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type ReceiptRejectionCode } from '../receipt.types';
 
 export function getScheduleConflictEventIds(
   events: Array<{ id: string; startDate: Date; endDate: Date }>,

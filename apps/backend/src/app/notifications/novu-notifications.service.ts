@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import type { NovuSubscriberSession } from '@cacic-fct/shared-data-types';
 import { publicPrizeDrawPath } from '@cacic-fct/shared-utils';
 import { SubscriptionStatus } from '@prisma/client';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import {
   mapAuthenticatedUserToRecipient,
   mapPersonToRecipient,

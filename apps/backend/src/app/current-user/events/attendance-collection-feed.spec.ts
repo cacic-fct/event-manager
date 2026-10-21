@@ -1,4 +1,5 @@
 import { getAttendanceOralRoster } from './attendance-collection-feed';
+const { jest } = import.meta;
 
 describe('getAttendanceOralRoster', () => {
   it('returns the entire subscriber roster with masked CPF and explicit decisions', async () => {

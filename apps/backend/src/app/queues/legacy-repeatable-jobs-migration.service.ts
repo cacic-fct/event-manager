@@ -1,5 +1,5 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { CALENDAR_FEED_MAINTENANCE_QUEUE } from '../calendar/calendar.models';
 import { CERTIFICATE_NOTIFICATION_QUEUE } from '../certificate/certificate-notification-jobs.service';

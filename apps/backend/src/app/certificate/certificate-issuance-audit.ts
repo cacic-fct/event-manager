@@ -1,8 +1,8 @@
 import { AuditLogActorType, AuditLogEntityType, AuditLogOperation } from '@prisma/client';
 import { isDeepStrictEqual } from 'node:util';
 import { AuditLogService } from '../audit-log/audit-log.service';
-import { AuditActor, AuditPrismaClient } from '../audit-log/audit-log.types';
-import { CertificateConfigRecord, CertificateRecord } from './certificate.constants';
+import { type AuditActor, type AuditPrismaClient } from '../audit-log/audit-log.types';
+import { type CertificateConfigRecord, type CertificateRecord } from './certificate.constants';
 import { toCertificateAuditSnapshot } from './certificate-audit-snapshots';
 
 type CertificateWriteClient = AuditPrismaClient;

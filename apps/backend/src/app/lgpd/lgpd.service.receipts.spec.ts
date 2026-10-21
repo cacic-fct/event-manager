@@ -4,6 +4,7 @@ import {
   restoreLgpdServiceTestContext,
 } from './lgpd.service.spec-support';
 import { deleteReceiptObjects, findReceiptObjectKeys } from './lgpd-receipts';
+const { jest } = import.meta;
 
 describe('LgpdService receipt cleanup', () => {
   let context: LgpdServiceTestContext;

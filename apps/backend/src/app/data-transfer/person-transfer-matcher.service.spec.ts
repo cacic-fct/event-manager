@@ -1,4 +1,5 @@
 import { PersonTransferMatcherService, type TransferPersonReference } from './person-transfer-matcher.service';
+const { jest } = import.meta;
 
 describe('PersonTransferMatcherService', () => {
   const matcher = new PersonTransferMatcherService({} as never);

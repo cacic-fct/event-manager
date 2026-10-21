@@ -3,7 +3,7 @@ import { ApiCookieAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swa
 import type { Request } from 'express';
 import { AUTH_SESSION_COOKIE_NAME } from '../auth/auth.constants';
 import { readAuthCookie } from '../auth/auth-cookie-utils';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { KeycloakAuthService } from '../auth/keycloak-auth.service';
 import { AccountManagerTotpService } from './account-manager-totp.service';
 import { WalletTotpSeedDto } from './dto';

@@ -1,5 +1,5 @@
 import { Args, Context, Int, Query, Resolver } from '@nestjs/graphql';
-import { GraphqlContext } from '../current-user/selects';
+import { type GraphqlContext } from '../current-user/selects';
 import { EventContextService } from './event-context.service';
 import { AdminEventContextKind, AdminEventContextPage } from './event-context.models';
 

@@ -1,5 +1,6 @@
 import { DefaultRedirectRoute } from '../models';
 import { CurrentUserDefaultRedirectResolver } from './resolver';
+const { jest } = import.meta;
 
 describe('CurrentUserDefaultRedirectResolver', () => {
   it('resolves the authenticated person and returns only the selected route', async () => {

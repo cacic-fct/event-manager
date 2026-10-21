@@ -13,7 +13,7 @@ import {
 } from '../models';
 import { CurrentUserContextService } from '../context.service';
 import { CurrentUserEventMapperService } from '../mapper.service';
-import { CURRENT_USER_EVENT_ATTENDANCE_SELECT, GraphqlContext } from '../selects';
+import { CURRENT_USER_EVENT_ATTENDANCE_SELECT, type GraphqlContext } from '../selects';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from './attendance-realtime.service';

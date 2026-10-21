@@ -2,6 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { SubscriptionStatus } from '@prisma/client';
 import { createHmac } from 'node:crypto';
 import { NovuNotificationsService } from './novu-notifications.service';
+const { jest } = import.meta;
 
 describe('NovuNotificationsService', () => {
   it.each(['disabled', 'missing-key'])('completes ticket notifications when Novu is %s', async (mode) => {

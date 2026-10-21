@@ -8,6 +8,7 @@ import {
   RECEIPT_UNDO_PERMISSION,
 } from './receipt.types';
 import { REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
+const { jest } = import.meta;
 
 describe('MajorEventReceiptsResolver', () => {
   let receipts: {

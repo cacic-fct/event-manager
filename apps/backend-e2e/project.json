@@ -8,6 +8,7 @@
     "e2e": {
       "outputs": ["{workspaceRoot}/coverage/{e2eProjectRoot}", "{workspaceRoot}/coverage/backend-e2e"],
       "options": {
+        "env": { "NODE_OPTIONS": "--experimental-vm-modules" },
         "passWithNoTests": true
       }
     },

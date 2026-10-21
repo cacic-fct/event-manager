@@ -1,10 +1,21 @@
+import { jest as jestEsm } from '@jest/globals';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { AttendanceCreationMethod, Prisma } from '@prisma/client';
 import { createHash } from 'node:crypto';
-import { CurrentUserAttendanceCollectionResolver } from './attendance-collection.resolver';
-import { issueOfflineAttendanceCollectorCredential } from './offline-attendance-collector-credential';
-import { commitReceiptMarker, parseCommitReceiptMarker } from './attendance-collection-offline-submissions';
-import {
+const { jest } = import.meta;
+
+jestEsm.unstable_mockModule('../../authorization/effective-role-scopes', () => ({
+  findActiveRolePermissionScopes: jest.fn(
+    (prisma: { eventManagerPermissionGrant?: { findMany: () => unknown } }) =>
+      prisma.eventManagerPermissionGrant?.findMany() ?? Promise.resolve([]),
+  ),
+  resolveRoleIdsForPermission: jest.fn().mockResolvedValue([]),
+}));
+
+const { CurrentUserAttendanceCollectionResolver } = await import('./attendance-collection.resolver');
+const { issueOfflineAttendanceCollectorCredential } = await import('./offline-attendance-collector-credential');
+const { commitReceiptMarker, parseCommitReceiptMarker } = await import('./attendance-collection-offline-submissions');
+const {
   buildOfflineSubmissionRecord,
   collectorPerson,
   createCollectionResolver,
@@ -12,8 +23,8 @@ import {
   createPrisma,
   createTxMock,
   preciseLocation,
-  type TxMock,
-} from './attendance-collection.resolver.spec-support';
+} = await import('./attendance-collection.resolver.spec-support');
+type TxMock = import('./attendance-collection.resolver.spec-support').TxMock;
 
 describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
   const context = { req: { user: { sub: 'collector-user' } } };
@@ -1208,10 +1219,3 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
     jest.useRealTimers();
   });
 });
-jest.mock('../../authorization/effective-role-scopes', () => ({
-  findActiveRolePermissionScopes: jest.fn(
-    (prisma: { eventManagerPermissionGrant?: { findMany: () => unknown } }) =>
-      prisma.eventManagerPermissionGrant?.findMany() ?? Promise.resolve([]),
-  ),
-  resolveRoleIdsForPermission: jest.fn().mockResolvedValue([]),
-}));

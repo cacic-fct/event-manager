@@ -11,9 +11,9 @@ import {
   SportsRosterRole,
   SportsTeamMemberStatus,
 } from '@prisma/client';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { runSerializableSportsTransaction } from '../sports-transaction';
-import { normalizeSportsAthleteProfilePatch, SportsAthleteProfilePatch } from '../domain/sports-athlete-profile';
+import { normalizeSportsAthleteProfilePatch, type SportsAthleteProfilePatch } from '../domain/sports-athlete-profile';
 import { SportsAdminBaseService } from './sports-admin-base.service';
 
 export class SportsRegistrationAdminService extends SportsAdminBaseService {

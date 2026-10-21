@@ -1,23 +1,26 @@
-import { toBuffer } from '@bwip-js/node';
+import { jest as jestEsm } from '@jest/globals';
 import { NotFoundException } from '@nestjs/common';
 import { PassThrough } from 'node:stream';
-import { chromium } from 'playwright';
-import { CertificateDownloadService } from './certificate-download.service';
-import { createZipArchive } from '../shared/zip-archive';
+const { jest } = import.meta;
 
-jest.mock('@bwip-js/node', () => ({
+jestEsm.unstable_mockModule('@bwip-js/node', () => ({
   toBuffer: jest.fn(),
 }));
 
-jest.mock('playwright', () => ({
+jestEsm.unstable_mockModule('playwright', () => ({
   chromium: {
     launch: jest.fn(),
   },
 }));
 
-jest.mock('../shared/zip-archive', () => ({
+jestEsm.unstable_mockModule('../shared/zip-archive', () => ({
   createZipArchive: jest.fn(),
 }));
+
+const { toBuffer } = await import('@bwip-js/node');
+const { chromium } = await import('playwright');
+const { CertificateDownloadService } = await import('./certificate-download.service');
+const { createZipArchive } = await import('../shared/zip-archive');
 
 describe('CertificateDownloadService', () => {
   const originalPublicAppOrigin = process.env.PUBLIC_APP_ORIGIN;
@@ -306,6 +309,7 @@ describe('CertificateDownloadService', () => {
     await expect(service.createCertificatesArchive('Caio', ['third'], {})).rejects.toThrow(
       'Certificate downloads are busy.',
     );
+    await new Promise(setImmediate);
     expect(chromium.launch).toHaveBeenCalledTimes(2);
     for (const archive of archives) {
       archive.destroy();

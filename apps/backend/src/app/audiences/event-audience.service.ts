@@ -1,13 +1,14 @@
 import { AccountMergeService } from '../account-merge/account-merge.service';
 import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ANONYMOUS_AUDIENCE, type EventAudiencePrincipal } from './audience-context';
 import { BackendFeatureFlagService } from '../feature-flags/backend-feature-flags';
 import { hasUnespEmail, resolveAudienceIdentity } from './audience-identity';
 import { AccountManagerGrpcClient } from '../grpc/account-manager-grpc.client';
+import type { DeferredInjection } from '../common/deferred-injection';
 import type { M2MUserIdentifierLookupMatch } from '@cacic-fct/account-manager-m2m-contracts';
 
 export function isUnespAudience(primaryEmail: unknown, secondaryEmails: readonly unknown[] = []): boolean {
@@ -28,7 +29,7 @@ export class EventAudienceService {
     private readonly featureFlags: BackendFeatureFlagService,
     private readonly accountManager: AccountManagerGrpcClient,
     @Inject(forwardRef(() => AccountMergeService))
-    private readonly accountMerge: AccountMergeService,
+    private readonly accountMerge: DeferredInjection<AccountMergeService>,
   ) {}
 
   async principalForUser(user?: AuthenticatedUser): Promise<EventAudiencePrincipal> {

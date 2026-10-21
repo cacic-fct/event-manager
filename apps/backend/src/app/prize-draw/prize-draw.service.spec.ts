@@ -8,6 +8,7 @@ import {
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
 import { PrizeDrawService } from './prize-draw.service';
+const { jest } = import.meta;
 
 describe('PrizeDrawService', () => {
   describe('configuration', () => {

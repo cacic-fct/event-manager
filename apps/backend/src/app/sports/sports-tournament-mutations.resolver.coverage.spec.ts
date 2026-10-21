@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { SportsTournamentMutationsResolver } from './sports-tournament-mutations.resolver';
+const { jest } = import.meta;
 
 describe('SportsTournamentMutationsResolver category update boundary', () => {
   it('declares tournament category updates as a scoped category permission', () => {

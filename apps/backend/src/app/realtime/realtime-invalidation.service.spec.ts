@@ -4,6 +4,7 @@ import { firstValueFrom, NEVER, take } from 'rxjs';
 import { InMemoryRedisClient } from '../redis/in-memory-redis-client';
 import { SseReplayService } from './sse-replay.service';
 import { RealtimeInvalidationService } from './realtime-invalidation.service';
+const { jest } = import.meta;
 
 const REALTIME_INVALIDATION_REDIS_CHANNEL = 'realtime:invalidation:v1';
 

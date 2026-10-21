@@ -4,7 +4,7 @@ import { AuditLogOperation, PublicationPreviewTargetType } from '@prisma/client'
 import Redis from 'ioredis';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
-import { GraphqlContext } from '../current-user/selects';
+import { type GraphqlContext } from '../current-user/selects';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   assertPublicationTargetPermission,

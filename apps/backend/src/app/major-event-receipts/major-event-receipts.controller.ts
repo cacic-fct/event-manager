@@ -5,7 +5,7 @@ import {
   Header,
   Headers,
   Logger,
-  MessageEvent,
+  type MessageEvent,
   Param,
   Post,
   Query,
@@ -33,11 +33,11 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import { pipeline } from 'node:stream/promises';
 import { Observable, defer, exhaustMap, finalize, interval, map, shareReplay, startWith } from 'rxjs';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { RateLimit } from '../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
@@ -46,8 +46,8 @@ import { SseReplayService } from '../realtime/sse-replay.service';
 import {
   MAX_RECEIPT_FILE_SIZE_BYTES,
   RECEIPT_ADMIN_PERMISSION,
-  CurrentUserReceiptResponse,
-  UploadedReceiptFile,
+  type CurrentUserReceiptResponse,
+  type UploadedReceiptFile,
 } from './receipt.types';
 import { isAllowedReceiptMimeType } from './utils/receipt-file.utils';
 

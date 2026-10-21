@@ -7,15 +7,15 @@ import {
 } from '@nestjs/common';
 import axios from 'axios';
 import { Buffer } from 'node:buffer';
-import { createPublicKey, type JsonWebKey, type KeyObject, randomBytes, verify as verifySignature } from 'node:crypto';
+import { createPublicKey, type KeyObject, randomBytes, verify as verifySignature, type webcrypto } from 'node:crypto';
 import { AuthSessionStoreService } from './auth-session-store.service';
 import {
   DEFAULT_KEYCLOAK_CLIENT_ID,
   DEFAULT_KEYCLOAK_DEV_REALM_URL,
   DEFAULT_KEYCLOAK_REALM_URL,
 } from './auth.constants';
-import { AuthorizationState, AuthorizationStateService } from './authorization-state.service';
-import { AuthenticatedUser } from './interfaces/authenticated-user.interface';
+import { type AuthorizationState, AuthorizationStateService } from './authorization-state.service';
+import { type AuthenticatedUser } from './interfaces/authenticated-user.interface';
 import {
   decodeJwtPayload,
   extractRealmRoles,
@@ -25,7 +25,7 @@ import {
   readNumberClaim,
   readStringClaim,
 } from './keycloak-claims.utils';
-import { AuthSession, CachedUser, TokenClaims, TokenResponse } from './keycloak-auth.types';
+import { type AuthSession, type CachedUser, type TokenClaims, type TokenResponse } from './keycloak-auth.types';
 import { AuthenticatedUserSyncService } from './authenticated-user-sync.service';
 import { summarizeKeycloakFailure } from './keycloak-error-logging';
 
@@ -841,7 +841,7 @@ export class KeycloakAuthService {
         keys.set(
           kid,
           createPublicKey({
-            key: { ...rawKey } as JsonWebKey,
+            key: { ...rawKey } as webcrypto.JsonWebKey,
             format: 'jwk',
           }),
         );

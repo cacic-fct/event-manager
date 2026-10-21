@@ -47,7 +47,7 @@ import { Prisma } from '@prisma/client';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { runSerializablePrismaTransaction } from '../common/serializable-prisma-transaction';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
 import { TransferKeyAllocations } from './transfer-key-allocations';
 import { TransferValidationException } from './transfer-validation.exception';
@@ -55,12 +55,12 @@ import { DataTransferJournalService } from './data-transfer-journal.service';
 import { DataTransferRecoveryService } from './data-transfer-recovery.service';
 import { DATA_TRANSFER_ADAPTERS } from './data-transfer.constants';
 import {
-  DataTransferAdapter,
-  ResolvedTransferResource,
-  TransferAdapterContext,
-  TransferAdapterExportResult,
-  TransferResourceReference,
-  TransferWriteAction,
+  type DataTransferAdapter,
+  type ResolvedTransferResource,
+  type TransferAdapterContext,
+  type TransferAdapterExportResult,
+  type TransferResourceReference,
+  type TransferWriteAction,
 } from './data-transfer-adapter';
 
 type Row = {

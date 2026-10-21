@@ -1,4 +1,5 @@
 import { SportsMatchOverlayController } from './sports-match-overlay.controller';
+const { jest } = import.meta;
 
 describe('SportsMatchOverlayController', () => {
   const overlays = {

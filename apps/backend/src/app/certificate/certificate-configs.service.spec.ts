@@ -3,6 +3,7 @@ import { ConflictException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { CertificateConfigsService } from './certificate-configs.service';
 import { CertificateValidationService } from './certificate-validation.service';
+const { jest } = import.meta;
 
 describe('CertificateConfigsService', () => {
   describe('payment tier settings', () => {

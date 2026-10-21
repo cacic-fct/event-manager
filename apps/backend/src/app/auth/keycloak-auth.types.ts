@@ -1,4 +1,4 @@
-import { AuthenticatedUser } from './interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from './interfaces/authenticated-user.interface';
 
 export type TokenClaims = Record<string, unknown> & {
   active?: boolean;

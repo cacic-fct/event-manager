@@ -7,6 +7,7 @@ import { PersonTransferMatcherService } from './person-transfer-matcher.service'
 import { ParticipationTransferAdapter } from './participation-transfer-adapter';
 import { transferPersonKey } from './transfer-person-creation';
 import { participationRevision } from './participation-transfer-adapter';
+const { jest } = import.meta;
 
 const actor = { sub: 'organizer-1' } as AuthenticatedUser;
 

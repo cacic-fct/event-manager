@@ -7,7 +7,7 @@ import {
   SportsRosterRole,
   SportsTeamMemberStatus,
 } from '@prisma/client';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import {
   AuthorizationPolicyService,
   type AccessibleEventGrantTargets,

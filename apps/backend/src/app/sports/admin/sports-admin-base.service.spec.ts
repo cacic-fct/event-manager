@@ -6,6 +6,7 @@ import {
   sportsTestDate,
 } from '../testing/sports-backend.fixtures';
 import { SportsAdminBaseService } from './sports-admin-base.service';
+const { jest } = import.meta;
 
 class TestSportsAdminBaseService extends SportsAdminBaseService {
   attach(tx: ReturnType<typeof createTransaction>, eventId: string, scope: Record<string, unknown>) {

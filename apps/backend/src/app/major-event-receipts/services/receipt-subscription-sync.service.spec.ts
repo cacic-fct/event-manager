@@ -8,6 +8,7 @@ import {
 } from '@prisma/client';
 import { EventSubscriptionSyncService } from '../../events/event-subscription-sync.service';
 import { ReceiptSubscriptionSyncService } from './receipt-subscription-sync.service';
+const { jest } = import.meta;
 
 describe('EventSubscriptionSyncService', () => {
   let service: EventSubscriptionSyncService;

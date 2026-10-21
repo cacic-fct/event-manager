@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { WeatherService } from './weather.service';
 import { PUBLIC_EVENT_WHERE } from '../public-events/models';
+const { jest } = import.meta;
 
 describe('WeatherService', () => {
   const originalFetch = global.fetch;

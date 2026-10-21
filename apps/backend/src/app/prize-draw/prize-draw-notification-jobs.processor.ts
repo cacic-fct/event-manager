@@ -7,7 +7,7 @@ import {
   PRIZE_DRAW_NOTIFICATION_RECONCILE_JOB,
   PRIZE_DRAW_PRESENTATION_JOB,
   PRIZE_DRAW_WINNER_JOB,
-  PrizeDrawNotificationJob,
+  type PrizeDrawNotificationJob,
   PrizeDrawNotificationJobsService,
 } from './prize-draw-notification-jobs.service';
 

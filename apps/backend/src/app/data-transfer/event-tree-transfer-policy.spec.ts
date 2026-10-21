@@ -4,6 +4,7 @@ import {
   normalizeEventTreeTransferResource,
   validateTransferAudienceAndPublication,
 } from './event-tree-transfer-policy';
+const { jest } = import.meta;
 
 const hour = 60 * 60 * 1000;
 

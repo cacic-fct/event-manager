@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, NotFoundException } from '@nest
 import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
 import { CurrentUserEventAttendanceResolver } from './attendance.resolver';
+const { jest } = import.meta;
 
 describe('CurrentUserEventAttendanceResolver', () => {
   it('returns no current-user attendances when the account is not linked to a person', async () => {

@@ -1,4 +1,5 @@
 import { CurrentUserProfileResolver } from './resolver';
+const { jest } = import.meta;
 
 describe('CurrentUserProfileResolver', () => {
   const authenticatedUser = { sub: 'user-1', email: 'ada@example.com', preferredUsername: 'ada' };

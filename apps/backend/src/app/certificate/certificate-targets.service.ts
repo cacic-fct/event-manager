@@ -2,7 +2,7 @@ import { audienceContext } from '../audiences/audience-context';
 import { CertificateIssuedTo, CertificateScope } from '@cacic-fct/shared-data-types';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { AccessibleEventGrantTargets } from '../authorization/authorization-policy.service';
+import { type AccessibleEventGrantTargets } from '../authorization/authorization-policy.service';
 import { EVENT_GROUP_SELECT, EVENT_SELECT, MAJOR_EVENT_SELECT } from './certificate.constants';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';

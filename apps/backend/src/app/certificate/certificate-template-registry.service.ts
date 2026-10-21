@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { Dirent, existsSync, statSync } from 'node:fs';
@@ -335,7 +335,7 @@ export class CertificateTemplateRegistryService implements OnApplicationBootstra
   }
 
   private resolveRuntimeAsset(assetPath: string): string {
-    for (const start of [process.cwd(), __dirname]) {
+    for (const start of [process.cwd(), import.meta.dirname]) {
       let current = resolve(start);
       while (true) {
         const candidate = join(current, assetPath);
@@ -475,7 +475,7 @@ export class CertificateTemplateRegistryService implements OnApplicationBootstra
       throw new Error(`CERTIFICATE_TEMPLATES_ROOT does not point to a directory: ${resolvedRoot}.`);
     }
 
-    for (const start of [process.cwd(), __dirname]) {
+    for (const start of [process.cwd(), import.meta.dirname]) {
       let current = resolve(start);
       while (true) {
         const candidate = join(current, 'certificate-templates');

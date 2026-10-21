@@ -1,4 +1,4 @@
-import { INestApplication, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { type INestApplication, Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { audiencePrismaExtension } from '../audiences/audience-prisma.extension';

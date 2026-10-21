@@ -2,6 +2,7 @@ import { AttendanceImportMatchType } from '@cacic-fct/shared-data-types';
 import { BadRequestException } from '@nestjs/common';
 import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
 import { EventAttendanceCsvImportResolver } from './event-attendances.csv-import.resolver';
+const { jest } = import.meta;
 
 describe('EventAttendanceCsvImportResolver', () => {
   let prisma: ReturnType<typeof createFullPrisma>;

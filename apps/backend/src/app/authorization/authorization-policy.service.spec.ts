@@ -1,11 +1,15 @@
+import { jest as jestEsm } from '@jest/globals';
 import { ForbiddenException } from '@nestjs/common';
 import { CertificateScope, EventManagerPermissionScope } from '@prisma/client';
 import { EVENT_MANAGER_PERMISSION_CATALOG, EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
-import { AuthorizationPolicyService } from './authorization-policy.service';
-import { findActiveRolePermissionScopes } from './effective-role-scopes';
+import type { AuthorizationPolicyService } from './authorization-policy.service';
+const { jest } = import.meta;
 
-jest.mock('./effective-role-scopes', () => ({ findActiveRolePermissionScopes: jest.fn() }));
+jestEsm.unstable_mockModule('./effective-role-scopes', () => ({ findActiveRolePermissionScopes: jest.fn() }));
+
+const { findActiveRolePermissionScopes } = await import('./effective-role-scopes');
+const { AuthorizationPolicyService: AuthorizationPolicyServiceClass } = await import('./authorization-policy.service');
 const activeScopes = jest.mocked(findActiveRolePermissionScopes);
 
 describe('AuthorizationPolicyService', () => {
@@ -16,7 +20,7 @@ describe('AuthorizationPolicyService', () => {
     activeScopes.mockReset();
     activeScopes.mockResolvedValue([]);
     prisma = createPrisma();
-    service = new AuthorizationPolicyService(prisma as never);
+    service = new AuthorizationPolicyServiceClass(prisma as never);
   });
 
   it.each([Permission.Event.Create, Permission.EventGroup.Create, Permission.MajorEvent.Create])(

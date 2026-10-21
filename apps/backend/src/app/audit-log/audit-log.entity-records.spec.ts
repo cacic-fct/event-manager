@@ -3,6 +3,7 @@ import { AuditLogEntityType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { findCurrentAuditEntityRecord, updateAuditEntityRecord } from './audit-log.entity-records';
 import { getAuditLogRevertConfig } from './audit-log.revert-config';
+const { jest } = import.meta;
 
 type AuditEntityDelegateName = 'people' | 'event' | 'majorEvent' | 'eventGroup' | 'placePreset';
 

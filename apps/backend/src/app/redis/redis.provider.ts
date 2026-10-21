@@ -1,4 +1,4 @@
-import { OnModuleDestroy, Provider } from '@nestjs/common';
+import { type OnModuleDestroy, type Provider } from '@nestjs/common';
 import Redis from 'ioredis';
 import { getRedisConnectionOptions } from '../weather/redis-connection';
 import { InMemoryRedisClient } from './in-memory-redis-client';

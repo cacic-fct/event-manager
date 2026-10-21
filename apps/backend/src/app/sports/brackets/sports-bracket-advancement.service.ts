@@ -4,8 +4,8 @@ import { planSportsWinnerAdvancement } from '../domain/sports-brackets';
 import { planSportsGrandFinalOutcome } from '../domain/sports-double-elimination';
 import {
   mergeSportsStructuralInvalidations,
-  SportsStructuralInvalidation,
-  SportsStructuralInvalidationKind,
+  type SportsStructuralInvalidation,
+  type SportsStructuralInvalidationKind,
 } from '../realtime/sports-structural-invalidation';
 import { SportsMatchRosterService } from '../rosters/sports-match-roster.service';
 

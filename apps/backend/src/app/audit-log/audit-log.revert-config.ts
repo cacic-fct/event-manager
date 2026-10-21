@@ -1,7 +1,7 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException } from '@nestjs/common';
 import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
-import { RevertEntityConfig } from './audit-log.types';
+import { type RevertEntityConfig } from './audit-log.types';
 
 const EVENT_MUTABLE_FIELDS = [
   'name',

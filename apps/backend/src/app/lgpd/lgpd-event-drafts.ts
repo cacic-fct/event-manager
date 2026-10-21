@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client';
-import { DataSubjectResolution } from './lgpd-records';
+import { type DataSubjectResolution } from './lgpd-records';
 
 export function buildEventDraftSubjectWhere(dataSubject: DataSubjectResolution): Prisma.EventDraftWhereInput | null {
   const conditions: Prisma.EventDraftWhereInput[] = [];

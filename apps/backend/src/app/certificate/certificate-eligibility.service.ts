@@ -1,6 +1,6 @@
 import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/shared-data-types';
 import { isAttendanceEligible } from '@cacic-fct/shared-event-participation';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, SubscriptionStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -9,15 +9,16 @@ import {
   EVENT_SELECT,
   MAJOR_EVENT_SELECT,
   PERSON_SELECT,
-  CertificateConfigRecord,
-  EventRecord,
-  PersonRecord,
+  type CertificateConfigRecord,
+  type EventRecord,
+  type PersonRecord,
 } from './certificate.constants';
 import { CertificateSportsEligibility } from './certificate-sports-eligibility';
 import { isAutomaticSportsCertificateIssuedTo, isManualCertificateIssuedTo } from './certificate-sports-roles';
 import { isApprovedAttendance, isRegisteredAttendanceEvidence } from '../events/attendance-eligibility';
 import { normalizeAttendancePriceTier } from '../events/attendance-price-tier-policy';
 import { AudienceInvitationService } from '../audiences/audience-invitation.service';
+import type { DeferredInjection } from '../common/deferred-injection';
 
 const MAJOR_EVENT_SUBSCRIPTION_SELECT = {
   majorEventId: true,
@@ -90,7 +91,8 @@ export class CertificateEligibilityService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sportsEligibility: CertificateSportsEligibility,
-    private readonly audienceInvitations: AudienceInvitationService,
+    @Inject(forwardRef(() => AudienceInvitationService))
+    private readonly audienceInvitations: DeferredInjection<AudienceInvitationService>,
   ) {}
 
   async getConfigById(configId: string): Promise<CertificateConfigRecord> {

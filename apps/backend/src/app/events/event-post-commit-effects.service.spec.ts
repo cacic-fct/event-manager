@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { EventPostCommitEffectsService, EventPostCommitRecord } from './event-post-commit-effects.service';
+const { jest } = import.meta;
 
 const eventRecord = (overrides: Partial<EventPostCommitRecord> = {}): EventPostCommitRecord => ({
   id: 'event-1',

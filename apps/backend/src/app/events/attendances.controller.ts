@@ -1,4 +1,4 @@
-import { Controller, ForbiddenException, Headers, MessageEvent, Param, Req, Sse } from '@nestjs/common';
+import { Controller, ForbiddenException, Headers, type MessageEvent, Param, Req, Sse } from '@nestjs/common';
 import { AttendanceCreationMethod, EventAttendanceStatus, SubscriptionStatus } from '@prisma/client';
 import {
   ApiBearerAuth,

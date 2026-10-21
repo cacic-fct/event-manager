@@ -4,6 +4,7 @@ import {
   attendanceInvitationTarget,
   invitationFactForAttendance,
 } from './audience-invitation.service';
+const { jest } = import.meta;
 
 describe('audience invitation attendance facts', () => {
   it('links a group invitation to an accessible child event instead of the major-event listing', async () => {

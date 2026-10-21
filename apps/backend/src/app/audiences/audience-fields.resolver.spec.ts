@@ -5,6 +5,7 @@ import {
   EventGroupAudienceFieldsResolver,
   MajorEventAudienceFieldsResolver,
 } from './audience-fields.resolver';
+const { jest } = import.meta;
 
 it.each([
   [EventAudienceFieldsResolver, 'event', Permission.Event.Update],

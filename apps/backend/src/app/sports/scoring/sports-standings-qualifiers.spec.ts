@@ -1,17 +1,17 @@
+import { jest as jestEsm } from '@jest/globals';
 import { ConflictException } from '@nestjs/common';
 import { SportsMatchState, SportsReviewStatus } from '@prisma/client';
-import {
-  sportsGroupStageRecord,
-  sportsQualifierEliminationStageRecord,
-  sportsQualifierMatchRecord,
-} from '../testing/sports-backend.fixtures';
+const { jest } = import.meta;
 
-jest.mock('../sports-match-event-sync', () => ({
+jestEsm.unstable_mockModule('../sports-match-event-sync', () => ({
   syncSportsMatchEventName: jest.fn().mockResolvedValue(undefined),
 }));
 
-import { syncSportsMatchEventName } from '../sports-match-event-sync';
-import { SportsStandingsQualifiers } from './sports-standings-qualifiers';
+const { sportsGroupStageRecord, sportsQualifierEliminationStageRecord, sportsQualifierMatchRecord } = await import(
+  '../testing/sports-backend.fixtures'
+);
+const { syncSportsMatchEventName } = await import('../sports-match-event-sync');
+const { SportsStandingsQualifiers } = await import('./sports-standings-qualifiers');
 
 class TestSportsStandingsQualifiers extends SportsStandingsQualifiers {
   refresh(tx: unknown, categoryId = 'category-1', actorId = 'actor-1') {

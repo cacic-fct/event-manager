@@ -1,6 +1,7 @@
 import sharp from 'sharp';
 import { Readable } from 'node:stream';
 import { SportsTeamLogoService } from './sports-team-logo.service';
+const { jest } = import.meta;
 
 describe('SportsTeamLogoService representative queue', () => {
   const prisma = {

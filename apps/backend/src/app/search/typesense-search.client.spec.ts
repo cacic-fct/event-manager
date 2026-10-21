@@ -1,13 +1,14 @@
-import Typesense from 'typesense';
-import { buildTypesenseClient, buildTypesenseNodeConfigFromUrl } from './typesense-search.client';
-
-jest.mock('typesense', () => ({
+import { jest as jestEsm } from '@jest/globals';
+const { jest } = import.meta;
+jestEsm.unstable_mockModule('typesense', () => ({
   __esModule: true,
   default: {
     Client: jest.fn(),
   },
 }));
 
+const Typesense = (await import('typesense')).default;
+const { buildTypesenseClient, buildTypesenseNodeConfigFromUrl } = await import('./typesense-search.client');
 const typesenseClientConstructor = Typesense.Client as unknown as jest.Mock;
 
 describe('typesense search client helpers', () => {

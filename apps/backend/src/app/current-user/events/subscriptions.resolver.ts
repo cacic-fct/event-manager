@@ -15,7 +15,7 @@ import {
   CURRENT_USER_EVENT_GROUP_SUBSCRIPTION_SELECT,
   CURRENT_USER_EVENT_SUBSCRIPTION_SELECT,
   EVENT_SELECT,
-  GraphqlContext,
+  type GraphqlContext,
 } from '../selects';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PublicEvent } from '../../public-events/models';

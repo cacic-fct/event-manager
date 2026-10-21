@@ -1,5 +1,5 @@
 import { EventFormResponseMode, Prisma } from '@prisma/client';
-import { EventFormLinkRecord, EventFormRecord, NormalizedTarget } from './event-form-records';
+import { type EventFormLinkRecord, type EventFormRecord, type NormalizedTarget } from './event-form-records';
 
 export type AccessibleEventTargets = {
   eventIds: Set<string>;

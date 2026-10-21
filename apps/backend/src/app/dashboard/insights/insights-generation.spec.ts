@@ -1,5 +1,6 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { createInsightsServiceTestContext, insightEvent } from './insights-service.fixtures';
+const { jest } = import.meta;
 
 describe('DashboardInsightsService generation', () => {
   beforeEach(() => {

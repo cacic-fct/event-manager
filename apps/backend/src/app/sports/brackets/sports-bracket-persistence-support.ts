@@ -9,14 +9,14 @@ import {
 } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { AuditLogService } from '../../audit-log/audit-log.service';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { EventPostCommitEffectsService } from '../../events/event-post-commit-effects.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SportsRealtimeService } from '../realtime/sports-realtime.service';
 import {
-  SportsStructuralInvalidation,
-  SportsStructuralInvalidationKind,
+  type SportsStructuralInvalidation,
+  type SportsStructuralInvalidationKind,
 } from '../realtime/sports-structural-invalidation';
 import { createSportsMatchBackingEvent, softDeleteSportsMatchBackingEvents } from '../sports-match-event-sync';
 import { SportsBracketAdvancementService } from './sports-bracket-advancement.service';

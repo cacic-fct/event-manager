@@ -1,5 +1,6 @@
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { syncEventGroupMajorEvent } from './event-group-major-event';
+const { jest } = import.meta;
 
 describe('group parent consistency with restricted children', () => {
   it('checks hidden children before changing the group parent', async () => {

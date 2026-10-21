@@ -8,6 +8,7 @@ import { RECEIPT_ADMIN_PERMISSION, CurrentUserReceiptResponse } from './receipt.
 import { IS_PUBLIC_KEY, REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { RATE_LIMIT_METADATA_KEY } from '../rate-limit/rate-limit.decorator';
 import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
+const { jest } = import.meta;
 
 describe('MajorEventReceiptsController', () => {
   let receipts: {

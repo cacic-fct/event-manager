@@ -1,6 +1,6 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuditLogActorType, AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
 
 export const AuditLogMetadataCategory = {

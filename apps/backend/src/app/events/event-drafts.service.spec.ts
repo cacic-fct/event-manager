@@ -2,6 +2,7 @@ import { BadRequestException, Logger } from '@nestjs/common';
 import { AuditLogOperation, PublicationState } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { EventDraftsService } from './event-drafts.service';
+const { jest } = import.meta;
 
 describe('EventDraftsService', () => {
   let loggerWarnSpy: jest.SpyInstance;

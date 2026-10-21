@@ -1,9 +1,8 @@
+import { jest as jestEsm } from '@jest/globals';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { EventManagerPermissionScope } from '@prisma/client';
 import { createHmac } from 'node:crypto';
-import { CalendarService } from './calendar.service';
-import { findActiveRolePermissionScopes } from '../authorization/effective-role-scopes';
 import { PUBLIC_EVENT_WHERE } from '../public-events/models';
 import {
   ADMIN_CALENDAR_FEED_DISABLED_NO_CURRENT_TARGETS,
@@ -12,13 +11,16 @@ import {
   CALENDAR_FEED_DISABLED_STALE_LOGIN,
   SUPER_ADMIN_CALENDAR_FEED_ID,
 } from './calendar.models';
+const { jest } = import.meta;
 
-jest.mock('../authorization/effective-role-scopes', () => ({
+jestEsm.unstable_mockModule('../authorization/effective-role-scopes', () => ({
   findActiveRolePermissionScopes: jest.fn(
     (prisma: { eventManagerPermissionGrant?: { findMany: () => unknown } }) =>
       prisma.eventManagerPermissionGrant?.findMany() ?? Promise.resolve([]),
   ),
 }));
+const { findActiveRolePermissionScopes } = await import('../authorization/effective-role-scopes');
+const { CalendarService } = await import('./calendar.service');
 const activeScopes = jest.mocked(findActiveRolePermissionScopes);
 
 describe('CalendarService', () => {

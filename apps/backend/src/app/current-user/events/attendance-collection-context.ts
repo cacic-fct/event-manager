@@ -1,7 +1,7 @@
 import { OfflineEventAttendanceCommitResult } from '@cacic-fct/shared-data-types';
 import { CurrentUserContextService } from '../context.service';
-import { GraphqlContext } from '../selects';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type GraphqlContext } from '../selects';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import {
   classifyOfflineAttendanceError,
   errorMessage,

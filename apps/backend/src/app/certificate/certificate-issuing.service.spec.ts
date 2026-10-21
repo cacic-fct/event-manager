@@ -3,6 +3,7 @@ import { BadRequestException, Logger } from '@nestjs/common';
 import { addMinutes } from 'date-fns';
 import { buildCertificateRenderedData, buildMinicursoLines, formatCargaHoraria } from './certificate-rendered-data';
 import { CertificateIssuingService } from './certificate-issuing.service';
+const { jest } = import.meta;
 
 describe('CertificateIssuingService', () => {
   const config = {

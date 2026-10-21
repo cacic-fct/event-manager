@@ -6,6 +6,7 @@ import {
   RECONCILE_PUBLICATION_STATES_JOB,
 } from './publishing.constants';
 import { PublicationProcessor } from './publishing.processor';
+const { jest } = import.meta;
 
 describe('PublicationProcessor', () => {
   const processScheduledPublication = jest.fn().mockResolvedValue(undefined);

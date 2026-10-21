@@ -11,6 +11,7 @@ import {
 } from './event-form-eligibility';
 import { PUBLIC_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE } from '../public-events/models';
 import type { EventFormLinkRecord } from './event-form-records';
+const { jest } = import.meta;
 
 describe('event form eligibility helpers', () => {
   it.each(['event', 'majorEvent'] as const)(

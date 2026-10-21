@@ -7,6 +7,7 @@ import {
 } from '@cacic-fct/account-manager-m2m-contracts';
 import type { Response } from 'express';
 import { clearCacicTrackingCookies, refreshCacicTrackingCookies } from './tracking-cookie.utils';
+const { jest } = import.meta;
 
 describe('tracking cookie utilities', () => {
   const originalNodeEnv = process.env.NODE_ENV;

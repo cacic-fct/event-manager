@@ -13,6 +13,7 @@ import {
   getPermissionGrantTargetLabel,
   normalizeLinkedResourceGroups,
 } from './people-linked-resource-definitions';
+const { jest } = import.meta;
 
 describe('people linked resources', () => {
   it('summarizes linked resource counts and only allows deletion without links', async () => {

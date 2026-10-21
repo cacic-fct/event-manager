@@ -1,4 +1,5 @@
 import { getPrivateFeedEvents } from './calendar-private-feed.repository';
+const { jest } = import.meta;
 
 describe('getPrivateFeedEvents', () => {
   it('uses only present attendances as private-calendar evidence', async () => {

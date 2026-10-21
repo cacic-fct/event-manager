@@ -1,5 +1,6 @@
 import { CalendarFeedMaintenanceProcessor } from './calendar-feed-maintenance.processor';
 import { DISABLE_STALE_ADMIN_CALENDAR_FEEDS_JOB } from './calendar.models';
+const { jest } = import.meta;
 
 describe('CalendarFeedMaintenanceProcessor', () => {
   it('runs admin calendar feed maintenance for the scheduled job', async () => {

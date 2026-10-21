@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { FormImage } from '@cacic-fct/form-contracts';
+import { type FormImage } from '@cacic-fct/form-contracts';
 import { assertSafeSvg, detectImageMimeType, UnsafeSvgError } from '@cacic-fct/shared-utils';
 import type sharp from 'sharp';
 import { loadSharp } from '../shared/load-sharp';

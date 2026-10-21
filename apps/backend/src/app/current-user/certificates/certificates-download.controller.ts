@@ -2,10 +2,10 @@ import { IncludePastParticipation } from '../../audiences/past-participation.dec
 import { Controller, Get, Header, NotFoundException, Req, StreamableFile, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
 import { CertificateScope } from '@cacic-fct/shared-data-types';
-import { Request } from 'express';
+import { type Request } from 'express';
 import { Readable } from 'node:stream';
 import { RateLimitService } from '../../rate-limit/rate-limit.service';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { CertificateDownloadService } from '../../certificate/certificate-download.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RateLimit } from '../../rate-limit/rate-limit.decorator';

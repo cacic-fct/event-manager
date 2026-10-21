@@ -1,6 +1,7 @@
 import { ConflictException } from '@nestjs/common';
 import { AttendanceCreationMethod, Prisma, SportsMatchState } from '@prisma/client';
 import { createAttendance } from './attendance-collection-records';
+const { jest } = import.meta;
 
 describe('createAttendance', () => {
   it('re-evaluates a non-regular re-scan without recording another creation or starting check-in', async () => {

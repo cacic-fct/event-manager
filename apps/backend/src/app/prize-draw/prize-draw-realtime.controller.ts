@@ -1,8 +1,8 @@
-import { Controller, Headers, MessageEvent, Param, Req, Sse, UseGuards } from '@nestjs/common';
+import { Controller, Headers, type MessageEvent, Param, Req, Sse, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiParam, ApiProduces, ApiTags } from '@nestjs/swagger';
-import { Request } from 'express';
+import { type Request } from 'express';
 import { defer, map, Observable, switchMap } from 'rxjs';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { RateLimit } from '../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';

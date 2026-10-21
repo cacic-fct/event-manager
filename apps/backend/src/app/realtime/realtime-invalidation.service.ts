@@ -1,4 +1,4 @@
-import { Injectable, Logger, MessageEvent, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, type MessageEvent, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import Redis from 'ioredis';
 import { EMPTY, interval, map, merge, Observable, Subject, share, takeUntil } from 'rxjs';
 import { SseReplayService } from './sse-replay.service';

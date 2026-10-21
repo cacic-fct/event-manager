@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { AuthenticatedUser } from './interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from './interfaces/authenticated-user.interface';
 
 @Injectable()
 export class AuthenticatedUserSyncService {

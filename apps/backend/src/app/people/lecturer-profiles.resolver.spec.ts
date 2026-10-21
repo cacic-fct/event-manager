@@ -4,6 +4,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { LecturerProfilesResolver } from './lecturer-profiles.resolver';
+const { jest } = import.meta;
 
 describe('LecturerProfilesResolver current-user operations', () => {
   const context = { req: { user: { sub: 'user-1', claims: { picture: ' https://images.example/user.jpg ' } } } };

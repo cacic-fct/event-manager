@@ -1,12 +1,10 @@
+import { jest as jestEsm } from '@jest/globals';
 import { ForbiddenException, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
-import axios from 'axios';
 import { generateKeyPairSync, type JsonWebKey, type KeyObject, sign as signToken } from 'node:crypto';
-import { AuthSessionStoreService } from './auth-session-store.service';
-import { AuthorizationStateService } from './authorization-state.service';
-import { KeycloakAuthService } from './keycloak-auth.service';
-import { AuthenticatedUserSyncService } from './authenticated-user-sync.service';
+import type { KeycloakAuthService } from './keycloak-auth.service';
+const { jest } = import.meta;
 
-jest.mock('axios', () => ({
+jestEsm.unstable_mockModule('axios', () => ({
   __esModule: true,
   default: {
     post: jest.fn(),
@@ -15,6 +13,11 @@ jest.mock('axios', () => ({
   },
 }));
 
+const axios = (await import('axios')).default;
+const { KeycloakAuthService: KeycloakAuthServiceClass } = await import('./keycloak-auth.service');
+type AuthSessionStoreService = import('./auth-session-store.service').AuthSessionStoreService;
+type AuthorizationStateService = import('./authorization-state.service').AuthorizationStateService;
+type AuthenticatedUserSyncService = import('./authenticated-user-sync.service').AuthenticatedUserSyncService;
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 const TEST_ISSUER = 'https://keycloak.example/realms/cacic';
 const TEST_KEY_ID = 'test-key';
@@ -56,6 +59,7 @@ describe('KeycloakAuthService', () => {
     delete process.env.KEYCLOAK_M2M_AUDIENCE;
     delete process.env.KEYCLOAK_M2M_ALLOWED_CLIENTS;
     delete process.env.KEYCLOAK_M2M_REQUIRE_SERVICE_ACCOUNT;
+    delete process.env.KEYCLOAK_AUTH_REFRESH_LOCK_TTL_MS;
     sessions = createSessionStoreMock();
     authorizationState = {
       create: jest.fn().mockResolvedValue('opaque-state'),
@@ -67,7 +71,7 @@ describe('KeycloakAuthService', () => {
     userClaimSync = {
       syncLoginClaims: jest.fn().mockResolvedValue(undefined),
     };
-    service = new KeycloakAuthService(
+    service = new KeycloakAuthServiceClass(
       sessions as unknown as AuthSessionStoreService,
       authorizationState as unknown as AuthorizationStateService,
       userClaimSync as unknown as AuthenticatedUserSyncService,
@@ -107,7 +111,7 @@ describe('KeycloakAuthService', () => {
     process.env.KEYCLOAK_CLIENT_ID = '   ';
     process.env.KEYCLOAK_CLIENT_SECRET = ' secret ';
     process.env.KEYCLOAK_REDIRECT_URI = '   ';
-    service = new KeycloakAuthService(
+    service = new KeycloakAuthServiceClass(
       sessions as unknown as AuthSessionStoreService,
       authorizationState as unknown as AuthorizationStateService,
       userClaimSync as unknown as AuthenticatedUserSyncService,
@@ -132,7 +136,7 @@ describe('KeycloakAuthService', () => {
     delete process.env.KEYCLOAK_CLIENT_ID;
     delete process.env.KEYCLOAK_CLIENT_SECRET;
     delete process.env.KEYCLOAK_LOGIN_IDP_HINT;
-    service = new KeycloakAuthService(
+    service = new KeycloakAuthServiceClass(
       sessions as unknown as AuthSessionStoreService,
       authorizationState as unknown as AuthorizationStateService,
       userClaimSync as unknown as AuthenticatedUserSyncService,
@@ -172,7 +176,7 @@ describe('KeycloakAuthService', () => {
 
   it('forces the Google IdP hint only for production authorization redirects', async () => {
     process.env.NODE_ENV = 'production';
-    service = new KeycloakAuthService(
+    service = new KeycloakAuthServiceClass(
       sessions as unknown as AuthSessionStoreService,
       authorizationState as unknown as AuthorizationStateService,
       userClaimSync as unknown as AuthenticatedUserSyncService,
@@ -190,7 +194,7 @@ describe('KeycloakAuthService', () => {
 
     expect(
       () =>
-        new KeycloakAuthService(
+        new KeycloakAuthServiceClass(
           sessions as unknown as AuthSessionStoreService,
           authorizationState as unknown as AuthorizationStateService,
           userClaimSync as unknown as AuthenticatedUserSyncService,
@@ -255,7 +259,7 @@ describe('KeycloakAuthService', () => {
 
   it('can authenticate the Keycloak client with client_secret_post when configured', async () => {
     process.env.KEYCLOAK_TOKEN_ENDPOINT_AUTH_METHOD = 'client_secret_post';
-    service = new KeycloakAuthService(
+    service = new KeycloakAuthServiceClass(
       sessions as unknown as AuthSessionStoreService,
       authorizationState as unknown as AuthorizationStateService,
       userClaimSync as unknown as AuthenticatedUserSyncService,
@@ -521,7 +525,7 @@ describe('KeycloakAuthService', () => {
 
   it('evicts expired and excess principals from the access-token cache', async () => {
     process.env.KEYCLOAK_PRINCIPAL_CACHE_MAX_ENTRIES = '2';
-    service = new KeycloakAuthService(
+    service = new KeycloakAuthServiceClass(
       sessions as unknown as AuthSessionStoreService,
       authorizationState as unknown as AuthorizationStateService,
       userClaimSync as unknown as AuthenticatedUserSyncService,
@@ -548,7 +552,7 @@ describe('KeycloakAuthService', () => {
 
   it('bounds Keycloak token requests and cancels an incomplete request', async () => {
     process.env.KEYCLOAK_AUTH_REQUEST_TIMEOUT_MS = '1000';
-    service = new KeycloakAuthService(
+    service = new KeycloakAuthServiceClass(
       sessions as unknown as AuthSessionStoreService,
       authorizationState as unknown as AuthorizationStateService,
       userClaimSync as unknown as AuthenticatedUserSyncService,
@@ -913,7 +917,7 @@ describe('KeycloakAuthService', () => {
 
   it('allows configured sibling clients to reuse the shared Keycloak session without token copying', async () => {
     process.env.KEYCLOAK_ALLOWED_ACCESS_TOKEN_CLIENTS = 'cacic-account-manager';
-    service = new KeycloakAuthService(
+    service = new KeycloakAuthServiceClass(
       sessions as unknown as AuthSessionStoreService,
       authorizationState as unknown as AuthorizationStateService,
       userClaimSync as unknown as AuthenticatedUserSyncService,

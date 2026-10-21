@@ -4,6 +4,7 @@ import type { Response } from 'express';
 import type Redis from 'ioredis';
 import { RATE_LIMIT_POLICIES } from './rate-limit.policies';
 import { RateLimitService } from './rate-limit.service';
+const { jest } = import.meta;
 
 describe('RateLimitService', () => {
   const policy = RATE_LIMIT_POLICIES.standaloneEventSubscription;

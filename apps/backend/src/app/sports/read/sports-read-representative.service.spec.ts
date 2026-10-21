@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { sportsPublicTeamRecord, sportsTestDate } from '../testing/sports-backend.fixtures';
 import { SportsReadRepresentativeService } from './sports-read-representative.service';
+const { jest } = import.meta;
 
 describe('SportsReadRepresentativeService', () => {
   const prisma = {

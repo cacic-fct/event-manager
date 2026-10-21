@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { AuditPrismaClient } from './audit-log.types';
 import { synchronizeAuditLogEntry } from './audit-log.synchronization';
+const { jest } = import.meta;
 
 function createAuditEntry(overrides: Partial<AuditLogEntry> = {}): AuditLogEntry {
   return {

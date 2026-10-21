@@ -7,10 +7,10 @@ import {
   unionPermissionRelationValidity,
 } from '../../permission-relation-validity';
 import {
-  MovedRelationsSnapshot,
-  PermissionGroupMembershipSnapshot,
-  RoleAssignmentScopeSnapshot,
-  RoleAssignmentSnapshot,
+  type MovedRelationsSnapshot,
+  type PermissionGroupMembershipSnapshot,
+  type RoleAssignmentScopeSnapshot,
+  type RoleAssignmentSnapshot,
 } from './types';
 import { toAttendanceCreateData, toAttendanceSnapshot } from './attendance';
 import { moveSportsPersonRelations } from './sports-representatives';

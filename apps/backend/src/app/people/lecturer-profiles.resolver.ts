@@ -5,9 +5,9 @@ import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { CurrentUserContextService } from '../current-user/context.service';
-import { GraphqlContext } from '../current-user/selects';
+import { type GraphqlContext } from '../current-user/selects';
 import { PrismaService } from '../prisma/prisma.service';
 
 const LECTURER_PROFILE_SELECT = {

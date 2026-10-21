@@ -5,6 +5,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PUBLICATION_LIFECYCLE_AUDIT_METADATA, publicationStateAuditSnapshot } from './publishing-audit';
 import { PublicationStateWriterService } from './publishing-state-writer.service';
+const { jest } = import.meta;
 
 describe('PublicationStateWriterService', () => {
   const now = new Date('2026-07-07T12:00:00.000Z');

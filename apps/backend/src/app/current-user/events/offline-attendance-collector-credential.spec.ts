@@ -3,6 +3,7 @@ import {
   issueOfflineAttendanceCollectorCredential,
   verifyOfflineAttendanceCollectorCredential,
 } from './offline-attendance-collector-credential';
+const { jest } = import.meta;
 
 describe('offline attendance collector credentials', () => {
   it('binds the event and original collector identity', () => {

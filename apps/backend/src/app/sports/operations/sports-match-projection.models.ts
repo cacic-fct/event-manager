@@ -1,5 +1,5 @@
 import { SportsLossReason, SportsMatchActionType, SportsMatchState, SportsReviewStatus } from '@prisma/client';
-import { SportsScoreboard } from '../domain/sports-scoreboard';
+import { type SportsScoreboard } from '../domain/sports-scoreboard';
 
 export interface SportsProjectedOutcome {
   state: SportsMatchState;

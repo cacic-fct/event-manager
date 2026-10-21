@@ -1,5 +1,6 @@
 import type { AccountManagerGrpcClient } from '../grpc/account-manager-grpc.client';
 import { AccountManagerTotpService } from './account-manager-totp.service';
+const { jest } = import.meta;
 
 describe('AccountManagerTotpService', () => {
   it('relays the seed through the Account Manager gRPC client', async () => {

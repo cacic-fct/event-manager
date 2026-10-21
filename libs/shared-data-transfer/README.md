@@ -143,7 +143,7 @@ TypeBox supplies the runtime JSON Schema and inferred transfer types. Checked sc
 
 ```sh
 bunx nx test shared-data-transfer
-bunx jest --config apps/backend/jest.config.cts --runInBand --testPathPatterns=data-transfer
+bunx nx test backend --runInBand --testPathPatterns=data-transfer
 bunx nx run backend:test-data-transfer-integration
 bunx nx run-many --targets=lint --projects=backend,admin,shared-data-transfer,shared-permissions
 ```

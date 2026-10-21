@@ -15,6 +15,8 @@ import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interfa
 import { canPersonAnswerLink } from '../event-forms/event-form-eligibility';
 import { EventInterestsService } from './interest.service';
 
+const { jest } = import.meta;
+
 const describeDatabase = process.env['PRISMA_MIGRATION_INTEGRATION_TEST'] === '1' ? describe : describe.skip;
 
 describeDatabase('event interest with PostgreSQL and real subscription services', () => {

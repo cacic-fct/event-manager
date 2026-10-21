@@ -1,15 +1,15 @@
 import { BadRequestException } from '@nestjs/common';
 import {
   Prisma,
-  SportsMatchAction,
+  type SportsMatchAction,
   SportsMatchActionType,
   SportsMatchState,
   SportsReviewStatus,
   SportsRosterEntryStatus,
   SportsRosterStatus,
 } from '@prisma/client';
-import { AuditActor } from '../../audit-log/audit-log.types';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuditActor } from '../../audit-log/audit-log.types';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 
 export type SportsMatchActorKind = 'ADMIN' | 'OFFICIAL' | 'LINEUP_MANAGER';
 

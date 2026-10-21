@@ -1,15 +1,78 @@
+import { jest as jestEsm } from '@jest/globals';
 import { ReceiptProcessingStatus } from '@prisma/client';
-import { MajorEventReceiptsProcessor } from './major-event-receipts.processor';
 import { UnrecoverableError } from 'bullmq';
 import { Readable } from 'stream';
 import { MAX_RECEIPT_FILE_SIZE_BYTES } from './receipt.types';
-import * as receiptImageProcessing from './utils/receipt-image-processing.utils';
-import {
-  ReceiptImageProcessingLimitError,
-  ReceiptImageProcessingTimeoutError,
-} from './utils/receipt-image-processing.utils';
-import * as receiptPdfProcessing from './utils/receipt-pdf-processing.utils';
 import sharp from 'sharp';
+const { jest } = import.meta;
+
+const mockReadProcessableReceiptImageMetadata = jest.fn().mockResolvedValue(undefined);
+const mockProcessReceiptPdf = jest.fn();
+const mockCreateReceiptSharp = jest.fn(async (buffer: Buffer) => sharp(buffer));
+
+class MockReceiptImageProcessingLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ReceiptImageProcessingLimitError';
+  }
+}
+
+class MockReceiptImageProcessingTimeoutError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ReceiptImageProcessingTimeoutError';
+  }
+}
+
+class MockReceiptPdfProcessingError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ReceiptPdfProcessingError';
+  }
+}
+
+jestEsm.unstable_mockModule('./utils/receipt-image-processing.utils', () => ({
+  ReceiptImageProcessingLimitError: MockReceiptImageProcessingLimitError,
+  ReceiptImageProcessingTimeoutError: MockReceiptImageProcessingTimeoutError,
+  createReceiptSharp: mockCreateReceiptSharp,
+  isReceiptImageProcessingError: (error: unknown) =>
+    error instanceof MockReceiptImageProcessingLimitError || error instanceof MockReceiptImageProcessingTimeoutError,
+  isSharpInputLimitError: (error: unknown) =>
+    error instanceof Error && /pixel limit|memory limit|exceeds/i.test(error.message),
+  isSharpTimeoutError: (error: unknown) => error instanceof Error && /timeout/i.test(error.message),
+  normalizeReceiptImageProcessingError: (error: unknown, fallbackMessage: string) => {
+    if (
+      error instanceof MockReceiptImageProcessingLimitError ||
+      error instanceof MockReceiptImageProcessingTimeoutError
+    ) {
+      return error;
+    }
+
+    if (error instanceof Error && /timeout/i.test(error.message)) {
+      return new MockReceiptImageProcessingTimeoutError('Receipt image processing timed out.');
+    }
+
+    return new MockReceiptImageProcessingLimitError(fallbackMessage);
+  },
+  readProcessableReceiptImageMetadata: mockReadProcessableReceiptImageMetadata,
+}));
+
+jestEsm.unstable_mockModule('./utils/receipt-pdf-processing.utils', () => ({
+  ReceiptPdfProcessingError: MockReceiptPdfProcessingError,
+  processReceiptPdf: mockProcessReceiptPdf,
+}));
+
+const { ReceiptImageProcessingLimitError, ReceiptImageProcessingTimeoutError } = await import(
+  './utils/receipt-image-processing.utils'
+);
+const { ReceiptPdfProcessingError } = await import('./utils/receipt-pdf-processing.utils');
+const { MajorEventReceiptsProcessor } = await import('./major-event-receipts.processor');
+
+beforeEach(() => {
+  mockReadProcessableReceiptImageMetadata.mockReset().mockResolvedValue(undefined);
+  mockProcessReceiptPdf.mockReset();
+  mockCreateReceiptSharp.mockReset().mockImplementation(async (buffer: Buffer) => sharp(buffer));
+});
 
 describe('MajorEventReceiptsProcessor expected amount resolution', () => {
   it('upserts the pending receipt reconciliation scheduler', async () => {
@@ -270,7 +333,7 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
   it('processes a receipt through OCR analysis and conversion', async () => {
     const { analysis, prisma, processor, s3 } = createProcessor();
     const receipt = receiptFixture();
-    jest.spyOn(receiptImageProcessing, 'readProcessableReceiptImageMetadata').mockResolvedValue(undefined);
+    mockReadProcessableReceiptImageMetadata.mockResolvedValue(undefined);
     processor['prepareForOcr'] = jest.fn().mockResolvedValue(Buffer.from('prepared'));
     processor['recognizeReceiptText'] = jest.fn().mockResolvedValue('PIX Maria 42,00');
     processor['convertReceiptToAvif'] = jest.fn().mockResolvedValue(undefined);
@@ -319,7 +382,7 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
     const { analysis, prisma, processor, s3 } = createProcessor();
     const receipt = receiptFixture({ mimeType: 'application/pdf', objectKey: 'receipts/receipt-1.pdf' });
     const previewBuffer = Buffer.from('pdf-preview');
-    jest.spyOn(receiptPdfProcessing, 'processReceiptPdf').mockResolvedValue({
+    mockProcessReceiptPdf.mockResolvedValue({
       text: 'PIX Maria 42,00',
       previewBuffer,
     });
@@ -357,7 +420,7 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
     const { analysis, prisma, processor, s3 } = createProcessor();
     const receipt = receiptFixture({ mimeType: 'application/pdf', objectKey: 'receipts/scanned.pdf' });
     const previewBuffer = Buffer.from('scanned-preview');
-    jest.spyOn(receiptPdfProcessing, 'processReceiptPdf').mockResolvedValue({ text: '   ', previewBuffer });
+    mockProcessReceiptPdf.mockResolvedValue({ text: '   ', previewBuffer });
     processor['recognizeRasterReceiptText'] = jest.fn().mockResolvedValue('PIX Maria 42,00');
     processor['convertReceiptToAvif'] = jest.fn().mockResolvedValue(undefined);
     prisma.majorEventReceipt.findUnique.mockResolvedValue(receipt);
@@ -400,7 +463,7 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
   it('marks image-processing failures as unrecoverable after saving the failure state', async () => {
     const { prisma, processor, s3 } = createProcessor();
     const receipt = receiptFixture();
-    jest.spyOn(receiptImageProcessing, 'readProcessableReceiptImageMetadata').mockResolvedValue(undefined);
+    mockReadProcessableReceiptImageMetadata.mockResolvedValue(undefined);
     processor['prepareForOcr'] = jest
       .fn()
       .mockRejectedValue(new ReceiptImageProcessingLimitError('Receipt image exceeds processing limits.'));

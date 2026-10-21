@@ -3,6 +3,7 @@ import { METHOD_METADATA, PATH_METADATA, SSE_METADATA } from '@nestjs/common/con
 import { firstValueFrom, take } from 'rxjs';
 import { AUTH_SESSION_COOKIE_NAME } from '../../auth/auth.constants';
 import { CurrentUserAttendanceCollectionController } from './attendance-collection.controller';
+const { jest } = import.meta;
 
 describe('CurrentUserAttendanceCollectionController streamFeed', () => {
   let currentUserContext: { requireCurrentPerson: jest.Mock };

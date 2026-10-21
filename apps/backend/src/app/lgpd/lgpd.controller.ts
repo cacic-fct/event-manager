@@ -10,10 +10,10 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { Request } from 'express';
+import { type Request } from 'express';
 import { AllowNonOnboarded } from '../auth/decorators/allow-non-onboarded.decorator';
 import { RequireRoles } from '../auth/decorators/require-roles.decorator';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { KeycloakAuthService } from '../auth/keycloak-auth.service';
 import { REST_VALIDATION_PIPE } from '../common/rest-validation.pipe';
 import { LgpdDeletionRequestDto, LgpdUserRequestDto } from './dto';

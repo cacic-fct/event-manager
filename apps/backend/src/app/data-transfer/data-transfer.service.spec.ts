@@ -12,6 +12,7 @@ import type { DataTransferAdapter, ResolvedTransferResource } from './data-trans
 import { TransferKeyAllocations } from './transfer-key-allocations';
 import type { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { ParticipationTransferAdapter } from './participation-transfer-adapter';
+const { jest } = import.meta;
 
 describe('sortRowsForApply', () => {
   it('orders same-file parents before children even when the child appears first', () => {

@@ -3,9 +3,9 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { RequireRoles } from '../auth/decorators/require-roles.decorator';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { CurrentUserContextService } from '../current-user/context.service';
-import { GraphqlContext, UserRecord } from '../current-user/selects';
+import { type GraphqlContext, type UserRecord } from '../current-user/selects';
 import {
   CurrentUserAdminCalendarFeedSettings,
   CurrentUserCalendarFeedSettings,

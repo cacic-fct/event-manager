@@ -1,4 +1,5 @@
 import { MajorEventReceiptsService } from './major-event-receipts.service';
+const { jest } = import.meta;
 
 describe('MajorEventReceiptsService', () => {
   const uploads = {

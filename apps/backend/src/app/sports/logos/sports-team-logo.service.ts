@@ -13,7 +13,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { createHash, randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { AuditLogService } from '../../audit-log/audit-log.service';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { S3Service } from '../../s3/s3.service';

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { CertificateTemplateRegistryService } from './certificate-template-registry.service';
 import { certificateTemplateMetadataJsonSchema } from './certificate-template-metadata';
+const { jest } = import.meta;
 
 describe('CertificateTemplateRegistryService', () => {
   const originalTemplatesRoot = process.env.CERTIFICATE_TEMPLATES_ROOT;
@@ -74,7 +75,7 @@ describe('CertificateTemplateRegistryService', () => {
   });
 
   it('loads every repository certificate template metadata folder', async () => {
-    const templatesRoot = resolve(__dirname, '../../../../../certificate-templates');
+    const templatesRoot = resolve(import.meta.dirname, '../../../../../certificate-templates');
     process.env.CERTIFICATE_TEMPLATES_ROOT = templatesRoot;
     const create = jest.fn().mockImplementation(({ data }) => ({ id: data.registryKey, ...data }));
     const prisma = createPrismaMock({ create });

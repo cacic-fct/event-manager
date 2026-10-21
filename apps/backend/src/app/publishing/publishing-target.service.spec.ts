@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { PublicationTargetType } from '@cacic-fct/shared-data-types';
 import { PublicationState } from '@prisma/client';
 import { PublicationTargetService } from './publishing-target.service';
+const { jest } = import.meta;
 
 describe('PublicationTargetService', () => {
   function createService() {

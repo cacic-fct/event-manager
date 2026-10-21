@@ -6,6 +6,7 @@ import { AccountMergeAcknowledgementDto, AccountMergeNotificationDto, AccountMer
 import { ALLOW_NON_ONBOARDED_KEY, REQUIRED_ROLES_KEY } from '../auth/auth.constants';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { REST_VALIDATION_PIPE } from '../common/rest-validation.pipe';
+const { jest } = import.meta;
 
 describe('AccountMergeController', () => {
   let accountMergeService: {

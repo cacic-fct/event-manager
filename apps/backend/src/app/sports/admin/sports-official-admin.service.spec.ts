@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, NotFoundException } from '@nest
 import { AuditLogOperation, SportsOfficialRole } from '@prisma/client';
 import { sportsAdminOfficialAssignmentRecord, sportsTestDate } from '../testing/sports-backend.fixtures';
 import { SportsOfficialAdminService } from './sports-official-admin.service';
+const { jest } = import.meta;
 
 describe('SportsOfficialAdminService', () => {
   const actor = {

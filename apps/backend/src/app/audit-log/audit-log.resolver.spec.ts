@@ -4,6 +4,7 @@ import type { AuthenticatedUser } from '../auth/interfaces/authenticated-user.in
 import { AuditLogResolver } from './audit-log.resolver';
 import type { AuditLogEntityHistoryInput, AuditLogExplorerInput, AuditLogRevertInput } from './audit-log.models';
 import type { AuditLogService } from './audit-log.service';
+const { jest } = import.meta;
 
 describe('AuditLogResolver', () => {
   const actor = { sub: 'super-admin-1' } as AuthenticatedUser;

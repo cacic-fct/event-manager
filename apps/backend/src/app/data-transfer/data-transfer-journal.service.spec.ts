@@ -12,6 +12,7 @@ import {
   type TransferJournalMetadata,
 } from './data-transfer-journal.service';
 import { journalSchemaFingerprint, type JournalMutation } from './transfer-journal-recorder';
+const { jest } = import.meta;
 
 const actor = {
   sub: 'organizer-1',

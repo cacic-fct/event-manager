@@ -10,7 +10,7 @@ import {
   SportsRosterStatus,
   SportsTeamStatus,
 } from '@prisma/client';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { toSportsPublicOfficialName, toSportsPublicPlayerName } from '../domain/sports-public-name';

@@ -1,6 +1,6 @@
 import { DashboardInconsistency } from '../models';
 import { DEFAULT_EMOJI, EIGHT_HOURS_MS, SUSPICIOUS_EARLIEST_DATE } from './constants';
-import { InsightEvent } from './insight-event.select';
+import { type InsightEvent } from './insight-event.select';
 
 const MIN_DESCRIPTION_CHARACTERS = 48;
 const MIN_DESCRIPTION_WORDS = 6;

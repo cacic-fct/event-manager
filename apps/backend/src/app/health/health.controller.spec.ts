@@ -1,6 +1,7 @@
 import { PATH_METADATA } from '@nestjs/common/constants';
 import { IS_PUBLIC_KEY } from '../auth/auth.constants';
 import { HealthController } from './health.controller';
+const { jest } = import.meta;
 
 describe('HealthController', () => {
   it('exposes public liveness and readiness routes without dependency details', async () => {

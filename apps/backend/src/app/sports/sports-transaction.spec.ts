@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
 import { runSerializablePrismaTransaction } from '../common/serializable-prisma-transaction';
 import { runSerializableSportsTransaction, sportsPrismaForTransaction } from './sports-transaction';
+const { jest } = import.meta;
 
 function retryableError(): Prisma.PrismaClientKnownRequestError {
   return new Prisma.PrismaClientKnownRequestError('Transaction conflict', {

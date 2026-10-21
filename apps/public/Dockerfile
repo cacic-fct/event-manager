@@ -12,7 +12,7 @@ WORKDIR /workspace
 FROM base AS deps
 COPY package.json bun.lock nx.json tsconfig.base.json ./
 COPY .npmrc ./
-COPY eslint.config.mjs jest.config.ts jest.preset.js ./
+COPY eslint.config.mjs jest.config.ts jest.preset.mjs ./
 COPY apps/public/project.json apps/public/tsconfig*.json ./apps/public/
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     set -eu; \

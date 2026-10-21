@@ -1,4 +1,5 @@
 import { anonymizeTicketingData, collectTicketingData } from './lgpd-ticketing';
+const { jest } = import.meta;
 
 describe('ticket data lifecycle', () => {
   it('does not disclose a hidden transfer outcome or destination identity through data export', async () => {

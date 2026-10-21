@@ -1,4 +1,5 @@
 import { WeatherProcessor } from './weather.processor';
+const { jest } = import.meta;
 
 describe('WeatherProcessor', () => {
   const refreshEventWeatherById = jest.fn().mockResolvedValue(undefined);

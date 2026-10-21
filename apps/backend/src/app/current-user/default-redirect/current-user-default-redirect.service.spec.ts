@@ -3,6 +3,7 @@ import { SportsApplicationStatus, SportsTournamentStatus, SubscriptionStatus } f
 import { PUBLIC_REGULAR_EVENT_WHERE } from '../../public-events/models';
 import { DefaultRedirectRoute } from '../models';
 import { CurrentUserDefaultRedirectService } from './current-user-default-redirect.service';
+const { jest } = import.meta;
 
 describe('CurrentUserDefaultRedirectService', () => {
   const now = new Date('2026-07-19T12:00:00.000Z');

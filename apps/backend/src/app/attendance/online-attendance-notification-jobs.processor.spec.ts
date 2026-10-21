@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { OnlineAttendanceNotificationJobsProcessor } from './online-attendance-notification-jobs.processor';
 import { ONLINE_ATTENDANCE_AVAILABLE_NOTIFICATION_JOB } from './online-attendance-notification-jobs.service';
+const { jest } = import.meta;
 
 describe('OnlineAttendanceNotificationJobsProcessor', () => {
   it('delivers the supported attendance notification payload', async () => {

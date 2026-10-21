@@ -17,7 +17,7 @@ import {
 } from '../audiences/audience-context';
 import { CertificateScope, EventManagerPermissionScope } from '@prisma/client';
 import { addHours, isFuture, isWithinInterval, subHours } from 'date-fns';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
 
 export type AuthorizationResourceContext = {

@@ -1,7 +1,7 @@
 import { Context, Query, Resolver } from '@nestjs/graphql';
 import { CurrentUserContextService } from '../context.service';
 import { DefaultRedirectRoute } from '../models';
-import { GraphqlContext } from '../selects';
+import { type GraphqlContext } from '../selects';
 import { CurrentUserDefaultRedirectService } from './current-user-default-redirect.service';
 
 @Resolver()

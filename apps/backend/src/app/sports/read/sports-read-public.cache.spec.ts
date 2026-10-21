@@ -1,5 +1,6 @@
 import { SportsReadPublicCache } from './sports-read-public.cache';
 import { sportsCachedPublicMatch, sportsCachedPublicTournament } from '../testing/sports-backend.fixtures';
+const { jest } = import.meta;
 
 describe('SportsReadPublicCache', () => {
   const redis = { mget: jest.fn(), get: jest.fn(), eval: jest.fn() };

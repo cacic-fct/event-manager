@@ -1,6 +1,10 @@
 import type { EventFormAudience } from '@cacic-fct/event-manager-public-contracts';
 export type { EventFormAudience } from '@cacic-fct/event-manager-public-contracts';
-import type { FormElement, FormImage, FormImageReference } from '@cacic-fct/form-contracts';
+import type {
+  FormElement,
+  FormImage,
+  FormImageReference,
+} from '@cacic-fct/form-contracts' with { 'resolution-mode': 'import' };
 import type { PublicationState } from './event.models';
 
 export type EventFormSigilo = 'PUBLIC' | 'PARTIALLY_SECRET' | 'SECRET' | 'ANONYMOUS';

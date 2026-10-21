@@ -1,6 +1,7 @@
 import { AttendanceCategory } from '@prisma/client';
 import { AttendanceCurrentAssessment } from '@cacic-fct/shared-data-types';
 import { AttendanceCategoryService } from './attendance-category.service';
+const { jest } = import.meta;
 
 describe('AttendanceCategoryService', () => {
   let service: AttendanceCategoryService;

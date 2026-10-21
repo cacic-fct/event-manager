@@ -2,9 +2,9 @@ import { SportsLossReason } from '@prisma/client';
 import {
   assertSportsScoreDeltaMatchesRules,
   normalizeSportsScoreRules,
-  SportsScoreRules,
+  type SportsScoreRules,
 } from '@cacic-fct/shared-data-types';
-import { SportsScoreboard } from './sports-scoreboard';
+import { type SportsScoreboard } from './sports-scoreboard';
 
 export { assertSportsScoreDeltaMatchesRules, normalizeSportsScoreRules };
 export type { SportsScoreRules };

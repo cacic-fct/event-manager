@@ -8,7 +8,7 @@ import {
   PublicationState as PrismaPublicationState,
 } from '@prisma/client';
 import { addDays, isValid, parseISO, subDays } from 'date-fns';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { eventContentAuditSnapshot } from './event-content-audit';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';

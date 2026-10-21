@@ -14,10 +14,10 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import { pipeline } from 'node:stream/promises';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
-import { MAX_RECEIPT_FILE_SIZE_BYTES, UploadedReceiptFile } from '../major-event-receipts/receipt.types';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { MAX_RECEIPT_FILE_SIZE_BYTES, type UploadedReceiptFile } from '../major-event-receipts/receipt.types';
 import { RateLimit } from '../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';

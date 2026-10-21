@@ -1,22 +1,27 @@
+import { jest as jestEsm } from '@jest/globals';
 import { BadRequestException } from '@nestjs/common';
 import { EventAttendanceStatus } from '@prisma/client';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
-import { getAttendanceOralRoster } from './attendance-collection-feed';
-import { CurrentUserAttendanceCollectionResolver } from './attendance-collection.resolver';
-import {
-  notifySportsMatchAttendanceMutation,
-  startSportsMatchCheckInFromAthleteAttendance,
-} from '../../sports/operations/sports-match-attendance';
+import type { CurrentUserAttendanceCollectionResolver } from './attendance-collection.resolver';
+const { jest } = import.meta;
 
-jest.mock('./attendance-collection-feed', () => ({
+jestEsm.unstable_mockModule('./attendance-collection-feed', () => ({
   getAttendanceOralRoster: jest.fn(),
   getAttendanceScannerFeed: jest.fn(),
 }));
 
-jest.mock('../../sports/operations/sports-match-attendance', () => ({
+jestEsm.unstable_mockModule('../../sports/operations/sports-match-attendance', () => ({
   notifySportsMatchAttendanceMutation: jest.fn(),
   startSportsMatchCheckInFromAthleteAttendance: jest.fn(),
 }));
+
+const { getAttendanceOralRoster } = await import('./attendance-collection-feed');
+const { notifySportsMatchAttendanceMutation, startSportsMatchCheckInFromAthleteAttendance } = await import(
+  '../../sports/operations/sports-match-attendance'
+);
+const { CurrentUserAttendanceCollectionResolver: CurrentUserAttendanceCollectionResolverClass } = await import(
+  './attendance-collection.resolver'
+);
 
 describe('CurrentUserAttendanceCollectionResolver oral attendance operations', () => {
   const actor = { sub: 'collector-user' };
@@ -211,7 +216,7 @@ describe('CurrentUserAttendanceCollectionResolver oral attendance operations', (
   });
 
   function resolver(): CurrentUserAttendanceCollectionResolver {
-    return new CurrentUserAttendanceCollectionResolver(
+    return new CurrentUserAttendanceCollectionResolverClass(
       prisma as never,
       currentUserContext as never,
       attendanceCategories as never,

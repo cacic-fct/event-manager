@@ -11,7 +11,7 @@ import {
   ApiProduces,
   ApiTags,
 } from '@nestjs/swagger';
-import { Response } from 'express';
+import { type Response } from 'express';
 import {
   ArrayNotEmpty,
   IsArray,
@@ -19,7 +19,7 @@ import {
   IsString,
   Validate,
   ValidatorConstraint,
-  ValidatorConstraintInterface,
+  type ValidatorConstraintInterface,
 } from 'class-validator';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';

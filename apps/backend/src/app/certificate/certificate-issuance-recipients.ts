@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CertificateConfigRecord } from './certificate.constants';
-import { CertificateEligibilityService, EligibleCertificateRecipient } from './certificate-eligibility.service';
+import { type CertificateConfigRecord } from './certificate.constants';
+import { CertificateEligibilityService, type EligibleCertificateRecipient } from './certificate-eligibility.service';
 
 export class CertificateIssuanceRecipients {
   constructor(

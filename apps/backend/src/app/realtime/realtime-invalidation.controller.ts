@@ -1,4 +1,4 @@
-import { Controller, ForbiddenException, Headers, MessageEvent, Param, Req, Sse, UseGuards } from '@nestjs/common';
+import { Controller, ForbiddenException, Headers, type MessageEvent, Param, Req, Sse, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiOkResponse, ApiOperation, ApiParam, ApiProduces, ApiTags } from '@nestjs/swagger';
 import { Permission } from '@cacic-fct/shared-permissions';
 import type { Request } from 'express';
@@ -22,7 +22,7 @@ import {
 } from 'rxjs';
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { Public } from '../auth/decorators/public.decorator';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { CurrentUserContextService } from '../current-user/context.service';

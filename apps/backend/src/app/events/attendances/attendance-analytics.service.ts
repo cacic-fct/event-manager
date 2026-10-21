@@ -17,7 +17,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { adminSportsWorkspacePath } from '@cacic-fct/shared-utils';
 

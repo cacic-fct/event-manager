@@ -1,4 +1,5 @@
 import { moveRelations } from './relations';
+const { jest } = import.meta;
 
 describe('merge candidate relation movement', () => {
   it('moves non-duplicate relation rows and records a rollback snapshot', async () => {

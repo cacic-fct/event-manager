@@ -3,6 +3,7 @@ import {
   AccountManagerPrivacySyncService,
   createEventManagerDefaultPrivacySettings,
 } from './account-manager-privacy-sync.service';
+const { jest } = import.meta;
 
 describe('AccountManagerPrivacySyncService', () => {
   const accountManager = {

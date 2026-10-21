@@ -9,7 +9,7 @@ import { resolvePagination } from '../../common/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrentUserContextService } from '../context.service';
 import { CurrentUserStandaloneCertificateFolder } from '../models';
-import { GraphqlContext } from '../selects';
+import { type GraphqlContext } from '../selects';
 
 @Resolver()
 export class CurrentUserCertificatesResolver {

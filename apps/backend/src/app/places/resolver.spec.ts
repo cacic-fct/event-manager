@@ -3,6 +3,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
 import { REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { PlacePresetsResolver } from './resolver';
+const { jest } = import.meta;
 
 describe('PlacePresetsResolver', () => {
   it('requires merge and delete permissions to merge place presets', () => {

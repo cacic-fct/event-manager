@@ -7,6 +7,7 @@ import {
   SportsTournamentStatus,
 } from '@prisma/client';
 import { SportsTeamChangeService } from './sports-team-change.service';
+const { jest } = import.meta;
 
 describe('SportsTeamChangeService submission queue', () => {
   const identities = {

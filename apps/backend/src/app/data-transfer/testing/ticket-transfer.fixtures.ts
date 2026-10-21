@@ -13,6 +13,8 @@ import { TransferKeyAllocations } from '../transfer-key-allocations';
 import type { DataTransferAdapter } from '../data-transfer-adapter';
 import { createTransferDatabaseFixture } from './transfer-database.fixtures';
 
+const { jest } = import.meta;
+
 /** Real planning, matching, ticket writes and journaling; external authorization and delivery are controlled. */
 export async function createTicketTransferFixture() {
   const storage = await createTransferDatabaseFixture();

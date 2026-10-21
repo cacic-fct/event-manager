@@ -3,7 +3,7 @@ import { Job } from 'bullmq';
 import {
   LGPD_STORAGE_CLEANUP_JOB,
   LGPD_STORAGE_CLEANUP_QUEUE,
-  LgpdStorageCleanupJob,
+  type LgpdStorageCleanupJob,
   LgpdStorageCleanupService,
 } from './lgpd-storage-cleanup.service';
 

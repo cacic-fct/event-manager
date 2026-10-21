@@ -1,4 +1,4 @@
-import { Controller, Headers, MessageEvent, Param, Req, Sse } from '@nestjs/common';
+import { Controller, Headers, type MessageEvent, Param, Req, Sse } from '@nestjs/common';
 import { AttendanceCreationMethod, EventAttendanceStatus, SubscriptionStatus } from '@prisma/client';
 import {
   ApiBearerAuth,

@@ -4,7 +4,7 @@ import { AuditLogEntityType, AuditLogOperation, EventFormTargetType, Subscriptio
 import { RequiredImageLicenseAgreementInterruption, SubmitEventFormResponseInput } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { compareAsc } from 'date-fns';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { runSerializablePrismaTransaction } from '../../common/serializable-prisma-transaction';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -12,10 +12,10 @@ import { CurrentUserEventMapperService } from '../mapper.service';
 import {
   CURRENT_USER_EVENT_GROUP_SUBSCRIPTION_SELECT,
   EVENT_SELECT,
-  EventGroupSubscriptionRecord,
-  EventRecord,
-  PublicEventGroupRecord,
-  TransactionClient,
+  type EventGroupSubscriptionRecord,
+  type EventRecord,
+  type PublicEventGroupRecord,
+  type TransactionClient,
 } from '../selects';
 import { CurrentUserEventGroupSubscription } from '../models';
 import { PUBLIC_EVENT_SELECT, PUBLIC_EVENT_WHERE, PublicEvent } from '../../public-events/models';

@@ -7,6 +7,7 @@ import {
   resolvePublicationActorId,
   resolvePublicationActorName,
 } from './publishing-auth';
+const { jest } = import.meta;
 
 describe('publishing auth helpers', () => {
   it('reads the authenticated user from either GraphQL context request shape', () => {

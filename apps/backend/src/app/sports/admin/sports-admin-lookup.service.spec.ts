@@ -7,6 +7,7 @@ import {
   sportsTournamentParticipantMembershipRecord,
 } from '../testing/sports-backend.fixtures';
 import { SportsAdminLookupService } from './sports-admin-lookup.service';
+const { jest } = import.meta;
 
 class TestSportsAdminLookupService extends SportsAdminLookupService {
   registration(tx: ReturnType<typeof createTransaction>, registrationId: string | null, categoryId = 'category-1') {

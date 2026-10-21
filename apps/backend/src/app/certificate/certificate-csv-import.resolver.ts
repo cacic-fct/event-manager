@@ -3,7 +3,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException } from '@nestjs/common';
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PersonCsvImportSupport } from '../common/person-csv-import-support';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { PrismaService } from '../prisma/prisma.service';

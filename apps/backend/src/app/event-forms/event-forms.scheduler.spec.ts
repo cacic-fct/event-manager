@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { EventFormsScheduler } from './event-forms.scheduler';
+const { jest } = import.meta;
 
 describe('EventFormsScheduler', () => {
   const publishDueScheduledForms = jest.fn<Promise<number>, []>();

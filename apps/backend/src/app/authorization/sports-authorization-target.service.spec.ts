@@ -1,5 +1,6 @@
 import type { ResolvedGrantTarget } from './authorization-policy.service';
 import { SportsAuthorizationTargetService } from './sports-authorization-target.service';
+const { jest } = import.meta;
 
 class SportsAuthorizationTargetHarness extends SportsAuthorizationTargetService {
   readonly eventIds: string[] = [];

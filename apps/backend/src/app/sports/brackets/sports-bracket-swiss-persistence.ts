@@ -11,7 +11,7 @@ import {
   SportsReviewStatus,
   SportsStageType,
 } from '@prisma/client';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { generateSportsSwissRound } from '../domain/sports-swiss';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 

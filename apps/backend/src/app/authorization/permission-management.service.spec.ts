@@ -3,6 +3,7 @@ import {
   toPermissionGroupAuditSnapshot,
   toPermissionRoleAuditSnapshot,
 } from './permission-management.service';
+const { jest } = import.meta;
 
 describe('PermissionManagementService transaction safety', () => {
   it('serializes graph writes behind one transaction advisory lock', async () => {

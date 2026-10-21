@@ -3,6 +3,7 @@ import { Logger, ServiceUnavailableException } from '@nestjs/common';
 import type { KeycloakM2mTokenService } from '../auth/keycloak-m2m-token.service';
 import { AccountManagerGrpcClient } from './account-manager-grpc.client';
 import { GrpcUnaryClient } from './grpc-runtime';
+const { jest } = import.meta;
 
 describe('AccountManagerGrpcClient', () => {
   let call: jest.SpiedFunction<GrpcUnaryClient['call']>;

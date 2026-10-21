@@ -2,17 +2,16 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "../../dist/out-tsc",
-    "module": "Node16",
+    "module": "esnext",
     "types": ["node"],
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "target": "es2021",
-    "moduleResolution": "node16"
+    "moduleResolution": "bundler"
   },
   "include": ["src/**/*.ts"],
   "exclude": [
-    "jest.config.ts",
-    "jest.config.cts",
+    "jest.config.mts",
     "src/**/*.spec.ts",
     "src/**/*.test.ts",
     "src/**/*.fixtures.ts",

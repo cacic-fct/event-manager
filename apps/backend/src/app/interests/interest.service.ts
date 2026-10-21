@@ -8,7 +8,7 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { Prisma, PrismaClient } from '@prisma/client';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { runSerializablePrismaTransaction } from '../common/serializable-prisma-transaction';

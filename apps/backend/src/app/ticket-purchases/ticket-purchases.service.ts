@@ -6,21 +6,21 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { AuditLogEntityType, AuditLogOperation, Prisma, TicketPurchase } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, Prisma, type TicketPurchase } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { randomUUID } from 'node:crypto';
 import { addYears } from 'date-fns';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { AuditLogService } from '../audit-log/audit-log.service';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { runSerializablePrismaTransaction } from '../common/serializable-prisma-transaction';
 import { CurrentUserContextService } from '../current-user/context.service';
 import type { GraphqlContext } from '../current-user/selects';
 import {
-  AdminReceiptQueueItem,
-  CurrentUserReceiptResponse,
-  UploadedReceiptFile,
+  type AdminReceiptQueueItem,
+  type CurrentUserReceiptResponse,
+  type UploadedReceiptFile,
 } from '../major-event-receipts/receipt.types';
 import { assertValidReceiptUpload, isPdfReceiptMimeType } from '../major-event-receipts/utils/receipt-file.utils';
 import {

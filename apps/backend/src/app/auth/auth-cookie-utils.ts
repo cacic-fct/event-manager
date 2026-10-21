@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 
 const CACIC_TRACKING_COOKIE_NAMES = [
   'cacic-analytics-id',

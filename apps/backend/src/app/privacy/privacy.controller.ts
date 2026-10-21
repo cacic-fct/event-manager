@@ -1,8 +1,8 @@
 import { BadRequestException, Controller, Get, Post, Req } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import type { PrivacySettingRecord } from '@cacic-fct/account-manager-m2m-contracts';
-import { Request } from 'express';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type Request } from 'express';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AccountManagerPrivacySyncService } from './account-manager-privacy-sync.service';
 
 type RequestWithUser = Request & {

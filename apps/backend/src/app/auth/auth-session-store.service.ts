@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import Redis from 'ioredis';
-import { AuthSession } from './keycloak-auth.types';
+import { type AuthSession } from './keycloak-auth.types';
 
 const SET_IF_CURRENT_SCRIPT = `
 -- auth-session-set-if-current

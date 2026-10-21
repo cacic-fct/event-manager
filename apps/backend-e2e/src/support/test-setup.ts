@@ -17,8 +17,7 @@ beforeAll(async () => {
     process.env['BACKEND_E2E_REQUIRE_REAL_INFRA'] = 'false';
   }
   ensureBackendE2eEnvironment();
-  const { createBackendHttpApp } =
-    require('@cacic-fct/backend/http-app') as typeof import('@cacic-fct/backend/http-app');
+  const { createBackendHttpApp } = await import('@cacic-fct/backend/http-app');
   app = await createBackendHttpApp();
   await app.listen(0);
   await assertRealInfrastructureWhenRequested();

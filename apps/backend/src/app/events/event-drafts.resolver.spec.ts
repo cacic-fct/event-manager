@@ -1,6 +1,7 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { ALLOW_SCOPED_COLLECTION_PERMISSIONS_KEY, REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { EventDraftsResolver } from './event-drafts.resolver';
+const { jest } = import.meta;
 
 describe('EventDraftsResolver', () => {
   const actor = { sub: 'admin-1' };

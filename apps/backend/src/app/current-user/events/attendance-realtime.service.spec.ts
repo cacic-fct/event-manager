@@ -7,6 +7,7 @@ import {
   CurrentUserOnlineAttendanceRealtimeService,
   CurrentUserRealtimeEventsController,
 } from './attendance-realtime.service';
+const { jest } = import.meta;
 
 describe('CurrentUserOnlineAttendanceRealtimeService', () => {
   beforeEach(() => {

@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, NotFoundException } from '@nest
 import { AuditLogOperation, SportsScoreEntrySource } from '@prisma/client';
 import { sportsAdminScoreEntryRecord } from '../testing/sports-backend.fixtures';
 import { SportsScoreEntryAdminService } from './sports-score-entry-admin.service';
+const { jest } = import.meta;
 
 describe('SportsScoreEntryAdminService', () => {
   const actor = { sub: 'actor-1' };

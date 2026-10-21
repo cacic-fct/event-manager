@@ -6,6 +6,7 @@ import { BackendFeatureFlagService } from '../feature-flags/backend-feature-flag
 import { AccountManagerGrpcClient } from '../grpc/account-manager-grpc.client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventAudienceService } from './event-audience.service';
+const { jest } = import.meta;
 
 function setup() {
   const prisma = {

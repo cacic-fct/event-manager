@@ -2,6 +2,7 @@ import { PublicationState, PublicationTargetType } from '@cacic-fct/shared-data-
 import { Permission } from '@cacic-fct/shared-permissions';
 import { PublicationBulkOperation } from './publishing.models';
 import { PublicationService } from './publishing.service';
+const { jest } = import.meta;
 
 describe('PublicationService', () => {
   function createService() {

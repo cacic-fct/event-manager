@@ -1,7 +1,7 @@
 import { DashboardWeatherAlert } from '../models';
 import { WeatherService } from '../../weather/weather.service';
 import { UNFAVORABLE_WEATHER_CODES } from './constants';
-import { InsightEvent } from './insight-event.select';
+import { type InsightEvent } from './insight-event.select';
 import { isFuture } from 'date-fns';
 
 export async function buildWeatherAlerts(

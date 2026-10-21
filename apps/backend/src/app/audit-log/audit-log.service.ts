@@ -3,21 +3,24 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import {
   AuditLogActorType,
-  AuditLogEntry as PrismaAuditLogEntry,
+  type AuditLogEntry as PrismaAuditLogEntry,
   AuditLogEntityType,
   AuditLogOperation,
   AuditLogRevertMode,
 } from '@prisma/client';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
-import { FrozenOperation, FrozenResourceService } from '../common/frozen-resource.service';
+import { type FrozenOperation, FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
+import type { DeferredInjection } from '../common/deferred-injection';
 import { AttendanceCategoryService } from '../events/attendance-category.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
@@ -46,11 +49,11 @@ import {
 import { synchronizeAuditLogEntry } from './audit-log.synchronization';
 import { auditBatchId, isBatchAuditEntry } from './audit-transaction-context';
 import {
-  AuditActor,
+  type AuditActor,
   AuditLogMetadataCategory,
-  AuditPrismaClient,
-  AuditRecordOptions,
-  RevertEntityConfig,
+  type AuditPrismaClient,
+  type AuditRecordOptions,
+  type RevertEntityConfig,
 } from './audit-log.types';
 
 const DEFAULT_SQUASH_WINDOW_MS = 2 * 60_000;
@@ -66,7 +69,8 @@ export class AuditLogService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
-    private readonly attendanceCategories: AttendanceCategoryService,
+    @Inject(forwardRef(() => AttendanceCategoryService))
+    private readonly attendanceCategories: DeferredInjection<AttendanceCategoryService>,
     private readonly typesenseSearch: TypesenseSearchService = {
       upsertEvent: async () => undefined,
       deleteEvent: async () => undefined,
@@ -81,7 +85,8 @@ export class AuditLogService {
       upsertAuditLogEntry: async () => undefined,
       searchAuditLogEntries: async () => ({ available: false, ids: [], found: 0 }),
     } as unknown as TypesenseSearchService,
-    private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService = {
+    @Inject(forwardRef(() => CurrentUserOnlineAttendanceRealtimeService))
+    private readonly attendanceRealtime: DeferredInjection<CurrentUserOnlineAttendanceRealtimeService> = {
       notifyAllConnectedPeople: async () => undefined,
     } as unknown as CurrentUserOnlineAttendanceRealtimeService,
     private readonly frozenResources: FrozenResourceService = {

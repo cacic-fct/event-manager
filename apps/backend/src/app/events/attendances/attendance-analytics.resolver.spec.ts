@@ -2,6 +2,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { AttendanceReviewFlagStatus } from '@prisma/client';
 import { REQUIRED_PERMISSIONS_KEY } from '../../auth/auth.constants';
 import { AttendanceAnalyticsResolver } from './attendance-analytics.resolver';
+const { jest } = import.meta;
 
 describe('AttendanceAnalyticsResolver', () => {
   const analytics = {

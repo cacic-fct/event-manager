@@ -5,7 +5,7 @@ import {
   type FormElement,
   type FormResponseAnswer,
 } from '@cacic-fct/form-contracts';
-import { EventFormResponseRecord } from './event-form-records';
+import { type EventFormResponseRecord } from './event-form-records';
 import {
   isEmptyAnswer,
   isRecord,

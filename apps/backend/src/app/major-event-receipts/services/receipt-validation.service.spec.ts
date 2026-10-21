@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { MajorEventSubscriptionFlow, ReceiptValidationActionType, SubscriptionStatus } from '@prisma/client';
 import { ReceiptValidationService } from './receipt-validation.service';
+const { jest } = import.meta;
 
 describe('ReceiptValidationService', () => {
   const user = { sub: 'admin-1', token: 'token', permissionSet: new Set<string>() } as never;

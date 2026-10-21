@@ -8,7 +8,7 @@ import {
   SportsCategoryStatus,
   SportsRegistrationStatus,
 } from '@prisma/client';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { eventContentAuditSnapshot } from '../../events/event-content-audit';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import {
@@ -22,7 +22,7 @@ import { AuditLogService } from '../../audit-log/audit-log.service';
 import { SportsPaymentService } from '../sports-payment.service';
 import { assertSportsOverallScoringRules } from '../domain/sports-overall-scoring';
 import { runSerializableSportsTransaction } from '../sports-transaction';
-import { CreateSportsCategoryInput } from '../sports-admin.types';
+import { type CreateSportsCategoryInput } from '../sports-admin.types';
 import { softDeleteSportsMatchBackingEvents } from '../sports-match-event-sync';
 import { SportsAdminBaseService } from './sports-admin-base.service';
 

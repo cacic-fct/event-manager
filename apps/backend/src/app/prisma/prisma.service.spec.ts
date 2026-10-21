@@ -1,4 +1,5 @@
 import { PrismaService } from './prisma.service';
+const { jest } = import.meta;
 
 describe('PrismaService', () => {
   const originalDatabaseUrl = process.env.DATABASE_URL;

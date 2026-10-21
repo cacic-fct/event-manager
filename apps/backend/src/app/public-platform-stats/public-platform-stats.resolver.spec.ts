@@ -2,6 +2,7 @@ import { IS_PUBLIC_KEY } from '../auth/auth.constants';
 import { RATE_LIMIT_METADATA_KEY } from '../rate-limit/rate-limit.decorator';
 import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
 import { PublicPlatformStatsResolver } from './public-platform-stats.resolver';
+const { jest } = import.meta;
 
 describe('PublicPlatformStatsResolver', () => {
   it('exposes the delayed aggregate projection through the public rate limit policy', async () => {

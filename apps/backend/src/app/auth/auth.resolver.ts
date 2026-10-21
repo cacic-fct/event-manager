@@ -1,8 +1,8 @@
 import { AuthenticatedUser } from '@cacic-fct/shared-data-types';
 import { Context, Query, Resolver } from '@nestjs/graphql';
-import { Request } from 'express';
-import { AuthenticatedUser as AuthenticatedUserPayload } from './interfaces/authenticated-user.interface';
-import { PublicAuthenticatedUser, toPublicAuthenticatedUser } from './public-authenticated-user';
+import { type Request } from 'express';
+import { type AuthenticatedUser as AuthenticatedUserPayload } from './interfaces/authenticated-user.interface';
+import { type PublicAuthenticatedUser, toPublicAuthenticatedUser } from './public-authenticated-user';
 
 type RequestWithUser = Request & {
   user?: AuthenticatedUserPayload;

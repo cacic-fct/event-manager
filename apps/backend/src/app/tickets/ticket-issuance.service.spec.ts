@@ -1,5 +1,6 @@
 import { EventTicketIssueSource, EventTicketStatus } from '@prisma/client';
 import { TicketIssuanceService } from './ticket-issuance.service';
+const { jest } = import.meta;
 
 function setup() {
   const now = new Date();

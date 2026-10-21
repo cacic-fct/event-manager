@@ -2,6 +2,7 @@ import { BadRequestException, RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
 import { AnalyticsController } from './analytics.controller';
 import { AnalyticsService } from './analytics.service';
+const { jest } = import.meta;
 
 describe('AnalyticsController', () => {
   let analyticsService: jest.Mocked<Pick<AnalyticsService, 'forwardEnvelope'>>;

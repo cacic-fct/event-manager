@@ -1,6 +1,6 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { Prisma } from '@prisma/client';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { AdminSportsTournamentListItem } from './sports-read.models';

@@ -2,7 +2,7 @@ import {
   ensureWorkspaceTierSubscriptionPolicy,
   loadWorkspaceTierSubscriptionPolicy,
 } from '../../events/tier-subscription-policy';
-import { getTierAutomaticEventIds, PriceTierEventPolicy } from '../../current-user/major-events/tier-event-policy';
+import { getTierAutomaticEventIds, type PriceTierEventPolicy } from '../../current-user/major-events/tier-event-policy';
 import { TicketSubscriptionSyncService } from '../../events/ticket-subscription-sync.service';
 import {
   BadRequestException,
@@ -23,13 +23,17 @@ import {
 } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuditLogService } from '../../audit-log/audit-log.service';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { CurrentUserMajorEventSubscriptionService } from '../../current-user/major-events/subscription.service';
 import { runSerializablePrismaTransaction } from '../../common/serializable-prisma-transaction';
 import { DashboardInsightsService } from '../../dashboard/insights.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { AdminReceiptQueueItem, AdminReceiptValidationResult, ReceiptRejectionCode } from '../receipt.types';
+import {
+  type AdminReceiptQueueItem,
+  type AdminReceiptValidationResult,
+  type ReceiptRejectionCode,
+} from '../receipt.types';
 import {
   countReceiptEventsByCategory,
   getActorId,

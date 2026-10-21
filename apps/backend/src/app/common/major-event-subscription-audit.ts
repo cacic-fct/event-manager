@@ -1,4 +1,4 @@
-import { MajorEventSubscription } from '@prisma/client';
+import { type MajorEventSubscription } from '@prisma/client';
 
 type MajorEventSubscriptionAuditSource = Pick<
   MajorEventSubscription,

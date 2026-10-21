@@ -21,11 +21,14 @@ import {
 } from '@prisma/client';
 import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { eventContentAuditSnapshot } from './event-content-audit';
 import { normalizeEventCertificateSettings } from './event-certificate-settings';
-import { AccessibleEventGrantTargets, AuthorizationPolicyService } from '../authorization/authorization-policy.service';
+import {
+  type AccessibleEventGrantTargets,
+  AuthorizationPolicyService,
+} from '../authorization/authorization-policy.service';
 import { resolvePagination } from '../common/pagination';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { PrismaService } from '../prisma/prisma.service';

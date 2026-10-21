@@ -2,7 +2,7 @@ import {
   Controller,
   ForbiddenException,
   Headers,
-  MessageEvent,
+  type MessageEvent,
   NotFoundException,
   Param,
   Req,
@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
 import { Observable, defer, from, merge, of, switchMap } from 'rxjs';
-import { AuthenticatedRequest, authenticateHttpRequest } from '../auth/authenticated-request';
+import { type AuthenticatedRequest, authenticateHttpRequest } from '../auth/authenticated-request';
 import { KeycloakAuthService } from '../auth/keycloak-auth.service';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { Permission } from '@cacic-fct/shared-permissions';

@@ -13,7 +13,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrentUserContextService } from '../context.service';
 import { CurrentUserEventMapperService } from '../mapper.service';
-import { EventRecord, EVENT_SELECT, GraphqlContext } from '../selects';
+import { type EventRecord, EVENT_SELECT, type GraphqlContext } from '../selects';
 import { CurrentUserMajorEventSubscriptionService } from './subscription.service';
 import { CurrentUserPublicEventService } from '../public-event.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
@@ -37,7 +37,7 @@ import {
   getTierAutomaticEventIds,
   getTierEligibleEvents,
   resolvePriceTierEventPolicy,
-  PriceTierEventPolicy,
+  type PriceTierEventPolicy,
 } from './tier-event-policy';
 
 export function isConfirmedSportsOnlySubscription(subscription: {

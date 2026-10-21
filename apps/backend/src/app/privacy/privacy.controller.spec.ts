@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { PrivacyController } from './privacy.controller';
 import { ALLOW_NON_ONBOARDED_KEY, IS_PUBLIC_KEY } from '../auth/auth.constants';
+const { jest } = import.meta;
 
 describe('PrivacyController', () => {
   let accountManagerPrivacySync: {

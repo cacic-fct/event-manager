@@ -2,6 +2,7 @@ import { MessageEvent } from '@nestjs/common';
 import { clearInterval as nodeClearInterval, setInterval as nodeSetInterval } from 'node:timers';
 import { firstValueFrom, take } from 'rxjs';
 import { SportsRealtimeService } from './sports-realtime.service';
+const { jest } = import.meta;
 
 describe('SportsRealtimeService', () => {
   beforeEach(() => {

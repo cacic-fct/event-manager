@@ -7,9 +7,9 @@ import {
   SportsCategoryStatus,
   SportsTournamentStatus,
 } from '@prisma/client';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { runSerializableSportsTransaction } from '../sports-transaction';
-import { CreateSportsMatchInput } from '../sports-admin.types';
+import { type CreateSportsMatchInput } from '../sports-admin.types';
 import { createSportsMatchBackingEvent } from '../sports-match-event-sync';
 import { PublicationTransitionService } from '../../publishing/publishing-transition.service';
 import { TicketIssuanceService } from '../../tickets/ticket-issuance.service';

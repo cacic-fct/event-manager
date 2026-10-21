@@ -3,6 +3,7 @@ import { ALLOW_NON_ONBOARDED_KEY, AUTH_SESSION_COOKIE_NAME, IS_PUBLIC_KEY } from
 import type { KeycloakAuthService } from '../auth/keycloak-auth.service';
 import type { AccountManagerTotpService } from './account-manager-totp.service';
 import { TotpController } from './totp.controller';
+const { jest } = import.meta;
 
 describe('TotpController', () => {
   it('requires completed onboarding before relaying wallet credentials', () => {

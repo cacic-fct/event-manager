@@ -2,7 +2,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { EventManagerPermissionScope } from '@prisma/client';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import {
   PermissionGroup,
   PermissionGroupSaveInput,

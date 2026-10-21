@@ -4,8 +4,8 @@ import {
   Inject,
   Injectable,
   Logger,
-  OnModuleDestroy,
-  OnModuleInit,
+  type OnModuleDestroy,
+  type OnModuleInit,
   Optional,
 } from '@nestjs/common';
 import { Prisma, PrismaClient } from '@prisma/client';
@@ -22,6 +22,7 @@ import {
 } from './audience-context';
 import { EventAudienceService } from './event-audience.service';
 import { PUBLIC_EVENT_WHERE } from '../public-events/models';
+import type { DeferredInjection } from '../common/deferred-injection';
 
 export type AudienceInvitationTargetType = 'EVENT' | 'EVENT_GROUP' | 'MAJOR_EVENT';
 
@@ -131,7 +132,7 @@ export class AudienceInvitationService implements OnModuleInit, OnModuleDestroy 
     @Optional() private readonly notifications?: NovuNotificationsService,
     @Optional()
     @Inject(forwardRef(() => EventAudienceService))
-    private readonly audiences?: EventAudienceService,
+    private readonly audiences?: DeferredInjection<EventAudienceService>,
   ) {}
 
   async onModuleInit(): Promise<void> {

@@ -9,6 +9,7 @@ import {
   groupAudienceWhere,
   majorEventAudienceWhere,
 } from '../audiences/audience-context';
+const { jest } = import.meta;
 
 describe('EventContextService', () => {
   it('orders initial parents by start date before pagination and leaves empty groups last', async () => {

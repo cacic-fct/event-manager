@@ -1,6 +1,7 @@
 import { EMPTY, firstValueFrom, NEVER, Subject, take, throwError } from 'rxjs';
 import { InMemoryRedisClient } from '../redis/in-memory-redis-client';
 import { SseReplayService } from './sse-replay.service';
+const { jest } = import.meta;
 
 describe('SseReplayService', () => {
   const originalCursorSecret = process.env.SSE_REPLAY_CURSOR_SECRET;

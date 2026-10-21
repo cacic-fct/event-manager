@@ -5,6 +5,7 @@ import {
   RECONCILE_PUBLICATION_STATES_JOB,
 } from './publishing.constants';
 import { PublicationJobsService } from './publishing-jobs.service';
+const { jest } = import.meta;
 
 describe('PublicationJobsService', () => {
   const now = new Date('2026-06-25T12:00:00.000Z');

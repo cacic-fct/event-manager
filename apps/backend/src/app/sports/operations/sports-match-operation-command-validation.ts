@@ -1,14 +1,14 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { Prisma, SportsLossReason, SportsMatchActionType, SportsMatchState, SportsReviewStatus } from '@prisma/client';
-import { AuditActor } from '../../audit-log/audit-log.types';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuditActor } from '../../audit-log/audit-log.types';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import {
   assertSportsOutcomeMatchesRules,
   assertSportsScoreDeltaMatchesRules,
   normalizeSportsScoreRules,
 } from '../domain/sports-score-rules';
 import { normalizeSportsScoreboard } from '../domain/sports-scoreboard';
-import { projectSportsMatch, restoreSportsStopwatch, SportsProjectedOutcome } from './sports-match-projector';
+import { projectSportsMatch, restoreSportsStopwatch, type SportsProjectedOutcome } from './sports-match-projector';
 import type { SportsMatchReadiness } from './sports-match-readiness';
 
 export type SportsMatchActorKind = 'ADMIN' | 'OFFICIAL' | 'LINEUP_MANAGER';

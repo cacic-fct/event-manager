@@ -8,7 +8,7 @@ import {
 } from '@prisma/client';
 import { TicketLifecycleState } from '@cacic-fct/shared-ticketing';
 import { isValidCPF, maskCPF } from '@cacic-fct/shared-utils';
-import { TicketTransferView } from './ticket-transfer.service';
+import { type TicketTransferView } from './ticket-transfer.service';
 import {
   AdminEventTicketModel,
   AdminTicketConfigModel,

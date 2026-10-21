@@ -8,6 +8,7 @@ import {
   PrizeDrawNotificationJobsService,
 } from './prize-draw-notification-jobs.service';
 import { PrizeDrawNotificationJobsProcessor } from './prize-draw-notification-jobs.processor';
+const { jest } = import.meta;
 
 describe('PrizeDrawNotificationJobsProcessor', () => {
   const jobs = {

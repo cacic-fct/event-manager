@@ -3,6 +3,7 @@ import {
   selectTicketPrice,
   TicketPurchaseCatalogService,
 } from './ticket-purchase-catalog.service';
+const { jest } = import.meta;
 
 describe('ticket purchase availability', () => {
   it('requires a validated receipt before showing purchase offers', () => {

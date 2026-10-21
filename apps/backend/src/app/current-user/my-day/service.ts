@@ -13,7 +13,7 @@ import { findCurrentUserAttendanceCollectionEvents } from '../events/attendance-
 import { CurrentUserOnlineAttendanceRealtimeService } from '../events/attendance-realtime.service';
 import { requiresMajorEventImageLicenseAgreement } from '../events/image-license-agreement';
 import { currentUserAssociatedEventWhere } from '../events/map-event-ids';
-import { EVENT_SELECT, EventRecord, GraphqlContext } from '../selects';
+import { EVENT_SELECT, type EventRecord, type GraphqlContext } from '../selects';
 import {
   CurrentUserMyDay,
   CurrentUserMyDayAction,

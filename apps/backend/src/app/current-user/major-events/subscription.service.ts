@@ -9,7 +9,7 @@ import {
   SubscriptionStatus,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { MAJOR_EVENT_BASE_SELECT, EventRecord } from '../selects';
+import { MAJOR_EVENT_BASE_SELECT, type EventRecord } from '../selects';
 import {
   PUBLIC_EVENT_SELECT,
   PUBLIC_REGULAR_EVENT_WHERE,
@@ -20,7 +20,7 @@ import { CurrentUserMajorEventFeedItem } from '../models';
 import { CurrentUserEventMapperService } from '../mapper.service';
 import { EventSubscriptionCountersService } from '../../events/subscription-counters.service';
 import { normalizeMajorEventPaymentTier, resolveMajorEventSelfServicePayment } from './major-event-payment-selection';
-import { ensureTierEventLimits, getTierAutomaticEventIds, PriceTierEventPolicy } from './tier-event-policy';
+import { ensureTierEventLimits, getTierAutomaticEventIds, type PriceTierEventPolicy } from './tier-event-policy';
 
 type RankedCategory = 'course' | 'lecture' | 'uncategorized';
 

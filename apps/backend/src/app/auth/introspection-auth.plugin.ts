@@ -3,7 +3,7 @@ import { GraphQLError, visit } from 'graphql';
 import type { Request } from 'express';
 import { AUTH_SESSION_COOKIE_NAME } from './auth.constants';
 import { readAuthCookie } from './auth-cookie-utils';
-import { AuthenticatedUser } from './interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from './interfaces/authenticated-user.interface';
 import { KeycloakAuthService } from './keycloak-auth.service';
 
 type RequestWithUser = Request & {

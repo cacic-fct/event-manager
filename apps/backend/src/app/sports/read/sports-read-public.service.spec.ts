@@ -10,6 +10,7 @@ import {
   sportsPublicTournamentRecord,
 } from '../testing/sports-backend.fixtures';
 import { SportsReadPublicService } from './sports-read-public.service';
+const { jest } = import.meta;
 
 describe('SportsReadPublicService', () => {
   const prisma = {

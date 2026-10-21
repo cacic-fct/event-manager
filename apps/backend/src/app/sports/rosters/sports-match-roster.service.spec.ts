@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException } from '@nestjs/common';
 import { AttendanceCreationMethod, SportsMatchActionType, SportsMatchState } from '@prisma/client';
 import { issueSportsOfflineCollectorCredential } from '../security/sports-offline-collector-credential';
 import { SportsMatchRosterService } from './sports-match-roster.service';
+const { jest } = import.meta;
 
 describe('SportsMatchRosterService check-in idempotency', () => {
   const checkedInAt = new Date('2026-08-01T12:30:00.000Z');

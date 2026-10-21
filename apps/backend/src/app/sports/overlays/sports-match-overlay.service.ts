@@ -11,7 +11,7 @@ import type { PublicSportsMatch, PublicSportsTeam } from '../read/sports-read.mo
 import { SportsReadService } from '../read/sports-read.service';
 import { OVERLAY_RUNTIME_SCRIPT } from './sports-match-overlay';
 
-const OVERLAY_STYLESHEET = readFileSync(join(__dirname, 'sports-match-overlay.css'), 'utf8');
+const OVERLAY_STYLESHEET = readFileSync(join(import.meta.dirname, 'sports-match-overlay.css'), 'utf8');
 const DEMO_INITIAL_ELAPSED_MS = 90_000;
 const DEMO_SPORTS_MATCH_OVERLAY_LOGO_URL = 'https://eventos.cacic.com.br/app/icons/favicon.svg';
 

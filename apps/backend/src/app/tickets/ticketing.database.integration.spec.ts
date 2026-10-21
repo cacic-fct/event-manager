@@ -16,6 +16,8 @@ import { SportsIdentityProtectionService } from '../sports/security/sports-ident
 import { clearTicketingDatabaseFixture, createTicketingDatabaseFixture } from './testing/ticketing-database-fixtures';
 import type { TicketingDatabaseFixture } from './testing/ticketing-database-fixtures';
 
+const { jest } = import.meta;
+
 const describePostgres = process.env['TICKETING_POSTGRES_INTEGRATION_TEST'] === '1' ? describe : describe.skip;
 
 describePostgres('ticketing with isolated PostgreSQL and real services', () => {

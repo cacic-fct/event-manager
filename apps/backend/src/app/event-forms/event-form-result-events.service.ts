@@ -1,4 +1,4 @@
-import { Injectable, Logger, MessageEvent } from '@nestjs/common';
+import { Injectable, Logger, type MessageEvent } from '@nestjs/common';
 import { Observable, Subject } from 'rxjs';
 import { SseReplayService } from '../realtime/sse-replay.service';
 

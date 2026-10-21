@@ -5,6 +5,7 @@ import { EventEmitter } from 'node:events';
 import { NEVER, of, throwError } from 'rxjs';
 import { InMemoryRedisClient } from '../redis/in-memory-redis-client';
 import { SseConnectionInterceptor } from './sse-connection.interceptor';
+const { jest } = import.meta;
 
 const LIMIT_NAMES = [
   'SSE_MAX_CONNECTIONS_PER_SUBJECT',

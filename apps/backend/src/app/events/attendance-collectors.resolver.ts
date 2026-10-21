@@ -8,7 +8,7 @@ import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';

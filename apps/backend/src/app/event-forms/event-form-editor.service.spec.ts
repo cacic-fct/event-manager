@@ -21,6 +21,7 @@ import { EventFormEditorService } from './event-form-editor.service';
 import { EventFormImagesService } from './event-form-images.service';
 import { Test } from '@nestjs/testing';
 import { RealtimeInvalidationService } from '../realtime/realtime-invalidation.service';
+const { jest } = import.meta;
 
 type EventFormLinkInput = NonNullable<EventFormInput['links']>[number];
 

@@ -1,17 +1,23 @@
+import { jest as jestEsm } from '@jest/globals';
 import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { EventManagerPermissionScope } from '@prisma/client';
 import { EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
 import type { TransferResource } from '@cacic-fct/shared-data-transfer';
 import type { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
-import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
-import { findActiveRolePermissionScopes, type EffectiveRoleScope } from '../authorization/effective-role-scopes';
+import type { EffectiveRoleScope } from '../authorization/effective-role-scopes';
 import type { ResolvedTransferResource, TransferAdapterContext } from './data-transfer-adapter';
-import { ConfigurationTransferAdapter } from './configuration-transfer.adapter';
-import { DataTransferService } from './data-transfer.service';
-import { EventTreeTransferAdapter } from './event-tree-transfer.adapter';
-import { TransferKeyAllocations } from './transfer-key-allocations';
+const { jest } = import.meta;
 
-jest.mock('../authorization/effective-role-scopes', () => ({ findActiveRolePermissionScopes: jest.fn() }));
+jestEsm.unstable_mockModule('../authorization/effective-role-scopes', () => ({
+  findActiveRolePermissionScopes: jest.fn(),
+}));
+
+const { findActiveRolePermissionScopes } = await import('../authorization/effective-role-scopes');
+const { AuthorizationPolicyService } = await import('../authorization/authorization-policy.service');
+const { ConfigurationTransferAdapter } = await import('./configuration-transfer.adapter');
+const { DataTransferService } = await import('./data-transfer.service');
+const { EventTreeTransferAdapter } = await import('./event-tree-transfer.adapter');
+const { TransferKeyAllocations } = await import('./transfer-key-allocations');
 const activeScopes = jest.mocked(findActiveRolePermissionScopes);
 
 const cases = [

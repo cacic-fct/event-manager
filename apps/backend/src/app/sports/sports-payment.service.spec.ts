@@ -9,6 +9,7 @@ import {
   SubscriptionStatus,
 } from '@prisma/client';
 import { refreshSportsParticipantForSubscription, SportsPaymentService } from './sports-payment.service';
+const { jest } = import.meta;
 
 describe('SportsPaymentService', () => {
   let service: SportsPaymentService;

@@ -1,7 +1,7 @@
 import { type FormElement } from '@cacic-fct/form-contracts';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Prisma, SportsBracketSide, SportsScoreEntrySource } from '@prisma/client';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { normalizeAnswers } from '../../event-forms/event-form-answer-normalization';
 import { SportsAdminLookupService } from './sports-admin-lookup.service';
 

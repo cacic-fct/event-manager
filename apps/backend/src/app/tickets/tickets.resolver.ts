@@ -19,12 +19,12 @@ import {
 } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { audienceContext, ANONYMOUS_AUDIENCE } from '../audiences/audience-context';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { runSerializablePrismaTransaction } from '../common/serializable-prisma-transaction';
 import { FrozenResourceService } from '../common/frozen-resource.service';
-import { GraphqlContext } from '../current-user/selects';
+import { type GraphqlContext } from '../current-user/selects';
 import { AttendanceCategoryService } from '../events/attendance-category.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RateLimit } from '../rate-limit/rate-limit.decorator';

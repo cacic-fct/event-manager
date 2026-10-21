@@ -8,6 +8,7 @@ import { SportsDataTransferAdapter } from './sports-data-transfer.adapter';
 import { assertSportsTimerRules } from './sports-transfer-rules';
 import { Permission } from '@cacic-fct/shared-permissions';
 import type { ResolvedTransferResource } from './data-transfer-adapter';
+const { jest } = import.meta;
 
 describe('SportsDataTransferAdapter', () => {
   it('serializes a persisted match revision accepted by the public document schema', async () => {

@@ -1,4 +1,5 @@
 import { getCachedInsights, getCacheKey } from './cache';
+const { jest } = import.meta;
 
 describe('dashboard insights cache helpers', () => {
   it('returns null when cache is empty', async () => {

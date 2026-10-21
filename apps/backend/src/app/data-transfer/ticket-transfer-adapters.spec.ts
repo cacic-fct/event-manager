@@ -7,6 +7,7 @@ import { EventTicketTransferAdapter } from './event-ticket-transfer.adapter';
 import type { TransferAdapterContext } from './data-transfer-adapter';
 import { transferPersonKey } from './transfer-person-creation';
 import { journalJson, type JournalMutation } from './transfer-journal-recorder';
+const { jest } = import.meta;
 
 type EditableResource<Kind extends 'ticket-purchase' | 'event-ticket'> = Omit<ResourceOfKind<Kind>, 'data'> & {
   data: { -readonly [Field in keyof ResourceOfKind<Kind>['data']]: ResourceOfKind<Kind>['data'][Field] };

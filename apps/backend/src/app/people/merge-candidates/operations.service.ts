@@ -10,7 +10,7 @@ import {
 import { Permission } from '@cacic-fct/shared-permissions';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../../audiences/audience-context';
 import { AuditLogService } from '../../audit-log/audit-log.service';
-import { AuditActor } from '../../audit-log/audit-log.types';
+import { type AuditActor } from '../../audit-log/audit-log.types';
 import { CertificateIssuingService } from '../../certificate/certificate-issuing.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { stalePendingMergeCandidateWhere } from './merge-candidate-filters';
@@ -21,7 +21,7 @@ import { moveRelations } from './operations/relations';
 import { restoreAudienceInvitations } from './operations/audience-invitations';
 import { restoreTicketPersonRelations } from '../../tickets/ticket-merge-relations';
 import { parseMovedRelations, parsePersonSnapshot, toPersonSnapshot, toPersonUpdateData } from './operations/snapshots';
-import { CandidateMatch } from './operations/types';
+import { type CandidateMatch } from './operations/types';
 
 @Injectable()
 export class MergeCandidateOperationsService {

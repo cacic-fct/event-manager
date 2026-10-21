@@ -5,6 +5,7 @@ import { firstValueFrom, of } from 'rxjs';
 import { PassThrough, Readable } from 'node:stream';
 import { REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { EventFormsController } from './event-forms.controller';
+const { jest } = import.meta;
 
 describe('EventFormsController', () => {
   const forms = {

@@ -1,11 +1,13 @@
+import { jest as jestEsm } from '@jest/globals';
 import { PublicationState, SportsBracketSide, SportsMatchState } from '@prisma/client';
-import { sportsBracketMatchRecord } from '../testing/sports-backend.fixtures';
+const { jest } = import.meta;
 
-jest.mock('../sports-match-event-sync', () => ({
+jestEsm.unstable_mockModule('../sports-match-event-sync', () => ({
   syncSportsMatchEventName: jest.fn().mockResolvedValue(undefined),
 }));
 
-import { SportsBracketAdvancementAssignments } from './sports-bracket-advancement-assignments';
+const { sportsBracketMatchRecord } = await import('../testing/sports-backend.fixtures');
+const { SportsBracketAdvancementAssignments } = await import('./sports-bracket-advancement-assignments');
 
 class AssignmentHarness extends SportsBracketAdvancementAssignments {
   readonly advanceBye = jest.fn().mockResolvedValue([]);

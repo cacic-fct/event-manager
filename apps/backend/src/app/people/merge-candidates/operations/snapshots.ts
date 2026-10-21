@@ -1,5 +1,5 @@
 import { ConflictException } from '@nestjs/common';
-import { EventTicketStatus, People, Prisma, TicketPurchaseStatus } from '@prisma/client';
+import { EventTicketStatus, type People, Prisma, TicketPurchaseStatus } from '@prisma/client';
 import {
   isRecord,
   readArray,
@@ -10,15 +10,15 @@ import {
   readStringArray,
 } from './json-payload';
 import {
-  AttendanceSnapshot,
-  MovedRelationsSnapshot,
-  PermissionGroupMembershipSnapshot,
-  PersonSnapshot,
-  RoleAssignmentScopeSnapshot,
-  RoleAssignmentSnapshot,
-  SportsOfficialAssignmentSnapshot,
-  SportsTeamRepresentativeSnapshot,
-  SportsTournamentParticipantSnapshot,
+  type AttendanceSnapshot,
+  type MovedRelationsSnapshot,
+  type PermissionGroupMembershipSnapshot,
+  type PersonSnapshot,
+  type RoleAssignmentScopeSnapshot,
+  type RoleAssignmentSnapshot,
+  type SportsOfficialAssignmentSnapshot,
+  type SportsTeamRepresentativeSnapshot,
+  type SportsTournamentParticipantSnapshot,
 } from './types';
 import type { AudienceInvitationSnapshot } from './audience-invitations';
 import type { TicketHolderMergeSnapshot, TicketPersonRelationsSnapshot } from '../../../tickets/ticket-merge-relations';

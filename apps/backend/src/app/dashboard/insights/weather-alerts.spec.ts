@@ -1,5 +1,6 @@
 import { insightEvent } from './insights-service.fixtures';
 import { buildWeatherAlerts } from './weather-alerts';
+const { jest } = import.meta;
 
 describe('buildWeatherAlerts', () => {
   beforeEach(() => {

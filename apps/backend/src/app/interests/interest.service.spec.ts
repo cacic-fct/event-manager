@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { SubscriptionStatus } from '@prisma/client';
 import { EventInterestsService } from './interest.service';
+const { jest } = import.meta;
 
 const fixtureNow = Date.now();
 

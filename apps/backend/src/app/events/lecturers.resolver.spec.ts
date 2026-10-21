@@ -1,6 +1,7 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
 import { EventLecturersResolver } from './lecturers.resolver';
+const { jest } = import.meta;
 
 describe('EventLecturersResolver authorization', () => {
   it('requires update permission on the replacement event when moving a lecturer assignment', async () => {

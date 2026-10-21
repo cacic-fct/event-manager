@@ -3,6 +3,7 @@ import { PublicationState, PublicationTargetType } from '@cacic-fct/shared-data-
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PublicationBulkOperation } from './publishing.models';
 import { PublicationTransitionService } from './publishing-transition.service';
+const { jest } = import.meta;
 
 describe('PublicationTransitionService', () => {
   function createUser(): AuthenticatedUser {

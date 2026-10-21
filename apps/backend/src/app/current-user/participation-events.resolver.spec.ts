@@ -1,5 +1,6 @@
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { CurrentUserParticipationEventsResolver } from './participation-events.resolver';
+const { jest } = import.meta;
 
 describe('current-user participation detail events', () => {
   it('uses the authenticated person and a bounded historical query without changing the public catalog', async () => {

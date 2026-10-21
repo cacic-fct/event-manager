@@ -4,6 +4,7 @@ import {
   sportsPublicRosterRecord,
   sportsPublicTeamRecord,
 } from '../testing/sports-backend.fixtures';
+const { jest } = import.meta;
 
 describe('SportsReadPublicLoader', () => {
   const prisma = {

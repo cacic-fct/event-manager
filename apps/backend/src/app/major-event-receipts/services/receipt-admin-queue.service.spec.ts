@@ -1,5 +1,6 @@
 import { SubscriptionStatus } from '@prisma/client';
 import { ReceiptAdminQueueService } from './receipt-admin-queue.service';
+const { jest } = import.meta;
 
 describe('ReceiptAdminQueueService', () => {
   const mappedItem = { subscriptionId: 'subscription-1' };

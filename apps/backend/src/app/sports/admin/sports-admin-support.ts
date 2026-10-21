@@ -16,8 +16,8 @@ import {
   SportsTeamStatus,
   SportsTournamentStatus,
 } from '@prisma/client';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
-import { CreateSportsCategoryInput } from '../sports-admin.types';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type CreateSportsCategoryInput } from '../sports-admin.types';
 
 export abstract class SportsAdminSupport {
   protected validateRosterLimits(input: CreateSportsCategoryInput): void {

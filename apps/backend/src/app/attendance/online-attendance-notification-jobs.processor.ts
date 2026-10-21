@@ -4,7 +4,7 @@ import { Job } from 'bullmq';
 import {
   ONLINE_ATTENDANCE_AVAILABLE_NOTIFICATION_JOB,
   ONLINE_ATTENDANCE_NOTIFICATION_QUEUE,
-  OnlineAttendanceAvailableNotificationJob,
+  type OnlineAttendanceAvailableNotificationJob,
   OnlineAttendanceNotificationJobsService,
 } from './online-attendance-notification-jobs.service';
 

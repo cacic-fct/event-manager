@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { CalendarResolver } from './calendar.resolver';
+const { jest } = import.meta;
 
 describe('CalendarResolver', () => {
   const context = {} as never;

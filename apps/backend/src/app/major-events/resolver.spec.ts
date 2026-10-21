@@ -2,6 +2,7 @@ import { audienceContext } from '../audiences/audience-context';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { MajorEventsResolver } from './resolver';
+const { jest } = import.meta;
 
 describe('MajorEventsResolver', () => {
   it('blocks tier deletion when ticket policies or offers reference a removed tier', async () => {

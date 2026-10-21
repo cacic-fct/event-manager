@@ -1,5 +1,5 @@
 import { Prisma, PublicationState, SportsBracketSide, SportsFormat, SportsStageType } from '@prisma/client';
-import { generateSingleEliminationBracket, SportsBracketMatchPlan } from '../domain/sports-brackets';
+import { generateSingleEliminationBracket, type SportsBracketMatchPlan } from '../domain/sports-brackets';
 import { generateSportsRoundRobin } from '../domain/sports-round-robin';
 
 export interface SportsBracketParticipant {

@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { PublicationState, SportsReviewStatus } from '@prisma/client';
 import { sportsMatchRecord } from '../testing/sports-backend.fixtures';
 import { SportsMutationEventsService } from './sports-mutation-events.service';
+const { jest } = import.meta;
 
 describe('SportsMutationEventsService extended behavior', () => {
   const realtime = {

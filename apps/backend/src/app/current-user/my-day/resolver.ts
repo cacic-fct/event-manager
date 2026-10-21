@@ -3,7 +3,7 @@ import { Args, Context, Query, Resolver } from '@nestjs/graphql';
 import { RateLimit } from '../../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
-import { GraphqlContext } from '../selects';
+import { type GraphqlContext } from '../selects';
 import { CurrentUserMyDay } from './models';
 import { CurrentUserMyDayService } from './service';
 

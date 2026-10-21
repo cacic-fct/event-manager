@@ -4,6 +4,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { SubscriptionBadgeExportController } from './subscription-badge-export.controller';
 import { SubscriptionBadgeExportService } from './subscription-badge-export.service';
+const { jest } = import.meta;
 
 describe('SubscriptionBadgeExportController', () => {
   const input = {

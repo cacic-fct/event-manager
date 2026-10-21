@@ -3,7 +3,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { CertificateScope, Prisma } from '@prisma/client';
 import { isBefore, isValid, max, subMonths } from 'date-fns';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
 
 export type FrozenOperation = 'edit' | 'delete';

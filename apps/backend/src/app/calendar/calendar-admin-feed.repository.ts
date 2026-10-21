@@ -11,12 +11,12 @@ import {
   buildAdminEventGroupSelect,
   ADMIN_MAJOR_EVENT_SELECT,
   CALENDAR_EVENT_SELECT,
-  AdminCalendarGrantRecord,
-  AdminEventGroupRecord,
-  AdminFeedTargetPlan,
-  AdminMajorEventRecord,
-  CalendarEntry,
-  CalendarEventRecord,
+  type AdminCalendarGrantRecord,
+  type AdminEventGroupRecord,
+  type AdminFeedTargetPlan,
+  type AdminMajorEventRecord,
+  type CalendarEntry,
+  type CalendarEventRecord,
 } from './calendar-records';
 import {
   buildAdminEventUrl,

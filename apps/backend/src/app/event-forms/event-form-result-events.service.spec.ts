@@ -1,4 +1,5 @@
 import { EventFormResultEventsService } from './event-form-result-events.service';
+const { jest } = import.meta;
 
 describe('EventFormResultEventsService', () => {
   afterEach(() => {

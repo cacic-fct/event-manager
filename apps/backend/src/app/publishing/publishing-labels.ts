@@ -1,7 +1,7 @@
 import { PublicationState } from '@cacic-fct/shared-data-types';
 import { PublicationState as PrismaPublicationState } from '@prisma/client';
 import { PublicationBulkOperation } from './publishing.models';
-import { TargetSync } from './publishing.types';
+import { type TargetSync } from './publishing.types';
 
 export function publicationSummary(state: PublicationState): string {
   const summaries: Record<PublicationState, string> = {

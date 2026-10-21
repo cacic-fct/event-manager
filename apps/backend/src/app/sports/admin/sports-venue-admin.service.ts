@@ -1,7 +1,7 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { AuditLogEntityType, AuditLogOperation, SportsMatchState } from '@prisma/client';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 import { SportsAdminBaseService } from './sports-admin-base.service';
 

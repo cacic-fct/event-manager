@@ -15,8 +15,9 @@ try {
 const result = spawnSync(
   process.execPath,
   [
+    '--experimental-vm-modules',
     'node_modules/jest/bin/jest.js',
-    '--config=apps/backend/jest.data-transfer.postgres.config.cts',
+    '--config=apps/backend/jest.data-transfer.postgres.config.mts',
     '--runInBand',
     '--passWithNoTests=false',
     ...process.argv.slice(2),

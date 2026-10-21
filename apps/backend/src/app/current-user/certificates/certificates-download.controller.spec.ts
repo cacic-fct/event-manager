@@ -5,6 +5,7 @@ import { RATE_LIMIT_METADATA_KEY } from '../../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
 import { CurrentUserCertificatesDownloadController } from './certificates-download.controller';
+const { jest } = import.meta;
 
 describe('CurrentUserCertificatesDownloadController', () => {
   it('rate limits expensive archive generation for each authenticated user', () => {

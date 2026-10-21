@@ -8,6 +8,7 @@ import {
 } from './event-form-publication';
 import { normalizeFormName, replaceEventFormLinks } from './event-form-service-support';
 import { formRecord } from './event-form.spec-support';
+const { jest } = import.meta;
 
 function createRealtimeMock(scope = (channel: string) => channel) {
   return {

@@ -6,6 +6,7 @@ import {
   normalizeJournalRelationKeys,
   TransferJournalRecorder,
 } from './transfer-journal-recorder';
+const { jest } = import.meta;
 
 function fixture(
   model = 'eventGroup',

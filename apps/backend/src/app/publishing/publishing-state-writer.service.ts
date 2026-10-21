@@ -7,14 +7,14 @@ import {
 } from '@prisma/client';
 import { PublicationState } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { resolvePublicationActorId } from './publishing-auth';
 import { publicationSummary } from './publishing-labels';
 import { PUBLICATION_LIFECYCLE_AUDIT_METADATA, publicationStateAuditSnapshot } from './publishing-audit';
 import { PUBLICATION_EVENT_SELECT, PUBLICATION_MAJOR_EVENT_SELECT } from './publishing.selects';
-import { TargetSync } from './publishing.types';
+import { type TargetSync } from './publishing.types';
 import { assertAudiencePublicationReady, type AudiencePublicationTarget } from '../audiences/audience-publication';
 
 @Injectable()

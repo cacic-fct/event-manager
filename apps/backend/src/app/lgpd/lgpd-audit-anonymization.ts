@@ -1,7 +1,7 @@
 import { AuditLogEntityType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
-import { DataSubjectResolution } from './lgpd-records';
+import { type DataSubjectResolution } from './lgpd-records';
 import { AUDIT_SUBJECT_REFERENCE_FIELDS } from '../audit-log/audit-log.subject-references';
 
 export const ANONYMIZED_AUDIT_VALUE = '[ANONIMIZADO]';

@@ -1,4 +1,4 @@
-import { NextFunction, Request, RequestHandler, Response } from 'express';
+import { type NextFunction, type Request, type RequestHandler, type Response } from 'express';
 import { AUTH_SESSION_COOKIE_NAME } from './auth.constants';
 import { readAuthCookie } from './auth-cookie-utils';
 import { KeycloakAuthService } from './keycloak-auth.service';

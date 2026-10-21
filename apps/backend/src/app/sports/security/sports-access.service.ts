@@ -9,10 +9,10 @@ import {
   SportsTeamMemberStatus,
   SportsTournamentStatus,
 } from '@prisma/client';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { CurrentUserContextService } from '../../current-user/context.service';
-import { GraphqlContext } from '../../current-user/selects';
+import { type GraphqlContext } from '../../current-user/selects';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { PrismaService } from '../../prisma/prisma.service';
 

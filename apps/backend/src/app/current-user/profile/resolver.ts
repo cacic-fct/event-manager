@@ -2,7 +2,7 @@ import { Context, Query, Resolver } from '@nestjs/graphql';
 import { CurrentUserContextService } from '../context.service';
 import { CurrentUserEventMapperService } from '../mapper.service';
 import { CurrentUserProfileContext } from '../models';
-import { GraphqlContext } from '../selects';
+import { type GraphqlContext } from '../selects';
 
 @Resolver()
 export class CurrentUserProfileResolver {

@@ -1,4 +1,4 @@
-import { RedisOptions } from 'ioredis';
+import { type RedisOptions } from 'ioredis';
 
 export function getRedisConnectionOptions(): RedisOptions {
   const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379';

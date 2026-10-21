@@ -11,6 +11,8 @@ import { AuthorizationPolicyService } from '../authorization/authorization-polic
 import { PrismaService } from '../prisma/prisma.service';
 import { SseReplayService } from '../realtime/sse-replay.service';
 
+const { jest } = import.meta;
+
 describe('EventAttendancesController HTTP lifecycle', () => {
   let app: INestApplication;
   let feed: jest.Mock;

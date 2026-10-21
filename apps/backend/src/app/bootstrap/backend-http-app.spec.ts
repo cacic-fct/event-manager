@@ -1,12 +1,15 @@
+import { jest as jestEsm } from '@jest/globals';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule } from '@nestjs/swagger';
 import express from 'express';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { configureBackendHttpApp, createBackendHttpApp } from './backend-http-app';
+const { jest } = import.meta;
 
-jest.mock('../app.module', () => ({ AppModule: class AppModule {} }));
+jestEsm.unstable_mockModule('../app.module', () => ({ AppModule: class AppModule {} }));
+
+const { configureBackendHttpApp, createBackendHttpApp } = await import('./backend-http-app');
 
 describe('createBackendHttpApp ownership', () => {
   afterEach(() => jest.restoreAllMocks());

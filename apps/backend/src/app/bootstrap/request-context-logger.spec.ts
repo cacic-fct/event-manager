@@ -1,6 +1,7 @@
 import { ConsoleLogger } from '@nestjs/common';
 import { RequestContextLogger } from './request-context-logger';
 import { requestContextMiddleware } from './request-context';
+const { jest } = import.meta;
 
 describe('RequestContextLogger', () => {
   it('correlates overlapping asynchronous requests without reading their payloads', async () => {

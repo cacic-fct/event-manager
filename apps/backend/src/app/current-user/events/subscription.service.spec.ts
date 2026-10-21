@@ -3,6 +3,7 @@ import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
 import { CurrentUserEventSubscriptionService } from './subscription.service';
 import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
 import { requiredMajorEventImageLicenseAgreementWhere } from './image-license-agreement';
+const { jest } = import.meta;
 
 describe('CurrentUserEventSubscriptionService', () => {
   it('requires explicit image-license acceptance when a target enables it', () => {

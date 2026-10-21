@@ -4,6 +4,7 @@ import { BadRequestException } from '@nestjs/common';
 import { graphql } from 'graphql';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { EventsResolver } from './resolver';
+const { jest } = import.meta;
 
 describe('EventsResolver', () => {
   it.each([

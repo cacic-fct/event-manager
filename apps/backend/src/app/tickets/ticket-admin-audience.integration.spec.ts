@@ -4,6 +4,8 @@ import { TicketLifecycleState } from '@cacic-fct/shared-ticketing';
 import { audienceContext, EventAudiencePrincipal } from '../audiences/audience-context';
 import { TicketsResolver } from './tickets.resolver';
 
+const { jest } = import.meta;
+
 const context = { req: { user: { sub: 'manager' } } } as never;
 const calls: Array<[string, (resolver: TicketsResolver) => Promise<unknown>]> = [
   ['event configuration read', (resolver) => resolver.adminTicketConfigs('event', undefined, context)],

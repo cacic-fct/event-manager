@@ -1,4 +1,5 @@
 import { AuthorizationStateService } from './authorization-state.service';
+const { jest } = import.meta;
 
 describe('AuthorizationStateService', () => {
   const originalEnv = process.env;

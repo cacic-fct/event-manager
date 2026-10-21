@@ -9,7 +9,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { PUBLIC_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE } from '../public-events/models';
 import { toLinkModel } from './event-form-model.mapper';
-import { EventFormLinkRecord } from './event-form-records';
+import { type EventFormLinkRecord } from './event-form-records';
 
 export async function canStartPublicSubscriptionForLink(
   prisma: PrismaService,

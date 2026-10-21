@@ -1,4 +1,12 @@
-import { Inject, Injectable, Logger, MessageEvent, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  type MessageEvent,
+  type OnModuleDestroy,
+  type OnModuleInit,
+  Optional,
+} from '@nestjs/common';
 import Redis from 'ioredis';
 import { interval, map, merge, Observable, Subject } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service';

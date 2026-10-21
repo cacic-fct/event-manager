@@ -1,7 +1,7 @@
 import { PrismaService } from '../../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../../attendance-category.service';
 import { parseUserAztecCode } from '../user-scanner-code';
-import { GraphqlContext } from './types';
+import { type GraphqlContext } from './types';
 import { PersonCsvImportSupport } from '../../../common/person-csv-import-support';
 
 export abstract class EventAttendancesCoreSupport extends PersonCsvImportSupport {

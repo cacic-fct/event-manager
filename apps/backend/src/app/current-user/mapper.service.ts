@@ -13,14 +13,14 @@ import {
 import {
   CURRENT_USER_EVENT_ATTENDANCE_SELECT,
   CURRENT_USER_EVENT_SUBSCRIPTION_SELECT,
-  EventGroupSubscriptionRecord,
-  EventRecord,
-  PersonRecord,
-  PublicEventGroupRecord,
-  PublicEventRecord,
-  PublicMajorEventRecord,
-  SubscriptionFeedSingleEventRecord,
-  UserRecord,
+  type EventGroupSubscriptionRecord,
+  type EventRecord,
+  type PersonRecord,
+  type PublicEventGroupRecord,
+  type PublicEventRecord,
+  type PublicMajorEventRecord,
+  type SubscriptionFeedSingleEventRecord,
+  type UserRecord,
 } from './selects';
 import { PublicEvent, PublicEventGroup, PublicMajorEvent, mapPublicPaymentInfo } from '../public-events/models';
 

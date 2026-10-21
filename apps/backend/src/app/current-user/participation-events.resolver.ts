@@ -10,7 +10,7 @@ import { IncludePastParticipation } from '../audiences/past-participation.decora
 import { PrismaService } from '../prisma/prisma.service';
 import { PUBLIC_EVENT_SELECT, PUBLIC_EVENT_WHERE, PublicEvent } from '../public-events/models';
 import { CurrentUserContextService } from './context.service';
-import { GraphqlContext } from './selects';
+import { type GraphqlContext } from './selects';
 
 @Resolver()
 export class CurrentUserParticipationEventsResolver {

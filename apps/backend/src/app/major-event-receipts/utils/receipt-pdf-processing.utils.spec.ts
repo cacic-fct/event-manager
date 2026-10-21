@@ -6,6 +6,7 @@ import {
   parseReceiptPdfPageCount,
   ReceiptPdfProcessingError,
 } from './receipt-pdf-processing.utils';
+const { jest } = import.meta;
 
 describe('receipt PDF processing utils', () => {
   it('reads a positive PDF page count from pdfinfo output', () => {

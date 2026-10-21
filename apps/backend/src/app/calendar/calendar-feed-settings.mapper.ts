@@ -4,9 +4,9 @@ import {
   SuperAdminCalendarFeedSettings,
 } from './calendar.models';
 import {
-  AdminCalendarFeedSettingsRecord,
-  CalendarFeedSettingsRecord,
-  SuperAdminCalendarFeedSettingsRecord,
+  type AdminCalendarFeedSettingsRecord,
+  type CalendarFeedSettingsRecord,
+  type SuperAdminCalendarFeedSettingsRecord,
 } from './calendar-records';
 import { deriveStoredFeedKey } from './calendar-feed-keys';
 

@@ -3,7 +3,7 @@ import { BadRequestException, ForbiddenException, HttpException } from '@nestjs/
 import { AttendanceCreationMethod, Prisma } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { CurrentUserContextService } from '../context.service';
-import { GraphqlContext } from '../selects';
+import { type GraphqlContext } from '../selects';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';

@@ -5,6 +5,7 @@ import { CertificateIssuingService } from '../certificate/certificate-issuing.se
 import { PrismaService } from '../prisma/prisma.service';
 import { AccountMergeService } from './account-merge.service';
 import { AccountMergeScoreRequestDto } from './dto';
+const { jest } = import.meta;
 
 describe('AccountMergeService', () => {
   let prisma: ReturnType<typeof createPrismaMock>;

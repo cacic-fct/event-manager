@@ -2,7 +2,8 @@ import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 describe('backend background worker test inventory', () => {
-  const sourceFiles = walk(__dirname);
+  const sourceDirectory = import.meta.dirname;
+  const sourceFiles = walk(sourceDirectory);
   it('keeps every queue processor and scheduler next to a focused test', () => {
     const uncovered = sourceFiles
       .filter((file) => /\.(processor|scheduler)\.ts$/.test(file) && !file.endsWith('.spec.ts'))
@@ -21,5 +22,5 @@ function walk(directory: string): string[] {
 }
 
 function relativeToApp(file: string): string {
-  return file.slice(__dirname.length + 1);
+  return file.slice(import.meta.dirname.length + 1);
 }

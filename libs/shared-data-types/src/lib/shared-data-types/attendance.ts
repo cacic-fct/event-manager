@@ -13,6 +13,7 @@ import {
 } from './enums';
 import { Event } from './events';
 import { Person } from './people';
+import type { Relation } from './relation';
 
 @ObjectType()
 export class EventAttendance {
@@ -23,10 +24,10 @@ export class EventAttendance {
   eventId!: string;
 
   @Field(() => Person, { nullable: true })
-  person?: Person;
+  person?: Relation<Person>;
 
   @Field(() => Event, { nullable: true })
-  event?: Event;
+  event?: Relation<Event>;
 
   @Field(() => AttendanceCategory)
   category!: AttendanceCategory;
@@ -116,13 +117,13 @@ export class OfflineEventAttendanceSubmission {
   eventId!: string;
 
   @Field(() => Event, { nullable: true })
-  event?: Event;
+  event?: Relation<Event>;
 
   @Field(() => String, { nullable: true })
   personId?: string;
 
   @Field(() => Person, { nullable: true })
-  person?: Person;
+  person?: Relation<Person>;
 
   @Field(() => OfflineEventAttendanceSubmissionStatus)
   status!: OfflineEventAttendanceSubmissionStatus;
@@ -284,7 +285,7 @@ export class MajorEventUserAttendance {
   personId!: string;
 
   @Field(() => Person, { nullable: true })
-  person?: Person;
+  person?: Relation<Person>;
 
   @Field(() => String)
   subscriptionStatus!: string;

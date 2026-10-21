@@ -2,7 +2,11 @@ import { BadRequestException } from '@nestjs/common';
 import { assertSafeSvg, detectImageMimeType, UnsafeSvgError } from '@cacic-fct/shared-utils';
 import { loadSharp } from '../../shared/load-sharp';
 import type { SportsTeamLogoUploadFile } from './sports-team-logo.service';
-import { SPORTS_TEAM_LOGO_FORMATS, SPORTS_TEAM_LOGO_POLICY, SportsTeamLogoFormat } from './sports-team-logo.policy';
+import {
+  SPORTS_TEAM_LOGO_FORMATS,
+  SPORTS_TEAM_LOGO_POLICY,
+  type SportsTeamLogoFormat,
+} from './sports-team-logo.policy';
 
 export async function validateSportsTeamLogoImage(file: SportsTeamLogoUploadFile | undefined): Promise<{
   buffer: Buffer;

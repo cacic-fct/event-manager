@@ -1,12 +1,15 @@
+import { jest as jestEsm } from '@jest/globals';
 import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { AttendanceCreationMethod, EventAttendanceStatus, UserRole } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
+const { jest } = import.meta;
 
-jest.mock('../../authorization/effective-role-scopes', () => ({
+jestEsm.unstable_mockModule('../../authorization/effective-role-scopes', () => ({
   resolveRoleIdsForPermission: jest.fn().mockResolvedValue(['role-1']),
 }));
-import { recordAttendanceCreate } from './attendance-collection-audit';
-import {
+
+const { recordAttendanceCreate } = await import('./attendance-collection-audit');
+const {
   commitStatusForError,
   errorMessage,
   getActorId,
@@ -16,13 +19,11 @@ import {
   parseStoredScannerUserId,
   parseUserAztecCode,
   scannerUserIdForStorage,
-} from './attendance-collection-context';
-import { notifyOfflineAttendanceReviewQueued } from './attendance-collection-offline-notifications';
-import {
-  findSinglePersonForManualInput,
-  getRequiredAttendanceLocationData,
-  toEventAttendance,
-} from './attendance-collection-records';
+} = await import('./attendance-collection-context');
+const { notifyOfflineAttendanceReviewQueued } = await import('./attendance-collection-offline-notifications');
+const { findSinglePersonForManualInput, getRequiredAttendanceLocationData, toEventAttendance } = await import(
+  './attendance-collection-records'
+);
 
 describe('attendance collection helpers', () => {
   afterEach(() => {

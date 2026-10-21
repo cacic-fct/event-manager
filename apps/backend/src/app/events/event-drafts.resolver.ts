@@ -3,7 +3,7 @@ import { DeletionResult, Event, EventDraft, EventDraftSaveInput } from '@cacic-f
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { EventDraftsService } from './event-drafts.service';
 
 type GraphqlContext = {

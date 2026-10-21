@@ -11,7 +11,7 @@ import { BadRequestException } from '@nestjs/common';
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
 import { SportsReviewStatus, SportsTeamChangeRequestStatus } from '@prisma/client';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
-import { GraphqlContext } from '../current-user/selects';
+import { type GraphqlContext } from '../current-user/selects';
 import { SportsMutationsResolverSupport } from './sports-mutations-resolver.support';
 
 @Resolver()

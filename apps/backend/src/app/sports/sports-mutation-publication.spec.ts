@@ -1,5 +1,6 @@
 import { SportsLifecycleMutationsResolver } from './sports-lifecycle-mutations.resolver';
 import { SportsTeamMutationsResolver } from './sports-team-mutations.resolver';
+const { jest } = import.meta;
 
 describe('sports mutation publication boundaries', () => {
   const actor = { sub: 'admin-1' };

@@ -8,6 +8,7 @@ import {
   PUBLIC_MAJOR_EVENT_SELECT,
   PUBLIC_MAJOR_EVENT_WHERE,
 } from '../public-events/models';
+const { jest } = import.meta;
 
 describe('CurrentUserPublicEventService', () => {
   let prisma: {

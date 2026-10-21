@@ -1,4 +1,4 @@
-import { Injectable, Logger, MessageEvent, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, type MessageEvent, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { Prisma, TicketRealtimeInvalidationType, TicketRealtimeScopeType } from '@prisma/client';
 import { Observable } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service';

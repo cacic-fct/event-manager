@@ -1,3 +1,4 @@
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from '@jest/globals';
 import { ConflictException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import type {
@@ -16,6 +17,8 @@ import {
   waitForDatabaseCondition,
   within,
 } from './testing/postgres-transfer.fixtures';
+
+const { jest } = import.meta;
 
 if (process.env['DATA_TRANSFER_POSTGRES_TEST'] !== '1') {
   throw new Error('Run this suite with bun run test:data-transfer:database.');

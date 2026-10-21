@@ -2,6 +2,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { AuditLogOperation } from '@prisma/client';
 import { REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { EventAttendanceCollectorsResolver } from './attendance-collectors.resolver';
+const { jest } = import.meta;
 
 describe('EventAttendanceCollectorsResolver', () => {
   const actor = { sub: 'admin-1' };

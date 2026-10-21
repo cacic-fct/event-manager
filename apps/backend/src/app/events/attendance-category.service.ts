@@ -1,4 +1,4 @@
-import { Injectable, Optional } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Optional } from '@nestjs/common';
 import { AttendanceCategory, Prisma, PrismaClient } from '@prisma/client';
 import { AttendanceCurrentAssessment } from '@cacic-fct/shared-data-types';
 import { normalizeAttendancePriceTier } from './attendance-price-tier-policy';
@@ -11,6 +11,7 @@ import {
 import { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
 import { TicketIssuanceService, type ConsumeTicketOptions } from '../tickets/ticket-issuance.service';
 import { AudienceInvitationService, invitationFactForAttendance } from '../audiences/audience-invitation.service';
+import type { DeferredInjection } from '../common/deferred-injection';
 
 type PrismaExecutor = Prisma.TransactionClient | PrismaClient | PrismaService;
 
@@ -77,7 +78,9 @@ export function attendanceAssessmentKey(personId: string, eventId: string): stri
 export class AttendanceCategoryService {
   constructor(
     private readonly prisma: PrismaService,
-    @Optional() private readonly audienceInvitations?: AudienceInvitationService,
+    @Optional()
+    @Inject(forwardRef(() => AudienceInvitationService))
+    private readonly audienceInvitations?: DeferredInjection<AudienceInvitationService>,
     @Optional() private readonly tickets?: TicketIssuanceService,
   ) {}
 

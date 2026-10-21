@@ -11,7 +11,7 @@ import {
   AuditLogEntityType,
   AuditLogOperation,
   Prisma,
-  PrizeDraw as PrismaPrizeDraw,
+  type PrizeDraw as PrismaPrizeDraw,
   PrizeDrawChanceMode as PrismaPrizeDrawChanceMode,
   PrizeDrawSpeed as PrismaPrizeDrawSpeed,
   PrizeDrawTargetType as PrismaPrizeDrawTargetType,
@@ -28,10 +28,10 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuditLogService } from '../audit-log/audit-log.service';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { PrizeDrawEligibleRecord, PrizeDrawEligibilityService } from './prize-draw-eligibility.service';
+import { type PrizeDrawEligibleRecord, PrizeDrawEligibilityService } from './prize-draw-eligibility.service';
 import { formatPrizeDrawReelName, normalizePrizeDrawText } from './prize-draw-name';
 import {
   PRIZE_DRAW_PRESENTATION_GRACE_MS,

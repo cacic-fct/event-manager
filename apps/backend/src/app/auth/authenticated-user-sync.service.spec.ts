@@ -1,4 +1,5 @@
 import { AuthenticatedUserSyncService } from './authenticated-user-sync.service';
+const { jest } = import.meta;
 
 describe('AuthenticatedUserSyncService', () => {
   it('updates existing user UNESP role claims from Keycloak login claims', async () => {

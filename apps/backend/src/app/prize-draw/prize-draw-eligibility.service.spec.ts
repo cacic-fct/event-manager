@@ -1,6 +1,7 @@
 import { PrizeDrawChanceMode, PrizeDrawTargetType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PrizeDrawEligibilityConfig, PrizeDrawEligibilityService } from './prize-draw-eligibility.service';
+const { jest } = import.meta;
 
 describe('PrizeDrawEligibilityService', () => {
   it('unifies known people across sources and applies explicit weighted precedence', async () => {

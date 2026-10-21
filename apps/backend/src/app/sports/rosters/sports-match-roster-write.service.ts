@@ -12,8 +12,8 @@ import {
   SportsRosterStatus,
   SportsTeamMemberStatus,
 } from '@prisma/client';
-import { AuditActor } from '../../audit-log/audit-log.types';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuditActor } from '../../audit-log/audit-log.types';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 
 export interface SportsRosterEntryWrite {

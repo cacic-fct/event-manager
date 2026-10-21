@@ -7,6 +7,7 @@ import { EventLecturer } from './lecturers';
 import { EventGroup } from './event-groups';
 import { MajorEvent } from './major-events';
 import { EventAudienceInvitation } from './event-audience';
+import type { Relation } from './relation';
 
 @ObjectType()
 export class Event {
@@ -68,13 +69,13 @@ export class Event {
   majorEventId?: string | null;
 
   @Field(() => MajorEvent, { nullable: true })
-  majorEvent?: MajorEvent | null;
+  majorEvent?: Relation<MajorEvent> | null;
 
   @Field(() => String, { nullable: true })
   eventGroupId?: string | null;
 
   @Field(() => EventGroup, { nullable: true })
-  eventGroup?: EventGroup | null;
+  eventGroup?: Relation<EventGroup> | null;
 
   @Field(() => [EventAttendance], { nullable: true })
   attendances?: EventAttendance[] | null;

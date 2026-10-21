@@ -4,6 +4,7 @@ import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testin
 import { CurrentUserMajorEventSubscriptionService } from './subscription.service';
 import { PUBLIC_REGULAR_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE } from '../../public-events/models';
 import { resolvePriceTierEventPolicy } from './tier-event-policy';
+const { jest } = import.meta;
 
 describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
   let service: CurrentUserMajorEventSubscriptionService;

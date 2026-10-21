@@ -1,5 +1,5 @@
-import { generateSingleEliminationBracket, SportsBracketEntrant, SportsBracketSide } from './sports-brackets';
-import { generateSportsRoundRobin, SportsRoundRobinRoundPlan } from './sports-round-robin';
+import { generateSingleEliminationBracket, type SportsBracketEntrant, type SportsBracketSide } from './sports-brackets';
+import { generateSportsRoundRobin, type SportsRoundRobinRoundPlan } from './sports-round-robin';
 
 export interface SportsGroupEntrant {
   readonly registrationId: string;

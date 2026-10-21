@@ -9,7 +9,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
-import { AuditLogEntityType, AuditLogOperation, MajorEventReceipt, SubscriptionStatus } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, type MajorEventReceipt, SubscriptionStatus } from '@prisma/client';
 import { Queue } from 'bullmq';
 import { randomUUID } from 'crypto';
 import { addYears } from 'date-fns';
@@ -17,9 +17,9 @@ import { Readable } from 'stream';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { CurrentUserContextService } from '../../current-user/context.service';
-import { GraphqlContext } from '../../current-user/selects';
+import { type GraphqlContext } from '../../current-user/selects';
 import { DashboardInsightsService } from '../../dashboard/insights.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
@@ -30,12 +30,12 @@ import { SportsPlayerApplicationRealtimeService } from '../../sports/application
 import { buildBullMqJobId } from '../../queues/bullmq-job-id';
 import { mapReceipt } from '../mappers/receipt-queue.mapper';
 import {
-  CurrentUserReceiptResponse,
+  type CurrentUserReceiptResponse,
   MAJOR_EVENT_RECEIPTS_QUEUE,
   RECEIPT_PROCESSING_ATTEMPTS,
   RECEIPT_ADMIN_PERMISSION,
-  ReceiptProcessingJob,
-  UploadedReceiptFile,
+  type ReceiptProcessingJob,
+  type UploadedReceiptFile,
 } from '../receipt.types';
 import { assertValidReceiptUpload, buildReceiptObjectKey, isPdfReceiptMimeType } from '../utils/receipt-file.utils';
 import { assertReceiptPdfPageCountWithinLimit, ReceiptPdfProcessingError } from '../utils/receipt-pdf-processing.utils';

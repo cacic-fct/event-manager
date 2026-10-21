@@ -1,5 +1,5 @@
 import { ServiceUnavailableException } from '@nestjs/common';
-import { ExternalImportRecord, Prisma } from '@prisma/client';
+import { type ExternalImportRecord, Prisma } from '@prisma/client';
 import { createHmac } from 'node:crypto';
 
 const SUPPRESSION_ENTITY_TYPE = 'person_suppression';

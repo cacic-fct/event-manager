@@ -1,4 +1,5 @@
 import { ensureWorkspaceTierSubscriptionPolicy } from './tier-subscription-policy';
+const { jest } = import.meta;
 
 function setup(overrides = {}) {
   const tier = {

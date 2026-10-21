@@ -3,6 +3,7 @@ import { NotFoundException } from '@nestjs/common';
 import { AuditLogOperation } from '@prisma/client';
 import { REQUIRED_PERMISSIONS_KEY } from '../../auth/auth.constants';
 import { MergeCandidatesResolver } from './resolver';
+const { jest } = import.meta;
 
 describe('MergeCandidatesResolver', () => {
   const actor = { sub: 'admin-1' };

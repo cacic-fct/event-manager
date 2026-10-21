@@ -5,6 +5,7 @@ import {
   replaceAuditLogSearchDocuments,
 } from './typesense-search.reindex';
 import { SEARCH_REINDEX_BATCH_SIZE } from './typesense-search.collections';
+const { jest } = import.meta;
 
 describe('typesense reindex helpers', () => {
   it('replaces every collection during a full reindex', async () => {

@@ -5,6 +5,7 @@ import type { AuthenticatedUser } from '../auth/interfaces/authenticated-user.in
 import { DataTransferService } from './data-transfer.service';
 import { EventTreeTransferAdapter } from './event-tree-transfer.adapter';
 import { TransferKeyAllocations } from './transfer-key-allocations';
+const { jest } = import.meta;
 
 describe('new event tree authorization', () => {
   it('previews a complete key-only tree with global grants without scoping to nonexistent parents', async () => {

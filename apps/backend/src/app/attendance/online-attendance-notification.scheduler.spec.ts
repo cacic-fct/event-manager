@@ -1,4 +1,5 @@
 import { OnlineAttendanceNotificationScheduler } from './online-attendance-notification.scheduler';
+const { jest } = import.meta;
 
 describe('OnlineAttendanceNotificationScheduler', () => {
   beforeEach(() => {

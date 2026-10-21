@@ -5,6 +5,7 @@ import {
   SPORTS_MATCH_OVERLAY_DEMO_ID,
   SportsMatchOverlayService,
 } from './sports-match-overlay.service';
+const { jest } = import.meta;
 
 describe('SportsMatchOverlayService', () => {
   const sportsRead = {

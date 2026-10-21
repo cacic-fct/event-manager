@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { PUBLICATION_EVENT_SELECT } from './publishing.selects';
-import { TargetSync } from './publishing.types';
+import { type TargetSync } from './publishing.types';
 
 @Injectable()
 export class PublicationSearchSyncService {

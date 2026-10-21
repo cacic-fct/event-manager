@@ -1,14 +1,14 @@
 import { ConflictException } from '@nestjs/common';
 import {
   Prisma,
-  SportsOfficialAssignment,
-  SportsTeamRepresentative,
-  SportsTournamentParticipant,
+  type SportsOfficialAssignment,
+  type SportsTeamRepresentative,
+  type SportsTournamentParticipant,
 } from '@prisma/client';
 import {
-  SportsOfficialAssignmentSnapshot,
-  SportsTeamRepresentativeSnapshot,
-  SportsTournamentParticipantSnapshot,
+  type SportsOfficialAssignmentSnapshot,
+  type SportsTeamRepresentativeSnapshot,
+  type SportsTournamentParticipantSnapshot,
 } from './types';
 
 export type SportsRepresentativeMergeSnapshot = {

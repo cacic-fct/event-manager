@@ -3,6 +3,7 @@ import { Prisma, SportsReviewStatus, SportsTeamChangeRequestStatus } from '@pris
 import { sportsTestDate } from './testing/sports-backend.fixtures';
 import { SportsMatchAdminMutationsResolver } from './sports-match-admin-mutations.resolver';
 import { SportsReviewMutationsResolver } from './sports-review-mutations.resolver';
+const { jest } = import.meta;
 
 describe('specialized sports mutation resolvers', () => {
   const actor = { sub: 'admin-1' };

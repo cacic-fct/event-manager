@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { Readable } from 'stream';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import {
-  AdminReceiptQueueItem,
-  AdminReceiptQueueResponse,
-  AdminReceiptValidationResult,
-  CurrentUserReceiptResponse,
-  ReceiptRejectionCode,
-  UploadedReceiptFile,
+  type AdminReceiptQueueItem,
+  type AdminReceiptQueueResponse,
+  type AdminReceiptValidationResult,
+  type CurrentUserReceiptResponse,
+  type ReceiptRejectionCode,
+  type UploadedReceiptFile,
 } from './receipt.types';
 import { ReceiptAdminQueueService } from './services/receipt-admin-queue.service';
 import { ReceiptUploadService } from './services/receipt-upload.service';

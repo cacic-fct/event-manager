@@ -1,6 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 import { SportsReadAdminService } from './sports-read-admin.service';
 import { SportsReadService } from './sports-read.service';
+const { jest } = import.meta;
 
 describe('SportsReadService admin tournament list', () => {
   const authorizationPolicy = {

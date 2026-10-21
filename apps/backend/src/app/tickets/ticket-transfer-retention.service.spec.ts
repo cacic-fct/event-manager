@@ -1,4 +1,5 @@
 import { TicketTransferRetentionService } from './ticket-transfer-retention.service';
+const { jest } = import.meta;
 
 describe('ticket transfer document retention', () => {
   it('includes overdue unresolved requests, expires pending requests, and clears every document', async () => {

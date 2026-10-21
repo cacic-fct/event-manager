@@ -7,6 +7,7 @@ import { CertificateIssuingService } from '../certificate/certificate-issuing.se
 import { PrismaService } from '../prisma/prisma.service';
 import { CurrentUserContextService } from './context.service';
 import { PersonRecord, UserRecord } from './selects';
+const { jest } = import.meta;
 
 type PrismaMock = {
   accountUserMerge: { findMany: jest.Mock };

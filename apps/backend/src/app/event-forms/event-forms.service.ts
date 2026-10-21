@@ -1,4 +1,4 @@
-import { Injectable, MessageEvent } from '@nestjs/common';
+import { Injectable, type MessageEvent } from '@nestjs/common';
 import {
   EventForm as EventFormModel,
   EventFormPreviousSubscriberCountInput,
@@ -12,17 +12,22 @@ import {
 import { Prisma } from '@prisma/client';
 import { Readable } from 'node:stream';
 import { defer, Observable, switchMap } from 'rxjs';
-import { AuditRecordOptions } from '../audit-log/audit-log.types';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
-import { GraphqlContext } from '../current-user/selects';
+import { type AuditRecordOptions } from '../audit-log/audit-log.types';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type GraphqlContext } from '../current-user/selects';
 import { EventFormEditorService } from './event-form-editor.service';
 import { EventFormListingsService } from './event-form-listings.service';
 import { EventFormPublicationWorkflowService } from './event-form-publication-workflow.service';
 import { EventFormResponsesService } from './event-form-responses.service';
 import { EventFormResultEventsService } from './event-form-result-events.service';
 import { EventFormResultsAccessService } from './event-form-results-access.service';
-import { NormalizedTarget, ResultViewer, SubscriptionFlowTargetScope, TargetInput } from './event-form-records';
-import { AccessibleEventTargets } from './event-form-access';
+import {
+  type NormalizedTarget,
+  type ResultViewer,
+  type SubscriptionFlowTargetScope,
+  type TargetInput,
+} from './event-form-records';
+import { type AccessibleEventTargets } from './event-form-access';
 
 @Injectable()
 export class EventFormsService {

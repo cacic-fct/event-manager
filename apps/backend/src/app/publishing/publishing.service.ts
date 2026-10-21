@@ -2,10 +2,13 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PublicationTargetType } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { Prisma } from '@prisma/client';
-import { AccessibleEventGrantTargets, AuthorizationPolicyService } from '../authorization/authorization-policy.service';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import {
+  type AccessibleEventGrantTargets,
+  AuthorizationPolicyService,
+} from '../authorization/authorization-policy.service';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { resolvePagination } from '../common/pagination';
-import { GraphqlContext } from '../current-user/selects';
+import { type GraphqlContext } from '../current-user/selects';
 import { PrismaService } from '../prisma/prisma.service';
 import { assertPublicationTargetPermission, getPublicationUser } from './publishing-auth';
 import { buildPublicationConsistencyWarnings } from './publishing-consistency';
@@ -23,7 +26,7 @@ import {
 import { PublicationPreviewService } from './publishing-preview.service';
 import { PublicationTransitionService } from './publishing-transition.service';
 import { publicationStateLabel } from './publishing-labels';
-import { PublicationTransitionOutcome } from './publishing.types';
+import { type PublicationTransitionOutcome } from './publishing.types';
 
 const PUBLICATION_WORKSPACE_MAX_TAKE = 100;
 const PUBLICATION_WORKSPACE_WARNING_TAKE = 500;

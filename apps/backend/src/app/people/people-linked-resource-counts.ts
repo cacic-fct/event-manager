@@ -1,5 +1,8 @@
 import { NotFoundException } from '@nestjs/common';
-import { PersonLinkedResourceGroupType, PersonLinkedResourcePrisma } from './people-linked-resource-definitions';
+import {
+  type PersonLinkedResourceGroupType,
+  type PersonLinkedResourcePrisma,
+} from './people-linked-resource-definitions';
 
 export async function countPersonLinkedResourceGroups(
   prisma: PersonLinkedResourcePrisma,

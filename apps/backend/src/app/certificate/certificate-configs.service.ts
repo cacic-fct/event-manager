@@ -14,15 +14,15 @@ import {
 import { BadRequestException, ConflictException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { AuditLogService } from '../audit-log/audit-log.service';
-import { AuditPrismaClient } from '../audit-log/audit-log.types';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuditPrismaClient } from '../audit-log/audit-log.types';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import {
   CERTIFICATE_FOLDER_SELECT,
   CERTIFICATE_CONFIG_SELECT,
   CERTIFICATE_TEMPLATE_SELECT,
-  CertificateConfigRecord,
+  type CertificateConfigRecord,
   buildConfigTargetWhere,
   mapCertificateFolder,
   mapCertificateConfig,

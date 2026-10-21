@@ -13,6 +13,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { SportsAdminService } from './sports-admin.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { sportsAdminTournamentRecord, sportsTestDate } from './testing/sports-backend.fixtures';
+const { jest } = import.meta;
 
 describe('SportsAdminService', () => {
   const actor = {

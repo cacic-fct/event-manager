@@ -1,6 +1,6 @@
 import { formatPermissionGroups } from '@cacic-fct/shared-permissions';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { DashboardPermissionGroup } from '../models';
 import { DASHBOARD_PERMISSION_REQUIREMENTS } from './constants';
 

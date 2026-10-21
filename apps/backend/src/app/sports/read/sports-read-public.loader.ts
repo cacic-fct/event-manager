@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { toSportsPublicOfficialName, toSportsPublicPlayerName } from '../domain/sports-public-name';
 import { PublicSportsOfficial, PublicSportsRoster } from './sports-read.models';
 
-import { PUBLIC_TEAM_SELECT, PublicOfficialRecord, PublicRosterRecord } from './sports-read.records';
+import { PUBLIC_TEAM_SELECT, type PublicOfficialRecord, type PublicRosterRecord } from './sports-read.records';
 
 import { SportsReadPublicMapper } from './sports-read-public.mapper';
 

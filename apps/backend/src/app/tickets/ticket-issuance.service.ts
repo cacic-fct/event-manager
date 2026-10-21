@@ -3,8 +3,8 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  OnModuleDestroy,
-  OnModuleInit,
+  type OnModuleDestroy,
+  type OnModuleInit,
 } from '@nestjs/common';
 import {
   AuditLogEntityType,

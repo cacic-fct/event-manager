@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { SportsReviewMutationsResolver } from './sports-review-mutations.resolver';
+const { jest } = import.meta;
 
 describe('SportsReviewMutationsResolver uncovered review operations', () => {
   it('declares scoped approval permission metadata for review-data updates and occurrence corrections', () => {

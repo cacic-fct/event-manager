@@ -1,4 +1,5 @@
 import { LegacyRepeatableJobsMigrationService } from './legacy-repeatable-jobs-migration.service';
+const { jest } = import.meta;
 
 describe('LegacyRepeatableJobsMigrationService', () => {
   it('regenerates weather schedulers before removing all legacy repeatable metadata', async () => {

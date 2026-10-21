@@ -4,7 +4,7 @@ import {
   AttendanceCurrentAssessment,
   EventAttendanceStatus,
 } from '@prisma/client';
-import { AttendanceSnapshot } from './types';
+import { type AttendanceSnapshot } from './types';
 
 export type AttendanceRecord = {
   eventId: string;

@@ -3,6 +3,7 @@ import {
   searchTypesensePagedDocumentIds,
   searchTypesenseRankedDocumentIds,
 } from './typesense-search.query';
+const { jest } = import.meta;
 
 describe('typesense query helpers', () => {
   it('returns unavailable when the client is missing or the query is blank without match-all', async () => {

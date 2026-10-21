@@ -4,6 +4,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { CertificatesResolver } from './certificates.resolver';
+const { jest } = import.meta;
 
 describe('CertificatesResolver authorization', () => {
   it('filters issuable target pickers to certificate config grant targets', async () => {

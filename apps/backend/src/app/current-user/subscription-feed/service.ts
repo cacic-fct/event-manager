@@ -5,7 +5,7 @@ import { CurrentUserEventMapperService } from '../mapper.service';
 import {
   CURRENT_USER_EVENT_GROUP_SUBSCRIPTION_SELECT,
   CURRENT_USER_SUBSCRIPTION_FEED_SINGLE_EVENT_SELECT,
-  PublicEventRecord,
+  type PublicEventRecord,
 } from '../selects';
 import { CurrentUserEventParticipation, CurrentUserSubscriptionFeed, CurrentUserSubscriptionFeedItem } from '../models';
 import { PUBLIC_EVENT_GROUP_SELECT, PUBLIC_EVENT_WHERE } from '../../public-events/models';

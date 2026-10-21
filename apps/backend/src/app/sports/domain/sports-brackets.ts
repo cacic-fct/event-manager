@@ -1,4 +1,4 @@
-import { SportsMatchState } from './sports-match-state';
+import { type SportsMatchState } from './sports-match-state';
 
 export type SportsBracketSide = 'HOME' | 'AWAY';
 export type SportsBracketSeedingMode = 'MANUAL' | 'RANDOM';

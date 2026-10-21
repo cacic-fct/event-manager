@@ -1,6 +1,6 @@
 import { SportsMatchState } from '@prisma/client';
 import { normalizeSportsScoreboard } from '../domain/sports-scoreboard';
-import { SportsProjectedOutcome } from './sports-match-projection.models';
+import { type SportsProjectedOutcome } from './sports-match-projection.models';
 
 export function createSportsProjectionReset(): SportsProjectedOutcome {
   return {

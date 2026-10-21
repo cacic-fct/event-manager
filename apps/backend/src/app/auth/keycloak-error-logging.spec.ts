@@ -1,13 +1,14 @@
-import axios from 'axios';
-import { summarizeKeycloakFailure } from './keycloak-error-logging';
-
-jest.mock('axios', () => ({
+import { jest as jestEsm } from '@jest/globals';
+const { jest } = import.meta;
+jestEsm.unstable_mockModule('axios', () => ({
   __esModule: true,
   default: {
     isAxiosError: jest.fn(),
   },
 }));
 
+const axios = (await import('axios')).default;
+const { summarizeKeycloakFailure } = await import('./keycloak-error-logging');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('summarizeKeycloakFailure', () => {

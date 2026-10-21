@@ -41,7 +41,7 @@ import {
   LGPD_PRIZE_DRAW_WEIGHT_OVERRIDE_SELECT,
   LGPD_PRIZE_DRAW_WIN_SELECT,
   LGPD_RECEIPT_VALIDATION_ACTION_SELECT,
-  LgpdCategoryData,
+  type LgpdCategoryData,
 } from './lgpd-records';
 
 @Injectable()

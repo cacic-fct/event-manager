@@ -1,6 +1,7 @@
 import { BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { SportsIdentityType } from '@prisma/client';
 import { SportsIdentityProtectionService } from './sports-identity-protection.service';
+const { jest } = import.meta;
 
 describe('SportsIdentityProtectionService', () => {
   const originalNodeEnv = process.env.NODE_ENV;

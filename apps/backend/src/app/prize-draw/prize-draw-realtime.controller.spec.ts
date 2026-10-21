@@ -1,6 +1,7 @@
 import { MessageEvent } from '@nestjs/common';
 import { firstValueFrom, Observable, of, toArray } from 'rxjs';
 import { PrizeDrawRealtimeController } from './prize-draw-realtime.controller';
+const { jest } = import.meta;
 
 describe('PrizeDrawRealtimeController', () => {
   it('emits identifier-free target invalidations after authorizing the stream', async () => {

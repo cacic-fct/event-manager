@@ -7,6 +7,7 @@ import {
   SportsTeamMemberStatus,
 } from '@prisma/client';
 import { SportsRegistrationAdminService } from './sports-registration-admin.service';
+const { jest } = import.meta;
 
 describe('SportsRegistrationAdminService athlete profile self-service', () => {
   const actor = { sub: 'user-1' };

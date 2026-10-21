@@ -15,11 +15,12 @@ import {
   AuditLogActorType,
   AuditLogEntityType,
   AuditLogOperation,
-  People,
+  type People,
   Prisma,
   SubscriptionStatus,
 } from '@prisma/client';
 import { differenceInDays, isValid, parseISO } from 'date-fns';
+import type { DeferredInjection } from '../common/deferred-injection';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -41,10 +42,10 @@ import type { TicketPersonRelationsSnapshot } from '../tickets/ticket-merge-rela
 import { moveTicketPersonRelations, reassignTicketUserRelations } from '../tickets/ticket-merge-relations';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import {
-  AttendanceSnapshot,
-  SportsOfficialAssignmentSnapshot,
-  SportsTeamRepresentativeSnapshot,
-  SportsTournamentParticipantSnapshot,
+  type AttendanceSnapshot,
+  type SportsOfficialAssignmentSnapshot,
+  type SportsTeamRepresentativeSnapshot,
+  type SportsTournamentParticipantSnapshot,
 } from '../people/merge-candidates/operations/types';
 import {
   AccountMergeAcknowledgementDto,
@@ -117,9 +118,10 @@ export class AccountMergeService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly certificateIssuingService: CertificateIssuingService,
+    @Inject(forwardRef(() => CertificateIssuingService))
+    private readonly certificateIssuingService: DeferredInjection<CertificateIssuingService>,
     @Inject(forwardRef(() => AuditLogService))
-    private readonly auditLog: AuditLogService = {
+    private readonly auditLog: DeferredInjection<AuditLogService> = {
       record: async () => undefined,
     } as unknown as AuditLogService,
   ) {}

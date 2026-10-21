@@ -1,3 +1,4 @@
+import { expect } from '@jest/globals';
 import { randomUUID } from 'node:crypto';
 import type { TransferApplyRequest, TransferDocument } from '@cacic-fct/shared-data-transfer';
 import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
@@ -16,6 +17,8 @@ import { EventTicketTransferAdapter } from '../event-ticket-transfer.adapter';
 import { PersonTransferMatcherService } from '../person-transfer-matcher.service';
 import { TicketPurchaseTransferAdapter } from '../ticket-purchase-transfer.adapter';
 import { TransferKeyAllocations } from '../transfer-key-allocations';
+
+const { jest } = import.meta;
 
 export function postgresTransferDatabaseUrl(): string {
   let url: URL | undefined;

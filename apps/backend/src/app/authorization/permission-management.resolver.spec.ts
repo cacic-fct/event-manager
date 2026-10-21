@@ -1,6 +1,7 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { PermissionManagementResolver } from './permission-management.resolver';
+const { jest } = import.meta;
 
 describe('PermissionManagementResolver', () => {
   const management = {

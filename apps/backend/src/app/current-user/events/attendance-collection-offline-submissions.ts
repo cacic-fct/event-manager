@@ -7,7 +7,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, ConflictException, Logger, NotFoundException } from '@nestjs/common';
 import { AttendanceCreationMethod, AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { CurrentUserContextService } from '../context.service';
-import { GraphqlContext } from '../selects';
+import { type GraphqlContext } from '../selects';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { DashboardInsightsService } from '../../dashboard/insights.service';
 import { NovuNotificationsService } from '../../notifications/novu-notifications.service';

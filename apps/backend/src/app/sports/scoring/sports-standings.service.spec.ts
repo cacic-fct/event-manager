@@ -1,10 +1,13 @@
+import { jest as jestEsm } from '@jest/globals';
 import { SportsFormat, SportsMatchState, SportsReviewStatus, SportsScoringMode, SportsStageType } from '@prisma/client';
+import type { SportsStandingsService } from './sports-standings.service';
+const { jest } = import.meta;
 
-jest.mock('../brackets/sports-bracket-advancement.service', () => ({
+jestEsm.unstable_mockModule('../brackets/sports-bracket-advancement.service', () => ({
   SportsBracketAdvancementService: class SportsBracketAdvancementService {},
 }));
 
-import { SportsStandingsService } from './sports-standings.service';
+const { SportsStandingsService: SportsStandingsServiceClass } = await import('./sports-standings.service');
 
 describe('SportsStandingsService', () => {
   const advancement = {
@@ -17,7 +20,7 @@ describe('SportsStandingsService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new SportsStandingsService(advancement as never, auditLog as never);
+    service = new SportsStandingsServiceClass(advancement as never, auditLog as never);
   });
 
   it('creates exactly one durable Event-backed replay for an approved rescheduled draw', async () => {

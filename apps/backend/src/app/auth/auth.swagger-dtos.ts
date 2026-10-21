@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { PublicAuthenticatedUser } from './public-authenticated-user';
+import { type PublicAuthenticatedUser } from './public-authenticated-user';
 
 export class LoginUrlResponseDto {
   @ApiProperty({

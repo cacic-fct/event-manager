@@ -8,6 +8,7 @@ import {
 } from '@prisma/client';
 import { sportsAdminCategoryRecord, sportsTestDate } from '../testing/sports-backend.fixtures';
 import { SportsCategoryAdminService } from './sports-category-admin.service';
+const { jest } = import.meta;
 
 describe('SportsCategoryAdminService', () => {
   const actor = { sub: 'admin-1', token: 'token', permissionSet: new Set<string>() } as never;

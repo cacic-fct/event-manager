@@ -4,14 +4,14 @@ import {
   AuditLogEntityType,
   AuditLogOperation,
   Prisma,
-  SportsMatchAction,
+  type SportsMatchAction,
   SportsMatchActionType,
   SportsMatchState,
 } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { AuditLogService } from '../../audit-log/audit-log.service';
-import { AuditActor } from '../../audit-log/audit-log.types';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuditActor } from '../../audit-log/audit-log.types';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SportsBracketAdvancementService } from '../brackets/sports-bracket-advancement.service';

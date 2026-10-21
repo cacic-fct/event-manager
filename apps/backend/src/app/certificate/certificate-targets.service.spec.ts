@@ -2,6 +2,7 @@ import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-conte
 import { CertificateIssuedTo, CertificateScope } from '@cacic-fct/shared-data-types';
 import { NotFoundException } from '@nestjs/common';
 import { CertificateTargetsService } from './certificate-targets.service';
+const { jest } = import.meta;
 
 describe('CertificateTargetsService', () => {
   it('uses SQL pagination for all targets when an audience principal is scoped', async () => {

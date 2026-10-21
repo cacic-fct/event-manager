@@ -30,6 +30,7 @@ import { EventFormResultEventsService } from './event-form-result-events.service
 import { EventFormResultsAccessService } from './event-form-results-access.service';
 import { csvCell } from './event-form-results';
 import { EventFormsService } from './event-forms.service';
+const { jest } = import.meta;
 
 describe('EventFormsService', () => {
   let service: EventFormsService;

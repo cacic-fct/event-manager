@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { OnlineAttendanceNotificationJobsService } from './online-attendance-notification-jobs.service';
 
 @Injectable()

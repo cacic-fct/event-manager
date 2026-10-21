@@ -1,10 +1,10 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable, OnModuleInit, Optional } from '@nestjs/common';
+import { Injectable, type OnModuleInit, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Queue } from 'bullmq';
 import { NovuNotificationsService } from '../notifications/novu-notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { CertificateRecord } from './certificate.constants';
+import { type CertificateRecord } from './certificate.constants';
 import { buildBullMqJobId } from '../queues/bullmq-job-id';
 
 export const CERTIFICATE_NOTIFICATION_QUEUE = 'certificate-notifications';

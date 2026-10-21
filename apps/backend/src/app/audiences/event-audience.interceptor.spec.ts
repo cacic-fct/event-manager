@@ -5,6 +5,7 @@ import { IS_PUBLIC_KEY, AUTH_SESSION_COOKIE_NAME } from '../auth/auth.constants'
 import { ANONYMOUS_AUDIENCE, audienceContext } from './audience-context';
 import { EventAudienceInterceptor } from './event-audience.interceptor';
 import { PAST_PARTICIPATION_ACCESS } from './past-participation.decorator';
+const { jest } = import.meta;
 
 describe('event audience request isolation', () => {
   const member = { ...ANONYMOUS_AUDIENCE, userId: 'user-1', personIds: ['person-1'], isUnesp: true };

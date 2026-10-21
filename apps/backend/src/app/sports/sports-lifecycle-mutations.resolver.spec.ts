@@ -1,6 +1,7 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { SportsScoreEntrySource } from '@prisma/client';
 import { SportsLifecycleMutationsResolver } from './sports-lifecycle-mutations.resolver';
+const { jest } = import.meta;
 
 describe('SportsLifecycleMutationsResolver', () => {
   const actor = {

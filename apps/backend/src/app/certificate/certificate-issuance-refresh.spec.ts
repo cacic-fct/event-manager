@@ -1,5 +1,6 @@
 import { AuditLogOperation } from '@prisma/client';
 import { CertificateIssuanceRefresh } from './certificate-issuance-refresh';
+const { jest } = import.meta;
 
 describe('CertificateIssuanceRefresh', () => {
   it('refreshes each person configuration once while preserving its first-seen order', async () => {

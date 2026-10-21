@@ -1,5 +1,5 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable, Logger } from '@nestjs/common';
-import { Request } from 'express';
+import { type CanActivate, type ExecutionContext, ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import { type Request } from 'express';
 import { createAllowedPostLogoutRedirectOrigins } from '../auth-redirect-utils';
 
 @Injectable()

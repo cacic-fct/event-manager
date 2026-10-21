@@ -1,11 +1,9 @@
-const backend = require('./jest.config.cts');
+import backend from './jest.config.mts';
 
-module.exports = {
+export default {
   ...backend,
   displayName: 'data-transfer-integration',
-  transform: {
-    '^.+\\.[tj]s$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.spec.json' }],
-  },
+  extensionsToTreatAsEsm: ['.ts'],
   testMatch: [
     '<rootDir>/src/app/data-transfer/*.integration.spec.ts',
     '<rootDir>/src/app/data-transfer/transfer-http.e2e.spec.ts',

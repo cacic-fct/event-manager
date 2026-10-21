@@ -1,5 +1,5 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, type OnModuleInit } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { CALENDAR_FEED_MAINTENANCE_QUEUE, DISABLE_STALE_ADMIN_CALENDAR_FEEDS_JOB } from './calendar.models';
 import { buildBullMqJobId } from '../queues/bullmq-job-id';

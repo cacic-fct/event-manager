@@ -3,6 +3,7 @@ import { NEVER, Observable, firstValueFrom, of, take, toArray } from 'rxjs';
 import { clearInterval as nodeClearInterval, setInterval as nodeSetInterval } from 'node:timers';
 import { PUBLIC_CATALOG_REALTIME_CHANNEL } from './public-catalog-invalidation';
 import { RealtimeInvalidationController } from './realtime-invalidation.controller';
+const { jest } = import.meta;
 
 describe('RealtimeInvalidationController', () => {
   beforeEach(() => {

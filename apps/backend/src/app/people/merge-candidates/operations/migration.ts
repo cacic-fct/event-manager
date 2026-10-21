@@ -1,6 +1,6 @@
 import { PersonMergeField } from '@cacic-fct/shared-data-types';
 import { UnprocessableEntityException } from '@nestjs/common';
-import { People, Prisma } from '@prisma/client';
+import { type People, Prisma } from '@prisma/client';
 import { normalizeEmail } from './matching';
 
 export function normalizeMigrateFields(rawFields?: PersonMergeField[] | null): PersonMergeField[] {

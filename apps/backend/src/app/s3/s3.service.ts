@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, type OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   S3Client,

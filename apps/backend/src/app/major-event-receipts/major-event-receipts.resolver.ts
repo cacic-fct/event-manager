@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { MajorEventReceiptsService } from './major-event-receipts.service';
 import {

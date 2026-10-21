@@ -1,6 +1,6 @@
-import { Controller, Headers, MessageEvent, Param, ParseIntPipe, Query, Req, Sse } from '@nestjs/common';
+import { Controller, Headers, type MessageEvent, Param, ParseIntPipe, Query, Req, Sse } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
-import { Request } from 'express';
+import { type Request } from 'express';
 import { Observable, interval, map, startWith, switchMap } from 'rxjs';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';

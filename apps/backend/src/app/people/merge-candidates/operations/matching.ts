@@ -1,5 +1,5 @@
 import { isValidCPF } from '@cacic-fct/shared-utils';
-import { CandidateMatch, MatchablePerson, MergeMatchMethod } from './types';
+import { type CandidateMatch, type MatchablePerson, type MergeMatchMethod } from './types';
 
 const MATCH_METHOD_PRIORITY: Record<MergeMatchMethod, number> = {
   CPF: 3,

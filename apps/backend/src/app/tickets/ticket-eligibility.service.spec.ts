@@ -1,5 +1,6 @@
 import { TicketEligibilityService } from './ticket-eligibility.service';
 import { ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES } from '../events/attendance-eligibility';
+const { jest } = import.meta;
 
 describe('ticket eligibility', () => {
   it('counts only active major-event registration statuses for transfer policy', async () => {

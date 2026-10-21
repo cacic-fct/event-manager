@@ -1,7 +1,7 @@
-import { AuditLogEntry as PrismaAuditLogEntry } from '@prisma/client';
+import { type AuditLogEntry as PrismaAuditLogEntry } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
-import { AuditPrismaClient } from './audit-log.types';
+import { type AuditPrismaClient } from './audit-log.types';
 import { auditBatchId } from './audit-transaction-context';
 
 const AUDIT_LOG_SYNC_RETRY_DELAYS_MS = [25, 100, 500, 1_000, 2_500] as const;

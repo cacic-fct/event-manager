@@ -2,6 +2,7 @@ import { audienceContext } from '../audiences/audience-context';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
 import { EventGroupsResolver } from './resolver';
+const { jest } = import.meta;
 
 describe('EventGroupsResolver authorization', () => {
   it('resolves sports category membership without exposing category data', async () => {

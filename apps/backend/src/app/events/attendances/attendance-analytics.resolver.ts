@@ -8,7 +8,7 @@ import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AttendanceReviewFlagStatus } from '@prisma/client';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { AllowScopedCollectionPermissions } from '../../auth/decorators/allow-scoped-collection-permissions.decorator';
-import { GraphqlContext } from './event-attendances.shared';
+import { type GraphqlContext } from './event-attendances.shared';
 import { AttendanceAnalyticsService } from './attendance-analytics.service';
 
 @Resolver()

@@ -1,17 +1,17 @@
+import { jest as jestEsm } from '@jest/globals';
 import { once } from 'node:events';
 import { createHash } from 'node:crypto';
-import { FactoryProvider } from '@nestjs/common';
-import Redis from 'ioredis';
-import { RateLimitService } from '../rate-limit/rate-limit.service';
+import type { FactoryProvider } from '@nestjs/common';
+import type Redis from 'ioredis';
 import type { RateLimitPolicy } from '../rate-limit/rate-limit.policies';
-import { getRedisConnectionOptions } from '../weather/redis-connection';
-import { ManagedRedisClient, redisProvider } from './redis.provider';
+import type { ManagedRedisClient } from './redis.provider';
+const { jest } = import.meta;
 
 const mockRedisConstructor = jest.fn();
 const mockRedisDisconnect = jest.fn();
 
-jest.mock('ioredis', () => {
-  return class MockRedis {
+jestEsm.unstable_mockModule('ioredis', () => ({
+  default: class MockRedis {
     constructor(options: unknown) {
       mockRedisConstructor(options);
     }
@@ -19,8 +19,12 @@ jest.mock('ioredis', () => {
     disconnect(): void {
       mockRedisDisconnect();
     }
-  };
-});
+  },
+}));
+
+const { RateLimitService } = await import('../rate-limit/rate-limit.service');
+const { getRedisConnectionOptions } = await import('../weather/redis-connection');
+const { ManagedRedisClient: ManagedRedisClientClass, redisProvider } = await import('./redis.provider');
 
 interface RedisTestClient {
   get(key: string): Promise<string | null>;
@@ -262,7 +266,7 @@ describe('redisProvider e2e in-memory infrastructure', () => {
     const factory = (redisProvider as FactoryProvider<Redis>).useFactory;
     const client = factory?.();
 
-    expect(client).toBeInstanceOf(ManagedRedisClient);
+    expect(client).toBeInstanceOf(ManagedRedisClientClass);
     expect(mockRedisConstructor).toHaveBeenCalledWith({
       db: 0,
       host: 'localhost',

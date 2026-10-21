@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
-import { Request } from 'express';
+import { type Request } from 'express';
 import { TURNSTILE_TEST_SECRET_KEY_ALWAYS_PASS, type TurnstileAction } from '@cacic-fct/shared-utils';
 
 const TURNSTILE_SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';

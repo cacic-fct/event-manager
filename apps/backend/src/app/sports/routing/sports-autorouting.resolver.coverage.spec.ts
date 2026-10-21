@@ -1,4 +1,5 @@
 import { SportsAutoroutingResolver } from './sports-autorouting.resolver';
+const { jest } = import.meta;
 
 describe('SportsAutoroutingResolver current-user boundary', () => {
   const context = { req: { user: { sub: 'user-1' } } };

@@ -7,6 +7,7 @@ import {
 } from '../testing/sports-backend.fixtures';
 import { SportsReadAdminService } from './sports-read-admin.service';
 import { SportsReadAdminListService } from './sports-read-admin-list.service';
+const { jest } = import.meta;
 
 describe('SportsReadAdminService', () => {
   const user = { sub: 'admin-1' };

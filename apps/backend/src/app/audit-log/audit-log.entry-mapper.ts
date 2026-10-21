@@ -1,4 +1,4 @@
-import { AuditLogEntry as PrismaAuditLogEntry, Prisma } from '@prisma/client';
+import { type AuditLogEntry as PrismaAuditLogEntry, Prisma } from '@prisma/client';
 import { getAuditFieldLabel } from './audit-log.field-labels';
 import { AuditLogEntry, AuditLogExplorerEntry } from './audit-log.models';
 import { formatAuditValue, parseAuditChanges } from './audit-log.snapshots';

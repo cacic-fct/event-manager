@@ -2,7 +2,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { ForbiddenException, Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import Redis from 'ioredis';
 import { CurrentUserContextService } from '../current-user/context.service';
-import { GraphqlContext } from '../current-user/selects';
+import { type GraphqlContext } from '../current-user/selects';
 import { actionablePendingMergeCandidateWhere } from '../people/merge-candidates/merge-candidate-filters';
 import { PrismaService } from '../prisma/prisma.service';
 import { WeatherService } from '../weather/weather.service';

@@ -1,4 +1,5 @@
 import { SportsPlayerApplicationRealtimeService } from './sports-player-application-realtime.service';
+const { jest } = import.meta;
 
 describe('SportsPlayerApplicationRealtimeService', () => {
   const prisma = {

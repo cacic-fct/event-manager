@@ -1,7 +1,7 @@
 import type { EventFormAudience } from './participation';
 export { EventFormAudience } from './participation';
 import type { DateTimeString, GraphqlVariables } from './common';
-import type { FormImage } from '@cacic-fct/form-contracts';
+import type { FormImage } from '@cacic-fct/form-contracts' with { 'resolution-mode': 'import' };
 
 export type EventFormSigilo = 'PUBLIC' | 'PARTIALLY_SECRET' | 'SECRET' | 'ANONYMOUS';
 export type EventFormTargetType = 'EVENT' | 'MAJOR_EVENT';

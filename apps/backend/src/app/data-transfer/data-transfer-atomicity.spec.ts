@@ -17,6 +17,7 @@ import type { DataTransferAdapter, ResolvedTransferResource } from './data-trans
 import { DataTransferService } from './data-transfer.service';
 import { TransferKeyAllocations } from './transfer-key-allocations';
 import { TransferValidationException } from './transfer-validation.exception';
+const { jest } = import.meta;
 
 const actor = { sub: 'organizer-1' } as AuthenticatedUser;
 
@@ -75,12 +76,10 @@ describe('data transfer commit safety', () => {
   it('rejects stale person merge revisions before writing any records', async () => {
     const fixture = createFixture();
     let revision = 'before';
-    jest
-      .mocked(fixture.adapter.resolve)
-      .mockImplementation(async (resource) => ({
-        ...snapshot(resource),
-        personMerge: { id: 'person-1', revision, data: { secondaryEmails: ['imported@example.com'] } },
-      }));
+    jest.mocked(fixture.adapter.resolve).mockImplementation(async (resource) => ({
+      ...snapshot(resource),
+      personMerge: { id: 'person-1', revision, data: { secondaryEmails: ['imported@example.com'] } },
+    }));
     const input = document();
     const preview = await fixture.service.preview({ document: input }, actor);
     revision = 'after';

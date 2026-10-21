@@ -1,5 +1,6 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { TicketsResolver } from './tickets.resolver';
+const { jest } = import.meta;
 
 describe('ticket resolver permission alternatives', () => {
   it.each([Permission.Ticket.Issue, Permission.TicketTransfer.Manage])(

@@ -3,6 +3,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { ALLOW_SCOPED_COLLECTION_PERMISSIONS_KEY, REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { EventFormsResolver } from './event-forms.resolver';
+const { jest } = import.meta;
 
 describe('EventFormsResolver', () => {
   const user = { sub: 'admin-1' };

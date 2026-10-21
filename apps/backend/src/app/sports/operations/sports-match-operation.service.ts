@@ -2,13 +2,13 @@ import { BadRequestException, ConflictException, Injectable, Logger, NotFoundExc
 import {
   AuditLogOperation,
   Prisma,
-  SportsMatchAction,
+  type SportsMatchAction,
   SportsMatchActionType,
   SportsReviewStatus,
 } from '@prisma/client';
 import { AuditLogService } from '../../audit-log/audit-log.service';
-import { AuditActor } from '../../audit-log/audit-log.types';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuditActor } from '../../audit-log/audit-log.types';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { EventPostCommitEffectsService } from '../../events/event-post-commit-effects.service';
 import { TicketIssuanceService } from '../../tickets/ticket-issuance.service';
@@ -18,7 +18,7 @@ import { SportsRealtimeService } from '../realtime/sports-realtime.service';
 import { SportsMutationEventsService } from '../realtime/sports-mutation-events.service';
 import {
   mergeSportsStructuralInvalidations,
-  SportsStructuralInvalidation,
+  type SportsStructuralInvalidation,
 } from '../realtime/sports-structural-invalidation';
 import { SportsStandingsService } from '../scoring/sports-standings.service';
 import { runSerializableSportsTransaction } from '../sports-transaction';

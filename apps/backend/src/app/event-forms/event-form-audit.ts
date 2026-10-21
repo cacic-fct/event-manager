@@ -1,8 +1,8 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
 import { isDeepStrictEqual } from 'node:util';
-import { AuditRecordOptions } from '../audit-log/audit-log.types';
-import { EventFormRecord, EventFormResponseRecord } from './event-form-records';
+import { type AuditRecordOptions } from '../audit-log/audit-log.types';
+import { type EventFormRecord, type EventFormResponseRecord } from './event-form-records';
 
 export function eventFormAuditRecord(
   form: EventFormRecord,

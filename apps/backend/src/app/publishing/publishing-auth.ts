@@ -1,8 +1,8 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { PublicationTargetType } from '@cacic-fct/shared-data-types';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
-import { GraphqlContext } from '../current-user/selects';
+import { type GraphqlContext } from '../current-user/selects';
 
 export function getPublicationUser(context: GraphqlContext): AuthenticatedUser | undefined {
   return context.req?.user ?? context.request?.user;

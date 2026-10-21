@@ -3,9 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { GraphQLError } from 'graphql';
 import Redis from 'ioredis';
 import { createHash } from 'node:crypto';
-import { Request, Response } from 'express';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
-import { RateLimitPolicy } from './rate-limit.policies';
+import { type Request, type Response } from 'express';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type RateLimitPolicy } from './rate-limit.policies';
 
 type RequestWithUser = Request & {
   user?: AuthenticatedUser;

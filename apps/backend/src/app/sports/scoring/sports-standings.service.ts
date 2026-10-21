@@ -4,7 +4,7 @@ import { AuditLogService } from '../../audit-log/audit-log.service';
 import { SportsBracketAdvancementService } from '../brackets/sports-bracket-advancement.service';
 import {
   mergeSportsStructuralInvalidations,
-  SportsStructuralInvalidation,
+  type SportsStructuralInvalidation,
 } from '../realtime/sports-structural-invalidation';
 
 import { SportsStandingsQualifiers } from './sports-standings-qualifiers';

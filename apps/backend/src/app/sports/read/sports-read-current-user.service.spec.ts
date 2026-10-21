@@ -6,6 +6,7 @@ import {
 } from '../testing/sports-backend.fixtures';
 import { SportsReadCurrentUserService } from './sports-read-current-user.service';
 import { SportsReadRepresentativeService } from './sports-read-representative.service';
+const { jest } = import.meta;
 
 describe('SportsReadCurrentUserService', () => {
   const prisma = {

@@ -1,21 +1,23 @@
+import { jest as jestEsm } from '@jest/globals';
+const { jest } = import.meta;
 const mockDependencyLoads: string[] = [];
 
-jest.mock('playwright', () => {
+jestEsm.unstable_mockModule('playwright', () => {
   mockDependencyLoads.push('playwright');
   return {};
 });
-jest.mock('@bwip-js/node', () => {
+jestEsm.unstable_mockModule('@bwip-js/node', () => {
   mockDependencyLoads.push('@bwip-js/node');
   return {};
 });
-jest.mock('tesseract.js', () => {
+jestEsm.unstable_mockModule('tesseract.js', () => {
   mockDependencyLoads.push('tesseract.js');
   return {};
 });
-jest.mock('sharp', () => {
+jestEsm.unstable_mockModule('sharp', () => {
   mockDependencyLoads.push('sharp');
   const sharp = Object.assign(jest.fn(), { cache: jest.fn(), concurrency: jest.fn() });
-  return { __esModule: true, default: sharp };
+  return { default: sharp };
 });
 
 describe('backend lazy dependencies', () => {
@@ -23,14 +25,14 @@ describe('backend lazy dependencies', () => {
     mockDependencyLoads.length = 0;
   });
 
-  it('loads feature services without loading rendering, image, barcode, or OCR dependencies', () => {
-    jest.isolateModules(() => {
-      jest.requireActual('../certificate/certificate-download.service');
-      jest.requireActual('../events/subscription-badge-export.service');
-      jest.requireActual('../major-event-receipts/major-event-receipts.processor');
-      jest.requireActual('../ticket-purchases/ticket-purchases.service');
-      jest.requireActual('../event-forms/event-form-image.utils');
-      jest.requireActual('../sports/logos/sports-team-logo-validation');
+  it('loads feature services without loading rendering, image, barcode, or OCR dependencies', async () => {
+    await jest.isolateModulesAsync(async () => {
+      await import('../certificate/certificate-download.service');
+      await import('../events/subscription-badge-export.service');
+      await import('../major-event-receipts/major-event-receipts.processor');
+      await import('../ticket-purchases/ticket-purchases.service');
+      await import('../event-forms/event-form-image.utils');
+      await import('../sports/logos/sports-team-logo-validation');
     });
 
     expect(mockDependencyLoads).toEqual([]);
@@ -38,7 +40,7 @@ describe('backend lazy dependencies', () => {
 
   it('shares the first Sharp load and applies the existing backend limits once', async () => {
     await jest.isolateModulesAsync(async () => {
-      const { loadSharp } = jest.requireActual<typeof import('./load-sharp')>('./load-sharp');
+      const { loadSharp } = await import('./load-sharp');
       const [first, second] = await Promise.all([loadSharp(), loadSharp()]);
 
       expect(first).toBe(second);

@@ -1,4 +1,4 @@
-import { BadGatewayException, BadRequestException, Injectable, Logger, RawBodyRequest } from '@nestjs/common';
+import { BadGatewayException, BadRequestException, Injectable, Logger, type RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
 import { SENTRY_TUNNEL_TARGETS, type SentryTunnelProject } from './analytics.config';
 

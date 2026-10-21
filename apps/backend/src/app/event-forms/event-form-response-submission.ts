@@ -16,7 +16,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { assertStoredResponseHasCurrentRequiredAnswers, normalizeAnswers } from './event-form-answer-normalization';
 import { assertPersonCanAnswerLink } from './event-form-eligibility';
-import { EventFormResponseRecord, responseInclude, SubscriptionFlowTargetScope } from './event-form-records';
+import { type EventFormResponseRecord, responseInclude, type SubscriptionFlowTargetScope } from './event-form-records';
 import {
   lockSingleResponseSlot,
   requireActiveLinkForTargetWithClient,

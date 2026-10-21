@@ -1,5 +1,5 @@
 import { Metadata } from '@grpc/grpc-js';
-import { Injectable, Logger, OnModuleDestroy, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, Logger, type OnModuleDestroy, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type {
   M2MUserIdentifierLookupMatch,

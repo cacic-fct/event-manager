@@ -1,4 +1,5 @@
 import { RealtimeFingerprintService } from './realtime-fingerprint.service';
+const { jest } = import.meta;
 
 describe('RealtimeFingerprintService', () => {
   it('covers the role and sports records used by current-user projections', async () => {

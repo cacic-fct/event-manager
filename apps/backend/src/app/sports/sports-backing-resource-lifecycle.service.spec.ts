@@ -1,5 +1,6 @@
 import { ConflictException } from '@nestjs/common';
 import { SportsBackingResourceLifecycleService } from './sports-backing-resource-lifecycle.service';
+const { jest } = import.meta;
 
 describe('SportsBackingResourceLifecycleService', () => {
   const service = new SportsBackingResourceLifecycleService();

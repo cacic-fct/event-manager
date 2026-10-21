@@ -1,4 +1,5 @@
 import { createInsightsServiceTestContext } from './insights-service.fixtures';
+const { jest } = import.meta;
 
 describe('DashboardInsightsService cache and jobs', () => {
   beforeEach(() => {

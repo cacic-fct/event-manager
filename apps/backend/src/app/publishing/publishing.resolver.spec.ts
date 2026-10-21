@@ -4,6 +4,7 @@ import { PublicationResolver } from './publishing.resolver';
 import type { PublicationBulkInput, PublicationPreviewInput, PublicationStateInput } from './publishing.models';
 import { PublicationBulkOperation } from './publishing.models';
 import type { PublicationService } from './publishing.service';
+const { jest } = import.meta;
 
 describe('PublicationResolver', () => {
   const context = { req: { user: { sub: 'admin-1' } } };

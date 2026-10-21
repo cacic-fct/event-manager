@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
-const workspaceRoot = join(__dirname, '../../../..');
+const workspaceRoot = join(import.meta.dirname, '../../../..');
 const sourceRoots = ['apps/backend/src', 'libs/shared-data-types/src'].map((sourceRoot) =>
   join(workspaceRoot, sourceRoot),
 );

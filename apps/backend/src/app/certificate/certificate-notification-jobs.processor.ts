@@ -2,7 +2,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { BadRequestException } from '@nestjs/common';
 import { Job } from 'bullmq';
 import {
-  CertificateAvailableNotificationJob,
+  type CertificateAvailableNotificationJob,
   CertificateNotificationJobsService,
   CERTIFICATE_AVAILABLE_NOTIFICATION_JOB,
   CERTIFICATE_NOTIFICATION_RECONCILE_JOB,

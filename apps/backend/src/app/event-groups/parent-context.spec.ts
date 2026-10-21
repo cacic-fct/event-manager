@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { EventGroupsResolver } from './resolver';
+const { jest } = import.meta;
 
 describe('event-group parent contexts', () => {
   function setup() {

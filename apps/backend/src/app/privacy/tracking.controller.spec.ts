@@ -3,6 +3,7 @@ import { CACIC_ANALYTICS_CONSENT_COOKIE_NAME } from '@cacic-fct/account-manager-
 import type { Response } from 'express';
 import { AccountManagerPrivacySyncService } from './account-manager-privacy-sync.service';
 import { TrackingController } from './tracking.controller';
+const { jest } = import.meta;
 
 describe('TrackingController', () => {
   let accountManagerPrivacySync: {

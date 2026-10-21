@@ -6,7 +6,7 @@ import {
   getCertificateTargetLabel,
   getLinkedResourceGroupDefinition,
   PERSON_LINKED_RESOURCE_GROUPS,
-  PersonLinkedResourcePrisma,
+  type PersonLinkedResourcePrisma,
 } from './people-linked-resource-definitions';
 import { countPersonLinkedResourceGroups } from './people-linked-resource-counts';
 import { adminEventWorkspacePath } from '@cacic-fct/shared-utils';

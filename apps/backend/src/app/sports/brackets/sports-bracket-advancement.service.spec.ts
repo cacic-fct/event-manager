@@ -1,13 +1,18 @@
+import { jest as jestEsm } from '@jest/globals';
 import { SportsBracketSide, SportsMatchState, SportsReviewStatus } from '@prisma/client';
+import type { SportsBracketAdvancementService } from './sports-bracket-advancement.service';
+const { jest } = import.meta;
 
-jest.mock('../rosters/sports-match-roster.service', () => ({
+jestEsm.unstable_mockModule('../rosters/sports-match-roster.service', () => ({
   SportsMatchRosterService: class SportsMatchRosterService {},
 }));
-jest.mock('../sports-match-event-sync', () => ({
+jestEsm.unstable_mockModule('../sports-match-event-sync', () => ({
   syncSportsMatchEventName: jest.fn().mockResolvedValue(undefined),
 }));
 
-import { SportsBracketAdvancementService } from './sports-bracket-advancement.service';
+const { SportsBracketAdvancementService: SportsBracketAdvancementServiceClass } = await import(
+  './sports-bracket-advancement.service'
+);
 
 describe('SportsBracketAdvancementService', () => {
   const rosters = {
@@ -18,7 +23,7 @@ describe('SportsBracketAdvancementService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     rosters.copyApprovedRosterForWinner.mockResolvedValue(undefined);
-    service = new SportsBracketAdvancementService(rosters as never);
+    service = new SportsBracketAdvancementServiceClass(rosters as never);
   });
 
   it('delegates an approved finished projection to outcome advancement', async () => {

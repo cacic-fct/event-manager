@@ -1,4 +1,5 @@
 import { attendancePriceTierPolicyChanged, validateAttendancePriceTiers } from './attendance-price-tier-policy';
+const { jest } = import.meta;
 
 describe('attendance price tier policy', () => {
   const tx = { priceTier: { findMany: jest.fn() } };

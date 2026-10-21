@@ -1,5 +1,6 @@
 import { MajorEventSubscriptionFlow, SubscriptionStatus } from '@prisma/client';
 import { mapReceipt, ReceiptQueueMapper } from './receipt-queue.mapper';
+const { jest } = import.meta;
 
 describe('ReceiptQueueMapper', () => {
   const allocator = {

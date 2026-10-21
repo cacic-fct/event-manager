@@ -6,6 +6,7 @@ import { DataTransferService } from './data-transfer.service';
 import type { DataTransferAdapter, ResolvedTransferResource } from './data-transfer-adapter';
 import { TransferKeyAllocations } from './transfer-key-allocations';
 import { TransferValidationException } from './transfer-validation.exception';
+const { jest } = import.meta;
 
 describe('DataTransferService security gates', () => {
   it('returns authored validation guidance while keeping unexpected domain details private', async () => {

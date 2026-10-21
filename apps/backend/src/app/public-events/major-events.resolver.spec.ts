@@ -4,6 +4,7 @@ import { PublicMajorEventsResolver } from './major-events.resolver';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { PUBLIC_MAJOR_EVENT_WHERE, PUBLIC_REGULAR_EVENT_WHERE } from './models';
 import { createPublicMajorEventRecord } from './testing/public-event-record.fixtures';
+const { jest } = import.meta;
 
 describe('PublicMajorEventsResolver', () => {
   it('exposes child-event and tournament self-subscription capabilities on public cards', async () => {

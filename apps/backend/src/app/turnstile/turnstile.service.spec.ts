@@ -2,6 +2,7 @@ import { BadRequestException, ServiceUnavailableException } from '@nestjs/common
 import { ConfigService } from '@nestjs/config';
 import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
 import { TurnstileService } from './turnstile.service';
+const { jest } = import.meta;
 
 describe('TurnstileService', () => {
   const originalFetch = global.fetch;

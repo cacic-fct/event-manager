@@ -11,7 +11,7 @@ type RealmEntry = {
 };
 
 const realm = JSON.parse(
-  readFileSync(resolve(__dirname, '../../../../../docker/keycloak/cacic-sso-realm.json'), 'utf8'),
+  readFileSync(resolve(import.meta.dirname, '../../../../../docker/keycloak/cacic-sso-realm.json'), 'utf8'),
 ) as { clients: RealmEntry[]; clientScopes: RealmEntry[] };
 
 describe('Keycloak realm introspection audience', () => {

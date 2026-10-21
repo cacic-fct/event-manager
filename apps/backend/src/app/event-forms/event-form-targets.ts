@@ -19,11 +19,11 @@ import {
   EventFormSigilo as ContractSigilo,
 } from '@cacic-fct/shared-data-types';
 import {
-  EventFormLinkRecord,
-  EventFormRecord,
-  NormalizedTarget,
-  SubscriptionFlowTargetScope,
-  TargetInput,
+  type EventFormLinkRecord,
+  type EventFormRecord,
+  type NormalizedTarget,
+  type SubscriptionFlowTargetScope,
+  type TargetInput,
 } from './event-form-records';
 
 export function normalizeOwner(input: EventFormInput): {

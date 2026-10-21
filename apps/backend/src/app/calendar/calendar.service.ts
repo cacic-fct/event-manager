@@ -32,7 +32,7 @@ import {
   ADMIN_CALENDAR_FEED_DISABLED_STALE_ACCESS,
   CALENDAR_FEED_DISABLED_BY_USER,
   CALENDAR_FEED_DISABLED_STALE_LOGIN,
-  CalendarDownload,
+  type CalendarDownload,
   CurrentUserAdminCalendarFeedSettings,
   CurrentUserCalendarFeedSettings,
   SUPER_ADMIN_CALENDAR_FEED_ID,
@@ -47,10 +47,10 @@ import { getPrivateFeedEvents } from './calendar-private-feed.repository';
 import {
   ADMIN_CALENDAR_FEED_SETTINGS_SELECT,
   CALENDAR_FEED_SETTINGS_SELECT,
-  CalendarFeedSettingsRecord,
+  type CalendarFeedSettingsRecord,
   PUBLIC_EVENT_CALENDAR_SELECT,
   SUPER_ADMIN_CALENDAR_FEED_SETTINGS_SELECT,
-  SuperAdminCalendarFeedSettingsRecord,
+  type SuperAdminCalendarFeedSettingsRecord,
 } from './calendar-records';
 
 @Injectable()

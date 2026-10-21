@@ -66,7 +66,7 @@ describe('ticket GraphQL frontend/backend contract', () => {
       const schema = await module
         .get(GraphQLSchemaFactory)
         .create([TicketsResolver, TicketPurchasesResolver, MajorEventReceiptsResolver]);
-      const root = resolve(__dirname, '../../../../..');
+      const root = resolve(import.meta.dirname, '../../../../..');
       const files = [
         'apps/admin/src/app/graphql/ticket-admin-api.service.ts',
         'apps/admin/src/app/graphql/receipt-validation-api.service.ts',

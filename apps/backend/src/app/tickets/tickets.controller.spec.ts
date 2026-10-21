@@ -2,6 +2,7 @@ import { ForbiddenException, MessageEvent, NotFoundException } from '@nestjs/com
 import { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom, NEVER, Observable, take, toArray } from 'rxjs';
 import { AdminTicketRealtimeController, CurrentUserTicketRealtimeController } from './tickets.controller';
+const { jest } = import.meta;
 
 describe('ticket realtime controllers', () => {
   it('emits fresh user baselines for tickets, transfers, and purchases on every stream', async () => {

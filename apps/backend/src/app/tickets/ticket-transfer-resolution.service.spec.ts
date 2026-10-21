@@ -1,4 +1,5 @@
 import { TicketTransferResolutionService } from './ticket-transfer-resolution.service';
+const { jest } = import.meta;
 
 describe('ticket transfer resolution worker', () => {
   it('releases and retries a queued attempt when Account Manager is temporarily unavailable', async () => {

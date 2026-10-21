@@ -1,9 +1,8 @@
+import { jest as jestEsm } from '@jest/globals';
 import { Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import axios from 'axios';
-import { KeycloakM2mTokenService } from './keycloak-m2m-token.service';
-
-jest.mock('axios', () => ({
+const { jest } = import.meta;
+jestEsm.unstable_mockModule('axios', () => ({
   __esModule: true,
   default: {
     post: jest.fn(),
@@ -11,6 +10,8 @@ jest.mock('axios', () => ({
   },
 }));
 
+const axios = (await import('axios')).default;
+const { KeycloakM2mTokenService } = await import('./keycloak-m2m-token.service');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('KeycloakM2mTokenService', () => {

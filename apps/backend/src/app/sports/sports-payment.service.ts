@@ -10,7 +10,7 @@ import {
   SubscriptionStatus,
 } from '@prisma/client';
 import {
-  MajorEventPaymentSelection,
+  type MajorEventPaymentSelection,
   resolveSportsSelfServicePayment,
 } from '../current-user/major-events/major-event-payment-selection';
 

@@ -23,7 +23,7 @@ import {
   mapOfflineSubmissionForResponse,
   offlineSubmissionActorIds,
   offlineSubmissionActorNameMap,
-  OfflineSubmissionResponseSource,
+  type OfflineSubmissionResponseSource,
 } from './offline-submission-response';
 import { personSearchWhere } from '../../people/person-search-where';
 

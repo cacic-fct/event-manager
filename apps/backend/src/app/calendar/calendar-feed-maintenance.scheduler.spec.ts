@@ -1,5 +1,6 @@
 import { CalendarFeedMaintenanceScheduler } from './calendar-feed-maintenance.scheduler';
 import { DISABLE_STALE_ADMIN_CALENDAR_FEEDS_JOB } from './calendar.models';
+const { jest } = import.meta;
 
 describe('CalendarFeedMaintenanceScheduler', () => {
   it('registers weekly stale admin calendar feed maintenance in Sao Paulo time', async () => {

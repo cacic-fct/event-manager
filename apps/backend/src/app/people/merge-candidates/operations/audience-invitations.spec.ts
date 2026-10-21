@@ -3,6 +3,7 @@ import {
   restoreAudienceInvitations,
   type AudienceInvitationSnapshot,
 } from './audience-invitations';
+const { jest } = import.meta;
 
 describe('people merge audience invitations', () => {
   it('moves all invitation kinds, coalesces target conflicts, and preserves notification metadata', async () => {

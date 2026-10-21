@@ -1,5 +1,6 @@
 import { ConflictException } from '@nestjs/common';
 import { moveSportsPersonRelations, moveSportsTeamRepresentatives } from './sports-representatives';
+const { jest } = import.meta;
 
 describe('sports representative merge relations', () => {
   it('moves a source-only representative to the target person without changing rights', async () => {

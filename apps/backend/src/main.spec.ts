@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { closeBackendResources, closeGrpcServer } from './app/bootstrap/backend-lifecycle';
+const { jest } = import.meta;
 
 describe('backend process lifecycle', () => {
   beforeEach(() => {

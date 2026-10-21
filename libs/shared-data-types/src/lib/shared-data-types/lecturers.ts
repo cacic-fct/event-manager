@@ -2,6 +2,7 @@ import { Field, ObjectType } from '@nestjs/graphql';
 
 import { Event } from './events';
 import { Person } from './people';
+import type { Relation } from './relation';
 
 @ObjectType()
 export class EventLecturer {
@@ -12,10 +13,10 @@ export class EventLecturer {
   personId!: string;
 
   @Field(() => Event, { nullable: true })
-  event?: Event;
+  event?: Relation<Event>;
 
   @Field(() => Person, { nullable: true })
-  person?: Person;
+  person?: Relation<Person>;
 
   @Field(() => Date)
   createdAt!: Date;
@@ -33,10 +34,10 @@ export class EventAttendanceCollector {
   personId!: string;
 
   @Field(() => Event, { nullable: true })
-  event?: Event;
+  event?: Relation<Event>;
 
   @Field(() => Person, { nullable: true })
-  person?: Person;
+  person?: Relation<Person>;
 
   @Field(() => Date)
   createdAt!: Date;

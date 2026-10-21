@@ -1,7 +1,7 @@
 import { Field, ObjectType, Query, Resolver, Context } from '@nestjs/graphql';
 import { CurrentUserContextService } from '../../current-user/context.service';
-import { GraphqlContext } from '../../current-user/selects';
-import { SportsAutoroute, SportsAutoroutingService } from './sports-autorouting.service';
+import { type GraphqlContext } from '../../current-user/selects';
+import { type SportsAutoroute, SportsAutoroutingService } from './sports-autorouting.service';
 
 @ObjectType()
 export class CurrentUserSportsAutoroute {

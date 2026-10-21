@@ -1,4 +1,5 @@
 import { TicketPurchaseRetentionService } from './ticket-purchase-retention.service';
+const { jest } = import.meta;
 
 describe('ticket purchase receipt retention', () => {
   function setup() {

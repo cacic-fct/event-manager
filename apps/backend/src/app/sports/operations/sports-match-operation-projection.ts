@@ -1,7 +1,7 @@
 import { Prisma, SportsMatchActionType, SportsMatchState, SportsReviewStatus } from '@prisma/client';
-import { AuditActor } from '../../audit-log/audit-log.types';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
-import { projectSportsMatch, SportsProjectedOutcome } from './sports-match-projector';
+import { type AuditActor } from '../../audit-log/audit-log.types';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { projectSportsMatch, type SportsProjectedOutcome } from './sports-match-projector';
 
 export type SportsMatchActorKind = 'ADMIN' | 'OFFICIAL' | 'LINEUP_MANAGER';
 

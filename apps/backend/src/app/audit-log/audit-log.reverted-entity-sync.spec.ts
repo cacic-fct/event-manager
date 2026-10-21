@@ -1,5 +1,6 @@
 import { AuditLogEntityType } from '@prisma/client';
 import { synchronizeRevertedAuditEntity } from './audit-log.reverted-entity-sync';
+const { jest } = import.meta;
 
 type TypesenseSearchPort = Parameters<typeof synchronizeRevertedAuditEntity>[0];
 type AttendanceRealtimePort = Parameters<typeof synchronizeRevertedAuditEntity>[1];

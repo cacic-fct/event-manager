@@ -7,6 +7,7 @@ import {
   sportsCheckInProvenanceMetadata,
   type SportsCheckInUploader,
 } from './sports-check-in-provenance';
+const { jest } = import.meta;
 
 describe('sports check-in provenance', () => {
   const uploader: SportsCheckInUploader = sportsCheckInUploader();

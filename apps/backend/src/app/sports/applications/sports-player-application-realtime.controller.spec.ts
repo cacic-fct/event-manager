@@ -1,6 +1,7 @@
 import { MessageEvent } from '@nestjs/common';
 import { firstValueFrom, of } from 'rxjs';
 import { SportsPlayerApplicationRealtimeController } from './sports-player-application-realtime.controller';
+const { jest } = import.meta;
 
 describe('SportsPlayerApplicationRealtimeController', () => {
   const currentUser = { requireCurrentPerson: jest.fn() };

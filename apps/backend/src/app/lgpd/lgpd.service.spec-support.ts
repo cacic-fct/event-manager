@@ -3,6 +3,8 @@ import { S3Service } from '../s3/s3.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { LgpdService } from './lgpd.service';
 
+const { jest } = import.meta;
+
 type UserFindManyArgs = {
   where?: {
     id?: { in: string[] };

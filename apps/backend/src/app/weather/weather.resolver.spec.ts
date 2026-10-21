@@ -1,5 +1,6 @@
 import { IS_PUBLIC_KEY } from '../auth/auth.constants';
 import { WeatherResolver } from './weather.resolver';
+const { jest } = import.meta;
 
 describe('WeatherResolver', () => {
   it('exposes a public forecast for the requested event', async () => {

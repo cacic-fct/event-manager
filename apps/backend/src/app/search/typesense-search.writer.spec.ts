@@ -5,6 +5,7 @@ import {
   replaceTypesenseCollectionDocuments,
   upsertTypesenseDocument,
 } from './typesense-search.writer';
+const { jest } = import.meta;
 
 describe('typesense writer helpers', () => {
   it('creates missing collections and updates missing fields on existing collections', async () => {

@@ -2,6 +2,7 @@ import { Metadata, status, type handleUnaryCall, type ServerUnaryCall } from '@g
 import { BadRequestException } from '@nestjs/common';
 import { EventEmitter } from 'node:events';
 import { createEventManagerGrpcHandlers, toServiceError } from './event-manager-grpc.server';
+const { jest } = import.meta;
 
 describe('toServiceError', () => {
   it('keeps HttpException details and hides unexpected error messages', () => {

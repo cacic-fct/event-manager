@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { CurrentUserEventSubscriptionsResolver } from './subscriptions.resolver';
 import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
 import { currentUserMapEventWhere } from './map-event-ids';
+const { jest } = import.meta;
 
 describe('CurrentUserEventSubscriptionsResolver', () => {
   const frozenResources = {

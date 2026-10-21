@@ -4,21 +4,21 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  OnModuleDestroy,
-  OnModuleInit,
+  type OnModuleDestroy,
+  type OnModuleInit,
 } from '@nestjs/common';
-import { FormElement, FormImage, FormImageReference } from '@cacic-fct/form-contracts';
+import { type FormElement, type FormImage, type FormImageReference } from '@cacic-fct/form-contracts';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { Prisma, PublicationState } from '@prisma/client';
 import { createHash, randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { CurrentUserContextService } from '../current-user/context.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../s3/s3.service';
 import {
-  UploadedEventFormImageFile,
+  type UploadedEventFormImageFile,
   buildEventFormImageObjectKey,
   convertEventFormImageToAvif,
   toEventFormImageModel,
@@ -31,7 +31,7 @@ import {
 } from './event-form-eligibility';
 import { toEventFormModel } from './event-form-model.mapper';
 import { arePublicResultsReleasedForLink } from './event-form-results-visibility';
-import { eventFormInclude, EventFormRecord } from './event-form-records';
+import { eventFormInclude, type EventFormRecord } from './event-form-records';
 import { isLinkAvailable } from './event-form-targets';
 
 const MAX_IMAGES_PER_DESCRIPTION = 8;

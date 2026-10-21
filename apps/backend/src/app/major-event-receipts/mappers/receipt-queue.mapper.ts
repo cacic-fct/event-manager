@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { MajorEventReceipt, MajorEventSubscriptionFlow, Prisma } from '@prisma/client';
+import { type MajorEventReceipt, MajorEventSubscriptionFlow, Prisma } from '@prisma/client';
 import { CurrentUserMajorEventSubscriptionService } from '../../current-user/major-events/subscription.service';
-import { AdminReceiptQueueItem, CurrentUserReceiptResponse } from '../receipt.types';
+import { type AdminReceiptQueueItem, type CurrentUserReceiptResponse } from '../receipt.types';
 import { getScheduleConflictEventIds } from '../utils/receipt-validation.utils';
 
 @Injectable()

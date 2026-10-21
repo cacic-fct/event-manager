@@ -9,7 +9,7 @@ import {
   PublicSportsTeam,
 } from './sports-read.models';
 
-import { PublicMatchRecord, PublicTeamRecord } from './sports-read.records';
+import { type PublicMatchRecord, type PublicTeamRecord } from './sports-read.records';
 
 export class SportsReadPublicMapper {
   projectPublicMatch(match: PublicMatchRecord) {

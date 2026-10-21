@@ -30,7 +30,7 @@ import { CurrentUserContextService } from '../../current-user/context.service';
 import { recordAttendanceSet as recordSharedAttendanceSet } from '../../current-user/events/attendance-collection-audit';
 import { normalizeOptionalString } from '../../current-user/events/attendance-collection-context';
 import { AttendanceCategoryService } from '../attendance-category.service';
-import { EventAttendancesResolverBase, EVENT_RELATION_SELECT, GraphqlContext } from './event-attendances.shared';
+import { EventAttendancesResolverBase, EVENT_RELATION_SELECT, type GraphqlContext } from './event-attendances.shared';
 import {
   mapOfflineSubmissionForResponse,
   offlineSubmissionActorIds,

@@ -12,6 +12,7 @@ import {
   SportsTournamentStatus,
 } from '@prisma/client';
 import { SportsTeamChangeService } from './sports-team-change.service';
+const { jest } = import.meta;
 
 describe('SportsTeamChangeService category roles and eligibility', () => {
   const identities = {

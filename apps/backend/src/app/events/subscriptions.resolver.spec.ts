@@ -4,6 +4,7 @@ import { Permission, getPermissionIncludedDataSummary } from '@cacic-fct/shared-
 import { SubscriptionStatus } from '@prisma/client';
 import { REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { EventSubscriptionsResolver } from './subscriptions.resolver';
+const { jest } = import.meta;
 
 describe('EventSubscriptionsResolver', () => {
   it('requires workflow read permissions without inheriting full person read access', () => {

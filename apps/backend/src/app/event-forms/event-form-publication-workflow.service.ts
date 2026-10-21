@@ -4,11 +4,11 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { AuditLogActorType, AuditLogOperation, PublicationState } from '@prisma/client';
 import { isFuture } from 'date-fns';
 import { AuditLogService } from '../audit-log/audit-log.service';
-import { AuditRecordOptions } from '../audit-log/audit-log.types';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuditRecordOptions } from '../audit-log/audit-log.types';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { CurrentUserContextService } from '../current-user/context.service';
-import { GraphqlContext } from '../current-user/selects';
+import { type GraphqlContext } from '../current-user/selects';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   PUBLIC_CATALOG_REALTIME_CHANNEL,

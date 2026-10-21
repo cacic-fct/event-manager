@@ -5,14 +5,14 @@ import {
   EventFormResponse as EventFormResponseModel,
   EventFormTargetSummary,
 } from '@cacic-fct/shared-data-types';
-import { FormElement, FormImage, FormImageReference } from '@cacic-fct/form-contracts';
+import { type FormElement, type FormImage, type FormImageReference } from '@cacic-fct/form-contracts';
 import { EventFormSigilo, EventFormTargetType, Prisma } from '@prisma/client';
 import {
-  EventFormLinkRecord,
-  EventFormRecord,
-  EventFormResponseRecord,
-  ResultViewer,
-  TargetInput,
+  type EventFormLinkRecord,
+  type EventFormRecord,
+  type EventFormResponseRecord,
+  type ResultViewer,
+  type TargetInput,
 } from './event-form-records';
 import { arePublicResultsReleasedForLink } from './event-form-results-visibility';
 import { isSameTarget } from './event-form-targets';

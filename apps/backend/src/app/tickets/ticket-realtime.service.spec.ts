@@ -1,5 +1,6 @@
 import { TicketRealtimeInvalidationType, TicketRealtimeScopeType } from '@prisma/client';
 import { TicketRealtimeService } from './ticket-realtime.service';
+const { jest } = import.meta;
 
 describe('ticket realtime outbox', () => {
   it('writes user-scoped invalidations and one PII-free event scope in the caller transaction', async () => {

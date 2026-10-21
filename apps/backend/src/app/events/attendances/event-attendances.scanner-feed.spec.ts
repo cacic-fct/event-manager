@@ -1,4 +1,5 @@
 import { EventAttendancesQueriesResolver } from './event-attendances.queries.resolver';
+const { jest } = import.meta;
 describe('EventAttendancesQueriesResolver scanner feed', () => {
   it('marks subscribed standalone event attendees as confirmed', async () => {
     const prisma = createPrisma({

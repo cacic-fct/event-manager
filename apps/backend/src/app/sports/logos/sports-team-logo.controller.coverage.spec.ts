@@ -4,6 +4,7 @@ import { Readable } from 'node:stream';
 import { SportsTeamRepresentativeLogoController } from './sports-team-logo.controller';
 import { RATE_LIMIT_METADATA_KEY } from '../../rate-limit/rate-limit.decorator';
 import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
+const { jest } = import.meta;
 
 describe('SportsTeamRepresentativeLogoController boundary operations', () => {
   let logos: { submitRepresentativeUpload: jest.Mock; download: jest.Mock };

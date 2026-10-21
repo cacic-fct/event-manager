@@ -4,6 +4,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom, take } from 'rxjs';
 import { AUTH_SESSION_COOKIE_NAME, REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { EventAttendancesController } from './attendances.controller';
+const { jest } = import.meta;
 
 describe('EventAttendancesController streamScannerFeed', () => {
   let replay: { scope: jest.Mock; replay: jest.Mock };

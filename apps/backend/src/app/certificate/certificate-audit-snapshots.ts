@@ -1,4 +1,4 @@
-import { CertificateConfigRecord, CertificateRecord } from './certificate.constants';
+import { type CertificateConfigRecord, type CertificateRecord } from './certificate.constants';
 
 /** Keeps the changed certificate configuration while excluding linked records and template source. */
 export function toCertificateConfigAuditSnapshot(config: CertificateConfigRecord): Record<string, unknown> {

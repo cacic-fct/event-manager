@@ -2,6 +2,8 @@ import { TicketExpirationMode } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { TicketsResolver } from './tickets.resolver';
 
+const { jest } = import.meta;
+
 describe('ticket configuration expiry integration', () => {
   it.each([null, 25])('saves purchase limit %s and aligns active tickets in one transaction', async (purchaseLimit) => {
     const expiresAt = new Date(Date.now() + 3 * 86_400_000);

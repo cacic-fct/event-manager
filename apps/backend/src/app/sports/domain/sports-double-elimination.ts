@@ -1,10 +1,10 @@
 import {
   generateSingleEliminationBracket,
-  SportsAutomaticAdvancementPlan,
-  SportsBracketEntrant,
-  SportsBracketSeedingMode,
-  SportsBracketSide,
-  SportsBracketSlot,
+  type SportsAutomaticAdvancementPlan,
+  type SportsBracketEntrant,
+  type SportsBracketSeedingMode,
+  type SportsBracketSide,
+  type SportsBracketSlot,
 } from './sports-brackets';
 
 export type SportsDoubleEliminationStage = 'WINNERS' | 'LOSERS' | 'GRAND_FINAL';

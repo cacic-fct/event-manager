@@ -15,6 +15,7 @@ import {
 } from '@prisma/client';
 import { CertificateEligibilityService } from './certificate-eligibility.service';
 import { CertificateSportsEligibility } from './certificate-sports-eligibility';
+const { jest } = import.meta;
 
 describe('CertificateSportsEligibility', () => {
   const person = {

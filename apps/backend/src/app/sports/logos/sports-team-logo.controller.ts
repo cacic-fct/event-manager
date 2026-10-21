@@ -34,15 +34,15 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { Public } from '../../auth/decorators/public.decorator';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { RateLimit } from '../../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
 import { SPORTS_TEAM_LOGO_POLICY } from './sports-team-logo.policy';
-import { SportsTeamLogoService, SportsTeamLogoUploadFile } from './sports-team-logo.service';
+import { SportsTeamLogoService, type SportsTeamLogoUploadFile } from './sports-team-logo.service';
 import { SportsMutationEventsService } from '../realtime/sports-mutation-events.service';
 import { SportsAccessService } from '../security/sports-access.service';
 

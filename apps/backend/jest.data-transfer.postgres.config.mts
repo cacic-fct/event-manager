@@ -1,8 +1,9 @@
-const backend = require('./jest.config.cts');
+import backend from './jest.config.mts';
 
-module.exports = {
+export default {
   ...backend,
   displayName: 'data-transfer-postgres',
+  extensionsToTreatAsEsm: ['.ts'],
   testMatch: ['<rootDir>/src/app/data-transfer/data-transfer.postgres.spec.ts'],
   testPathIgnorePatterns: ['/node_modules/'],
   testTimeout: 30_000,

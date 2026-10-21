@@ -7,6 +7,7 @@ import { audienceContext } from '../audiences/audience-context';
 import { ForbiddenException } from '@nestjs/common';
 import { DataTransferService } from './data-transfer.service';
 import { TransferKeyAllocations } from './transfer-key-allocations';
+const { jest } = import.meta;
 
 describe('EventTreeTransferAdapter normalization and mutations', () => {
   it('persists an imported schedule with lifecycle dates and the current publication actor', async () => {

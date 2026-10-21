@@ -2,7 +2,7 @@ import { IncludePastParticipation } from '../../audiences/past-participation.dec
 import { Context, Query, Resolver } from '@nestjs/graphql';
 import { CurrentUserContextService } from '../context.service';
 import { CurrentUserSubscriptionFeed } from '../models';
-import { GraphqlContext } from '../selects';
+import { type GraphqlContext } from '../selects';
 import { CurrentUserSubscriptionFeedService } from './service';
 
 @Resolver()

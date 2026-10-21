@@ -1,5 +1,5 @@
 import { Context, Query, Resolver } from '@nestjs/graphql';
-import { GraphqlContext } from '../current-user/selects';
+import { type GraphqlContext } from '../current-user/selects';
 import { DashboardInsightsService } from './insights.service';
 import { WorkspaceDashboardInsights } from './models';
 

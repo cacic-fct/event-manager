@@ -17,6 +17,7 @@ import {
   toDbResponseSource,
   toDbSigilo,
 } from './event-form-targets';
+const { jest } = import.meta;
 
 describe('event form target helpers', () => {
   afterEach(() => {

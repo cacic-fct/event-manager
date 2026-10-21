@@ -4,6 +4,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { REQUIRED_PERMISSIONS_KEY } from '../../auth/auth.constants';
 import { EventAttendancesQueriesResolver } from './event-attendances.queries.resolver';
 import { personSearchWhere } from '../../people/person-search-where';
+const { jest } = import.meta;
 
 describe('EventAttendancesQueriesResolver', () => {
   let prisma: ReturnType<typeof createFullPrisma>;

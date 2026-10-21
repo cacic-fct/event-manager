@@ -1,6 +1,7 @@
 import { ConflictException } from '@nestjs/common';
 import sharp from 'sharp';
 import { TicketPurchasesService } from './ticket-purchases.service';
+const { jest } = import.meta;
 
 const user = { sub: 'account', token: 'token' } as never;
 let png: Buffer;

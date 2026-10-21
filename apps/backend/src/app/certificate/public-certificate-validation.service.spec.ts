@@ -1,6 +1,7 @@
 import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/shared-data-types';
 import { GraphQLISODateTime } from '@nestjs/graphql';
 import { PublicCertificateValidationService } from './public-certificate-validation.service';
+const { jest } = import.meta;
 
 describe('PublicCertificateValidationService', () => {
   it('does not expose hidden event rows in public certificate validation', async () => {

@@ -9,7 +9,7 @@ import {
   SportsTeamMemberStatus,
   SportsTeamStatus,
 } from '@prisma/client';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 
 const REVIEWABLE_APPLICATION_STATUSES = [
   SportsApplicationStatus.PENDING,

@@ -13,7 +13,7 @@ import {
   type TransferTarget,
   type TransferUndoResult,
 } from '@cacic-fct/shared-data-transfer';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import {
   AuthorizationPolicyService,
   type AuthorizationResourceContext,

@@ -3,6 +3,7 @@ import {
   ONLINE_ATTENDANCE_AVAILABLE_NOTIFICATION_JOB,
   OnlineAttendanceNotificationJobsService,
 } from './online-attendance-notification-jobs.service';
+const { jest } = import.meta;
 
 describe('OnlineAttendanceNotificationJobsService', () => {
   const now = new Date('2026-06-25T12:00:00.000Z');

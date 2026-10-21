@@ -12,8 +12,8 @@ import {
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
-import { GraphqlContext } from '../current-user/selects';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type GraphqlContext } from '../current-user/selects';
 import { PrizeDrawService } from './prize-draw.service';
 import { RateLimit } from '../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';

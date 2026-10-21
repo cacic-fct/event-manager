@@ -1,4 +1,4 @@
-import { SportsParticipantPaymentChangedPayload } from '@cacic-fct/shared-data-types';
+import { type SportsParticipantPaymentChangedPayload } from '@cacic-fct/shared-data-types';
 import { Injectable, Logger } from '@nestjs/common';
 import { CurrentUserDefaultRedirectService } from '../../current-user/default-redirect/current-user-default-redirect.service';
 import { PrismaService } from '../../prisma/prisma.service';

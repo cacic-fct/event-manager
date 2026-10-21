@@ -1,4 +1,5 @@
 import { DashboardInsightsResolver } from './insights.resolver';
+const { jest } = import.meta;
 
 describe('DashboardInsightsResolver', () => {
   it('forwards the complete GraphQL context to permission-aware insight loading', async () => {

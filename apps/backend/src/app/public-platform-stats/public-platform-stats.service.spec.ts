@@ -3,6 +3,7 @@ import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-conte
 import { PrismaService } from '../prisma/prisma.service';
 import { PublicPlatformStatsResolver } from './public-platform-stats.resolver';
 import { PublicPlatformStatsService } from './public-platform-stats.service';
+const { jest } = import.meta;
 
 describe('PublicPlatformStatsService', () => {
   afterEach(() => jest.useRealTimers());

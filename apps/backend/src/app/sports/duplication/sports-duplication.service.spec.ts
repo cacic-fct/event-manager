@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { SportsDuplicationService } from './sports-duplication.service';
 import { SportsTeamDuplicationService } from './sports-team-duplication.service';
+const { jest } = import.meta;
 
 describe('SportsDuplicationService', () => {
   const actor = { sub: 'admin-1' };

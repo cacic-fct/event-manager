@@ -1,7 +1,7 @@
 import { EventManagerKeycloakRole } from '@cacic-fct/shared-permissions';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { RequireRoles } from '../auth/decorators/require-roles.decorator';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import {
   AuditLogEntry,
   AuditLogEntityHistoryInput,

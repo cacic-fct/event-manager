@@ -2,16 +2,16 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '@nes
 import { EventFormAudience as ContractAudience, EventFormInput } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { EventFormResponseMode, EventFormTargetType, Prisma, PublicationState } from '@prisma/client';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { runSerializablePrismaTransaction } from '../common/serializable-prisma-transaction';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   eventFormInclude,
-  EventFormLinkRecord,
-  EventFormRecord,
-  NormalizedTarget,
-  TargetInput,
+  type EventFormLinkRecord,
+  type EventFormRecord,
+  type NormalizedTarget,
+  type TargetInput,
 } from './event-form-records';
 import { isLinkAvailable, normalizeAudiences, normalizeTarget } from './event-form-targets';
 

@@ -8,6 +8,7 @@ import {
   publicMapEventWhere,
 } from './models';
 import { createPublicMajorEventRecord } from './testing/public-event-record.fixtures';
+const { jest } = import.meta;
 
 describe('PublicEventsResolver lecturer profiles', () => {
   afterEach(() => {

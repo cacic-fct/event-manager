@@ -3,6 +3,7 @@ import { ForbiddenException } from '@nestjs/common';
 import { Readable } from 'node:stream';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { formRecord, linkRecord } from './event-form.spec-support';
+const { jest } = import.meta;
 
 describe('EventFormImagesService references and cleanup', () => {
   it.each([

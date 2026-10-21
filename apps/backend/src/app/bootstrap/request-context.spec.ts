@@ -1,4 +1,5 @@
 import { currentRequestId, requestContextMiddleware } from './request-context';
+const { jest } = import.meta;
 
 describe('requestContextMiddleware', () => {
   it('preserves a bounded caller request id through asynchronous work', async () => {

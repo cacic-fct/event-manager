@@ -3,6 +3,8 @@ import { AttendanceCreationMethod } from '@prisma/client';
 import { addHours, isWithinInterval, subHours } from 'date-fns';
 import { CurrentUserAttendanceCollectionResolver } from './attendance-collection.resolver';
 
+const { jest } = import.meta;
+
 export type OfflineSubmissionCreateInput = {
   clientId: string;
   eventId: string;

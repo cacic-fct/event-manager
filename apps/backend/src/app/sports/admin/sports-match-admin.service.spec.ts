@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { PublicationState, SportsCategoryStatus, SportsTournamentStatus } from '@prisma/client';
 import { SportsMatchAdminService } from './sports-match-admin.service';
+const { jest } = import.meta;
 
 describe('SportsMatchAdminService publication', () => {
   const actor = { sub: 'admin-1' } as never;

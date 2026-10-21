@@ -6,7 +6,7 @@ import {
 import { Permission } from '@cacic-fct/shared-permissions';
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
-import { GraphqlContext } from '../current-user/selects';
+import { type GraphqlContext } from '../current-user/selects';
 import { SportsMutationsResolverSupport } from './sports-mutations-resolver.support';
 
 @Resolver()

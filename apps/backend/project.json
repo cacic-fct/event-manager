@@ -61,6 +61,7 @@
     },
     "test": {
       "options": {
+        "env": { "NODE_OPTIONS": "--experimental-vm-modules" },
         "passWithNoTests": true,
         "coverage": true
       }
@@ -75,7 +76,7 @@
     "test-data-transfer-integration": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config=apps/backend/jest.data-transfer.integration.config.cts --runInBand"
+        "command": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config=apps/backend/jest.data-transfer.integration.config.mts --runInBand"
       }
     }
   }

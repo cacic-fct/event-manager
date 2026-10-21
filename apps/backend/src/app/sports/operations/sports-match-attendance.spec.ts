@@ -1,5 +1,6 @@
 import { SportsMatchState } from '@prisma/client';
 import { startSportsMatchCheckInFromAthleteAttendance } from './sports-match-attendance';
+const { jest } = import.meta;
 
 describe('sports match attendance phase transition', () => {
   const tx = {

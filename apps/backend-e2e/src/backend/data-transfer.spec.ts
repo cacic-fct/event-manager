@@ -1,13 +1,14 @@
 import axios from 'axios';
+import { jest as jestEsm } from '@jest/globals';
 
 // These tests exercise the production HTTP parser, routing and guards. Database
 // rollback is covered separately by the isolated PostgreSQL integration suite.
-jest.mock('../../../backend/src/app/prisma/prisma.service', () => ({
+jestEsm.unstable_mockModule('../../../backend/src/app/prisma/prisma.service', () => ({
   PrismaService: class {
-    auditLogEntry = { findMany: jest.fn().mockResolvedValue([]) };
+    auditLogEntry = { findMany: async () => [] };
   },
 }));
-jest.mock('../../../backend/src/app/certificate/certificate-template-registry.service', () => ({
+jestEsm.unstable_mockModule('../../../backend/src/app/certificate/certificate-template-registry.service', () => ({
   CertificateTemplateRegistryService: class {},
 }));
 

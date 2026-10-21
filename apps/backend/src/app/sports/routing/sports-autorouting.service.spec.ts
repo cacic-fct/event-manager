@@ -1,6 +1,7 @@
 import { SportsAutoroutingService } from './sports-autorouting.service';
 import { SportsMatchState } from '@prisma/client';
 import { sportsTestDate } from '../testing/sports-backend.fixtures';
+const { jest } = import.meta;
 
 describe('SportsAutoroutingService', () => {
   it('only routes active approved players to a match wallet', async () => {

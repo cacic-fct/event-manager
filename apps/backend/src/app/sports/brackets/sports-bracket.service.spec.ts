@@ -1,3 +1,4 @@
+import { jest as jestEsm } from '@jest/globals';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -6,12 +7,14 @@ import {
   SportsMatchState,
   SportsReviewStatus,
 } from '@prisma/client';
+import type { SportsBracketService } from './sports-bracket.service';
+const { jest } = import.meta;
 
-jest.mock('../../audit-log/audit-log.service', () => ({
+jestEsm.unstable_mockModule('../../audit-log/audit-log.service', () => ({
   AuditLogService: class AuditLogService {},
 }));
 
-import { SportsBracketService } from './sports-bracket.service';
+const { SportsBracketService: SportsBracketServiceClass } = await import('./sports-bracket.service');
 
 describe('SportsBracketService generation lifecycle', () => {
   const advancement = { advanceBye: jest.fn() };
@@ -46,7 +49,7 @@ describe('SportsBracketService generation lifecycle', () => {
     const prisma = {
       $transaction: jest.fn((callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
     };
-    const service = new SportsBracketService(
+    const service = new SportsBracketServiceClass(
       prisma as never,
       advancement as never,
       auditLog as never,
@@ -108,7 +111,7 @@ describe('SportsBracketService generation lifecycle', () => {
     const prisma = {
       $transaction: jest.fn((callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
     };
-    const service = new SportsBracketService(
+    const service = new SportsBracketServiceClass(
       prisma as never,
       advancement as never,
       auditLog as never,
@@ -192,7 +195,7 @@ describe('SportsBracketService generation lifecycle', () => {
     const prisma = {
       $transaction: jest.fn((callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
     };
-    const service = new SportsBracketService(
+    const service = new SportsBracketServiceClass(
       prisma as never,
       advancement as never,
       auditLog as never,
@@ -281,7 +284,7 @@ describe('SportsBracketService generation lifecycle', () => {
     const prisma = {
       $transaction: jest.fn((callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
     };
-    const service = new SportsBracketService(
+    const service = new SportsBracketServiceClass(
       prisma as never,
       advancement as never,
       auditLog as never,
@@ -327,7 +330,7 @@ describe('SportsBracketService generation lifecycle', () => {
   });
 
   it('keeps generation keys stable across JSON key order but sensitive to entrant order', () => {
-    const service = new SportsBracketService(
+    const service = new SportsBracketServiceClass(
       {} as never,
       advancement as never,
       auditLog as never,
@@ -354,7 +357,7 @@ describe('SportsBracketService generation lifecycle', () => {
   });
 
   it('allows explicit replacement of untouched draft brackets containing automatic byes', async () => {
-    const service = new SportsBracketService(
+    const service = new SportsBracketServiceClass(
       {} as never,
       advancement as never,
       auditLog as never,
@@ -390,7 +393,7 @@ describe('SportsBracketService generation lifecycle', () => {
   });
 
   it('refuses to replace a bracket once a match was operated or published', async () => {
-    const service = new SportsBracketService(
+    const service = new SportsBracketServiceClass(
       {} as never,
       advancement as never,
       auditLog as never,

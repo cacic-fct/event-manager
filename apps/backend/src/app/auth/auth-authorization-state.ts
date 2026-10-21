@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import { AUTH_STATE_COOKIE_NAME } from './auth.constants';
 import { isSecureAuthRequest, readAuthCookie } from './auth-cookie-utils';
 import { KeycloakAuthService } from './keycloak-auth.service';

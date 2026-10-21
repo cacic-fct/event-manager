@@ -1,6 +1,6 @@
 import { DashboardCalendarEvent } from '../models';
 import { TWO_HOURS_MS } from './constants';
-import { InsightEvent } from './insight-event.select';
+import { type InsightEvent } from './insight-event.select';
 
 export function mapCalendarEvent(event: InsightEvent, now: Date): DashboardCalendarEvent {
   return {

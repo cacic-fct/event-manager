@@ -10,7 +10,7 @@ import { NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { GraphqlContext } from '../../current-user/selects';
+import { type GraphqlContext } from '../../current-user/selects';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { resolvePagination } from '../../common/pagination';
 import { PrismaService } from '../../prisma/prisma.service';

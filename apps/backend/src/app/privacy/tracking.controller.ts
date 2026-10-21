@@ -5,7 +5,7 @@ import type { CacicTrackingSessionResponse } from '@cacic-fct/account-manager-m2
 import type { Request, Response } from 'express';
 import { AllowNonOnboarded } from '../auth/decorators/allow-non-onboarded.decorator';
 import { Public } from '../auth/decorators/public.decorator';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AccountManagerPrivacySyncService } from './account-manager-privacy-sync.service';
 import { clearCacicTrackingCookies, refreshCacicTrackingCookies } from './tracking-cookie.utils';
 

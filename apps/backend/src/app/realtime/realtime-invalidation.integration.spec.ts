@@ -16,6 +16,8 @@ import { CurrentUserEventAttendanceResolver } from '../current-user/events/atten
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
 
+const { jest } = import.meta;
+
 describe('realtime invalidation provider integration', () => {
   const previousCursorSecret = process.env.SSE_REPLAY_CURSOR_SECRET;
 

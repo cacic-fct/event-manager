@@ -1,5 +1,6 @@
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PrizeDrawService } from './prize-draw.service';
+const { jest } = import.meta;
 
 describe('PrizeDrawService public audience', () => {
   it('limits participant access to draws whose recorded entries contain their person', async () => {

@@ -12,6 +12,7 @@ import {
   sportsAdminTeamRecord,
 } from '../testing/sports-backend.fixtures';
 import { SportsTeamAdminService } from './sports-team-admin.service';
+const { jest } = import.meta;
 
 describe('SportsTeamAdminService', () => {
   const actor = { sub: 'actor-1' };

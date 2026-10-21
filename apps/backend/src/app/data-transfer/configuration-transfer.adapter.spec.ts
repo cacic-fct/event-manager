@@ -8,6 +8,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { DataTransferService } from './data-transfer.service';
 import { TransferKeyAllocations } from './transfer-key-allocations';
 import { SportsDataTransferAdapter } from './sports-data-transfer.adapter';
+const { jest } = import.meta;
 
 describe('ConfigurationTransferAdapter', () => {
   it.each(['EVENT', 'MAJOR_EVENT'])('checks the %s link target separately from form grants', async (targetType) => {

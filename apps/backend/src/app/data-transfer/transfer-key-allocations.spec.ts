@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { createTransferTemplate, parseTransferDocument } from '@cacic-fct/shared-data-transfer';
 import { TransferKeyAllocations } from './transfer-key-allocations';
+const { jest } = import.meta;
 
 describe('preview-bound symbolic resource keys', () => {
   it.each(['constructor', 'toString', 'hasOwnProperty'])(

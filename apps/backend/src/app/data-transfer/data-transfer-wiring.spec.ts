@@ -25,6 +25,7 @@ import { DataTransferController } from './data-transfer.controller';
 import { TransferKeyAllocations } from './transfer-key-allocations';
 import { DATA_TRANSFER_ADAPTERS } from './data-transfer.constants';
 import type { TransferAdapterContext } from './data-transfer-adapter';
+const { jest } = import.meta;
 
 it('resolves Nest providers and uses the injected authorization services for tree and configuration transfers', async () => {
   const now = new Date();

@@ -1,5 +1,6 @@
 import { CurrentUserSubscriptionFeedService } from './service';
 import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
+const { jest } = import.meta;
 
 describe('CurrentUserSubscriptionFeedService', () => {
   it('adds attendance-only standalone events and standalone event groups to the feed', async () => {

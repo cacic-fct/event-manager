@@ -3,11 +3,11 @@ import type { ICalLocation } from 'ical-generator';
 import { adminEventWorkspacePath } from '@cacic-fct/shared-utils';
 import { PUBLIC_EVENT_GROUP_RANGE_EVENT_TAKE } from './calendar-feed.constants';
 import {
-  AdminEventGroupRecord,
-  AdminMajorEventRecord,
-  CalendarEntry,
-  CalendarEventRecord,
-  PublicEventCalendarRecord,
+  type AdminEventGroupRecord,
+  type AdminMajorEventRecord,
+  type CalendarEntry,
+  type CalendarEventRecord,
+  type PublicEventCalendarRecord,
 } from './calendar-records';
 
 export function buildCalendar(input: {

@@ -1,5 +1,5 @@
 import { SetMetadata } from '@nestjs/common';
-import { RateLimitPolicy } from './rate-limit.policies';
+import { type RateLimitPolicy } from './rate-limit.policies';
 
 export const RATE_LIMIT_METADATA_KEY = 'cacic:rate-limit';
 

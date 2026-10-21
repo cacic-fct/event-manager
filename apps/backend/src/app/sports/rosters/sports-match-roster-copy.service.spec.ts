@@ -1,6 +1,7 @@
 import { Prisma, SportsRosterEntryStatus, SportsRosterRole, SportsRosterStatus } from '@prisma/client';
 import { sportsApprovedRosterRecord } from '../testing/sports-backend.fixtures';
 import { SportsMatchRosterService } from './sports-match-roster.service';
+const { jest } = import.meta;
 
 describe('SportsMatchRosterCopyService', () => {
   const tx = {

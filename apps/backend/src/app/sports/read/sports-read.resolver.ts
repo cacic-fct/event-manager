@@ -1,9 +1,9 @@
 import { Args, Context, Int, Query, Resolver } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
 import { Public } from '../../auth/decorators/public.decorator';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { CurrentUserContextService } from '../../current-user/context.service';
-import { GraphqlContext } from '../../current-user/selects';
+import { type GraphqlContext } from '../../current-user/selects';
 import { RateLimit } from '../../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';

@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
 import { PeopleResolver } from './resolver';
+const { jest } = import.meta;
 
 describe('PeopleResolver', () => {
   it('filters people by active permission grants and lecturer profile presence', async () => {

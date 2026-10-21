@@ -1,5 +1,5 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Queue } from 'bullmq';
 import { buildBullMqJobId } from '../queues/bullmq-job-id';

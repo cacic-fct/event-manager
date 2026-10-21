@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, NotFoundException } from '@nest
 import { AttendanceCreationMethod, Prisma } from '@prisma/client';
 import { EventAttendancesMutationsResolver } from './event-attendances.mutations.resolver';
 import { issueOfflineAttendanceCollectorCredential } from '../../current-user/events/offline-attendance-collector-credential';
+const { jest } = import.meta;
 
 const originalCollectorCredential = issueOfflineAttendanceCollectorCredential({
   eventId: 'event-1',

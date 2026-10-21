@@ -8,7 +8,7 @@ import {
   SubscriptionStatus,
 } from '@prisma/client';
 import { CALENDAR_FEED_ENTRY_LIMIT, PRIVATE_FEED_EVENT_TAKE } from './calendar-feed.constants';
-import { CALENDAR_EVENT_SELECT, CalendarEventRecord } from './calendar-records';
+import { CALENDAR_EVENT_SELECT, type CalendarEventRecord } from './calendar-records';
 import { PrismaService } from '../prisma/prisma.service';
 import { PUBLIC_EVENT_WHERE } from '../public-events/models';
 

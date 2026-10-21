@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { DataTransferRecoveryService } from './data-transfer-recovery.service';
+const { jest } = import.meta;
 
 type MutationFixture = {
   model: string;

@@ -13,9 +13,12 @@ import {
   groupAudienceWhere,
   majorEventAudienceWhere,
 } from '../audiences/audience-context';
-import { AccessibleEventGrantTargets, AuthorizationPolicyService } from '../authorization/authorization-policy.service';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
-import { GraphqlContext } from '../current-user/selects';
+import {
+  type AccessibleEventGrantTargets,
+  AuthorizationPolicyService,
+} from '../authorization/authorization-policy.service';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type GraphqlContext } from '../current-user/selects';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import type { TypesenseRankedSearchHit, TypesenseRankedSearchResult } from '../search/typesense-search.types';

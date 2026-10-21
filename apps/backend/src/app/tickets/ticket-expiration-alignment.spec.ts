@@ -1,5 +1,6 @@
 import { EventTicketStatus, TicketExpirationMode } from '@prisma/client';
 import { TicketIssuanceService } from './ticket-issuance.service';
+const { jest } = import.meta;
 
 describe('ticket expiration alignment', () => {
   it('aligns all active tickets, including expired-unused, and notifies holders and transferees', async () => {

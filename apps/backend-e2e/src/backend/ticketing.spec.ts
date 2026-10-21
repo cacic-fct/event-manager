@@ -14,6 +14,7 @@ import type { M2MUserIdentifierLookupMatch } from '@cacic-fct/account-manager-m2
 import type { AuthenticatedUser, TicketingDatabaseFixture } from '@cacic-fct/backend/ticketing-testing';
 import { getBackendE2eApp } from '../support/test-setup';
 
+const { jest } = import.meta;
 const describeTicketingHttp = process.env['TICKETING_HTTP_E2E_TEST'] === '1' ? describe : describe.skip;
 
 describeTicketingHttp('ticketing HTTP journey with PostgreSQL and a controlled auth boundary', () => {

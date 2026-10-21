@@ -7,10 +7,10 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { EventFormAudience, EventFormTargetType, Prisma, PublicationState } from '@prisma/client';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { CurrentUserContextService } from '../current-user/context.service';
-import { GraphqlContext } from '../current-user/selects';
+import { type GraphqlContext } from '../current-user/selects';
 import { PrismaService } from '../prisma/prisma.service';
 import { ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES } from '../events/attendance-eligibility';
 import { buildAccessibleFormWhere, isEmptyAccessibleTargets } from './event-form-access';
@@ -24,7 +24,7 @@ import {
 } from './event-form-eligibility';
 import { toEventFormModel, toPublicEventFormModel } from './event-form-model.mapper';
 import { arePublicResultsReleasedForLink } from './event-form-results-visibility';
-import { eventFormInclude, TargetInput } from './event-form-records';
+import { eventFormInclude, type TargetInput } from './event-form-records';
 import { requireEventForm } from './event-form-service-support';
 import { findLinkForTarget, normalizeTarget, responseLookupWhere, responseTargetWhere } from './event-form-targets';
 

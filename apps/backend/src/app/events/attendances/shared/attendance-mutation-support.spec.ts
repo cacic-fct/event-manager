@@ -1,5 +1,6 @@
 import { AttendanceCreationMethod, Prisma } from '@prisma/client';
 import { EventAttendancesMutationSupport } from './attendance-mutation-support';
+const { jest } = import.meta;
 
 describe('EventAttendancesMutationSupport repeated attempts', () => {
   it('queues review only after the third duplicate attempt in five minutes', async () => {

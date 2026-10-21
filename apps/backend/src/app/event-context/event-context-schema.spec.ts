@@ -28,7 +28,7 @@ describe('admin event context GraphQL contract', () => {
       expect(String(fields['ancestors'].type)).toBe('[AdminEventContextAncestor!]!');
       expect(String(fields['hasChildren'].type)).toBe('Boolean!');
       const clientSource = readFileSync(
-        resolve(__dirname, '../../../../admin/src/app/graphql/admin-event-context-api.service.ts'),
+        resolve(import.meta.dirname, '../../../../admin/src/app/graphql/admin-event-context-api.service.ts'),
         'utf8',
       );
       const query = clientSource.match(/`(query AdminEventContextPage[\s\S]+?)`/)?.[1];

@@ -2,6 +2,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { TicketTransferRecipientStatus, TicketTransferSenderStatus } from '@prisma/client';
 import { mapTicketTransfer } from './ticket.mapper';
 import { createTicketTransferServiceFixture } from './testing/ticket-transfer.service.fixtures';
+const { jest } = import.meta;
 
 describe('ticket transfer mutations', () => {
   it('queues identity lookup and returns a sender-safe response without inline resolution', async () => {

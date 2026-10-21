@@ -2,6 +2,7 @@ import { BadGatewayException, Logger, RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
 import { SENTRY_TUNNEL_TARGETS } from './analytics.config';
 import { AnalyticsService } from './analytics.service';
+const { jest } = import.meta;
 
 describe('AnalyticsService', () => {
   let service: AnalyticsService;

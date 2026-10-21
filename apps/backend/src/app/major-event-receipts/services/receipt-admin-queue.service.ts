@@ -1,12 +1,12 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { Prisma, SubscriptionStatus } from '@prisma/client';
 import {
-  MajorEventSubscriptionNotificationRecord,
+  type MajorEventSubscriptionNotificationRecord,
   NovuNotificationsService,
 } from '../../notifications/novu-notifications.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ReceiptQueueMapper } from '../mappers/receipt-queue.mapper';
-import { AdminReceiptQueueItem, AdminReceiptQueueResponse } from '../receipt.types';
+import { type AdminReceiptQueueItem, type AdminReceiptQueueResponse } from '../receipt.types';
 import { TicketPurchasesService } from '../../ticket-purchases/ticket-purchases.service';
 
 const QUEUE_LIMIT = 100;

@@ -21,7 +21,7 @@ export function resolveGrpcProtoPath(fileName: string): string {
   const configuredRoot = process.env.CACIC_GRPC_PROTO_ROOT?.trim();
   const candidates = [
     ...(configuredRoot ? [join(configuredRoot, fileName)] : []),
-    join(__dirname, 'assets', 'grpc', fileName),
+    join(import.meta.dirname, 'assets', 'grpc', fileName),
     join(process.cwd(), 'src', 'assets', 'grpc', fileName),
     join(process.cwd(), '..', 'backend', 'src', 'assets', 'grpc', fileName),
     join(process.cwd(), 'apps', 'backend', 'src', 'assets', 'grpc', fileName),

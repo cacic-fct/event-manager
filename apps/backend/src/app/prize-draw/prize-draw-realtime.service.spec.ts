@@ -1,5 +1,6 @@
 import { firstValueFrom } from 'rxjs';
 import { PrizeDrawRealtimeService } from './prize-draw-realtime.service';
+const { jest } = import.meta;
 
 describe('PrizeDrawRealtimeService', () => {
   it('publishes one replayed event to every linked scope through Redis', async () => {

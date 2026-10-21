@@ -1,5 +1,5 @@
 import { EventForm, EventFormLink } from '@cacic-fct/shared-data-types';
-import { EventFormLinkRecord, EventFormRecord } from './event-form-records';
+import { type EventFormLinkRecord, type EventFormRecord } from './event-form-records';
 
 type ResultVisibilityForm = Pick<EventForm | EventFormRecord, 'resultsPublic' | 'resultsLive'>;
 type ResultVisibilityLink = Pick<EventFormLink | EventFormLinkRecord, 'availableFrom' | 'availableUntil'>;

@@ -6,6 +6,7 @@ import {
   haversineMeters,
   resolveAttendanceAnalyticsWindow,
 } from './attendance-analytics.service';
+const { jest } = import.meta;
 
 describe('AttendanceAnalyticsService snapshot filtering', () => {
   afterEach(() => jest.useRealTimers());

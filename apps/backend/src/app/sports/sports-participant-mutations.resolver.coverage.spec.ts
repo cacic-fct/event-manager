@@ -4,6 +4,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { SportsParticipantMutationsResolver } from './sports-participant-mutations.resolver';
 import { REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { sportsTestDate } from './testing/sports-backend.fixtures';
+const { jest } = import.meta;
 
 describe('SportsParticipantMutationsResolver uncovered participant operations', () => {
   it('keeps the administrator-only operation permission metadata explicit', () => {

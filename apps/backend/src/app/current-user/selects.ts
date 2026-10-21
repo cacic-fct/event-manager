@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
-import { Request } from 'express';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type Request } from 'express';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PUBLIC_EVENT_GROUP_SELECT, PUBLIC_EVENT_SELECT, PUBLIC_MAJOR_EVENT_SELECT } from '../public-events/models';
 
 export const USER_SELECT = {

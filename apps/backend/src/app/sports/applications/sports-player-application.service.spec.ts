@@ -10,6 +10,7 @@ import {
   SportsTournamentStatus,
 } from '@prisma/client';
 import { SportsPlayerApplicationService } from './sports-player-application.service';
+const { jest } = import.meta;
 
 describe('SportsPlayerApplicationService', () => {
   const actor = {

@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { buildBadgeCodeRelativePath, SubscriptionBadgeExportService } from './subscription-badge-export.service';
+const { jest } = import.meta;
 
 describe('SubscriptionBadgeExportService', () => {
   const validInput = {

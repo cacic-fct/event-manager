@@ -3,6 +3,7 @@ import { concat, firstValueFrom, NEVER, of, Subject, toArray } from 'rxjs';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { SPORTS_MATCH_OVERLAY_DEMO_ID } from '../overlays/sports-match-overlay.service';
 import { SportsRealtimeController } from './sports-realtime.controller';
+const { jest } = import.meta;
 
 describe('SportsRealtimeController', () => {
   const event: MessageEvent = {

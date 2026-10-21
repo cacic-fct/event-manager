@@ -1,4 +1,5 @@
 import { CalendarController } from './calendar.controller';
+const { jest } = import.meta;
 
 describe('CalendarController', () => {
   const originalPublicAppOrigin = process.env.PUBLIC_APP_ORIGIN;

@@ -9,6 +9,7 @@ import {
 } from './frozen-resource.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+const { jest } = import.meta;
 
 describe('FrozenResourceService', () => {
   const now = new Date('2026-06-01T12:00:00.000Z');

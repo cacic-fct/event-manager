@@ -22,7 +22,7 @@ import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { RequireRoles } from '../auth/decorators/require-roles.decorator';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';

@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { suppressErasedImportPeople } from './lgpd-import-suppression';
+const { jest } = import.meta;
 
 const secret = 'test-import-suppression-secret-32-bytes';
 const keyFingerprint = '587a12640167a89239754a8e833c124827a58af8a30cf743c0d5497d93f533d3';

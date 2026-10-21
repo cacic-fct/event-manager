@@ -11,7 +11,7 @@ import {
 } from './publishing.constants';
 import { PublicationSearchSyncService } from './publishing-search-sync.service';
 import { PublicationTransitionService } from './publishing-transition.service';
-import { PublicationJobData, PublicationQueueData, TargetSync } from './publishing.types';
+import { type PublicationJobData, type PublicationQueueData, type TargetSync } from './publishing.types';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventDraftsService } from '../events/event-drafts.service';
 import { buildBullMqJobId } from '../queues/bullmq-job-id';

@@ -1,6 +1,6 @@
 import { CertificateScope } from '@cacic-fct/shared-data-types';
 import { NovuNotificationsService } from '../notifications/novu-notifications.service';
-import { CertificateConfigRecord, CertificateRecord } from './certificate.constants';
+import { type CertificateConfigRecord, type CertificateRecord } from './certificate.constants';
 
 export async function notifyCertificateAvailable(
   notifications: NovuNotificationsService | undefined,

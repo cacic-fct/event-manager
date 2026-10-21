@@ -2,7 +2,7 @@ import { ConflictException } from '@nestjs/common';
 import { Prisma, SportsMatchState, SportsReviewStatus } from '@prisma/client';
 import {
   mergeSportsStructuralInvalidations,
-  SportsStructuralInvalidation,
+  type SportsStructuralInvalidation,
 } from '../realtime/sports-structural-invalidation';
 import { syncSportsMatchEventName } from '../sports-match-event-sync';
 

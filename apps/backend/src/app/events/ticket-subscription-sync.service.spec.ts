@@ -1,4 +1,5 @@
 import { TicketSubscriptionSyncService } from './ticket-subscription-sync.service';
+const { jest } = import.meta;
 
 describe('ticket subscription synchronization', () => {
   it('keeps entitlement keys stable across resubscription to avoid reminting transfers', async () => {

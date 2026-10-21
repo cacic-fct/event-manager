@@ -14,7 +14,7 @@ import { RequirePermissions } from '../../auth/decorators/require-permissions.de
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../attendance-category.service';
-import { EventAttendancesResolverBase, GraphqlContext, PersonMatch } from './event-attendances.shared';
+import { EventAttendancesResolverBase, type GraphqlContext, type PersonMatch } from './event-attendances.shared';
 
 @Resolver(() => EventAttendance)
 export class MajorEventSubscriptionCsvImportResolver extends EventAttendancesResolverBase {

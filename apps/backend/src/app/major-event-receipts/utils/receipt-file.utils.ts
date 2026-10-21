@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { detectImageMimeType } from '@cacic-fct/shared-utils';
 import { extname } from 'path';
-import { MAX_RECEIPT_FILE_SIZE_BYTES, UploadedReceiptFile } from '../receipt.types';
+import { MAX_RECEIPT_FILE_SIZE_BYTES, type UploadedReceiptFile } from '../receipt.types';
 
 const ALLOWED_RECEIPT_MIME_TYPES = new Set([
   'application/pdf',

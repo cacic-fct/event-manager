@@ -38,7 +38,7 @@ ARG APP_VERSION=dev
 ENV APP_VERSION=$APP_VERSION
 
 COPY nx.json tsconfig.base.json ./
-COPY eslint.config.mjs jest.config.ts jest.preset.js ./
+COPY eslint.config.mjs jest.config.ts jest.preset.mjs ./
 
 COPY apps/backend ./apps/backend
 COPY libs ./libs

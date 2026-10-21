@@ -1,4 +1,5 @@
 import { VotingIntegrationService, startOfSaoPauloDay } from './service';
+const { jest } = import.meta;
 
 describe('VotingIntegrationService', () => {
   it('uses the Sao Paulo calendar day instead of the process timezone', () => {

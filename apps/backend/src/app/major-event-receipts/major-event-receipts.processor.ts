@@ -1,5 +1,5 @@
 import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq';
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import { ReceiptProcessingStatus } from '@prisma/client';
 import { Job, Queue, UnrecoverableError } from 'bullmq';
 import { Readable } from 'stream';
@@ -12,7 +12,7 @@ import {
   MAX_RECEIPT_OCR_IMAGE_DIMENSION_PIXELS,
   RECEIPT_IMAGE_CONVERSION_TIMEOUT_SECONDS,
   RECEIPT_OCR_TIMEOUT_MS,
-  ReceiptProcessingJob,
+  type ReceiptProcessingJob,
   RECEIPT_PROCESSING_ATTEMPTS,
 } from './receipt.types';
 import {

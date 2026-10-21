@@ -1,4 +1,4 @@
-import { OnModuleDestroy } from '@nestjs/common';
+import { type OnModuleDestroy } from '@nestjs/common';
 import { Readable } from 'node:stream';
 
 export class InMemoryRedisClient implements OnModuleDestroy {

@@ -1,6 +1,7 @@
 import { PublicationState } from '@cacic-fct/shared-data-types';
 import { PublicationSearchSyncService } from './publishing-search-sync.service';
 import { PUBLICATION_EVENT_SELECT } from './publishing.selects';
+const { jest } = import.meta;
 
 describe('PublicationSearchSyncService', () => {
   function createService() {

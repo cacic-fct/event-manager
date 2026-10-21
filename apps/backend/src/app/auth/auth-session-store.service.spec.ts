@@ -1,6 +1,7 @@
 import { AuthSessionStoreService } from './auth-session-store.service';
 import { AuthSession } from './keycloak-auth.types';
 import { InMemoryRedisClient } from '../redis/in-memory-redis-client';
+const { jest } = import.meta;
 
 describe('AuthSessionStoreService', () => {
   const now = new Date('2026-05-21T12:00:00.000Z').getTime();

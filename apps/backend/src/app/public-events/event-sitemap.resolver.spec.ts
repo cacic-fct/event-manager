@@ -4,6 +4,7 @@ import { RATE_LIMIT_METADATA_KEY } from '../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
 import { EventSitemapResolver } from './event-sitemap.resolver';
+const { jest } = import.meta;
 
 describe('EventSitemapResolver', () => {
   it('exposes the resolver publicly and forwards the requested page unchanged', async () => {

@@ -29,10 +29,10 @@ import {
 } from './sports-read.models';
 
 import {
-  AdminCategoryRecord,
-  AdminRegistrationRecord,
-  AdminTeamRecord,
-  AdminTournamentRecord,
+  type AdminCategoryRecord,
+  type AdminRegistrationRecord,
+  type AdminTeamRecord,
+  type AdminTournamentRecord,
 } from './sports-read.records';
 
 const REVIEWABLE_TEAM_CHANGE_STATUSES = new Set<SportsTeamChangeRequestStatus>([

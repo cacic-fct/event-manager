@@ -1,9 +1,12 @@
-import { Injectable, Logger, MessageEvent, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, type MessageEvent, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import Redis from 'ioredis';
 import { interval, map, merge, Observable, Subject } from 'rxjs';
 import { SseReplayService } from '../../realtime/sse-replay.service';
-import { mergeSportsStructuralInvalidations, SportsStructuralInvalidation } from './sports-structural-invalidation';
+import {
+  mergeSportsStructuralInvalidations,
+  type SportsStructuralInvalidation,
+} from './sports-structural-invalidation';
 
 const SPORTS_REDIS_CHANNEL = 'sports:realtime:v1';
 const INVALIDATE_PUBLIC_TOURNAMENT_CACHE_SCRIPT = `

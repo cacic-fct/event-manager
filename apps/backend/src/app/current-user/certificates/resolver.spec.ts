@@ -1,13 +1,27 @@
+import { jest as jestEsm } from '@jest/globals';
 import { CertificateScope } from '@cacic-fct/shared-data-types';
 import { NotFoundException } from '@nestjs/common';
-import { buildConfigTargetWhere, mapCertificate } from '../../certificate/certificate.constants';
-import { CurrentUserCertificatesResolver } from './resolver';
+import type { CurrentUserCertificatesResolver } from './resolver';
+const { jest } = import.meta;
 
-jest.mock('../../certificate/certificate.constants', () => ({
+jestEsm.unstable_mockModule('../../certificate/certificate.constants', () => ({
+  MAJOR_EVENT_SELECT: {},
+  EVENT_GROUP_SELECT: {},
+  EVENT_SELECT: {},
+  PERSON_SELECT: {},
+  CERTIFICATE_TEMPLATE_SELECT: {},
+  CERTIFICATE_FOLDER_SELECT: {},
+  CERTIFICATE_CONFIG_SELECT: {},
   CERTIFICATE_SELECT: { id: true, config: { select: { folder: true } } },
   buildConfigTargetWhere: jest.fn((scope: CertificateScope, targetId: string) => ({ scope, targetId })),
+  mapCertificateTemplate: jest.fn(),
+  mapCertificateFolder: jest.fn(),
+  mapCertificateConfig: jest.fn(),
   mapCertificate: jest.fn((certificate: { id: string }) => ({ id: certificate.id })),
 }));
+
+const { buildConfigTargetWhere, mapCertificate } = await import('../../certificate/certificate.constants');
+const { CurrentUserCertificatesResolver: CurrentUserCertificatesResolverClass } = await import('./resolver');
 
 describe('CurrentUserCertificatesResolver', () => {
   const user = { sub: 'user-1' };
@@ -152,7 +166,7 @@ describe('CurrentUserCertificatesResolver', () => {
   });
 
   function resolver(): CurrentUserCertificatesResolver {
-    return new CurrentUserCertificatesResolver(
+    return new CurrentUserCertificatesResolverClass(
       prisma as never,
       currentUserContext as never,
       validation as never,

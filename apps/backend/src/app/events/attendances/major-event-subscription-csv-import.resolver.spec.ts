@@ -3,6 +3,7 @@ import { MajorEventSubscriptionCsvImportInput } from '@cacic-fct/shared-data-typ
 import { REQUIRED_PERMISSIONS_KEY } from '../../auth/auth.constants';
 import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
 import { MajorEventSubscriptionCsvImportResolver } from './major-event-subscription-csv-import.resolver';
+const { jest } = import.meta;
 
 describe('MajorEventSubscriptionCsvImportResolver', () => {
   let prisma: ReturnType<typeof createPrisma>;

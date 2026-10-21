@@ -1,6 +1,7 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { PeopleResolver } from './resolver';
+const { jest } = import.meta;
 
 describe('scoped related-person operations', () => {
   it('keeps relatedPeople scoped separately from the global people directory', () => {

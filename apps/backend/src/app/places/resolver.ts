@@ -9,7 +9,7 @@ import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';

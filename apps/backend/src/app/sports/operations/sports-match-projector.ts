@@ -4,12 +4,12 @@ import {
   closeActiveSportsScorePeriod,
   normalizeSportsScoreboard,
   rollSportsScorePeriod,
-  SportsScoreboard,
+  type SportsScoreboard,
 } from '../domain/sports-scoreboard';
 import {
-  SportsProjectedOutcome,
-  SportsProjectedPeriodTimer,
-  SportsProjectionAction,
+  type SportsProjectedOutcome,
+  type SportsProjectedPeriodTimer,
+  type SportsProjectionAction,
 } from './sports-match-projection.models';
 import { createSportsProjectionReset } from './sports-match-projection.defaults';
 

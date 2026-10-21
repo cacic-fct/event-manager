@@ -1,5 +1,7 @@
 import { AttendanceCategoryService } from './attendance-category.service';
 
+const { jest } = import.meta;
+
 function scenario(input: { consumed?: boolean; status?: 'PRESENT' | 'ABSENT' } = {}) {
   let consumed = input.consumed ?? false;
   const attendedAt = new Date(Date.now() - 2 * 60 * 60 * 1_000);

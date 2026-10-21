@@ -20,7 +20,7 @@ import {
 } from '@prisma/client';
 import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { eventContentAuditSnapshot } from '../events/event-content-audit';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';

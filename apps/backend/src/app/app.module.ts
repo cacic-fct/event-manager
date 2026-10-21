@@ -37,7 +37,7 @@ import {
 } from './audiences/audience-fields.resolver';
 import { AudienceInvitationService } from './audiences/audience-invitation.service';
 import { CurrentUserParticipationEventsResolver } from './current-user/participation-events.resolver';
-import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
+import { ApolloDriver, type ApolloDriverConfig } from '@nestjs/apollo';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';

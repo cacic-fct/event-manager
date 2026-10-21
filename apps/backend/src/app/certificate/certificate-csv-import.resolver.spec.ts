@@ -1,4 +1,5 @@
 import { CertificateCsvImportResolver } from './certificate-csv-import.resolver';
+const { jest } = import.meta;
 
 describe('CertificateCsvImportResolver', () => {
   const person = {

@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { getAuditFieldLabel } from './audit-log.field-labels';
-import { StoredAuditChange } from './audit-log.types';
+import { type StoredAuditChange } from './audit-log.types';
 import { AUDIT_SUBJECT_REFERENCE_FIELDS } from './audit-log.subject-references';
 
 const IGNORED_AUDIT_FIELDS = new Set(['createdAt', 'updatedAt', 'updatedById']);

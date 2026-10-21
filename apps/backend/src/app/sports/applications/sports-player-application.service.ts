@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { AuditLogEntityType, AuditLogOperation, SportsApplicationStatus, SportsTeamStatus } from '@prisma/client';
 import { AuditLogService } from '../../audit-log/audit-log.service';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { resolveSportsSelfServicePayment } from '../../current-user/major-events/major-event-payment-selection';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SportsPaymentService } from '../sports-payment.service';

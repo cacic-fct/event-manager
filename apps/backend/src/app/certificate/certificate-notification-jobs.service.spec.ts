@@ -3,6 +3,7 @@ import {
   CERTIFICATE_AVAILABLE_NOTIFICATION_JOB,
   CERTIFICATE_NOTIFICATION_RECONCILE_JOB,
 } from './certificate-notification-jobs.service';
+const { jest } = import.meta;
 
 describe('CertificateNotificationJobsService', () => {
   const certificate = {

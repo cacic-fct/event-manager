@@ -1,6 +1,7 @@
 import Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
 import { EVENT_SITEMAP_URL_LIMIT, EventSitemapService, PUBLIC_SITEMAP_EVENT_WHERE } from './event-sitemap.service';
+const { jest } = import.meta;
 
 describe('EventSitemapService', () => {
   const createContext = () => {

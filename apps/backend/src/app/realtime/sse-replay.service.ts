@@ -1,4 +1,4 @@
-import { Injectable, MessageEvent } from '@nestjs/common';
+import { Injectable, type MessageEvent } from '@nestjs/common';
 import { createHmac, createHash } from 'node:crypto';
 import Redis from 'ioredis';
 import { Observable } from 'rxjs';

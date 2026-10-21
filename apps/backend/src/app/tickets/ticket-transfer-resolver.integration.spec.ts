@@ -1,6 +1,8 @@
 import { TicketsResolver } from './tickets.resolver';
 import { createTicketTransferServiceFixture } from './testing/ticket-transfer.service.fixtures';
 
+const { jest } = import.meta;
+
 describe('ticket transfer GraphQL mutation integration', () => {
   it('returns an author-only pending response without exposing recipient identity', async () => {
     const fixture = createTicketTransferServiceFixture();

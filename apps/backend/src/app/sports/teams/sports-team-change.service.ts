@@ -13,7 +13,7 @@ import {
   SportsTournamentStatus,
 } from '@prisma/client';
 import { AuditLogService } from '../../audit-log/audit-log.service';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { PrismaService } from '../../prisma/prisma.service';
 import { S3Service } from '../../s3/s3.service';
 import { SportsPaymentService } from '../sports-payment.service';

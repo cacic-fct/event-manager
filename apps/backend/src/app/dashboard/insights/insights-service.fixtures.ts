@@ -6,6 +6,8 @@ import { WeatherService } from '../../weather/weather.service';
 import { DashboardInsightsService } from '../insights.service';
 import { InsightEvent } from './insight-event.select';
 
+const { jest } = import.meta;
+
 export function createInsightsServiceTestContext() {
   const prisma = createPrismaMock();
   const currentUserContext = {

@@ -5,6 +5,7 @@ import { EventAttendance } from './attendance';
 import { EventLecturer } from './lecturers';
 import { LecturerProfile } from './lecturer-profiles';
 import { User } from './auth';
+import type { Relation } from './relation';
 
 @ObjectType('Person')
 export class Person {
@@ -42,7 +43,7 @@ export class Person {
   lectures?: EventLecturer[] | null;
 
   @Field(() => LecturerProfile, { nullable: true })
-  lecturerProfile?: LecturerProfile | null;
+  lecturerProfile?: Relation<LecturerProfile> | null;
 
   @Field(() => String, { nullable: true })
   mergedIntoId?: string | null;

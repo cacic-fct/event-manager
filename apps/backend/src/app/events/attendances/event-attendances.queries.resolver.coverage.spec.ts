@@ -1,12 +1,18 @@
+import { jest as jestEsm } from '@jest/globals';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { REQUIRED_PERMISSIONS_KEY } from '../../auth/auth.constants';
-import { getAttendanceOralRoster } from '../../current-user/events/attendance-collection-feed';
-import { EventAttendancesQueriesResolver } from './event-attendances.queries.resolver';
+import type { EventAttendancesQueriesResolver } from './event-attendances.queries.resolver';
+const { jest } = import.meta;
 
-jest.mock('../../current-user/events/attendance-collection-feed', () => ({
+jestEsm.unstable_mockModule('../../current-user/events/attendance-collection-feed', () => ({
   getAttendanceOralRoster: jest.fn(),
   getAttendanceScannerFeed: jest.fn(),
 }));
+
+const { getAttendanceOralRoster } = await import('../../current-user/events/attendance-collection-feed');
+const { EventAttendancesQueriesResolver: EventAttendancesQueriesResolverClass } = await import(
+  './event-attendances.queries.resolver'
+);
 
 describe('EventAttendancesQueriesResolver oral roster boundary', () => {
   const prisma = {};
@@ -14,14 +20,14 @@ describe('EventAttendancesQueriesResolver oral roster boundary', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    resolver = new EventAttendancesQueriesResolver(prisma as never, {} as never);
+    resolver = new EventAttendancesQueriesResolverClass(prisma as never, {} as never);
   });
 
   it('requires attendance-read permission on the oral-roster query', () => {
     expect(
       Reflect.getMetadata(
         REQUIRED_PERMISSIONS_KEY,
-        EventAttendancesQueriesResolver.prototype.eventAttendanceOralRoster,
+        EventAttendancesQueriesResolverClass.prototype.eventAttendanceOralRoster,
       ),
     ).toEqual([Permission.EventAttendance.Read]);
   });

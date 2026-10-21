@@ -1,9 +1,9 @@
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
 import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
-import { GraphqlContext } from '../current-user/selects';
+import { type GraphqlContext } from '../current-user/selects';
 import { CurrentUserContextService } from '../current-user/context.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
 import { RateLimit } from '../rate-limit/rate-limit.decorator';

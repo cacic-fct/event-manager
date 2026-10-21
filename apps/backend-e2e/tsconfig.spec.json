@@ -2,10 +2,11 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "../../dist/out-tsc",
-    "module": "Node16",
-    "moduleResolution": "node16",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "target": "ES2021",
     "isolatedModules": true,
     "types": ["jest", "node"]
   },
-  "include": ["jest.config.ts", "src/**/*.ts"]
+  "include": ["jest.config.mts", "src/**/*.ts"]
 }

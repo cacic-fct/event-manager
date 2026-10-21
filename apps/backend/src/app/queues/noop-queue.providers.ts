@@ -1,4 +1,4 @@
-import { Provider } from '@nestjs/common';
+import { type Provider } from '@nestjs/common';
 import { getQueueToken } from '@nestjs/bullmq';
 
 export interface NoopQueue {

@@ -14,6 +14,8 @@ import type { AuthenticatedUser } from '../interfaces/authenticated-user.interfa
 import { KeycloakAuthService } from '../keycloak-auth.service';
 import { KeycloakScopeGuard } from './keycloak-scope.guard';
 
+const { jest } = import.meta;
+
 const protectedHandler = jest.fn(() => true);
 
 @Controller('onboarding-probe')

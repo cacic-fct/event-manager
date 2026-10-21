@@ -1,8 +1,8 @@
-import { PrismaService } from '../prisma/prisma.service';
-import { ANONYMOUS_AUDIENCE, audienceContext } from './audience-context';
-import { scopeAudienceQuery } from './audience-prisma.extension';
+import { jest as jestEsm } from '@jest/globals';
 import { execFileSync } from 'node:child_process';
-import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import type { PrismaService } from '../prisma/prisma.service';
+const { jest } = import.meta;
 
 type CapturedQuery = { sql: string; args: unknown[] };
 const mockQueries: CapturedQuery[] = [];
@@ -25,7 +25,7 @@ const mockConnection = {
   }),
 };
 
-jest.mock('@prisma/adapter-pg', () => ({
+jestEsm.unstable_mockModule('@prisma/adapter-pg', () => ({
   PrismaPg: jest.fn(() => ({
     provider: 'postgres',
     adapterName: '@prisma/adapter-pg',
@@ -33,30 +33,32 @@ jest.mock('@prisma/adapter-pg', () => ({
   })),
 }));
 
+const { PrismaService: PrismaServiceClass } = await import('../prisma/prisma.service');
+const { ANONYMOUS_AUDIENCE, audienceContext } = await import('./audience-context');
+const { scopeAudienceQuery } = await import('./audience-prisma.extension');
+const generateAudienceRelationsPath = fileURLToPath(
+  new URL('../../../../../tools/generate-audience-relations.mjs', import.meta.url),
+);
+const generateAudienceRelationsTestPath = fileURLToPath(
+  new URL('../../../../../tools/generate-audience-relations.test.mjs', import.meta.url),
+);
+
 describe('event audience query boundary', () => {
   let prisma: PrismaService;
   beforeEach(() => {
     mockQueries.length = 0;
-    prisma = new PrismaService();
+    prisma = new PrismaServiceClass();
   });
   afterEach(async () => {
     await prisma.$disconnect();
   });
 
   it('keeps foreign-key ownership and relation cardinalities synchronized with the schema', () => {
-    expect(() =>
-      execFileSync(process.execPath, [
-        resolve(__dirname, '../../../../../tools/generate-audience-relations.mjs'),
-        '--check',
-      ]),
-    ).not.toThrow();
+    expect(() => execFileSync(process.execPath, [generateAudienceRelationsPath, '--check'])).not.toThrow();
   });
 
   it('accepts formatted relation metadata while rejecting stale relation data', () => {
-    execFileSync(process.execPath, [
-      '--test',
-      resolve(__dirname, '../../../../../tools/generate-audience-relations.test.mjs'),
-    ]);
+    execFileSync(process.execPath, ['--test', generateAudienceRelationsTestPath]);
   });
 
   it('compiles audience and ancestor predicates before pagination using the real Prisma query compiler', async () => {

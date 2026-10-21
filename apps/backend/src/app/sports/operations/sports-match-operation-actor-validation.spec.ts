@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { SportsMatchActionType, SportsReviewStatus } from '@prisma/client';
 import { sportsMatchRecord, sportsProjectionAction, sportsTestDate } from '../testing/sports-backend.fixtures';
 import { SportsMatchOperationActorValidation } from './sports-match-operation-actor-validation';
+const { jest } = import.meta;
 
 class TestActorValidation extends SportsMatchOperationActorValidation {
   scorer(tx: unknown, match: unknown, rosterEntryId: string, payload: unknown) {

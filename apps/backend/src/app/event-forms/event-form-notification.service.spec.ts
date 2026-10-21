@@ -1,5 +1,6 @@
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { EventFormNotificationService } from './event-form-notification.service';
+const { jest } = import.meta;
 
 it.each(['EVENT', 'MAJOR_EVENT'] as const)(
   'filters %s form recipients using their own audience and restores organizer scope',

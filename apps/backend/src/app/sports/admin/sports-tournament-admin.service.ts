@@ -11,8 +11,8 @@ import {
   SportsTeamStatus,
   SportsTournamentStatus,
 } from '@prisma/client';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
-import { CreateSportsTournamentInput, UpdateSportsTournamentInput } from '../sports-admin.types';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type CreateSportsTournamentInput, type UpdateSportsTournamentInput } from '../sports-admin.types';
 import { softDeleteSportsMatchBackingEvents } from '../sports-match-event-sync';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 import { SportsAdminBaseService } from './sports-admin-base.service';

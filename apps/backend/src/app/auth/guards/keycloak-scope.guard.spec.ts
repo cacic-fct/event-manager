@@ -12,6 +12,7 @@ import {
 import { AuthenticatedUser } from '../interfaces/authenticated-user.interface';
 import { KeycloakAuthService } from '../keycloak-auth.service';
 import { KeycloakScopeGuard } from './keycloak-scope.guard';
+const { jest } = import.meta;
 
 type RequestFixture = {
   headers: {

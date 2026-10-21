@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import { getBrazilianPhoneCandidates } from '../common/brazilian-phone';
 import { parseStoredScannerUserId } from '../events/attendances/user-scanner-code';
 import { ANONYMIZED_AUDIT_VALUE } from './lgpd-audit-anonymization';
-import { DataSubjectResolution } from './lgpd-records';
+import { type DataSubjectResolution } from './lgpd-records';
 
 export function buildOfflineSubmissionSubjectWhere(
   dataSubject: DataSubjectResolution,

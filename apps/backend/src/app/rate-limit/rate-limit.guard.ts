@@ -1,8 +1,8 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { type CanActivate, type ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { GqlExecutionContext } from '@nestjs/graphql';
-import { Request, Response } from 'express';
-import { RATE_LIMIT_METADATA_KEY, RateLimitMetadata, RateLimitResourceLocator } from './rate-limit.decorator';
+import { type Request, type Response } from 'express';
+import { RATE_LIMIT_METADATA_KEY, type RateLimitMetadata, type RateLimitResourceLocator } from './rate-limit.decorator';
 import { RateLimitService } from './rate-limit.service';
 
 type RequestLike = Request & {

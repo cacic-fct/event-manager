@@ -4,12 +4,12 @@ import { EventFormResults } from '@cacic-fct/shared-data-types';
 import { isFormAnswerElementType, type FormElement } from '@cacic-fct/form-contracts';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { EventFormSigilo, EventFormTargetType, Prisma } from '@prisma/client';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { CurrentUserContextService } from '../current-user/context.service';
-import { GraphqlContext } from '../current-user/selects';
+import { type GraphqlContext } from '../current-user/selects';
 import { PrismaService } from '../prisma/prisma.service';
-import { AccessibleEventTargets, isEmptyAccessibleTargets, resultResponseWhere } from './event-form-access';
+import { type AccessibleEventTargets, isEmptyAccessibleTargets, resultResponseWhere } from './event-form-access';
 import { assertPersonCanViewPublicResults, assertPersonIsEventLecturer } from './event-form-eligibility';
 import {
   canShowIdentity,
@@ -27,12 +27,12 @@ import {
 } from './event-form-results';
 import { arePublicResultsReleasedForLink } from './event-form-results-visibility';
 import {
-  EventFormRecord,
-  EventFormResponseRecord,
-  NormalizedTarget,
+  type EventFormRecord,
+  type EventFormResponseRecord,
+  type NormalizedTarget,
   responseInclude,
-  ResultViewer,
-  TargetInput,
+  type ResultViewer,
+  type TargetInput,
 } from './event-form-records';
 import {
   canAdminViewEventFormResults,

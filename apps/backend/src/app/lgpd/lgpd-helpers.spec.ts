@@ -14,6 +14,7 @@ import {
   getOfflineManualSubjectValueCandidates,
 } from './lgpd-offline-submissions';
 import type { DataSubjectResolution } from './lgpd-records';
+const { jest } = import.meta;
 
 describe('LGPD helper modules', () => {
   it('resolves users, verified merged accounts, people, and Keycloak external refs', async () => {

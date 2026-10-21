@@ -1,4 +1,5 @@
 import { SportsReadAdminListService } from './sports-read-admin-list.service';
+const { jest } = import.meta;
 
 describe('SportsReadAdminListService', () => {
   const prisma = {

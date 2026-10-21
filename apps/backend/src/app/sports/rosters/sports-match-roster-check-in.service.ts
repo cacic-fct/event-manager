@@ -16,8 +16,8 @@ import {
   SportsReviewStatus,
   SportsTeamMemberStatus,
 } from '@prisma/client';
-import { AuditActor } from '../../audit-log/audit-log.types';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuditActor } from '../../audit-log/audit-log.types';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { upsertPresentEventAttendance } from '../../events/attendances/shared/event-attendance-writer';
 import { parseUserAztecCode } from '../../events/attendances/user-scanner-code';
 import { runSerializableSportsTransaction } from '../sports-transaction';

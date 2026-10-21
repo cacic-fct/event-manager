@@ -1,4 +1,5 @@
 import { BackendFeatureFlagService } from './backend-feature-flags';
+const { jest } = import.meta;
 
 describe('BackendFeatureFlagService', () => {
   it('uses fail-safe defaults while asynchronous initialization is pending', async () => {

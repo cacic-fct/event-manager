@@ -1,14 +1,16 @@
-import Typesense from 'typesense';
-import { TypesenseSearchService } from './typesense-search.service';
+import { jest as jestEsm } from '@jest/globals';
 import { SEARCH_REINDEX_BATCH_SIZE, TYPESENSE_COLLECTIONS } from './typesense-search.collections';
+const { jest } = import.meta;
 
-jest.mock('typesense', () => ({
+jestEsm.unstable_mockModule('typesense', () => ({
   __esModule: true,
   default: {
     Client: jest.fn(),
   },
 }));
 
+const Typesense = (await import('typesense')).default;
+const { TypesenseSearchService } = await import('./typesense-search.service');
 const typesenseClientConstructor = Typesense.Client as unknown as jest.Mock;
 
 describe('TypesenseSearchService', () => {

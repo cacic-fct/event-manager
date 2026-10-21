@@ -1,6 +1,6 @@
 import { PublicationTargetType } from '@cacic-fct/shared-data-types';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { GraphqlContext } from '../current-user/selects';
+import { type GraphqlContext } from '../current-user/selects';
 import { PublicationService } from './publishing.service';
 import {
   PublicationPreviewInput,

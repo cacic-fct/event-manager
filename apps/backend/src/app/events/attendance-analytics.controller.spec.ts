@@ -3,6 +3,7 @@ import { PATH_METADATA, SSE_METADATA } from '@nestjs/common/constants';
 import { firstValueFrom, take } from 'rxjs';
 import { REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { AttendanceAnalyticsController } from './attendance-analytics.controller';
+const { jest } = import.meta;
 
 describe('AttendanceAnalyticsController', () => {
   const analytics = { snapshot: jest.fn() };

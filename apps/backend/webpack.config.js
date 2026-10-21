@@ -1,5 +1,6 @@
 const { NxAppWebpackPlugin } = require('@nx/webpack/app-plugin');
 const { join } = require('path');
+const { DefinePlugin } = require('webpack');
 
 module.exports = {
   output: {
@@ -10,6 +11,8 @@ module.exports = {
     }),
   },
   plugins: [
+    // Asset paths in the bundled server are relative to its emitted chunks.
+    new DefinePlugin({ 'import.meta.dirname': '__dirname' }),
     new NxAppWebpackPlugin({
       target: 'node',
       compiler: 'tsc',

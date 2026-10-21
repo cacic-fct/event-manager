@@ -6,6 +6,7 @@ import { AuthenticatedUser } from './interfaces/authenticated-user.interface';
 import { LogoutOriginGuard } from './guards/logout-origin.guard';
 import { KeycloakAuthService } from './keycloak-auth.service';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
+const { jest } = import.meta;
 
 describe('AuthController callback redirect validation', () => {
   const originalEnv = { ...process.env };

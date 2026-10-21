@@ -1,6 +1,7 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
 import { SportsPlayerApplicationReadService } from './sports-player-application-read.service';
+const { jest } = import.meta;
 
 describe('SportsPlayerApplicationReadService', () => {
   const prisma = {

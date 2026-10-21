@@ -1,5 +1,5 @@
 import { parseScannerUserId } from './lgpd-offline-submissions';
-import { DataSubjectResolution, LgpdOfflineSubmission, LgpdResolvedPerson } from './lgpd-records';
+import { type DataSubjectResolution, type LgpdOfflineSubmission, type LgpdResolvedPerson } from './lgpd-records';
 
 export function mapPersonForExport(person: LgpdResolvedPerson) {
   return {

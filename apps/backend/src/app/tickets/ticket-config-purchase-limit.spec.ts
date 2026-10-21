@@ -1,5 +1,6 @@
 import { createAdminTicketConfig } from '@cacic-fct/shared-ticketing/testing';
 import { TicketsResolver } from './tickets.resolver';
+const { jest } = import.meta;
 
 function setup() {
   const existing = { id: 'config', updatedAt: new Date() };

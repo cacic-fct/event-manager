@@ -12,7 +12,7 @@ import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AttendanceCreationMethod, EventAttendanceStatus, Prisma } from '@prisma/client';
 import { CurrentUserAttendanceCollectionEvent } from '../models';
 import { CurrentUserContextService } from '../context.service';
-import { GraphqlContext } from '../selects';
+import { type GraphqlContext } from '../selects';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { FrozenResourceService } from '../../common/frozen-resource.service';

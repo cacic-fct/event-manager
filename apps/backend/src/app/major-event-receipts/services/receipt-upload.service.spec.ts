@@ -1,3 +1,4 @@
+import { jest as jestEsm } from '@jest/globals';
 import { BadRequestException, ForbiddenException, GoneException, NotFoundException } from '@nestjs/common';
 import {
   AuditLogEntityType,
@@ -9,8 +10,25 @@ import {
 import sharp from 'sharp';
 import { Readable } from 'stream';
 import { RECEIPT_ADMIN_PERMISSION, RECEIPT_PROCESSING_ATTEMPTS } from '../receipt.types';
-import { ReceiptUploadService } from './receipt-upload.service';
-import * as receiptPdfProcessing from '../utils/receipt-pdf-processing.utils';
+import type { ReceiptUploadService } from './receipt-upload.service';
+const { jest } = import.meta;
+
+const mockAssertReceiptPdfPageCountWithinLimit = jest.fn();
+
+class MockReceiptPdfProcessingError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ReceiptPdfProcessingError';
+  }
+}
+
+jestEsm.unstable_mockModule('../utils/receipt-pdf-processing.utils', () => ({
+  assertReceiptPdfPageCountWithinLimit: mockAssertReceiptPdfPageCountWithinLimit,
+  ReceiptPdfProcessingError: MockReceiptPdfProcessingError,
+}));
+
+const { ReceiptPdfProcessingError } = await import('../utils/receipt-pdf-processing.utils');
+const { ReceiptUploadService: ReceiptUploadServiceClass } = await import('./receipt-upload.service');
 
 let validPngBuffer: Buffer;
 
@@ -65,8 +83,9 @@ describe('ReceiptUploadService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAssertReceiptPdfPageCountWithinLimit.mockReset();
     s3.deleteFile.mockResolvedValue(undefined);
-    service = new ReceiptUploadService(
+    service = new ReceiptUploadServiceClass(
       prisma as never,
       s3 as never,
       currentUserContext as never,
@@ -115,7 +134,7 @@ describe('ReceiptUploadService', () => {
     const frozenResources = {
       assertMajorEventMutable: jest.fn(),
     };
-    service = new ReceiptUploadService(
+    service = new ReceiptUploadServiceClass(
       prisma as never,
       s3 as never,
       currentUserContext as never,
@@ -140,7 +159,7 @@ describe('ReceiptUploadService', () => {
     const frozenResources = {
       assertMajorEventMutable: jest.fn(),
     };
-    service = new ReceiptUploadService(
+    service = new ReceiptUploadServiceClass(
       prisma as never,
       s3 as never,
       currentUserContext as never,
@@ -158,11 +177,9 @@ describe('ReceiptUploadService', () => {
       subscriptionStatus: SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
       majorEvent: { isPaymentRequired: true },
     });
-    jest
-      .spyOn(receiptPdfProcessing, 'assertReceiptPdfPageCountWithinLimit')
-      .mockRejectedValue(
-        new receiptPdfProcessing.ReceiptPdfProcessingError('Envie um arquivo com no máximo 10 páginas.'),
-      );
+    mockAssertReceiptPdfPageCountWithinLimit.mockRejectedValueOnce(
+      new ReceiptPdfProcessingError('Envie um arquivo com no máximo 10 páginas.'),
+    );
 
     await expect(service.uploadReceipt('major-1', createPdfFile(), user)).rejects.toThrow(
       'Envie um arquivo com no máximo 10 páginas.',

@@ -1,5 +1,6 @@
 import { ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
 import { NovuNotificationsController } from './novu-notifications.controller';
+const { jest } = import.meta;
 
 describe('NovuNotificationsController', () => {
   const user = {

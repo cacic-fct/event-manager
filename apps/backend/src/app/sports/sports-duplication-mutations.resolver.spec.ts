@@ -2,6 +2,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException } from '@nestjs/common';
 import { SportsDuplicationMutationsResolver } from './sports-duplication-mutations.resolver';
 import { SportsMutationsResolverSupport } from './sports-mutations-resolver.support';
+const { jest } = import.meta;
 
 class TestSportsMutationsSupport extends SportsMutationsResolverSupport {
   teamChange(requestId: string, actor: unknown) {

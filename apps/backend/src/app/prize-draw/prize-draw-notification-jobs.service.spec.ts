@@ -6,6 +6,7 @@ import {
   PRIZE_DRAW_PRESENTATION_JOB,
   PRIZE_DRAW_WINNER_JOB,
 } from './prize-draw-notification-jobs.service';
+const { jest } = import.meta;
 
 describe('PrizeDrawNotificationJobsService', () => {
   it('publishes and queues the winner notification when presentation is released', async () => {

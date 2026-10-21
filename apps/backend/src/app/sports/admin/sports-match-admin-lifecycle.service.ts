@@ -7,7 +7,7 @@ import {
   SportsLivestreamProvider,
   SportsMatchState,
 } from '@prisma/client';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';

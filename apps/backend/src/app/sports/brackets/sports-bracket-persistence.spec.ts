@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, NotFoundException } from '@nest
 import { SportsFormat, SportsMatchState, SportsReviewStatus, SportsStageType } from '@prisma/client';
 import { sportsBracketParticipants, sportsBracketPersistenceCategory } from '../testing/sports-backend.fixtures';
 import { SportsBracketBasicPersistence } from './sports-bracket-basic-persistence';
+const { jest } = import.meta;
 
 class TestSportsBracketPersistence extends SportsBracketBasicPersistence {
   readonly backedMatches: Array<Record<string, unknown>> = [];

@@ -6,6 +6,7 @@ import {
   SportsReviewStatus,
   SportsTournamentStatus,
 } from '@prisma/client';
+const { jest } = import.meta;
 
 describe('SportsMutationEventsService', () => {
   const realtime = {

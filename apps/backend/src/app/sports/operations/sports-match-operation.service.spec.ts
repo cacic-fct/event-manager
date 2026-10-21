@@ -8,6 +8,7 @@ import {
   sportsOfficialActor,
 } from '../testing/sports-backend.fixtures';
 import { SportsMatchOperationService } from './sports-match-operation.service';
+const { jest } = import.meta;
 
 describe('SportsMatchOperationService offline command log', () => {
   const standings = {

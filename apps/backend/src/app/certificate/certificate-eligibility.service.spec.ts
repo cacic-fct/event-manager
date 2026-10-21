@@ -1,6 +1,7 @@
 import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/shared-data-types';
 import { SubscriptionStatus } from '@prisma/client';
 import { CertificateEligibilityService } from './certificate-eligibility.service';
+const { jest } = import.meta;
 
 describe('CertificateEligibilityService', () => {
   const createService = (

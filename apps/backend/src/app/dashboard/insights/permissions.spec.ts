@@ -1,6 +1,7 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { DASHBOARD_PERMISSION_REQUIREMENTS } from './constants';
 import { formatPermissions, resolveDashboardPermissions } from './permissions';
+const { jest } = import.meta;
 
 describe('dashboard permission helpers', () => {
   it('uses policy-evaluated permissions and sorts them for cache stability', async () => {

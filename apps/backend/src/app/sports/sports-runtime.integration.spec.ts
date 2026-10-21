@@ -38,6 +38,8 @@ import {
 } from './sports-mutations.resolver';
 import { SportsTeamChangeService } from './teams/sports-team-change.service';
 
+const { jest } = import.meta;
+
 describe('sports runtime integration', () => {
   const actor = { sub: 'admin-1', token: 'token', permissionSet: new Set<string>() };
   const policy = { assertPermissions: jest.fn().mockResolvedValue(undefined) };

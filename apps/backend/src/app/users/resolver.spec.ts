@@ -2,6 +2,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { UsersResolver } from './resolver';
+const { jest } = import.meta;
 
 describe('UsersResolver', () => {
   const findMany = jest.fn();

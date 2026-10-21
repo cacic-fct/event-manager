@@ -1,4 +1,5 @@
 import { LgpdStorageCleanupProcessor } from './lgpd-storage-cleanup.processor';
+const { jest } = import.meta;
 
 describe('LgpdStorageCleanupProcessor', () => {
   it('rejects unknown and malformed jobs', async () => {

@@ -17,7 +17,7 @@ import { audienceContext, ANONYMOUS_AUDIENCE } from '../audiences/audience-conte
 import { normalizeIdentityDocumentForLookup } from '../common/person-identity';
 import { runSerializablePrismaTransaction } from '../common/serializable-prisma-transaction';
 import { FrozenResourceService } from '../common/frozen-resource.service';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
 import { SportsIdentityProtectionService } from '../sports/security/sports-identity-protection.service';
 import { TicketEligibilityService } from './ticket-eligibility.service';

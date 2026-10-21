@@ -16,6 +16,7 @@ import {
   LgpdServiceTestContext,
   restoreLgpdServiceTestContext,
 } from './lgpd.service.spec-support';
+const { jest } = import.meta;
 
 describe('synchronizeAnonymizedAuditEntries', () => {
   let context: LgpdServiceTestContext;

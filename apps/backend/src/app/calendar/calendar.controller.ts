@@ -1,8 +1,8 @@
 import { Controller, Get, Param, Res } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Response } from 'express';
+import { type Response } from 'express';
 import { Public } from '../auth/decorators/public.decorator';
-import { CalendarDownload } from './calendar.models';
+import { type CalendarDownload } from './calendar.models';
 import { CalendarService } from './calendar.service';
 
 const DEFAULT_PUBLIC_APP_ORIGIN = 'http://localhost:4200';

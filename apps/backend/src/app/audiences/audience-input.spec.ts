@@ -1,6 +1,7 @@
 import { ANONYMOUS_AUDIENCE, audienceContext } from './audience-context';
 import { EventAudience } from '@prisma/client';
 import { applyAudienceSettings, normalizeAudienceInput, withoutAudienceInput } from './audience-input';
+const { jest } = import.meta;
 
 describe('audience configuration', () => {
   it('keeps legacy/default targets public and removes stale course restrictions when changing audience', () => {

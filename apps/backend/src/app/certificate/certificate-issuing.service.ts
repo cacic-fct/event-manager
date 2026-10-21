@@ -8,18 +8,19 @@ import {
 import { BadRequestException, forwardRef, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { AuditLogOperation, Prisma } from '@prisma/client';
 import { AuditLogService } from '../audit-log/audit-log.service';
-import { AuditActor, AuditPrismaClient } from '../audit-log/audit-log.types';
+import { type AuditActor, type AuditPrismaClient } from '../audit-log/audit-log.types';
 import { NovuNotificationsService } from '../notifications/novu-notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import type { DeferredInjection } from '../common/deferred-injection';
 import {
   CERTIFICATE_SELECT,
   CERTIFICATE_CONFIG_SELECT,
-  CertificateRecord,
-  CertificateConfigRecord,
+  type CertificateRecord,
+  type CertificateConfigRecord,
   buildConfigTargetWhere,
   mapCertificate,
 } from './certificate.constants';
-import { CertificateEligibilityService, EligibleCertificateRecipient } from './certificate-eligibility.service';
+import { CertificateEligibilityService, type EligibleCertificateRecipient } from './certificate-eligibility.service';
 import { CertificateIssuanceAudit } from './certificate-issuance-audit';
 import { notifyCertificateAvailable } from './certificate-issuance-notifications';
 import { CertificateNotificationJobsService } from './certificate-notification-jobs.service';
@@ -43,10 +44,11 @@ export class CertificateIssuingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly validation: CertificateValidationService,
-    private readonly eligibilityService: CertificateEligibilityService,
+    @Inject(forwardRef(() => CertificateEligibilityService))
+    private readonly eligibilityService: DeferredInjection<CertificateEligibilityService>,
     private readonly notifications?: NovuNotificationsService,
     @Inject(forwardRef(() => AuditLogService))
-    auditLog: AuditLogService = { record: async () => undefined } as unknown as AuditLogService,
+    auditLog: DeferredInjection<AuditLogService> = { record: async () => undefined } as unknown as AuditLogService,
     private readonly notificationJobs?: CertificateNotificationJobsService,
   ) {
     this.audit = new CertificateIssuanceAudit(auditLog);

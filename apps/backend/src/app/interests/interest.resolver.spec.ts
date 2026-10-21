@@ -1,4 +1,5 @@
 import { EventInterestsResolver } from './interest.resolver';
+const { jest } = import.meta;
 
 describe('EventInterestsResolver', () => {
   it('uses the current person and publishes a realtime refresh after toggling interest', async () => {

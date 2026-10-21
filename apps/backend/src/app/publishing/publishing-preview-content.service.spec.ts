@@ -1,6 +1,7 @@
 import { PublicationTargetType } from '@cacic-fct/shared-data-types';
 import { AuditLogEntityType, PublicationPreviewTargetType, PublicationState } from '@prisma/client';
 import { PublicationPreviewContentService } from './publishing-preview-content.service';
+const { jest } = import.meta;
 
 describe('PublicationPreviewContentService', () => {
   function createService() {

@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { moveEventInterests } from './interests';
+const { jest } = import.meta;
 
 describe('merge interest history', () => {
   it('moves history and retires active duplicates for restoration on undo', async () => {

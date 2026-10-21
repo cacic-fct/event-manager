@@ -6,7 +6,7 @@ import {
   Get,
   Header,
   Headers,
-  MessageEvent,
+  type MessageEvent,
   Param,
   Post,
   Query,
@@ -32,20 +32,20 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import { pipeline } from 'node:stream/promises';
 import { defer, Observable, switchMap } from 'rxjs';
 import { EventFormTargetType } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { EventFormsService } from './event-forms.service';
 import { SseReplayService } from '../realtime/sse-replay.service';
 import { EventFormImagesService } from './event-form-images.service';
 import {
   EVENT_FORM_IMAGE_FORMAT_ERROR,
   MAX_EVENT_FORM_IMAGE_FILE_SIZE_BYTES,
-  UploadedEventFormImageFile,
+  type UploadedEventFormImageFile,
   isAllowedEventFormImageMimeType,
 } from './event-form-image.utils';
 

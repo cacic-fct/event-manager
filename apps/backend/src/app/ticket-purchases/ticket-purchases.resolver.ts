@@ -1,6 +1,6 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { TicketPurchaseModel, TicketPurchaseOptionModel } from './ticket-purchase.models';
 import { TicketPurchasesService } from './ticket-purchases.service';
 

@@ -1,4 +1,5 @@
 import { assertScannerTicket } from './scanner-ticket-validation';
+const { jest } = import.meta;
 
 const ticketId = '019af432-98b0-7000-8000-000000000001';
 const input = {

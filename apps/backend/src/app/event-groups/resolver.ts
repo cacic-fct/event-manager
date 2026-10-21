@@ -10,7 +10,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
 import { AuditLogEntityType, AuditLogOperation, CertificateScope, Prisma } from '@prisma/client';
 import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { eventContentAuditSnapshot } from '../events/event-content-audit';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
