@@ -12,38 +12,38 @@ let nextWorkspaceRecordId = 0;
   imports: [MatButtonModule, NgTemplateOutlet, RouterLink],
   template: `
     <div class="record" [class.selected]="selected()">
-      @if (readonly()) {
-        <div class="record-main"><ng-container [ngTemplateOutlet]="content" /></div>
-      } @else if (link(); as destination) {
-        <a
-          mat-button
-          class="record-main"
-          [routerLink]="disabled() ? null : destination"
-          [queryParams]="queryParams()"
-          [disabled]="disabled()"
-          [attr.aria-label]="label() || title()"
-          [attr.aria-describedby]="descriptionId"
-          [attr.aria-current]="selected() ? 'page' : null">
-          <ng-container [ngTemplateOutlet]="content" />
-        </a>
-      } @else {
-        <button
-          mat-button
-          class="record-main"
-          type="button"
-          [disabled]="disabled()"
-          [attr.aria-label]="label() || title()"
-          [attr.aria-describedby]="descriptionId"
-          [attr.aria-pressed]="selected()"
-          (click)="activate.emit()">
-          <ng-container [ngTemplateOutlet]="content" />
-        </button>
-      }
-      <ng-template #content>
-        <span class="record-content">
-          <span class="record-title"><ng-content select="[recordIcon]" />{{ title() }}</span>
-          <span class="record-description" [id]="descriptionId"><ng-content select="[recordDescription]" /></span>
-        </span>
+      <div class="record-primary">
+        @if (readonly()) {
+          <div class="record-main"><ng-container [ngTemplateOutlet]="titleContent" /></div>
+        } @else if (link(); as destination) {
+          <a
+            mat-button
+            class="record-main"
+            [routerLink]="disabled() ? null : destination"
+            [queryParams]="queryParams()"
+            [disabled]="disabled()"
+            [attr.aria-label]="label() || title()"
+            [attr.aria-describedby]="descriptionId"
+            [attr.aria-current]="selected() ? 'page' : null">
+            <ng-container [ngTemplateOutlet]="titleContent" />
+          </a>
+        } @else {
+          <button
+            mat-button
+            class="record-main"
+            type="button"
+            [disabled]="disabled()"
+            [attr.aria-label]="label() || title()"
+            [attr.aria-describedby]="descriptionId"
+            [attr.aria-pressed]="selected()"
+            (click)="activate.emit()">
+            <ng-container [ngTemplateOutlet]="titleContent" />
+          </button>
+        }
+        <span class="record-description" [id]="descriptionId"><ng-content select="[recordDescription]" /></span>
+      </div>
+      <ng-template #titleContent>
+        <span class="record-title"><ng-content select="[recordIcon]" />{{ title() }}</span>
       </ng-template>
       <div class="record-actions"><ng-content select="[recordActions]" /></div>
     </div>
@@ -62,31 +62,44 @@ let nextWorkspaceRecordId = 0;
     .record.selected {
       background: var(--mat-sys-secondary-container);
     }
-    .record-main {
+    .record-primary {
+      position: relative;
+      display: grid;
+      align-content: center;
+      gap: 0.25rem;
       flex: 1;
       min-width: 0;
-      height: auto;
       min-height: 64px;
       padding: 0.75rem;
+      box-sizing: border-box;
+      border-radius: inherit;
+      color: var(--mat-sys-on-surface);
+    }
+    .record.selected .record-primary {
+      color: var(--mat-sys-on-secondary-container);
+    }
+    .record-primary > .record-main {
+      position: static;
+      width: 100%;
+      min-width: 0;
+      height: auto;
+      min-height: 0;
+      padding: 0;
       justify-content: flex-start;
       text-align: start;
       white-space: normal;
-      border-radius: 8px;
-      color: var(--mat-sys-on-surface);
+      border-radius: inherit;
     }
-    .record.selected .record-main {
-      color: var(--mat-sys-on-secondary-container);
+    .record-main:not(:disabled):not([aria-disabled='true']) {
+      color: inherit;
     }
-    .record-content {
-      display: grid;
-      gap: 0.25rem;
-      min-width: 0;
-    }
-    .record-main:not(:disabled) .record-content {
-      color: var(--mat-sys-on-surface);
-    }
-    .record.selected .record-main:not(:disabled) .record-content {
-      color: var(--mat-sys-on-secondary-container);
+    /* Keep metadata outside the control's name while retaining the row-sized target. */
+    a.record-main::after,
+    button.record-main::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
     }
     .record-title {
       display: flex;
@@ -115,7 +128,7 @@ let nextWorkspaceRecordId = 0;
       .record {
         flex-wrap: wrap;
       }
-      .record-main {
+      .record-primary {
         flex-basis: 100%;
       }
       .record-actions {

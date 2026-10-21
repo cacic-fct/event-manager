@@ -62,3 +62,17 @@ bunx nx run public:test-workbox
 ```
 
 Também confira o build de produção do `public`, porque o Workbox entra no alvo de build final.
+
+## Acessibilidade
+
+Os testes com Axe identificam problemas automáticos; um resultado sem violações não comprova conformidade completa com WCAG. Combine-os com testes de teclado e uma avaliação manual com tecnologia assistiva.
+
+Para os registros de contexto, confira no Storybook e na aplicação:
+
+- O leitor de tela anuncia um nome curto para a ação e os metadados como descrição, sem repeti-los no nome.
+- Tab e Shift+Tab percorrem a ação principal e as ações secundárias com foco visível. Enter ativa links e botões; Espaço ativa botões.
+- Clicar nos metadados aciona o registro correto, sem interferir nas ações secundárias. Registros desabilitados não respondem.
+- A navegação sem edições dispensa confirmação. Com edições, cancelar mantém os valores e devolve o foco; confirmar permite sair.
+- Zoom de 200%, tela estreita e temas claro/escuro preservam leitura, foco e acesso às ações.
+
+Registre o leitor de tela, navegador, sistema e resultados usados na avaliação. Não marque a avaliação manual como concluída apenas porque os testes automáticos passaram. Asserções do nome e da descrição calculados verificam a semântica exposta pelo navegador, mas não substituem ouvir a experiência em um leitor de tela.

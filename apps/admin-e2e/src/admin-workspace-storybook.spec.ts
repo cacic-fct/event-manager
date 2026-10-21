@@ -478,7 +478,7 @@ test.describe('admin workspace Storybook regression', () => {
       const rankedResults = dialog.getByRole('button', { name: /^Selecionar / });
       await expect(rankedResults.nth(0)).toHaveAccessibleName('Selecionar Oficina de acessibilidade 1');
       await expect(rankedResults.nth(1)).toHaveAccessibleName('Selecionar Oficina independente');
-      await expect(dialog.getByText(/Evento, tipo: Palestra .* publicação: Publicado/)).toBeVisible();
+      await expect(dialog.getByText(/Evento\s*, tipo: Palestra .* publicação: Publicado/)).toBeVisible();
       await expect(dialog.getByText('Sala 1', { exact: true })).toBeVisible();
       await expect(dialog.getByText(/Em:.*Semana da Computação/)).toBeVisible();
       if (captureDirectory) {
@@ -530,10 +530,13 @@ test.describe('admin workspace Storybook regression', () => {
         });
       }
       await dialog.getByRole('button', { name: 'Selecionar Laboratório do grupo 1', exact: true }).click();
+      await expect(page.getByRole('heading', { name: 'Editar evento', exact: true })).toBeVisible();
+      await expect(page.getByRole('textbox', { name: 'Nome', exact: true })).toHaveValue('Laboratório do grupo 1');
 
       navigation = await openContextNavigation();
       await navigation.getByRole('button', { name: 'Voltar para Trilha de desenvolvimento web', exact: true }).click();
       await expect(page).toHaveURL(/#\/event-workspace\/group\/workspace-group$/);
+      await expect(page.getByRole('dialog', { name: 'Descartar alterações?', exact: true })).toHaveCount(0);
       navigation = await openContextNavigation();
       await navigation.getByRole('button', { name: 'Voltar para Semana da Computação', exact: true }).click();
       await expect(page).toHaveURL(/#\/event-workspace\/major-event\/workspace-major$/);
@@ -633,6 +636,30 @@ test.describe('admin workspace Storybook regression', () => {
         });
       }
     }
+  });
+
+  test('protects edited event settings when returning to the parent context', async ({ page }) => {
+    await page.goto(
+      `${storybookURL}/iframe.html?id=admin-event-management-event-workspace-overview--integrated-shell-hub-and-editor&viewMode=story&embed=true#/event-workspace/event/group-activity-1/settings`,
+    );
+    await expect(page.getByRole('heading', { name: 'Editar evento', exact: true })).toBeVisible();
+    const title = page.getByRole('textbox', { name: 'Nome', exact: true });
+    await expect(title).toHaveValue('Laboratório do grupo 1');
+    await title.fill('Alteração ainda não salva');
+    const back = page.getByRole('button', { name: 'Voltar para Trilha de desenvolvimento web', exact: true });
+    await back.click();
+    const confirmation = page.getByRole('dialog', { name: 'Descartar alterações?', exact: true });
+    await expect(confirmation).toBeVisible();
+    await expect(page).toHaveURL(/#\/event-workspace\/event\/group-activity-1\/settings$/);
+    await confirmation.getByRole('button', { name: 'Cancelar', exact: true }).click();
+    await expect(confirmation).toHaveCount(0);
+    await expect(title).toHaveValue('Alteração ainda não salva');
+    await expect(back).toBeFocused();
+    await back.click();
+    await expect(confirmation).toBeVisible();
+    await confirmation.getByRole('button', { name: 'Descartar alterações', exact: true }).click();
+    await expect(page).toHaveURL(/#\/event-workspace\/group\/workspace-group$/);
+    await expect(confirmation).toHaveCount(0);
   });
 
   test('keeps operations in the contextual sidebar and exposes global tools without discarding work', async ({

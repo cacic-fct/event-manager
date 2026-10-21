@@ -1,3 +1,4 @@
+import { within } from '@testing-library/dom';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -14,6 +15,7 @@ import { flushAsync } from '../testing/async-test-helpers';
 import {
   contextStoryEvent as event,
   contextStoryGroup as group,
+  contextStoryGroupEvent as groupEvent,
   contextStoryMajor as major,
   contextStoryPage,
 } from './event-context-story.fixtures';
@@ -135,8 +137,13 @@ describe('EventContextPickerComponent paged hierarchy', () => {
     await picker.toggleBranch(group);
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;
-    expect(root.querySelector('button[aria-label="Selecionar Trilha de desenvolvimento web"]')).toBeNull();
-    expect(root.querySelector('button[aria-label="Selecionar Encontro da trilha"]')).not.toBeNull();
+    const canvas = within(root);
+    expect(canvas.queryByRole('button', { name: 'Selecionar Trilha de desenvolvimento web' })).toBeNull();
+    const selection = canvas.getByRole('button', { name: 'Selecionar Encontro da trilha' });
+    const selected = vi.fn();
+    picker.contextChange.subscribe(selected);
+    selection.click();
+    expect(selected).toHaveBeenCalledWith({ kind: 'event', id: groupEvent.id });
     expect(api.listPage).toHaveBeenLastCalledWith({ parentKind: 'EVENT_GROUP', parentId: 'group-1', take: 20 });
   });
 
