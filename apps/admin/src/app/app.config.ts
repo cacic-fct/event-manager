@@ -64,6 +64,9 @@ export const appConfig: ApplicationConfig = {
         websiteId: 'd8c04657-2416-4af4-b21f-99ea8dcfc5d4',
         domains: ['eventos.cacic.com.br'],
         isEnabled: isAccountAnalyticsEnabled,
+        replay: {
+          isEnabled: (user) => !user || accountPrivacy().loaded(),
+        },
         buildIdentifyData,
       },
       glitchtip: {

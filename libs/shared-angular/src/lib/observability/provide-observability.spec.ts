@@ -12,9 +12,20 @@ describe('provideCacicObservability replay script loader', () => {
   const replayScriptId = 'cacic-replay-script';
   let auth: Pick<AuthService, 'initialized' | 'user'>;
   let application: ApplicationRef | undefined;
+  let sessionCache: string | undefined;
+  let sessionWebsite: string;
+
+  const tracker = {
+    track: vi.fn(),
+    identify: vi.fn(),
+    getSession: () => ({ cache: sessionCache, website: sessionWebsite }),
+  };
 
   beforeEach(() => {
     document.getElementById(replayScriptId)?.remove();
+    sessionCache = 'test-session';
+    sessionWebsite = 'test-website';
+    window.umami = tracker;
     auth = {
       initialized: signal(false),
       user: signal<AuthenticatedUser | null>(null),
@@ -24,15 +35,18 @@ describe('provideCacicObservability replay script loader', () => {
   afterEach(async () => {
     application?.destroy();
     application = undefined;
+    delete window.umami;
+    vi.restoreAllMocks();
+    vi.useRealTimers();
     document.getElementById(replayScriptId)?.remove();
   });
 
-  it('keeps replay disabled when replay config is omitted even if analytics, diagnostics, and performance are enabled', async () => {
+  it('loads replay for anonymous visitors by default when analytics is enabled', async () => {
     await createLoader();
     auth.initialized.set(true);
     await settleEffects();
 
-    expect(document.getElementById(replayScriptId)).toBeNull();
+    expect(document.getElementById(replayScriptId)).not.toBeNull();
   });
 
   it('keeps replay disabled when its explicit gate is false even if other consent gates are enabled', async () => {
@@ -55,11 +69,11 @@ describe('provideCacicObservability replay script loader', () => {
     expect(document.getElementById(replayScriptId)).toBeNull();
   });
 
-  it('loads replay only after auth initialization when its explicit gate is true, using strict default capture settings', async () => {
+  it('loads replay after auth initialization independently of diagnostics and performance preferences', async () => {
     await createLoader(
       { isEnabled: () => true },
       {
-        isAnalyticsEnabled: false,
+        isAnalyticsEnabled: true,
         isDiagnosticsEnabled: false,
         isPerformanceEnabled: false,
       },
@@ -74,9 +88,109 @@ describe('provideCacicObservability replay script loader', () => {
     const script = document.getElementById(replayScriptId) as HTMLScriptElement | null;
     expect(script).not.toBeNull();
     expect(script?.src).toBe('https://a.cacic.com.br/recorder.js');
-    expect(script?.dataset['sampleRate']).toBe('0.15');
-    expect(script?.dataset['maskLevel']).toBe('strict');
-    expect(script?.dataset['maxDuration']).toBe('300000');
+    expect(script?.dataset['websiteId']).toBe('test-website');
+  });
+
+  it('respects analytics opt-out even when replay is explicitly enabled', async () => {
+    await createLoader(
+      { isEnabled: () => true },
+      {
+        isAnalyticsEnabled: false,
+        isDiagnosticsEnabled: true,
+        isPerformanceEnabled: true,
+      },
+    );
+    auth.initialized.set(true);
+    await settleEffects();
+
+    expect(document.getElementById(replayScriptId)).toBeNull();
+  });
+
+  it('loads replay for authenticated visitors after their preference gate is ready', async () => {
+    const preferencesLoaded = signal(false);
+    auth.user.set({ sub: 'test-user' });
+    await createLoader({ isEnabled: () => preferencesLoaded() });
+    auth.initialized.set(true);
+    await settleEffects();
+    expect(document.getElementById(replayScriptId)).toBeNull();
+
+    preferencesLoaded.set(true);
+    await settleEffects();
+
+    expect(document.getElementById(replayScriptId)).not.toBeNull();
+  });
+
+  it('waits beyond the recorder startup timeout for a matching analytics session', async () => {
+    delete window.umami;
+    sessionCache = undefined;
+    await createLoader();
+    vi.useFakeTimers();
+    auth.initialized.set(true);
+    await vi.advanceTimersByTimeAsync(6000);
+    expect(document.getElementById(replayScriptId)).toBeNull();
+
+    window.umami = tracker;
+    sessionCache = 'test-session';
+    sessionWebsite = 'another-website';
+    await vi.advanceTimersByTimeAsync(250);
+    expect(document.getElementById(replayScriptId)).toBeNull();
+
+    sessionWebsite = 'test-website';
+    await vi.advanceTimersByTimeAsync(250);
+    expect(document.getElementById(replayScriptId)).not.toBeNull();
+  });
+
+  it('cancels pending startup when replay is disabled', async () => {
+    sessionCache = undefined;
+    const replayAllowed = signal(true);
+    await createLoader({ isEnabled: () => replayAllowed() });
+    vi.useFakeTimers();
+    auth.initialized.set(true);
+    await vi.advanceTimersByTimeAsync(0);
+
+    replayAllowed.set(false);
+    await vi.advanceTimersByTimeAsync(0);
+    sessionCache = 'test-session';
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(document.getElementById(replayScriptId)).toBeNull();
+  });
+
+  it('cancels pending startup when the application is destroyed', async () => {
+    sessionCache = undefined;
+    await createLoader();
+    vi.useFakeTimers();
+    auth.initialized.set(true);
+    await vi.advanceTimersByTimeAsync(0);
+    application?.destroy();
+    application = undefined;
+    sessionCache = 'test-session';
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(document.getElementById(replayScriptId)).toBeNull();
+  });
+
+  it('ends an executed recorder when analytics is opted out', async () => {
+    const analyticsAllowed = signal(true);
+    const otherConsents = {
+      isAnalyticsEnabled: analyticsAllowed,
+      isDiagnosticsEnabled: true,
+      isPerformanceEnabled: true,
+    };
+    await createLoader(undefined, otherConsents);
+    auth.initialized.set(true);
+    await settleEffects();
+    document.getElementById(replayScriptId)?.dispatchEvent(new Event('load'));
+    const reload = vi.fn();
+    vi.spyOn(document, 'defaultView', 'get').mockReturnValue({
+      location: { reload },
+    } as unknown as Window & typeof globalThis);
+
+    analyticsAllowed.set(false);
+    await settleEffects();
+
+    expect(document.getElementById(replayScriptId)).toBeNull();
+    expect(reload).toHaveBeenCalledOnce();
   });
 
   it('removes the recorder script when explicit replay consent is revoked', async () => {
@@ -107,7 +221,7 @@ describe('provideCacicObservability replay script loader', () => {
   async function createLoader(
     replay?: NonNullable<CacicObservabilityConfig['analytics']['replay']>,
     otherConsents: {
-      isAnalyticsEnabled: boolean;
+      isAnalyticsEnabled: boolean | (() => boolean);
       isDiagnosticsEnabled: boolean;
       isPerformanceEnabled: boolean;
     } = {
@@ -119,7 +233,10 @@ describe('provideCacicObservability replay script loader', () => {
     const analytics: CacicObservabilityConfig['analytics'] = {
       websiteId: 'test-website',
       domains: ['non-matching.test'],
-      isEnabled: () => otherConsents.isAnalyticsEnabled,
+      isEnabled: () =>
+        typeof otherConsents.isAnalyticsEnabled === 'function'
+          ? otherConsents.isAnalyticsEnabled()
+          : otherConsents.isAnalyticsEnabled,
       ...(replay ? { replay } : {}),
     };
     const config: CacicObservabilityConfig = {

@@ -39,9 +39,6 @@ export type CacicObservabilityConfig = {
     replay?: {
       isEnabled: CacicObservabilityToggle;
       src?: string;
-      sampleRate?: number;
-      maskLevel?: 'none' | 'light' | 'moderate' | 'strict';
-      maxDuration?: number;
     };
   };
   glitchtip: {
@@ -55,9 +52,11 @@ export type CacicObservabilityConfig = {
 const UMAMI_REPLAY_SCRIPT_ID = 'cacic-replay-script';
 const DEFAULT_UMAMI_ANALYTICS_SRC = 'https://a.cacic.com.br/b.js';
 const DEFAULT_UMAMI_REPLAY_SRC = 'https://a.cacic.com.br/recorder.js';
-const DEFAULT_UMAMI_REPLAY_SAMPLE_RATE = 0.15;
-const DEFAULT_UMAMI_REPLAY_MASK_LEVEL = 'strict';
-const DEFAULT_UMAMI_REPLAY_MAX_DURATION = 300_000;
+const UMAMI_SESSION_POLL_INTERVAL_MS = 250;
+
+type UmamiSessionTracker = {
+  getSession?: () => { cache?: string; website?: string };
+};
 
 @Service({ autoProvided: false })
 class CacicSentryErrorHandler implements ErrorHandler {
@@ -79,7 +78,9 @@ class CacicObservabilityConsentService {
 
   isReplayEnabled(config: CacicObservabilityConfig, user: AuthenticatedUser | null): boolean {
     try {
-      return this.evaluate(() => config.analytics.replay?.isEnabled(user) ?? false);
+      return (
+        this.isAnalyticsEnabled(config, user) && this.evaluate(() => config.analytics.replay?.isEnabled(user) ?? true)
+      );
     } catch {
       return false;
     }
@@ -112,6 +113,7 @@ class CacicUmamiReplayScriptLoader {
   private readonly isDevelopment = inject(CACIC_OBSERVABILITY_REPLAY_IS_DEVELOPMENT);
 
   private readonly isBrowser = isPlatformBrowser(this.platformId);
+  private recorderLoaded = false;
 
   start(config: CacicObservabilityConfig): void {
     if (!this.isBrowser || this.isDevelopment || !config.analytics.websiteId) {
@@ -119,7 +121,7 @@ class CacicUmamiReplayScriptLoader {
     }
 
     effect(
-      () => {
+      (onCleanup) => {
         if (!this.auth.initialized()) {
           this.removeScript();
           return;
@@ -129,7 +131,19 @@ class CacicUmamiReplayScriptLoader {
         const canRecord = this.consent.isReplayEnabled(config, user);
 
         if (canRecord) {
-          this.ensureScript(config);
+          // The recorder abandons startup after five seconds without a session.
+          // Wait here instead so slow tracker loads and collect requests can finish.
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          const loadWhenReady = () => {
+            if (this.hasAnalyticsSession(config.analytics.websiteId)) {
+              this.ensureScript(config);
+              return;
+            }
+
+            timer = setTimeout(loadWhenReady, UMAMI_SESSION_POLL_INTERVAL_MS);
+          };
+          loadWhenReady();
+          onCleanup(() => clearTimeout(timer));
           return;
         }
 
@@ -137,6 +151,12 @@ class CacicUmamiReplayScriptLoader {
       },
       { injector: this.injector },
     );
+  }
+
+  private hasAnalyticsSession(websiteId: string): boolean {
+    const tracker = this.document.defaultView?.umami as UmamiSessionTracker | undefined;
+    const session = tracker?.getSession?.();
+    return Boolean(session?.cache) && session?.website === websiteId;
   }
 
   private ensureScript(config: CacicObservabilityConfig): void {
@@ -150,15 +170,24 @@ class CacicUmamiReplayScriptLoader {
     script.defer = true;
     script.src = trustedExternalScriptUrl(replayConfig?.src ?? DEFAULT_UMAMI_REPLAY_SRC);
     script.dataset['websiteId'] = config.analytics.websiteId;
-    script.dataset['sampleRate'] = String(replayConfig?.sampleRate ?? DEFAULT_UMAMI_REPLAY_SAMPLE_RATE);
-    script.dataset['maskLevel'] = replayConfig?.maskLevel ?? DEFAULT_UMAMI_REPLAY_MASK_LEVEL;
-    script.dataset['maxDuration'] = String(replayConfig?.maxDuration ?? DEFAULT_UMAMI_REPLAY_MAX_DURATION);
+    script.onload = () => {
+      this.recorderLoaded = true;
+      if (!this.auth.initialized() || !this.consent.isReplayEnabled(config, this.currentUser())) {
+        this.removeScript();
+      }
+    };
 
     this.document.head.append(script);
   }
 
   private removeScript(): void {
     this.document.getElementById(UMAMI_REPLAY_SCRIPT_ID)?.remove();
+    if (this.recorderLoaded) {
+      // Removing an executed script does not stop its observers. Umami exposes
+      // no recorder stop API, so end the document when tracking is revoked.
+      this.recorderLoaded = false;
+      this.document.defaultView?.location.reload();
+    }
   }
 
   private currentUser(): AuthenticatedUser | null {

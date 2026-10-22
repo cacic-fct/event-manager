@@ -142,6 +142,9 @@ export const appConfig: ApplicationConfig = {
         websiteId: 'df6b1fa8-7566-4cb0-8dff-279d15cc0b5d',
         domains: ['eventos.cacic.com.br'],
         isEnabled: isAccountAnalyticsEnabled,
+        replay: {
+          isEnabled: (user) => !user || accountPrivacy().loaded(),
+        },
         buildIdentifyData: (user) => ({
           authenticated: true,
           has_email: Boolean(user.email),
