@@ -2,6 +2,7 @@ import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import {
   Service,
+  DestroyRef,
   Injector,
   PLATFORM_ID,
   REQUEST,
@@ -77,6 +78,28 @@ export class AuthService {
   readonly roles = computed(() => this.user()?.roles ?? []);
   readonly scopes = computed(() => this.user()?.scopes ?? []);
   readonly isAuthenticated = computed(() => Boolean(this.user()));
+
+  constructor() {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const onPageShow = (event: PageTransitionEvent): void => {
+      if (!event.persisted || !this.onboardingRedirectStarted) {
+        return;
+      }
+
+      // Back/Forward can restore this service with the previous redirect guard
+      // still set. Recheck the account in case onboarding was completed meanwhile.
+      this.onboardingRedirectStarted = false;
+      void this.refreshMe().catch((error: unknown) => {
+        this.logUnexpectedAuthError('Onboarding recheck after history restoration failed', error);
+      });
+    };
+
+    window.addEventListener('pageshow', onPageShow);
+    inject(DestroyRef).onDestroy(() => window.removeEventListener('pageshow', onPageShow));
+  }
 
   async initialize(): Promise<void> {
     try {

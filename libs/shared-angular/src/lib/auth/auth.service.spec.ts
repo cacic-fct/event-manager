@@ -50,7 +50,9 @@ describe('AuthService silent SSO fallback', () => {
   });
 
   afterEach(() => {
-    injector.destroy();
+    if (!injector.destroyed) {
+      injector.destroy();
+    }
     vi.restoreAllMocks();
   });
 
@@ -292,6 +294,91 @@ describe('AuthService silent SSO fallback', () => {
     service.redirectToOnboarding();
     expect(analytics.trackEvent).toHaveBeenCalledExactlyOnceWith('onboarding_redirect', { source: 'api' });
     expect(window.sessionStorage.getItem('cacic-eventos:onboarding-return-url')).toBe(window.location.href);
+  });
+
+  it('tracks a fresh redirect after history restoration while still deduplicating concurrent checks', async () => {
+    const user = { sub: 'user-1', claims: { is_onboarded: false } };
+    service.user.set(user);
+    Reflect.set(service, 'http', { get: vi.fn(() => of(user)) });
+    const refresh = vi.spyOn(service, 'refreshTokenSilently').mockReturnValue(of({ expiresAt: Date.now() + 60_000 }));
+
+    await service.ensureAuthenticated();
+    expect(analytics.trackEvent).toHaveBeenCalledTimes(1);
+
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+    await Promise.all([service.ensureAuthenticated(), service.ensureAuthenticated()]);
+
+    expect(refresh).toHaveBeenCalledTimes(2);
+    expect(analytics.trackEvent.mock.calls).toEqual([
+      ['onboarding_redirect', { source: 'session' }],
+      ['onboarding_redirect', { source: 'session' }],
+    ]);
+  });
+
+  it('does not redirect again when onboarding was completed before history restoration', async () => {
+    service.user.set({ sub: 'user-1', claims: { is_onboarded: false } });
+    service.redirectToOnboarding();
+    const http = {
+      get: vi.fn(() => of({ sub: 'user-1', claims: { is_onboarded: true } })),
+    };
+    Reflect.set(service, 'http', http);
+    const refresh = vi.spyOn(service, 'refreshTokenSilently');
+
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+    await vi.waitFor(() => expect(service.user()?.claims?.['is_onboarded']).toBe(true));
+    await expect(service.ensureAuthenticated()).resolves.toBe(true);
+
+    expect(http.get).toHaveBeenCalledExactlyOnceWith('/api/auth/me');
+    expect(refresh).not.toHaveBeenCalled();
+    expect(analytics.trackEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it('tracks a new server refusal after history restoration despite disabled client enforcement', async () => {
+    const user = { sub: 'user-1', claims: { is_onboarded: true } };
+    service.user.set(user);
+    Reflect.set(service, 'isOnboardingEnforcementEnabled', () => false);
+    Reflect.set(service, 'http', { get: vi.fn(() => of(user)) });
+    service.redirectToOnboarding();
+
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+    await expect(service.ensureAuthenticated()).resolves.toBe(true);
+    service.redirectToOnboarding();
+    service.redirectToOnboarding();
+
+    expect(analytics.trackEvent.mock.calls).toEqual([
+      ['onboarding_redirect', { source: 'api' }],
+      ['onboarding_redirect', { source: 'api' }],
+    ]);
+  });
+
+  it('keeps server refusal redirects deduplicated on the initial pageshow event', () => {
+    const recheck = vi.spyOn(service, 'refreshMe');
+    service.redirectToOnboarding();
+
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: false }));
+    service.redirectToOnboarding();
+
+    expect(recheck).not.toHaveBeenCalled();
+    expect(analytics.trackEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not recheck unrelated history restorations', () => {
+    const recheck = vi.spyOn(service, 'refreshMe');
+
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+
+    expect(recheck).not.toHaveBeenCalled();
+    expect(analytics.trackEvent).not.toHaveBeenCalled();
+  });
+
+  it('removes the history restoration listener when destroyed', () => {
+    service.redirectToOnboarding();
+    const recheck = vi.spyOn(service, 'refreshMe');
+    injector.destroy();
+
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+
+    expect(recheck).not.toHaveBeenCalled();
   });
 
   it('continues onboarding navigation when optional analytics fails', () => {
