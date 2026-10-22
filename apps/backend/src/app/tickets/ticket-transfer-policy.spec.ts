@@ -85,14 +85,14 @@ describe('ticket transfer privacy policies', () => {
 
   it('hides all recipient resolution data and timing changes from the sender', () => {
     const now = new Date();
-    const createdAt = new Date(now.getTime() - 5_000);
     const transfer = transferFixture({
       recipientStatus: TicketTransferRecipientStatus.SYSTEM_INELIGIBLE,
       ignoreReason: TicketTransferIgnoreReason.INELIGIBLE,
-      updatedAt: new Date(createdAt.getTime() + 5_000),
       recipient: { id: 'person-secret', name: 'Recipient Name', identityDocument: '52998224725', isCPF: true },
       recipientUserId: 'user-secret',
     });
+    const createdAt = transfer.createdAt;
+    transfer.updatedAt = new Date(createdAt.getTime() + 5_000);
     const identityService = { revealSubmittedDocument: () => 'PASS-12345' } as unknown as TicketTransferService;
 
     const sender = mapTicketTransfer(transfer, 'AUTHOR', identityService, now);

@@ -36,7 +36,7 @@ describe('TicketTransferDemoComponent', () => {
     expect(activeElement?.textContent).toContain(text);
   }
 
-  it('shows both real-style identity summaries through distinct, focused transfer states', async () => {
+  it('shows identities for transfer decisions and concise, focused confirmation states', async () => {
     const component = fixture.componentInstance;
     const accepted = vi.fn();
     const back = vi.fn();
@@ -55,9 +55,12 @@ describe('TicketTransferDemoComponent', () => {
     await settleRender();
     expect(component.step()).toBe('pending');
     expect(renderedText()).toContain('Pedido enviado');
-    expect(renderedText()).toContain('Aguardando resposta.');
-    expect(renderedText()).toContain('Marina Costa');
-    expect(renderedText()).toContain('Rafael Almeida');
+    expect(fixture.nativeElement.querySelectorAll('app-ticket-person-summary')).toHaveLength(0);
+    expect(renderedText()).not.toContain('Marina Costa');
+    expect(renderedText()).not.toContain('Rafael Almeida');
+    expect(renderedText()).not.toContain(component.ticketName);
+    expect(renderedText()).not.toContain(component.eventName);
+    expect(renderedText()).not.toContain('Aguardando resposta.');
     expectFocusedHeading('Pedido enviado');
 
     buttonNamed('Ver recebimento').click();
@@ -71,8 +74,12 @@ describe('TicketTransferDemoComponent', () => {
     await settleRender();
     expect(component.step()).toBe('received');
     expect(renderedText()).toContain('Bilhete recebido');
-    expect(renderedText()).toContain('Marina Costa');
-    expect(renderedText()).toContain('Rafael Almeida');
+    expect(fixture.nativeElement.querySelectorAll('app-ticket-person-summary')).toHaveLength(0);
+    expect(renderedText()).not.toContain('Marina Costa');
+    expect(renderedText()).not.toContain('Rafael Almeida');
+    expect(renderedText()).toContain(component.ticketName);
+    expect(renderedText()).toContain(component.eventName);
+    expect(renderedText()).toContain(component.eventTimeAndPlace);
     expectFocusedHeading('Bilhete recebido');
     expect(accepted).toHaveBeenCalledOnce();
 

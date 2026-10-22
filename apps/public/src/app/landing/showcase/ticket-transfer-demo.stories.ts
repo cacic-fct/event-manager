@@ -30,9 +30,9 @@ export const Playground: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Enviar bilhete' }));
     await expect(canvas.getByRole('heading', { name: 'Pedido enviado' })).toBeVisible();
     await expect(canvas.getByRole('heading', { name: 'Pedido enviado' })).toHaveFocus();
-    await expect(canvas.getByText('Aguardando resposta.')).toBeVisible();
-    await expect(canvas.getByText('Marina Costa')).toBeVisible();
-    await expect(canvas.getByText('Rafael Almeida')).toBeVisible();
+    await expect(canvas.queryByText('Marina Costa')).not.toBeInTheDocument();
+    await expect(canvas.queryByText('Rafael Almeida')).not.toBeInTheDocument();
+    await expect(canvas.queryByText('Kit de boas-vindas')).not.toBeInTheDocument();
 
     await userEvent.click(canvas.getByRole('button', { name: 'Ver recebimento' }));
     await expect(canvas.getByText('Marina Costa quer transferir este bilhete')).toBeVisible();
@@ -41,7 +41,9 @@ export const Playground: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Receber bilhete' }));
     await expect(canvas.getByRole('heading', { name: 'Bilhete recebido' })).toBeVisible();
     await expect(canvas.getByRole('heading', { name: 'Bilhete recebido' })).toHaveFocus();
-    await expect(canvas.getByText('Rafael Almeida')).toBeVisible();
+    await expect(canvas.getByText('Kit de boas-vindas')).toBeVisible();
+    await expect(canvas.queryByText('Marina Costa')).not.toBeInTheDocument();
+    await expect(canvas.queryByText('Rafael Almeida')).not.toBeInTheDocument();
   },
 };
 
@@ -51,8 +53,9 @@ export const PendingReply: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Enviar bilhete' }));
     await expect(canvas.getByRole('heading', { name: 'Pedido enviado' })).toBeVisible();
-    await expect(canvas.getByText('Aguardando resposta.')).toBeVisible();
-    await expect(canvas.getByText('Rafael Almeida')).toBeVisible();
+    await expect(canvas.queryByText('Marina Costa')).not.toBeInTheDocument();
+    await expect(canvas.queryByText('Rafael Almeida')).not.toBeInTheDocument();
+    await expect(canvas.queryByText('Kit de boas-vindas')).not.toBeInTheDocument();
   },
 };
 
@@ -66,6 +69,8 @@ export const IncomingRecipient: Story = {
     await expect(canvas.getByText('Rafael Almeida')).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Receber bilhete' }));
     await expect(canvas.getByRole('heading', { name: 'Bilhete recebido' })).toBeVisible();
-    await expect(canvas.getByText('Rafael Almeida')).toBeVisible();
+    await expect(canvas.getByText('Kit de boas-vindas')).toBeVisible();
+    await expect(canvas.queryByText('Marina Costa')).not.toBeInTheDocument();
+    await expect(canvas.queryByText('Rafael Almeida')).not.toBeInTheDocument();
   },
 };

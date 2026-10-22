@@ -10,6 +10,7 @@ import { readFile } from 'node:fs/promises';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { appRoutes } from './app/app.routes';
+import { frontendVersionStream } from './server/frontend-version-stream';
 
 import { collectPaths } from '@cacic-fct/shared-angular';
 import xmlbuilder from 'xmlbuilder';
@@ -54,6 +55,8 @@ app.use((_req, res, next) => {
   res.setHeader('Referrer-Policy', publicReferrerPolicy);
   next();
 });
+
+app.get('/app/api/version/events', frontendVersionStream(publicAppVersion));
 
 app.get('/app/api/version', (_req, res) => {
   res.set({

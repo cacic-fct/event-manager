@@ -38,9 +38,7 @@
 }
 
 .ticket-transfer-demo h3:focus {
-  border-radius: 2px;
-  outline: 2px solid #d1f2de;
-  outline-offset: 3px;
+  outline: none;
 }
 
 .ticket-transfer-demo__ticket {
@@ -68,17 +66,11 @@
 }
 
 .ticket-transfer-demo__ticket span,
-.ticket-transfer-demo__people > div > span,
-.ticket-transfer-demo__status {
+.ticket-transfer-demo__people > div > span {
   color: #d4e2f5;
   font-size: 0.6875rem;
   line-height: 1.35;
   margin: 0;
-}
-
-.ticket-transfer-demo__ticket--receipt {
-  border-block: 1px solid rgb(255 255 255 / 24%);
-  padding-block: 0.5rem;
 }
 
 .ticket-transfer-demo__people {
@@ -97,12 +89,6 @@
   align-items: center;
   display: flex;
   gap: 0.875rem;
-  min-width: 0;
-}
-
-.ticket-transfer-demo__announcement > div {
-  display: grid;
-  gap: 0.2rem;
   min-width: 0;
 }
 

@@ -1,17 +1,20 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { Service, PLATFORM_ID, computed, inject, isDevMode, signal } from '@angular/core';
+import { DestroyRef, Service, PLATFORM_ID, computed, inject, isDevMode, signal } from '@angular/core';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { NavigationEnd, Router } from '@angular/router';
 
 import { UpdateModalComponent } from './dialog-components/update.component';
 import { UpdateErrorDialogComponent } from './dialog-components/update-error.component';
 import { trustedServiceWorkerUrl } from '../security/trusted-types';
 
 type UpdateState = 'idle' | 'checking' | 'downloading' | 'ready' | 'failed' | 'unrecoverable';
-const SERVICE_WORKER_RELOAD_KEY = 'cacic-eventos:service-worker-reload';
-const SERVICE_WORKER_RELOAD_COOLDOWN_MS = 60000;
+const NAVIGATION_CHECK_COOLDOWN_MS = 60_000;
+const UPDATE_TIMEOUT_MS = 90_000;
 
 @Service()
 export class ServiceWorkerService {
+  private readonly router = inject(Router, { optional: true });
+  private readonly destroyRef = inject(DestroyRef);
   private readonly dialog: MatDialog = inject(MatDialog);
   private readonly document: Document = inject(DOCUMENT);
   private readonly platformId: object = inject(PLATFORM_ID);
@@ -29,11 +32,15 @@ export class ServiceWorkerService {
   private updateDialogRef: MatDialogRef<UpdateModalComponent> | null = null;
   private registration: ServiceWorkerRegistration | null = null;
   private readonly trackedServiceWorkers = new WeakSet<ServiceWorker>();
-  private reloadWhenControlling = false;
+  private updateTimeout: ReturnType<typeof setTimeout> | undefined;
+  private errorDialogRef: MatDialogRef<UpdateErrorDialogComponent> | null = null;
+  private checking = false;
+  private deploymentCheckPending = false;
+  private reloading = false;
   private started = false;
   private recoveryAttempted = false;
 
-  start(): void {
+  start(frontendVersion?: string): void {
     if (this.started || !this.canUseServiceWorker() || isDevMode()) {
       return;
     }
@@ -41,17 +48,83 @@ export class ServiceWorkerService {
     this.started = true;
     this.serviceWorkerControlled.set(Boolean(navigator.serviceWorker.controller));
 
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      this.serviceWorkerControlled.set(Boolean(navigator.serviceWorker.controller));
-      if (!this.reloadWhenControlling) {
-        return;
+    let currentController = navigator.serviceWorker.controller;
+    const controllerChanged = () => {
+      const previousController = currentController;
+      currentController = navigator.serviceWorker.controller;
+      this.serviceWorkerControlled.set(Boolean(currentController));
+      // Workbox activates automatically, including updates installed by another tab.
+      // A first install must not interrupt the user's current visit.
+      if (previousController && currentController && previousController !== currentController && !this.reloading) {
+        this.reloading = true;
+        this.clearUpdateTimeout();
+        this.showUpdateProgress('ready');
+        this.reload();
       }
-
-      this.reloadWhenControlling = false;
-      this.reload();
+    };
+    const checkWhenVisible = () => {
+      if (this.document.visibilityState === 'visible' && navigator.onLine) {
+        void this.checkForUpdate();
+      }
+    };
+    navigator.serviceWorker.addEventListener('controllerchange', controllerChanged);
+    this.document.addEventListener('visibilitychange', checkWhenVisible);
+    window.addEventListener('online', checkWhenVisible);
+    window.addEventListener('pageshow', checkWhenVisible);
+    let lastNavigationCheck = Date.now();
+    const navigationSubscription = this.router?.events.subscribe((event) => {
+      if (event instanceof NavigationEnd && Date.now() - lastNavigationCheck >= NAVIGATION_CHECK_COOLDOWN_MS) {
+        lastNavigationCheck = Date.now();
+        checkWhenVisible();
+      }
+    });
+    this.destroyRef.onDestroy(() => {
+      navigationSubscription?.unsubscribe();
+      window.removeEventListener('pageshow', checkWhenVisible);
+      this.clearUpdateTimeout();
+      navigator.serviceWorker.removeEventListener('controllerchange', controllerChanged);
+      this.document.removeEventListener('visibilitychange', checkWhenVisible);
+      window.removeEventListener('online', checkWhenVisible);
+      this.updateDialogRef?.close();
+      this.errorDialogRef?.close();
     });
 
-    void this.registerServiceWorker();
+    void this.registerServiceWorker().then(() => {
+      if (frontendVersion) this.listenForFrontendDeployments(frontendVersion);
+    });
+  }
+
+  private listenForFrontendDeployments(frontendVersion: string): void {
+    if (this.destroyRef.destroyed || typeof EventSource === 'undefined') return;
+
+    const source = new EventSource(new URL('api/version/events', this.document.baseURI));
+    source.addEventListener('frontend-version', (event: MessageEvent<string>) => {
+      let payload: unknown;
+      try {
+        payload = JSON.parse(event.data);
+      } catch {
+        return;
+      }
+      if (
+        typeof payload === 'object' &&
+        payload !== null &&
+        'version' in payload &&
+        typeof payload.version === 'string' &&
+        payload.version.trim() &&
+        payload.version !== frontendVersion
+      ) {
+        // A version mismatch is a hint to fetch the worker, never permission to
+        // activate an incomplete download or compare against the backend version.
+        if (this.checking) {
+          this.deploymentCheckPending = true;
+        } else {
+          void this.checkForUpdate();
+        }
+      }
+    });
+    // EventSource reconnects after deployment or connectivity loss. Existing
+    // visibility/navigation checks also cover browsers or proxies without SSE.
+    this.destroyRef.onDestroy(() => source.close());
   }
 
   async checkForUpdate(): Promise<boolean> {
@@ -59,6 +132,11 @@ export class ServiceWorkerService {
       return false;
     }
 
+    if (this.checking || this.state() === 'downloading' || this.state() === 'ready' || !navigator.onLine) {
+      return false;
+    }
+
+    this.checking = true;
     try {
       this.state.set('checking');
 
@@ -75,14 +153,23 @@ export class ServiceWorkerService {
 
       const hasUpdate = Boolean(registration.waiting || registration.installing);
 
-      if (!hasUpdate) {
+      if (!hasUpdate && !this.reloading) {
+        this.error.set(null);
         this.state.set('idle');
       }
 
       return hasUpdate;
     } catch (error: unknown) {
-      await this.handleServiceWorkerError(error);
+      // A transient network failure must not remove offline support.
+      this.state.set('failed');
+      this.error.set(this.stringifyError(error));
       return false;
+    } finally {
+      this.checking = false;
+      if (this.deploymentCheckPending && !this.destroyRef.destroyed) {
+        this.deploymentCheckPending = false;
+        void this.checkForUpdate();
+      }
     }
   }
 
@@ -91,22 +178,7 @@ export class ServiceWorkerService {
       return;
     }
 
-    const registrations = await navigator.serviceWorker.getRegistrations();
-
-    console.info('Updating service worker registrations:', registrations);
-
-    try {
-      await Promise.all(
-        registrations
-          .filter((registration) => registration.scope === this.serviceWorkerScope())
-          .map(async (registration) => {
-            await registration.update();
-            this.handleCurrentRegistration(registration);
-          }),
-      );
-    } catch (error: unknown) {
-      await this.handleServiceWorkerError(error);
-    }
+    await this.checkForUpdate();
   }
 
   async unregisterServiceWorker(): Promise<void> {
@@ -187,7 +259,7 @@ export class ServiceWorkerService {
 
     if (registration.waiting && isUpdate) {
       this.handleUpdateDetected();
-      this.activateWaitingUpdate(registration, true);
+      this.activateWaitingUpdate(registration);
     }
   }
 
@@ -205,7 +277,7 @@ export class ServiceWorkerService {
     serviceWorker.addEventListener('error', (event) => {
       const message =
         event instanceof ErrorEvent && event.message ? event.message : 'O Service Worker encontrou um erro.';
-      void this.handleServiceWorkerError(message);
+      void this.handleUpdateFailed(message);
     });
 
     if (isUpdate) {
@@ -216,7 +288,7 @@ export class ServiceWorkerService {
       switch (serviceWorker.state) {
         case 'installed': {
           if (isUpdate) {
-            this.activateWaitingUpdate(registration, true);
+            this.activateWaitingUpdate(registration);
           } else {
             this.state.set('idle');
           }
@@ -243,39 +315,50 @@ export class ServiceWorkerService {
   }
 
   private handleUpdateDetected(): void {
-    this.state.set('downloading');
     this.error.set(null);
+    this.showUpdateProgress('downloading');
+    if (this.updateTimeout === undefined) {
+      this.updateTimeout = setTimeout(() => {
+        this.updateTimeout = undefined;
+        void this.handleUpdateFailed('A atualização demorou mais do que o esperado.');
+      }, UPDATE_TIMEOUT_MS);
+    }
+  }
 
+  private showUpdateProgress(phase: 'downloading' | 'ready'): void {
+    this.state.set(phase);
+    this.errorDialogRef?.close();
+    this.errorDialogRef = null;
     this.updateDialogRef ??= this.dialog.open(UpdateModalComponent, {
       disableClose: true,
+      width: '480px',
+      maxWidth: 'calc(100vw - 32px)',
+      autoFocus: 'first-heading',
     });
+    this.updateDialogRef.componentRef?.setInput('phase', phase);
   }
 
-  private activateWaitingUpdate(registration: ServiceWorkerRegistration, shouldReload: boolean): void {
+  private clearUpdateTimeout(): void {
+    clearTimeout(this.updateTimeout);
+    this.updateTimeout = undefined;
+  }
+
+  private activateWaitingUpdate(registration: ServiceWorkerRegistration): void {
     const waitingServiceWorker = registration.waiting;
-    if (!waitingServiceWorker) {
-      return;
+    if (waitingServiceWorker) {
+      this.showUpdateProgress('ready');
+      waitingServiceWorker.postMessage({ type: 'SKIP_WAITING' });
     }
-
-    if (shouldReload) {
-      this.state.set('ready');
-
-      this.updateDialogRef?.close();
-      this.updateDialogRef = null;
-
-      this.reloadWhenControlling = this.shouldReloadForUpdate(waitingServiceWorker.scriptURL);
-    }
-
-    waitingServiceWorker.postMessage({ type: 'SKIP_WAITING' });
   }
 
-  private async handleUpdateFailed(): Promise<void> {
-    const message = 'Falha ao instalar a nova versão do Service Worker.';
-
+  private async handleUpdateFailed(message = 'Falha ao instalar a nova versão do aplicativo.'): Promise<void> {
     this.updateDialogRef?.close();
     this.updateDialogRef = null;
 
-    await this.handleServiceWorkerError(message);
+    this.clearUpdateTimeout();
+    this.state.set('failed');
+    this.error.set(message);
+    this.openUpdateErrorDialog(message);
   }
 
   private async handleServiceWorkerError(error: unknown): Promise<void> {
@@ -310,16 +393,21 @@ export class ServiceWorkerService {
   }
 
   private openUpdateErrorDialog(error: string): void {
+    this.clearUpdateTimeout();
+    this.updateDialogRef?.close();
+    this.updateDialogRef = null;
+    if (this.errorDialogRef) return;
     const dialogRef = this.dialog.open(UpdateErrorDialogComponent, {
       disableClose: true,
       data: { error },
+      width: '480px',
+      maxWidth: 'calc(100vw - 32px)',
+      autoFocus: 'first-heading',
     });
 
-    dialogRef.afterClosed().subscribe((result: 'reload' | 'unregister' | undefined) => {
-      if (result === 'unregister') {
-        void this.unregisterServiceWorker();
-        return;
-      }
+    this.errorDialogRef = dialogRef;
+    dialogRef.afterClosed().subscribe((result: 'reload' | undefined) => {
+      this.errorDialogRef = null;
 
       if (result === 'reload') {
         this.reload();
@@ -337,33 +425,6 @@ export class ServiceWorkerService {
 
   private serviceWorkerScope(): string {
     return new URL('.', this.document.baseURI).toString();
-  }
-
-  private shouldReloadForUpdate(scriptUrl: string | null): boolean {
-    if (!scriptUrl || !this.isBrowser()) {
-      return true;
-    }
-
-    try {
-      const now = Date.now();
-      const lastReload = JSON.parse(sessionStorage.getItem(SERVICE_WORKER_RELOAD_KEY) ?? 'null') as {
-        scriptUrl?: string;
-        timestamp?: number;
-      } | null;
-
-      if (
-        lastReload?.scriptUrl === scriptUrl &&
-        typeof lastReload.timestamp === 'number' &&
-        now - lastReload.timestamp < SERVICE_WORKER_RELOAD_COOLDOWN_MS
-      ) {
-        return false;
-      }
-
-      sessionStorage.setItem(SERVICE_WORKER_RELOAD_KEY, JSON.stringify({ scriptUrl, timestamp: now }));
-      return true;
-    } catch {
-      return true;
-    }
   }
 
   private reload(): void {

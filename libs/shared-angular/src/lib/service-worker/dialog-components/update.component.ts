@@ -1,40 +1,27 @@
-import { Component } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
+import { MatDialogModule } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 
 @Component({
-  standalone: true,
   selector: 'lib-update-modal',
-  imports: [MatProgressBarModule],
+  imports: [MatDialogModule, MatIconModule, MatProgressBarModule],
   template: `
-    <div class="update-dialog">
-      <h1>Instalando atualização</h1>
-
-      <p>Não recarregue a página</p>
-
-      <mat-progress-bar mode="indeterminate" aria-label="Instalando atualização" />
-    </div>
+    <h2 mat-dialog-title class="dialog-title">
+      <mat-icon aria-hidden="true">system_update_alt</mat-icon>
+      <span>{{ title() }}</span>
+    </h2>
+    <mat-dialog-content>
+      <p role="status" aria-live="polite" aria-atomic="true">{{ message() }}</p>
+      <mat-progress-bar mode="indeterminate" [attr.aria-label]="title()" />
+    </mat-dialog-content>
   `,
-  styles: `
-    .update-dialog {
-      min-width: min(420px, 80vw);
-      text-align: center;
-      padding: 24px;
-    }
-
-    h1 {
-      margin: 0 0 12px;
-      font-size: 1.5rem;
-      font-weight: 500;
-    }
-
-    p {
-      margin: 0 0 24px;
-      color: var(--mat-sys-on-surface-variant);
-    }
-
-    mat-progress-bar {
-      width: 100%;
-    }
-  `,
+  styleUrl: './update-dialog.css',
 })
-export class UpdateModalComponent {}
+export class UpdateModalComponent {
+  readonly phase = input<'downloading' | 'ready'>('downloading');
+  readonly title = computed(() => (this.phase() === 'ready' ? 'Atualização pronta' : 'Atualização do aplicativo'));
+  readonly message = computed(() =>
+    this.phase() === 'ready' ? 'Aguarde um instante.' : 'A página será recarregada automaticamente.',
+  );
+}

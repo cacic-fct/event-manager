@@ -37,27 +37,7 @@
       <span class="ticket-transfer-demo__state-icon" aria-hidden="true">
         <mat-icon>send</mat-icon>
       </span>
-      <div>
-        <h3 #stepHeading id="ticket-transfer-pending-title" tabindex="-1">Pedido enviado</h3>
-        <p class="ticket-transfer-demo__status" role="status" aria-live="polite">Aguardando resposta.</p>
-      </div>
-    </div>
-    <div class="ticket-transfer-demo__ticket">
-      <lib-twemoji emoji="🎒" aria-hidden="true" />
-      <div>
-        <strong>{{ ticketName }}</strong>
-        <span>{{ eventName }}, {{ eventTimeAndPlace }}</span>
-      </div>
-    </div>
-    <div class="ticket-transfer-demo__people">
-      <div>
-        <span>Quem envia</span>
-        <app-ticket-person-summary [fullName]="senderName" [avatarUrl]="null" [showDocument]="false" />
-      </div>
-      <div>
-        <span>Quem recebe</span>
-        <app-ticket-person-summary [fullName]="recipientName" [avatarUrl]="null" [showDocument]="false" />
-      </div>
+      <h3 #stepHeading id="ticket-transfer-pending-title" tabindex="-1">Pedido enviado</h3>
     </div>
     <div class="ticket-transfer-demo__actions">
       <button matButton="text" type="button" (click)="returnToWallet()">Voltar à carteira</button>
@@ -114,21 +94,11 @@
       </span>
       <h3 #stepHeading id="ticket-transfer-received-title" tabindex="-1">Bilhete recebido</h3>
     </div>
-    <div class="ticket-transfer-demo__ticket ticket-transfer-demo__ticket--receipt">
+    <div class="ticket-transfer-demo__ticket">
       <lib-twemoji emoji="🎒" aria-hidden="true" />
       <div>
         <strong>{{ ticketName }}</strong>
         <span>{{ eventName }}, {{ eventTimeAndPlace }}</span>
-      </div>
-    </div>
-    <div class="ticket-transfer-demo__people">
-      <div>
-        <span>Quem envia</span>
-        <app-ticket-person-summary [fullName]="senderName" [avatarUrl]="null" [showDocument]="false" />
-      </div>
-      <div>
-        <span>Quem recebe</span>
-        <app-ticket-person-summary [fullName]="recipientName" [avatarUrl]="null" [showDocument]="false" />
       </div>
     </div>
     <div class="ticket-transfer-demo__actions">

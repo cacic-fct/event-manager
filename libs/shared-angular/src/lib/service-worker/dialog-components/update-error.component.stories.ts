@@ -1,6 +1,5 @@
-import { NgComponentOutlet } from '@angular/common';
-import { Component, Injector, computed, inject, input } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { Component, effect, inject, input } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { withScenarioControls } from '../../storybook/scenario-controls.decorator';
@@ -13,28 +12,32 @@ type UpdateErrorDialogStoryArgs = {
 
 @Component({
   selector: 'lib-storybook-update-error-dialog-host',
-  imports: [NgComponentOutlet],
-  template: `<ng-container [ngComponentOutlet]="component" [ngComponentOutletInjector]="storyInjector()" />`,
+  template: '',
 })
 class UpdateErrorDialogStoryHostComponent {
-  private readonly injector = inject(Injector);
-
-  readonly component = UpdateErrorDialogComponent;
+  private readonly dialog = inject(MatDialog);
   readonly error = input('O pacote de atualização foi baixado, mas não pôde ser ativado.');
-  readonly closed = input<(result: 'reload' | 'unregister') => void>(() => undefined);
+  readonly closed = input<(result: 'reload') => void>(() => undefined);
 
-  readonly storyInjector = computed(() =>
-    Injector.create({
-      parent: this.injector,
-      providers: [
-        { provide: MAT_DIALOG_DATA, useValue: { error: this.error() } },
-        {
-          provide: MatDialogRef,
-          useValue: { close: (result: 'reload' | 'unregister') => this.closed()(result) },
-        },
-      ],
-    }),
-  );
+  constructor() {
+    effect((onCleanup) => {
+      const closed = this.closed();
+      const ref = this.dialog.open(UpdateErrorDialogComponent, {
+        data: { error: this.error() },
+        width: '480px',
+        maxWidth: 'calc(100vw - 32px)',
+        disableClose: true,
+        autoFocus: 'first-heading',
+      });
+      const subscription = ref.afterClosed().subscribe((result: 'reload' | undefined) => {
+        if (result) closed(result);
+      });
+      onCleanup(() => {
+        subscription.unsubscribe();
+        ref.close();
+      });
+    });
+  }
 }
 
 const meta: Meta<UpdateErrorDialogStoryArgs> = {
@@ -62,8 +65,11 @@ type Story = StoryObj<UpdateErrorDialogStoryArgs>;
 
 export const Playground: Story = {
   play: async ({ args, canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(canvas.getByText('Erro ao atualizar o aplicativo')).toBeVisible();
+    const canvas = within(canvasElement.ownerDocument.body);
+    await expect(canvas.getByText('Não foi possível atualizar')).toBeVisible();
+    await expect(canvas.getByText(args.error)).not.toBeVisible();
+    await userEvent.click(canvas.getByText('Detalhes do erro'));
+    await expect(canvas.getByText(args.error)).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Recarregar' }));
     await expect(args.closed).toHaveBeenCalledWith('reload');
   },

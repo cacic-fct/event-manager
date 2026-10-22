@@ -1,0 +1,33 @@
+:host {
+  display: block;
+}
+
+.dialog-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 24px;
+}
+
+.dialog-title::before {
+  display: none;
+}
+
+.dialog-title mat-icon {
+  flex: none;
+  color: var(--mat-sys-primary);
+}
+
+p {
+  margin: 0 0 16px;
+}
+
+summary {
+  cursor: pointer;
+  padding-block: 12px;
+}
+
+.error-detail {
+  overflow-wrap: anywhere;
+  margin-top: 12px;
+}

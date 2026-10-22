@@ -2,7 +2,7 @@ import { DeferBlockBehavior, DeferBlockState, TestBed } from '@angular/core/test
 import { EventExtrasComponent } from './event-extras';
 
 describe('EventExtrasComponent deferred demos', () => {
-  it('loads sports and feedback independently and delays operations until requested', async () => {
+  it('loads sports and feedback independently while keeping the operations clock hidden', async () => {
     await TestBed.configureTestingModule({
       imports: [EventExtrasComponent],
       deferBlockBehavior: DeferBlockBehavior.Manual,
@@ -17,7 +17,9 @@ describe('EventExtrasComponent deferred demos', () => {
     await sports.render(DeferBlockState.Complete);
     expect(element.querySelector('app-landing-sports-demo')).not.toBeNull();
     expect(element.querySelector('app-landing-feedback-demo')).toBeNull();
-    expect(element.querySelector('app-landing-match-operations-demo')).toBeNull();
+    const operations = element.querySelector('app-landing-match-operations-demo');
+    expect(operations).not.toBeNull();
+    expect((operations?.parentElement as HTMLElement).hidden).toBe(true);
 
     await feedback.render(DeferBlockState.Complete);
     expect(element.querySelector('app-landing-feedback-demo')).not.toBeNull();
