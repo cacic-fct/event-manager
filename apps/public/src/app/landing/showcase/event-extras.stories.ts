@@ -41,7 +41,7 @@ export const MatchOperations: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Finalizar partida' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Partida' }));
     await expect(canvasElement.querySelector('.match-status')).toBeVisible();
-    await expect(await canvas.findByText('3 a 1', { selector: '.cdk-visually-hidden' })).toBeInTheDocument();
+    await expect(await canvas.findByText('3 a 1', { selector: '.sr-only' })).toBeInTheDocument();
   },
 };
 

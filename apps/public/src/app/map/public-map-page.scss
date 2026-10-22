@@ -182,15 +182,6 @@
   opacity: 0.72;
 }
 
-.accessible-event-list {
-  clip-path: inset(50%);
-  height: 1px;
-  overflow: hidden;
-  position: absolute;
-  white-space: nowrap;
-  width: 1px;
-}
-
 @media (max-width: 599px) {
   .fab-container {
     bottom: 16px;

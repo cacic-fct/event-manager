@@ -120,7 +120,7 @@
       </button>
     </nav>
 
-    <section class="accessible-event-list" aria-label="Eventos visíveis no mapa">
+    <section class="sr-only" aria-label="Eventos visíveis no mapa">
       @for (event of filteredEvents(); track event.id) {
       <button type="button" (click)="openEventFromList(event)">{{ event.name }}</button>
       }

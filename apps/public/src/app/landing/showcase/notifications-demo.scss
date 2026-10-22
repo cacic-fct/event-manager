@@ -117,15 +117,6 @@ ul {
   flex-shrink: 0;
 }
 
-.notification-state {
-  width: 1px;
-  height: 1px;
-  position: absolute;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
 .notification-item > mat-icon {
   color: var(--mat-sys-on-surface-variant);
   margin-top: 0.125rem;

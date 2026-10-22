@@ -30,7 +30,7 @@
   }
 
   <section class="score-hero" [class.live]="isLive(match)">
-    <span class="score-announcement" aria-live="polite" aria-atomic="true">
+    <span class="sr-only" aria-live="polite" aria-atomic="true">
       Placar: {{ teamName(match, 'home') }} {{ match.scoreboard.homeScore }}, {{ teamName(match, 'away') }} {{
       match.scoreboard.awayScore }}
     </span>

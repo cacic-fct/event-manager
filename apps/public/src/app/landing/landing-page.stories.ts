@@ -247,7 +247,7 @@ export const AttendeeJourney: Story = {
   parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const region = canvas.getByRole('region', { name: 'Você participa. Tudo se conecta.' });
+    const region = canvas.getByRole('region', { name: /Tudo se conecta\s*quando você participa\./ });
     region.scrollIntoView();
     const participant = within(region);
     await userEvent.click(await participant.findByRole('button', { name: 'Meu dia' }));

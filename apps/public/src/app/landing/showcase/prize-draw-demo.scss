@@ -66,16 +66,6 @@
   min-height: 3rem;
 }
 
-.prize-draw-demo__status {
-  block-size: 1px;
-  clip-path: inset(50%);
-  inline-size: 1px;
-  margin: -1px;
-  overflow: hidden;
-  position: absolute;
-  white-space: nowrap;
-}
-
 .prize-draw-demo button:focus-visible {
   outline: 3px solid var(--mat-sys-primary);
   outline-offset: 3px;

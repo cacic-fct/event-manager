@@ -98,14 +98,6 @@
   color: var(--mat-sys-error);
   background: var(--mat-sys-surface-container);
 }
-.score-announcement {
-  block-size: 1px;
-  clip-path: inset(50%);
-  inline-size: 1px;
-  overflow: hidden;
-  position: absolute;
-  white-space: nowrap;
-}
 .swap-sides {
   margin-block-start: 0.25rem;
 }

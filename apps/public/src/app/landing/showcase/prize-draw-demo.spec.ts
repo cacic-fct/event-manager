@@ -20,6 +20,7 @@ describe('PrizeDrawDemoComponent', () => {
     nextFrame = undefined;
     frameId = 0;
     frameClock = 0;
+    vi.spyOn(Math, 'random').mockReturnValue(0);
     tone = vi.fn();
     cancelFrame = vi.fn();
     prefersReducedMotion = false;
@@ -72,7 +73,7 @@ describe('PrizeDrawDemoComponent', () => {
     delete document.documentElement.dataset['storybookMotion'];
   });
 
-  it('uses the shared reel acceleration stages and lands on the fixed winner with softened ticks', async () => {
+  it('uses the shared reel acceleration stages and lands on the randomly selected winner with softened ticks', async () => {
     const element = fixture.nativeElement as HTMLElement;
     const component = fixture.debugElement.query(By.directive(PrizeDrawReelComponent))
       .componentInstance as PrizeDrawReelComponent;
@@ -81,7 +82,7 @@ describe('PrizeDrawDemoComponent', () => {
 
     expect(component.phase()).toBe('spinning');
     expect((element.querySelector('button.prize-draw-demo__draw') as HTMLButtonElement).disabled).toBe(true);
-    expect(element.querySelector('.prize-draw-demo__status')?.textContent).toContain('Sorteio em andamento.');
+    expect(element.querySelector('#prize-draw-demo-status')?.textContent).toContain('Sorteio em andamento.');
     drawFrame(0);
     expect(component.motionStage()).toBe('warmup');
     drawFrame(1000);
@@ -98,10 +99,10 @@ describe('PrizeDrawDemoComponent', () => {
     fixture.detectChanges();
 
     expect(component.phase()).toBe('complete');
-    expect(component.visibleNames().find((name) => name.center)?.name).toBe('Beatriz Lima');
+    expect(component.visibleNames().find((name) => name.center)?.name).toBe('Ana Oliveira');
     expect(fixture.componentInstance.drawState()).toBe('winner');
-    expect(element.querySelector('.prize-draw-demo__status')?.textContent).toContain(
-      'Resultado: Beatriz Lima ganhou Kit criatividade.',
+    expect(element.querySelector('#prize-draw-demo-status')?.textContent).toContain(
+      'Resultado: Ana Oliveira ganhou Kit criatividade.',
     );
     expect((element.querySelector('button.prize-draw-demo__draw') as HTMLButtonElement).disabled).toBe(false);
     expect((element.querySelector('button.prize-draw-demo__draw') as HTMLButtonElement).textContent).toContain(
@@ -133,7 +134,7 @@ describe('PrizeDrawDemoComponent', () => {
     fixture.detectChanges();
 
     expect(component.phase()).toBe('complete');
-    expect(component.visibleNames().find((name) => name.center)?.name).toBe('Beatriz Lima');
+    expect(component.visibleNames().find((name) => name.center)?.name).toBe('Ana Oliveira');
     expect(fixture.componentInstance.drawState()).toBe('winner');
     expect(tone.mock.calls.some(([, duration]) => duration === 0.03)).toBe(false);
   });
@@ -164,9 +165,34 @@ describe('PrizeDrawDemoComponent', () => {
     fixture.detectChanges();
 
     expect(reel.phase()).toBe('complete');
-    expect(reel.visibleNames().find((name) => name.center)?.name).toBe('Beatriz Lima');
-    expect(element.querySelector('.prize-draw-demo__status')?.textContent).toContain('Resultado:');
+    expect(reel.visibleNames().find((name) => name.center)?.name).toBe('Ana Oliveira');
+    expect(element.querySelector('#prize-draw-demo-status')?.textContent).toContain('Resultado:');
     expect(tone).not.toHaveBeenCalled();
+  });
+
+  it('selects from every participant and samples again on each replay', async () => {
+    document.documentElement.dataset['storybookMotion'] = 'reduced';
+    const component = fixture.componentInstance;
+    const reel = fixture.debugElement.query(By.directive(PrizeDrawReelComponent))
+      .componentInstance as PrizeDrawReelComponent;
+    const random = vi.mocked(Math.random);
+    random.mockClear();
+
+    for (const [index, name] of component.participants.entries()) {
+      random.mockReturnValue((index + 0.5) / component.participants.length);
+      component.requestDraw();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      fixture.detectChanges();
+
+      expect(component.drawState()).toBe('winner');
+      expect(reel.visibleNames().find((entry) => entry.center)?.name).toBe(name);
+      expect(component.statusMessage()).toBe(`Resultado: ${name} ganhou Kit criatividade.`);
+    }
+
+    expect(random).toHaveBeenCalledTimes(component.participants.length);
   });
 
   it('resets the shared reel to stop its animation when the landing panel is destroyed', () => {

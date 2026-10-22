@@ -9,7 +9,10 @@ import { ParticipantShowcaseComponent } from './participant-showcase';
     <section class="product-showcase" aria-labelledby="showcase-title">
       <div class="showcase-container">
         <header class="showcase-introduction">
-          <h2 id="showcase-title">Você participa. <br />Tudo se conecta.</h2>
+          <h2 id="showcase-title">
+            Tudo se conecta <br />
+            quando você participa.
+          </h2>
           <p>
             Programação, inscrições e presença.<br class="desktop-break" />
             Acompanhe em um só lugar.

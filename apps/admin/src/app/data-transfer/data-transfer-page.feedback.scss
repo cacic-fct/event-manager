@@ -74,19 +74,6 @@
   font: var(--mat-sys-title-small);
 }
 
-.visually-hidden-file-input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
-}
-
 .file-picker-selection {
   margin: 0;
   font: var(--mat-sys-body-small);

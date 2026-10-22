@@ -15,7 +15,7 @@ type Story = StoryObj<ProductShowcaseComponent>;
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const participantRegion = canvas.getByRole('region', { name: 'Você participa. Tudo se conecta.' });
+    const participantRegion = canvas.getByRole('region', { name: /Tudo se conecta\s*quando você participa\./ });
     participantRegion.scrollIntoView();
     const participant = within(participantRegion);
     await expect(await participant.findByRole('button', { name: 'Meu dia' })).toHaveAttribute('aria-pressed', 'true');
@@ -46,7 +46,7 @@ export const OrganizerExperience: Story = {
 
 export const InvalidAttendanceCode: Story = {
   play: async ({ canvasElement }) => {
-    const region = within(canvasElement).getByRole('region', { name: 'Você participa. Tudo se conecta.' });
+    const region = within(canvasElement).getByRole('region', { name: /Tudo se conecta\s*quando você participa\./ });
     region.scrollIntoView();
     const canvas = within(region);
     await userEvent.click(await canvas.findByRole('button', { name: 'Autorregistro' }));
@@ -58,7 +58,7 @@ export const InvalidAttendanceCode: Story = {
 
 export const PendingReceipt: Story = {
   play: async ({ canvasElement }) => {
-    const region = within(canvasElement).getByRole('region', { name: 'Você participa. Tudo se conecta.' });
+    const region = within(canvasElement).getByRole('region', { name: /Tudo se conecta\s*quando você participa\./ });
     region.scrollIntoView();
     const canvas = within(region);
     await userEvent.click(await canvas.findByRole('button', { name: /Envie seu comprovante/ }));
@@ -69,7 +69,7 @@ export const PendingReceipt: Story = {
 
 export const AutomaticCodeEntry: Story = {
   play: async ({ canvasElement }) => {
-    const region = within(canvasElement).getByRole('region', { name: 'Você participa. Tudo se conecta.' });
+    const region = within(canvasElement).getByRole('region', { name: /Tudo se conecta\s*quando você participa\./ });
     region.scrollIntoView();
     const canvas = within(region);
     await userEvent.click(await canvas.findByRole('button', { name: 'Autorregistro' }));
@@ -85,20 +85,20 @@ export const AutomaticCodeEntry: Story = {
 
 export const NotificationDestinations: Story = {
   play: async ({ canvasElement }) => {
-    const region = within(canvasElement).getByRole('region', { name: 'Você participa. Tudo se conecta.' });
+    const region = within(canvasElement).getByRole('region', { name: /Tudo se conecta\s*quando você participa\./ });
     region.scrollIntoView();
     const canvas = within(region);
     await userEvent.click(await canvas.findByRole('button', { name: 'Notificações' }));
-    await userEvent.click(await canvas.findByRole('button', { name: 'Um bilhete para você' }));
+    await userEvent.click(await canvas.findByRole('button', { name: /Um bilhete para você/ }));
     await expect(await canvas.findByRole('button', { name: 'Receber bilhete' })).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Notificações' }));
-    await userEvent.click(await canvas.findByRole('button', { name: 'Seu certificado está disponível' }));
+    await userEvent.click(await canvas.findByRole('button', { name: /Seu certificado está disponível/ }));
     await expect(await canvas.findByRole('button', { name: 'Baixar todos os certificados' })).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Notificações' }));
-    await userEvent.click(await canvas.findByRole('button', { name: 'Falta enviar seu comprovante' }));
+    await userEvent.click(await canvas.findByRole('button', { name: /Falta enviar seu comprovante/ }));
     await expect(await canvas.findByRole('button', { name: 'Escolher comprovante' })).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Notificações' }));
-    await userEvent.click(await canvas.findByRole('button', { name: 'Seu próximo minicurso' }));
+    await userEvent.click(await canvas.findByRole('button', { name: /Seu próximo minicurso/ }));
     await expect(await canvas.findByRole('heading', { name: 'Realidade Virtual' })).toBeVisible();
   },
 };

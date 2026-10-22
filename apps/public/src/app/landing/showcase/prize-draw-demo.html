@@ -37,7 +37,7 @@
     {{ isSpinning() ? 'Sorteando…' : hasWinner() ? 'Sortear novamente' : 'Sortear' }}
   </button>
 
-  <p class="prize-draw-demo__status" id="prize-draw-demo-status" role="status" aria-live="polite" aria-atomic="true">
+  <p class="sr-only" id="prize-draw-demo-status" role="status" aria-live="polite" aria-atomic="true">
     {{ statusMessage() }}
   </p>
 </div>

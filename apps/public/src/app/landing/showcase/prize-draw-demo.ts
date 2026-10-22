@@ -35,17 +35,7 @@ export class PrizeDrawDemoComponent {
 
   readonly participants = [...PARTICIPANTS];
   readonly eligibleCount = PARTICIPANTS.length;
-  readonly winnerName = 'Beatriz Lima';
   readonly prizeName = 'Kit criatividade';
-  readonly spinResult: PrizeDrawReelResult = {
-    winnerReelName: 'Beatriz Lima',
-    winnerReelIndex: PARTICIPANTS.indexOf('Beatriz Lima'),
-    reelNames: [...PARTICIPANTS],
-    speed: 'QUICK',
-    countdownMs: 0,
-    reelDurationMs: 3000,
-    preRevealPauseMs: 0,
-  };
   readonly drawState = signal<'ready' | 'spinning' | 'winner'>('ready');
   readonly statusMessage = signal('');
   readonly soundMuted = signal(false);
@@ -115,7 +105,7 @@ export class PrizeDrawDemoComponent {
   }
 
   private startDraw(automatic: boolean): boolean {
-    if (this.isSpinning()) {
+    if (!this.isBrowser || this.isSpinning()) {
       return false;
     }
 
@@ -135,9 +125,16 @@ export class PrizeDrawDemoComponent {
       reel.reset([...PARTICIPANTS]);
     }
 
-    const result = reducedMotion
-      ? { ...this.spinResult, speed: 'INSTANT' as const, reelDurationMs: 0, preRevealPauseMs: 0 }
-      : this.spinResult;
+    const winnerReelIndex = Math.floor(Math.random() * PARTICIPANTS.length);
+    const result: PrizeDrawReelResult = {
+      winnerReelName: PARTICIPANTS[winnerReelIndex],
+      winnerReelIndex,
+      reelNames: [...PARTICIPANTS],
+      speed: reducedMotion ? 'INSTANT' : 'QUICK',
+      countdownMs: 0,
+      reelDurationMs: reducedMotion ? 0 : 3000,
+      preRevealPauseMs: 0,
+    };
     void this.finishDraw(reel, result, reducedMotion, generation);
     return true;
   }
@@ -155,7 +152,7 @@ export class PrizeDrawDemoComponent {
 
     this.automaticDraw = false;
     this.drawState.set('winner');
-    this.statusMessage.set(`Resultado: ${this.winnerName} ganhou ${this.prizeName}.`);
+    this.statusMessage.set(`Resultado: ${result.winnerReelName} ganhou ${this.prizeName}.`);
   }
 
   private cancelAutomaticDraw(): void {

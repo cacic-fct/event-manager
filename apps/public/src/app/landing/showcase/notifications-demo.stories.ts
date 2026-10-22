@@ -20,7 +20,7 @@ type Story = StoryObj<NotificationsDemoComponent>;
 
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Falta enviar seu comprovante' }));
+    await userEvent.click(within(canvasElement).getByRole('button', { name: /Falta enviar seu comprovante/ }));
     await expect(destinationOpened).toHaveBeenCalledWith('receipt');
   },
 };
@@ -36,7 +36,7 @@ export const AllRead: Story = {
 
 export const CertificateShortcut: Story = {
   play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Seu certificado está disponível' }));
+    await userEvent.click(within(canvasElement).getByRole('button', { name: /Seu certificado está disponível/ }));
     await expect(destinationOpened).toHaveBeenCalledWith('certificates');
   },
 };

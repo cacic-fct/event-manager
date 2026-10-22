@@ -114,6 +114,7 @@
         @if (workspace.canUpdateTeam()) {
           <label class="material-upload">
             <input
+              class="sr-only"
               type="file"
               accept="image/avif,image/svg+xml,image/png,image/jpeg,image/webp"
               (change)="uploadTeamLogo($event)" />

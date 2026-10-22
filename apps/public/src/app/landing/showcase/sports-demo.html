@@ -23,17 +23,22 @@
     </button>
   </div>
   @if (sportsView() === 'match') {
-  <div class="scoreboard">
+  <div class="scoreboard" [class.scoreboard--pulsing]="pulseActive()">
     <p><mat-icon aria-hidden="true">sports_soccer</mat-icon>Final de futsal</p>
     <div class="score-line">
       <span>Compiladores</span>
       <strong>
-        <span aria-hidden="true">{{ matchScore().home }} <span>:</span> {{ matchScore().away }}</span>
-        <span class="cdk-visually-hidden">{{ matchScore().home }} a {{ matchScore().away }}</span>
+        <span aria-hidden="true"
+          >{{ matchScore().home }} <span class="score-separator">:</span> {{ matchScore().away }}</span
+        >
+        <span class="sr-only">{{ matchScore().home }} a {{ matchScore().away }}</span>
       </strong>
       <span>Algoritmos</span>
     </div>
     <span class="match-status">{{ matchStatus() }}</span>
+    <span class="match-clock" role="timer" aria-live="off" [attr.aria-label]="'Tempo decorrido: ' + elapsedLabel()">
+      <span aria-hidden="true">{{ elapsedLabel() }}</span>
+    </span>
   </div>
   } @else if (sportsView() === 'standings') {
   <table class="standings">
@@ -59,10 +64,6 @@
   </table>
   }
   <div [hidden]="sportsView() !== 'operations'">
-    @defer (when sportsView() === 'operations') {
     <app-landing-match-operations-demo [(score)]="matchScore" [(state)]="matchState" />
-    } @placeholder {
-    <p>Carregando operação da partida.</p>
-    }
   </div>
 </div>

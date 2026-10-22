@@ -79,7 +79,7 @@
   white-space: nowrap;
 }
 
-.score-line strong span[aria-hidden] > span {
+.score-separator {
   color: #9dc6b4;
   font-weight: 400;
 }
@@ -89,6 +89,34 @@
   margin-top: 1.5rem;
   font-size: 0.8125rem;
   color: #cae9dc;
+}
+
+.match-clock {
+  display: block;
+  margin-top: 0.5rem;
+  color: #f0fff7;
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.scoreboard--pulsing .score-separator {
+  animation: match-second-pulse 1s ease-in-out infinite;
+}
+
+@keyframes match-second-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.65;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scoreboard--pulsing .score-separator {
+    animation: none;
+  }
 }
 
 .standings {

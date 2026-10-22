@@ -52,11 +52,9 @@
   padding: 0.55rem 0.8rem;
 }
 
-.material-upload input {
-  height: 1px;
-  opacity: 0;
-  position: absolute;
-  width: 1px;
+.material-upload:focus-within {
+  outline: 3px solid var(--mat-sys-primary);
+  outline-offset: 2px;
 }
 
 .danger-zone {

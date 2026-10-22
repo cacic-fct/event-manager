@@ -52,7 +52,7 @@
     </button>
   </div>
 
-  <p id="certificate-archive-status" role="status" class="visually-hidden">
+  <p id="certificate-archive-status" role="status" class="sr-only">
     @if (isDownloadingCertificates()) { Preparando o arquivo com todos os seus certificados. } @else if
     (certificateArchiveCooldownSeconds() > 0) { Aguarde o tempo indicado no botão antes de baixar todos os certificados
     novamente. } @else { Download de todos os certificados disponível. }

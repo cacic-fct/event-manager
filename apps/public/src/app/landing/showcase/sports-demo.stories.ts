@@ -18,7 +18,9 @@ export const Playground: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Classificação' }));
     await expect(canvas.getByRole('table', { name: 'Classificação' })).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Partida' }));
-    await expect(await canvas.findByText('2 a 1', { selector: '.cdk-visually-hidden' })).toBeInTheDocument();
+    await expect(canvasElement.querySelector('.score-line [aria-hidden="true"]')).toHaveTextContent('2 : 1');
+    await expect(canvas.getByText('2 a 1', { selector: '.sr-only' })).toHaveStyle({ clipPath: 'inset(50%)' });
+    await expect(canvas.getByRole('timer')).toBeVisible();
   },
 };
 

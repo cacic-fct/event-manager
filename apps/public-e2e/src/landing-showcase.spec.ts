@@ -119,6 +119,7 @@ for (const scenario of [
         }
         await expect(showcase).toBeVisible();
         await showcase.scrollIntoViewIfNeeded();
+        let initialHeadingOffset: number | undefined;
         for (const [label, contentSelector] of features) {
           await test.step(`${selector}: ${label}`, async () => {
             const button = showcase.locator('.feature-picker').getByRole('button', { name: label, exact: true });
@@ -128,6 +129,13 @@ for (const scenario of [
             await expect(showcase.locator('.feature-picker button[aria-pressed="true"]')).toHaveCount(1);
             await expect(showcase.locator(contentSelector)).toBeVisible();
             await expect(showcase.locator('.stage-copy h3')).not.toBeEmpty();
+            const headingOffset = await showcase.locator('.stage').evaluate((stage) => {
+              const heading = stage.querySelector('h3');
+              if (!heading) throw new Error('Showcase heading is missing');
+              return heading.getBoundingClientRect().top - stage.getBoundingClientRect().top;
+            });
+            initialHeadingOffset ??= headingOffset;
+            expect(Math.abs(headingOffset - initialHeadingOffset)).toBeLessThanOrEqual(1);
             await assertAccessible(page, selector);
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
           });

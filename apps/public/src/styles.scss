@@ -5,6 +5,7 @@
 // custom components at https://material.angular.dev/guide/theming
 @use '@angular/material' as mat;
 @use 'sass:meta';
+@use '../../../libs/shared-angular/src/styles/accessibility';
 
 @import '@fontsource-variable/inter/index.css';
 @import '@fontsource-variable/source-code-pro/index.css';
