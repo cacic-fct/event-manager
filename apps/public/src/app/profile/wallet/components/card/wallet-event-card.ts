@@ -3,6 +3,7 @@ import { Component, computed, input } from '@angular/core';
 import { formatCPF, formatUnespRole, isValidCPF } from '@cacic-fct/shared-utils';
 import { WalletBarcodeComponent } from '../barcode/barcode';
 import { WalletCardUser } from './wallet-card.types';
+import { userAvatarUrl } from '../../../../shared/user-avatar';
 
 @Component({
   selector: 'app-wallet-event-card',
@@ -11,8 +12,10 @@ import { WalletCardUser } from './wallet-card.types';
     <section class="ticket-holder" aria-label="Dados do portador">
       <div class="avatar-frame">
         <img
-          [ngSrc]="googlePictureUrl(user()?.picture) || '/assets/icons/avatar-placeholder.avif'"
+          [ngSrc]="userAvatarUrl(user()?.picture)"
           fill
+          disableOptimizedSrcset
+          loading="eager"
           alt="Avatar"
           class="avatar"
           referrerpolicy="no-referrer" />
@@ -203,20 +206,7 @@ export class WalletEventCard {
     formatUnespRole(this.user()?.unespRole, this.user()?.enrollmentNumber?.toString()),
   );
 
-  googlePictureUrl(url: string | null | undefined): string {
-    if (!url) {
-      return '';
-    }
-    try {
-      const parsed = new URL(url);
-      if (parsed.protocol !== 'https:' || parsed.hostname !== 'lh3.googleusercontent.com') {
-        return url;
-      }
-      return url.replace(/([=/])s\d+(?=[-/=]|$)/, '$1s512');
-    } catch {
-      return url;
-    }
-  }
+  protected readonly userAvatarUrl = userAvatarUrl;
 
   protected formatDocument(document: string): string {
     return isValidCPF(document) ? formatCPF(document) : document;

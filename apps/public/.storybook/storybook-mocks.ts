@@ -191,6 +191,26 @@ function publicCertificateValidation(variables: Record<string, unknown>): Public
     };
   }
 
+  if (certificateId === 'certificate-manual-major') {
+    return {
+      id: certificateId,
+      personName: 'Maria Organizadora',
+      maskedIdentityDocument: null,
+      issuedAt: isoDaysFromNow(-3, 10),
+      scope: 'MAJOR_EVENT',
+      certificateName: 'Certificado de organização',
+      issuedTo: 'OTHER',
+      certificateTypeLabel: 'Organização',
+      certificateText: 'Certificamos a contribuição na organização do grande evento.',
+      shouldAutofillSecondPage: false,
+      secondPageText: 'Apoio à organização e ao atendimento dos participantes.',
+      targetName: 'Semana de Computação',
+      targetEmoji: '🎓',
+      totalCreditMinutes: 0,
+      sections: [],
+    };
+  }
+
   if (certificateId === 'certificate-lecturer') {
     const event = events[1];
     return {

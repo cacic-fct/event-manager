@@ -45,7 +45,6 @@
         [disabled]="
           validationForm().invalid() ||
           currentState.status === 'loading' ||
-          !turnstileToken() ||
           validationCooldownSeconds() > 0
         ">
         <mat-icon>search</mat-icon>
@@ -85,7 +84,9 @@
       <div class="header-copy">
         <p class="certificate-status">Certificado válido</p>
         <h2>{{ certificate.targetName || certificate.certificateName }}</h2>
+        @if (certificate.targetName && certificate.targetName !== certificate.certificateName) {
         <p class="certificate-name">{{ certificate.certificateName }}</p>
+        }
       </div>
     </header>
 
@@ -166,7 +167,7 @@
       </mat-chip-set>
     </div>
 
-    @for (section of certificate.sections; track section.title) {
+    @for (section of certificate.sections; track section.title) { @if (section.events.length > 0) {
     <section class="event-section">
       <div class="section-heading">
         <h3>{{ section.title }}</h3>
@@ -176,7 +177,7 @@
       </div>
 
       <mat-list>
-        @for (event of section.events; track event.name + event.startDate) {
+        @for (event of section.events; track event.id) {
         <a mat-list-item [routerLink]="'/event/' + event.id" [queryParams]="{ back: router.url }">
           <div matListItemIcon class="small-emoji-frame">
             <img class="small-twemoji" [src]="emoji.getTwemojiUrl(event.emoji)" [alt]="event.emoji" />
@@ -188,7 +189,7 @@
         }
       </mat-list>
     </section>
-    }
+    } }
   </section>
   } }
 </main>

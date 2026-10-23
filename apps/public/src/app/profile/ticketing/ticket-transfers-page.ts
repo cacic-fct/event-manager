@@ -1,5 +1,6 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -15,7 +16,15 @@ type TransferListState = { status: 'loading' } | { status: 'ready'; transfers: T
 
 @Component({
   selector: 'app-ticket-transfers-page',
-  imports: [CalendarListItem, MatIconModule, MatListModule, MatProgressBarModule, MatToolbarModule, RouterLink],
+  imports: [
+    CalendarListItem,
+    MatButtonModule,
+    MatIconModule,
+    MatListModule,
+    MatProgressBarModule,
+    MatToolbarModule,
+    RouterLink,
+  ],
   templateUrl: './ticket-transfers-page.html',
   styleUrl: './ticket-transfers-page.css',
 })

@@ -4,7 +4,7 @@ import { WalletCardUser } from './wallet-card.types';
 import { createWalletStoryTicket } from '../../testing/wallet-story-fixtures';
 import { WalletBarcodeComponent } from '../barcode/barcode';
 import { By } from '@angular/platform-browser';
-import { WalletEventCard } from './wallet-event-card';
+import { createTicketPersonSummary } from '@cacic-fct/shared-ticketing/testing';
 
 describe('WalletCard', () => {
   let fixture: ComponentFixture<WalletCard>;
@@ -49,16 +49,7 @@ describe('WalletCard', () => {
     expect(fixture.nativeElement.querySelector('.avatar')?.getAttribute('src')).toBe(
       'https://lh3.googleusercontent.com/a/test-user=s512-c',
     );
-  });
-
-  it.each([
-    'https://lh3.googleusercontent.com.evil.example/a/test-user=s96-c',
-    'https://example.com/lh3.googleusercontent.com/a/test-user=s96-c',
-    'http://lh3.googleusercontent.com/a/test-user=s96-c',
-  ])('does not resize an untrusted profile picture URL: %s', (picture) => {
-    const eventCard = fixture.debugElement.query(By.directive(WalletEventCard)).componentInstance as WalletEventCard;
-
-    expect(eventCard.googlePictureUrl(picture)).toBe(picture);
+    expect(fixture.nativeElement.querySelector('.avatar')?.getAttribute('loading')).toBe('eager');
   });
 
   it('shows a ticket as its own pass with a raw prefixed payload', () => {
@@ -77,6 +68,22 @@ describe('WalletCard', () => {
       .componentInstance as WalletBarcodeComponent;
     expect(barcode.value()).toBe(ticket.aztecPayload);
     expect(barcode.payloadPrefix()).toBe('');
+  });
+
+  it('reuses the shared avatar for ticket holders and loads it eagerly', () => {
+    const ticket = createWalletStoryTicket({
+      holder: createTicketPersonSummary({
+        avatarUrl: 'https://lh3.googleusercontent.com/a/test-user=s96-c',
+      }),
+    });
+    fixture.componentRef.setInput('ticket', ticket);
+    fixture.detectChanges();
+
+    const avatar = fixture.nativeElement.querySelector('.avatar') as HTMLImageElement;
+    expect(avatar.getAttribute('src')).toBe('https://lh3.googleusercontent.com/a/test-user=s512-c');
+    expect(avatar.getAttribute('loading')).toBe('eager');
+    expect(avatar.getAttribute('srcset')).toBeNull();
+    expect(avatar.getAttribute('referrerpolicy')).toBe('no-referrer');
   });
 
   it('shows the holder passport in full on a ticket', () => {

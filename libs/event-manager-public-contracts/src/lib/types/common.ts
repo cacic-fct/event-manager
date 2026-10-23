@@ -2,7 +2,17 @@ export type DateTimeString = string;
 
 export type EventTargetType = 'event' | 'event-group' | 'major-event';
 export type CertificateScope = 'EVENT' | 'EVENT_GROUP' | 'MAJOR_EVENT' | 'OTHER';
-export type CertificateIssuedTo = 'ATTENDEE' | 'LECTURER' | 'OTHER';
+export type CertificateIssuedTo =
+  | 'ATTENDEE'
+  | 'LECTURER'
+  | 'SPORTS_PLAYER'
+  | 'SPORTS_CAPTAIN'
+  | 'SPORTS_COACH'
+  | 'SPORTS_REFEREE'
+  | 'SPORTS_INTERMEDIATOR'
+  | 'SPORTS_SCOREKEEPER'
+  | 'SPORTS_ORGANIZER'
+  | 'OTHER';
 export type EventType = 'MINICURSO' | 'PALESTRA' | 'OTHER';
 export type ContactType = 'EMAIL' | 'PHONE' | 'WHATSAPP' | 'OTHER';
 export type DefaultRedirectRoute = 'MENU' | 'CALENDAR' | 'MAJOR_EVENT' | 'WALLET';

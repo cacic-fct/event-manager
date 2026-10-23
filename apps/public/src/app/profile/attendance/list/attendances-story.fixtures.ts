@@ -1,5 +1,6 @@
 import type { SubscriptionsFeed } from '@cacic-fct/shared-utils';
 import { fakerPT_BR as faker } from '@faker-js/faker';
+import { SAFE_STORY_ADJECTIVES } from '../../../testing/safe-story-adjectives';
 import {
   createPublicStoryEvent,
   createPublicStoryMajorEvent,
@@ -59,7 +60,7 @@ export function createAttendancesStoryFeed(controls: AttendancesStoryControls): 
       id: `attendance-major-${index + 1}`,
       name: controls.longNames
         ? `Grande evento interdisciplinar de tecnologia, ciência, cultura e extensão ${index + 1}`
-        : `${['Semana da Computação', 'Jornada de Dados', 'Mostra de Extensão'][index % 3]} ${faker.word.adjective()}`,
+        : `${['Semana da Computação', 'Jornada de Dados', 'Mostra de Extensão'][index % 3]} ${faker.helpers.arrayElement(SAFE_STORY_ADJECTIVES)}`,
       emoji: ['💻', '📊', '🌎'][index % 3],
       startDate: publicStoryDate(-30 - index * 3, 9),
       endDate: publicStoryDate(-28 - index * 3, 20),
@@ -82,7 +83,7 @@ export function createAttendancesStoryFeed(controls: AttendancesStoryControls): 
       index,
       name: controls.longNames
         ? `Atividade complementar interdisciplinar de tecnologia e acessibilidade ${index + 1}`
-        : `${['Oficina de Angular', 'Acessibilidade digital', 'Robótica comunitária'][index % 3]} ${faker.word.adjective()}`,
+        : `${['Oficina de Angular', 'Acessibilidade digital', 'Robótica comunitária'][index % 3]} ${faker.helpers.arrayElement(SAFE_STORY_ADJECTIVES)}`,
       context: index % 3 === 0 ? 'event-group' : 'short-description',
       dayOffset: -2 - index,
       startHour: 9 + (index % 8),

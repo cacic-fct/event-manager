@@ -79,6 +79,7 @@ export class CertificateValidation {
 
   private platformId = inject(PLATFORM_ID);
   private activeValidation: Subscription | null = null;
+  private activeDownload: Subscription | null = null;
   private pendingCertificateId: string | null = null;
   private nextValidationSource: ValidationSource | null = null;
   private currentRouteCertificateId: string | null = null;
@@ -125,6 +126,7 @@ export class CertificateValidation {
         takeUntilDestroyed(),
       )
       .subscribe(({ certificateId, invalidId }) => {
+        this.resetDownload();
         this.currentRouteCertificateId = certificateId;
         this.syncInput(certificateId, invalidId);
 
@@ -145,7 +147,10 @@ export class CertificateValidation {
         this.queueValidation(certificateId, source);
       });
 
-    this.destroyRef.onDestroy(() => this.activeValidation?.unsubscribe());
+    this.destroyRef.onDestroy(() => {
+      this.activeValidation?.unsubscribe();
+      this.activeDownload?.unsubscribe();
+    });
 
     if (isPlatformBrowser(this.platformId) && window.matchMedia) {
       const media = window.matchMedia('(prefers-color-scheme: dark)');
@@ -194,6 +199,10 @@ export class CertificateValidation {
   }
 
   download(certificate: PublicCertificateValidation): void {
+    if (this.downloading()) {
+      return;
+    }
+
     if (this.downloadCooldownSeconds() > 0) {
       this.downloadError.set(`Aguarde ${this.downloadCooldownSeconds()}s para baixar novamente.`);
       return;
@@ -202,7 +211,7 @@ export class CertificateValidation {
     this.downloadError.set(null);
     this.downloading.set(true);
 
-    this.api
+    this.activeDownload = this.api
       .downloadCertificate(certificate.id)
       .pipe(
         finalize(() => this.downloading.set(false)),
@@ -244,7 +253,6 @@ export class CertificateValidation {
           return;
         }
 
-        console.log('Scanned code:', code);
         // strip "eventos.cacic.com.br/validar/" prefix if present
         const prefix = 'eventos.cacic.com.br/validar/';
         const certificateId = code.startsWith(prefix) ? code.substring(prefix.length) : code;
@@ -295,7 +303,16 @@ export class CertificateValidation {
       return 'Participação';
     }
 
-    return 'Certificado avulso';
+    return {
+      SPORTS_PLAYER: 'Atleta',
+      SPORTS_CAPTAIN: 'Capitão/Capitã',
+      SPORTS_COACH: 'Técnico/Técnica',
+      SPORTS_REFEREE: 'Árbitro/Árbitra',
+      SPORTS_INTERMEDIATOR: 'Intermediador/Intermediadora',
+      SPORTS_SCOREKEEPER: 'Responsável pela pontuação',
+      SPORTS_ORGANIZER: 'Organização',
+      OTHER: 'Manual',
+    }[certificate.issuedTo];
   }
 
   hasActivitySections(certificate: PublicCertificateValidation): boolean {
@@ -329,6 +346,9 @@ export class CertificateValidation {
       return;
     }
 
+    this.cancelPendingValidation();
+    this.resetDownload();
+    this.notFoundCertificateId.set(null);
     this.pendingCertificateId = normalizedCertificateId;
     this.validationState.clear(normalizedCertificateId);
 
@@ -352,8 +372,8 @@ export class CertificateValidation {
     }
 
     this.pendingCertificateId = null;
-    this.state.set({ status: 'loading' });
     this.activeValidation?.unsubscribe();
+    this.state.set({ status: 'loading' });
     this.activeValidation = this.api
       .validateCertificate(certificateId, turnstileToken)
       .pipe(
@@ -396,6 +416,13 @@ export class CertificateValidation {
     this.pendingCertificateId = null;
     this.activeValidation?.unsubscribe();
     this.activeValidation = null;
+  }
+
+  private resetDownload(): void {
+    this.activeDownload?.unsubscribe();
+    this.activeDownload = null;
+    this.downloading.set(false);
+    this.downloadError.set(null);
   }
 
   private consumeNextValidationSource(): ValidationSource {

@@ -5,6 +5,7 @@ import type {
   MyDayWeatherAlert,
 } from '@cacic-fct/event-manager-public-contracts';
 import { fakerPT_BR as faker } from '@faker-js/faker';
+import { SAFE_STORY_ADJECTIVES } from '../testing/safe-story-adjectives';
 import type { MyDayLoadState } from './my-day.store';
 import { myDayDateKey } from './my-day-date';
 
@@ -145,7 +146,7 @@ function createMyDayStoryEvent(
     'Encontro de comunidades',
   ][index % 5];
   const name = `${controls.eventNamePrefix.trim()}${controls.eventNamePrefix.trim() ? ' ' : ''}${
-    options.name ?? `${generatedName} ${faker.word.adjective()}`
+    options.name ?? `${generatedName} ${faker.helpers.arrayElement(SAFE_STORY_ADJECTIVES)}`
   }`;
 
   return {

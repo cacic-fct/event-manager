@@ -147,6 +147,25 @@ describe('MenuComponent', () => {
     expect(adminLink).not.toBeNull();
   });
 
+  it('loads the shared high-quality avatar eagerly in the menu', async () => {
+    authService.user.set({
+      sub: 'avatar-user',
+      roles: [],
+      permissions: [],
+      claims: { picture: 'https://lh3.googleusercontent.com/a/test-user=s96-c' },
+    });
+    fixture.detectChanges();
+    httpTesting.expectOne('/api/graphql').flush({ data: { currentUserAttendanceCollectionEvents: [] } });
+    httpTesting.expectOne('/api/auth/permissions/evaluate').flush({ permissions: [] });
+    await fixture.whenStable();
+
+    const avatar = fixture.nativeElement.querySelector('img[alt="Avatar"]') as HTMLImageElement;
+    expect(avatar.getAttribute('src')).toBe('https://lh3.googleusercontent.com/a/test-user=s512-c');
+    expect(avatar.getAttribute('loading')).toBe('eager');
+    expect(avatar.getAttribute('srcset')).toBeNull();
+    expect(avatar.getAttribute('referrerpolicy')).toBe('no-referrer');
+  });
+
   it('should remove the color scheme listener on destroy', () => {
     const listener = addEventListener.mock.calls.find(([eventName]) => eventName === 'change')?.[1];
 

@@ -8,6 +8,7 @@ import type {
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { createStoryPublicLecturerProfile } from '@cacic-fct/event-manager-public-testing';
 import { createPublicEvent, createPublicEventGroup, createPublicMajorEvent } from './public-entity-fixtures';
+import { SAFE_STORY_ADJECTIVES } from './safe-story-adjectives';
 
 export type PublicEventStoryContext = 'major-event' | 'event-group' | 'short-description';
 
@@ -382,7 +383,7 @@ export function createPublicStoryEvents(controls: Partial<PublicEventCollectionS
     return createPublicStoryEvent({
       id: `public-story-event-${index + 1}`,
       index,
-      name: `${names[index % names.length]} ${faker.word.adjective()}`,
+      name: `${names[index % names.length]} ${faker.helpers.arrayElement(SAFE_STORY_ADJECTIVES)}`,
       emoji: ['🤖', '🔐', '🎨', '📊', '🌱', '🧭'][index % 6],
       context: index % 3 === 0 ? 'major-event' : index % 3 === 1 ? 'event-group' : 'short-description',
       shortDescription: faker.company.catchPhrase(),

@@ -333,7 +333,7 @@ describe('PublicCertificateValidationService', () => {
         targetName: 'Trilha de oficinas',
         sections: [
           {
-            title: 'Eventos com presença',
+            title: 'Eventos certificados',
             creditMinutes: 75,
             events: [expect.objectContaining({ id: 'event-1', name: 'Oficina prática' })],
           },
@@ -389,7 +389,7 @@ describe('PublicCertificateValidationService', () => {
       expect.objectContaining({
         sections: [
           {
-            title: 'Eventos inscritos',
+            title: 'Eventos certificados',
             creditMinutes: 50,
             events: [expect.objectContaining({ id: 'event-2' })],
           },
@@ -511,6 +511,236 @@ describe('PublicCertificateValidationService', () => {
       expect.objectContaining({ type: EventType.PALESTRA, creditMinutes: 60 }),
     ]);
     expect(result?.totalCreditMinutes).toBe(180);
+  });
+
+  describe.each([CertificateIssuedTo.OTHER, CertificateIssuedTo.SPORTS_ORGANIZER])('manual role %s', (issuedTo) => {
+    it.each(Object.values(CertificateScope))('does not expose target activities for scope %s', async (scope) => {
+      const event = eventRecord('event-1', 'Evento público', true, 90);
+      const base = certificateRecord(new Date(), event);
+      const prisma = {
+        certificate: {
+          findFirst: jest.fn().mockResolvedValue({
+            ...base,
+            renderedData: { ...base.renderedData, issuedTo, events: [{ id: event.id }] },
+            config: { ...base.config, scope, issuedTo },
+          }),
+        },
+        event: { findMany: jest.fn().mockResolvedValue([event]) },
+        eventAttendance: { findMany: jest.fn().mockResolvedValue([{ event }]) },
+      };
+      const service = new PublicCertificateValidationService(prisma as never, validationService() as never);
+
+      for (const renderedData of [
+        { ...base.renderedData, issuedTo, events: [{ id: event.id }] },
+        { ...base.renderedData, issuedTo },
+      ]) {
+        prisma.certificate.findFirst.mockResolvedValue({
+          ...base,
+          renderedData,
+          config: { ...base.config, scope, issuedTo },
+        });
+        await expect(service.validateCertificate(base.id)).resolves.toEqual(
+          expect.objectContaining({
+            issuedTo,
+            sections: [],
+            totalCreditMinutes: 0,
+          }),
+        );
+      }
+      expect(prisma.event.findMany).not.toHaveBeenCalled();
+      expect(prisma.eventAttendance.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  it('keeps issued identity, role, target, and event details after live records change', async () => {
+    const issuedAt = new Date();
+    const startDate = new Date(issuedAt.getTime() - 3_600_000);
+    const endDate = new Date(issuedAt.getTime() - 1_800_000);
+    const event = eventRecord('event-1', 'Nome alterado', true, 180);
+    const base = certificateRecord(issuedAt, event);
+    const prisma = {
+      certificate: {
+        findFirst: jest.fn().mockResolvedValue({
+          ...base,
+          person: { name: 'Nome alterado', identityDocument: null, isCPF: null },
+          config: { ...base.config, name: 'Configuração alterada', issuedTo: CertificateIssuedTo.OTHER },
+          renderedData: {
+            scope: CertificateScope.EVENT,
+            issuedTo: CertificateIssuedTo.ATTENDEE,
+            configName: 'Certificado emitido',
+            person: { name: 'Nome na emissão', identityDocument: '529.982.247-25' },
+            target: { id: event.id, name: 'Evento na emissão' },
+            events: [
+              {
+                id: event.id,
+                name: 'Atividade na emissão',
+                startDate: startDate.toISOString(),
+                endDate: endDate.toISOString(),
+                creditMinutes: 30,
+                type: EventType.PALESTRA,
+              },
+            ],
+          },
+        }),
+      },
+      event: { findMany: jest.fn().mockResolvedValue([event]) },
+    };
+    const service = new PublicCertificateValidationService(prisma as never, validationService() as never);
+
+    const result = await service.validateCertificate(base.id);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        personName: 'Nome na emissão',
+        maskedIdentityDocument: '•••.982.247-••',
+        certificateName: 'Certificado emitido',
+        scope: CertificateScope.EVENT,
+        issuedTo: CertificateIssuedTo.ATTENDEE,
+        targetName: 'Evento na emissão',
+        totalCreditMinutes: 30,
+      }),
+    );
+    expect(result?.sections[0].events).toEqual([
+      expect.objectContaining({
+        id: event.id,
+        name: 'Atividade na emissão',
+        startDate,
+        endDate,
+        creditMinutes: 30,
+      }),
+    ]);
+
+    // Snapshots must never bypass the current publication/deletion policy.
+    for (const hiddenEvent of [
+      { ...event, isPubliclyListed: false },
+      { ...event, publicationState: 'DRAFT' },
+      { ...event, deletedAt: new Date() },
+    ]) {
+      prisma.event.findMany.mockResolvedValue([hiddenEvent]);
+      const hiddenResult = await service.validateCertificate(base.id);
+      expect(hiddenResult?.sections).toEqual([]);
+      expect(hiddenResult?.totalCreditMinutes).toBe(0);
+    }
+  });
+
+  it('keeps a public event-group target for manual certificates without crediting its events', async () => {
+    const base = certificateRecord(new Date(), eventRecord('event-1', 'Evento público', true, 90));
+    const prisma = {
+      certificate: {
+        findFirst: jest.fn().mockResolvedValue({
+          ...base,
+          renderedData: { issuedTo: CertificateIssuedTo.OTHER, events: [{ id: 'event-1' }] },
+          config: {
+            ...base.config,
+            scope: CertificateScope.EVENT_GROUP,
+            event: null,
+            eventGroup: { id: 'group-1', name: 'Grupo público', events: [{ id: 'event-1' }] },
+          },
+        }),
+      },
+    };
+    const service = new PublicCertificateValidationService(prisma as never, validationService() as never);
+    await expect(service.validateCertificate(base.id)).resolves.toEqual(
+      expect.objectContaining({
+        targetName: 'Grupo público',
+        sections: [],
+        totalCreditMinutes: 0,
+      }),
+    );
+  });
+
+  it('uses the issued manual role even when the config becomes automatic', async () => {
+    const base = certificateRecord(new Date(), eventRecord('event-1', 'Evento público', true, 90));
+    const prisma = {
+      certificate: {
+        findFirst: jest.fn().mockResolvedValue({
+          ...base,
+          renderedData: { issuedTo: CertificateIssuedTo.OTHER, events: [{ id: 'event-1' }] },
+        }),
+      },
+      event: { findMany: jest.fn() },
+    };
+    const service = new PublicCertificateValidationService(prisma as never, validationService() as never);
+    await expect(service.validateCertificate(base.id)).resolves.toEqual(
+      expect.objectContaining({
+        issuedTo: CertificateIssuedTo.OTHER,
+        sections: [],
+        totalCreditMinutes: 0,
+      }),
+    );
+    expect(prisma.event.findMany).not.toHaveBeenCalled();
+  });
+
+  it('does not label legacy sports certificates with ordinary attendance', async () => {
+    const base = certificateRecord(new Date(), eventRecord('event-1', 'Partida', true, 90));
+    const prisma = {
+      certificate: {
+        findFirst: jest.fn().mockResolvedValue({
+          ...base,
+          config: { ...base.config, issuedTo: CertificateIssuedTo.SPORTS_PLAYER },
+        }),
+      },
+      eventAttendance: { findMany: jest.fn() },
+    };
+    const service = new PublicCertificateValidationService(prisma as never, validationService() as never);
+    await expect(service.validateCertificate(base.id)).resolves.toEqual(expect.objectContaining({ sections: [] }));
+    expect(prisma.eventAttendance.findMany).not.toHaveBeenCalled();
+  });
+
+  it('does not replace the issued target with a different configuration target', async () => {
+    const base = certificateRecord(new Date(), eventRecord('new-event', 'Outro evento', true, 90));
+    const prisma = {
+      certificate: {
+        findFirst: jest.fn().mockResolvedValue({
+          ...base,
+          renderedData: { target: { id: 'original-event', name: 'Evento original' }, events: [] },
+        }),
+      },
+    };
+    const service = new PublicCertificateValidationService(prisma as never, validationService() as never);
+    const result = await service.validateCertificate(base.id);
+    expect(result?.targetName).toBeUndefined();
+    expect(result?.targetEmoji).toBeUndefined();
+  });
+
+  it('deduplicates issued events and tolerates invalid legacy snapshot fields', async () => {
+    const event = eventRecord('event-1', 'Evento público', true, 90);
+    const base = certificateRecord(new Date(), event);
+    const prisma = {
+      certificate: {
+        findFirst: jest.fn().mockResolvedValue({
+          ...base,
+          renderedData: {
+            scope: 'INVALID',
+            issuedTo: 'INVALID',
+            person: [],
+            events: [
+              null,
+              { id: '' },
+              { id: event.id, startDate: 'invalid', type: 'INVALID', creditMinutes: -1 },
+              { id: event.id, name: 'Duplicado' },
+            ],
+          },
+        }),
+      },
+      event: { findMany: jest.fn().mockResolvedValue([event]) },
+    };
+    const service = new PublicCertificateValidationService(prisma as never, validationService() as never);
+    const result = await service.validateCertificate(base.id);
+    expect(result?.totalCreditMinutes).toBe(90);
+    expect(result?.sections[0].events).toEqual([
+      expect.objectContaining({
+        id: event.id,
+        name: event.name,
+        startDate: event.startDate,
+        creditMinutes: event.creditMinutes,
+      }),
+    ]);
+    expect(prisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: { in: [event.id] }, deletedAt: null },
+      }),
+    );
   });
 });
 

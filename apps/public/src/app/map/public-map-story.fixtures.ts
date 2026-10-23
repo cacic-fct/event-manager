@@ -2,6 +2,7 @@ import type { PublicMapEvent } from '@cacic-fct/event-manager-public-contracts';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { DEFAULT_MAP_CENTER } from '@cacic-fct/shared-utils';
 import { fakerPT_BR as faker } from '@faker-js/faker';
+import { SAFE_STORY_ADJECTIVES } from '../testing/safe-story-adjectives';
 
 export type PublicMapCoordinateLayout = 'spread' | 'nearby' | 'coincident';
 
@@ -41,7 +42,7 @@ export function createPublicMapStoryEvents(controls: PublicMapEventFixtureContro
     const start = new Date(publicFixtureDateFromNow(controls.firstEventDayOffset + (index % 3), 9 + (index % 8)));
     const end = new Date(start.getTime() + controls.eventDurationMinutes * 60_000);
     const [longitude, latitude] = storyCoordinates(index, controls);
-    const generatedSuffix = index >= eventThemes.length ? ` ${faker.word.adjective()}` : '';
+    const generatedSuffix = index >= eventThemes.length ? ` ${faker.helpers.arrayElement(SAFE_STORY_ADJECTIVES)}` : '';
 
     return {
       id: `map-event-${index + 1}`,

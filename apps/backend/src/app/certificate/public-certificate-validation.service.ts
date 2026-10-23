@@ -11,6 +11,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CertificateValidationService } from './certificate-validation.service';
+import { isManualCertificateIssuedTo } from './certificate-sports-roles';
 
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
 type LecturerEventCategory = 'PALESTRA' | 'MINICURSO' | 'OTHER';
@@ -24,6 +25,7 @@ const CERTIFICATE_VALIDATION_EVENT_SELECT = {
   creditMinutes: true,
   type: true,
   isPubliclyListed: true,
+  deletedAt: true,
   publicationState: true,
   majorEventId: true,
   majorEvent: {
@@ -66,6 +68,16 @@ const PUBLIC_CERTIFICATE_VALIDATION_SELECT = {
           name: true,
           shouldIssueCertificateForEachEvent: true,
           shouldIssuePartialCertificate: true,
+          events: {
+            where: {
+              deletedAt: null,
+              isPubliclyListed: true,
+              publicationState: 'PUBLISHED',
+              OR: [{ majorEventId: null }, { majorEvent: { deletedAt: null, publicationState: 'PUBLISHED' } }],
+            },
+            select: { id: true },
+            take: 1,
+          },
         },
       },
       majorEvent: {
@@ -109,7 +121,7 @@ export class PublicCertificateValidationService {
       return null;
     }
 
-    const certificate = await this.prisma.certificate.findFirst({
+    const storedCertificate = await this.prisma.certificate.findFirst({
       where: {
         id: normalizedCertificateId,
         deletedAt: null,
@@ -120,10 +132,25 @@ export class PublicCertificateValidationService {
       },
       select: PUBLIC_CERTIFICATE_VALIDATION_SELECT,
     });
-    if (!certificate) {
+    if (!storedCertificate) {
       return null;
     }
 
+    // Scope and role belong to the issued certificate, even if its config changes.
+    const renderedData = this.getRenderedDataObject(storedCertificate);
+    const certificate = {
+      ...storedCertificate,
+      config: {
+        ...storedCertificate.config,
+        scope: this.readEnum(renderedData.scope, CertificateScope, storedCertificate.config.scope as CertificateScope),
+        issuedTo: this.readEnum(
+          renderedData.issuedTo,
+          CertificateIssuedTo,
+          storedCertificate.config.issuedTo as CertificateIssuedTo,
+        ),
+      },
+    };
+    const person = this.asJsonObject(renderedData.person);
     const events = await this.resolveCertificateEvents(certificate);
     const publiclyListedEvents = events.filter((event) => this.isCertificateEventPublic(event));
     const sections = this.buildSections(certificate, publiclyListedEvents);
@@ -131,10 +158,13 @@ export class PublicCertificateValidationService {
     return {
       id: certificate.id,
       issuedAt: certificate.issuedAt,
-      personName: certificate.person.name,
-      maskedIdentityDocument: this.maskCpf(certificate.person.identityDocument, certificate.person.isCPF),
+      personName: this.readNonEmptyString(person?.name, certificate.person.name),
+      maskedIdentityDocument:
+        person && Object.prototype.hasOwnProperty.call(person, 'identityDocument')
+          ? this.maskCpf(typeof person.identityDocument === 'string' ? person.identityDocument : null, null)
+          : this.maskCpf(certificate.person.identityDocument, certificate.person.isCPF),
       scope: certificate.config.scope as CertificateScope,
-      certificateName: certificate.config.name,
+      certificateName: this.readNonEmptyString(renderedData.configName, certificate.config.name),
       issuedTo: certificate.config.issuedTo as CertificateIssuedTo,
       certificateTypeLabel: this.readRenderedNullableString(
         certificate,
@@ -158,13 +188,24 @@ export class PublicCertificateValidationService {
   private async resolveCertificateEvents(
     certificate: PublicCertificateValidationRecord,
   ): Promise<CertificateValidationEventRecord[]> {
-    const issuedEventIds = this.getIssuedEventIds(certificate);
-    if (issuedEventIds !== null) {
-      return this.listIssuedCertificateEvents(issuedEventIds);
+    // Manual recipients inherit target events during issuance for template variables.
+    // Those events do not represent activities credited to this recipient.
+    if (isManualCertificateIssuedTo(certificate.config.issuedTo as CertificateIssuedTo)) {
+      return [];
+    }
+
+    const issuedEvents = this.getIssuedEvents(certificate);
+    if (issuedEvents !== null) {
+      return this.listIssuedCertificateEvents(issuedEvents);
     }
 
     if (certificate.config.issuedTo === CertificateIssuedTo.LECTURER) {
       return this.listLecturerCertificateEvents(certificate);
+    }
+
+    // Sports participation cannot be reconstructed from ordinary attendance.
+    if (certificate.config.issuedTo !== CertificateIssuedTo.ATTENDEE) {
+      return [];
     }
 
     if (certificate.config.scope === CertificateScope.MAJOR_EVENT) {
@@ -182,36 +223,33 @@ export class PublicCertificateValidationService {
     return [];
   }
 
-  private getIssuedEventIds(certificate: PublicCertificateValidationRecord): string[] | null {
-    const renderedData = this.getRenderedDataObject(certificate);
-    const renderedEvents = renderedData.events;
+  private getIssuedEvents(certificate: PublicCertificateValidationRecord): Map<string, Prisma.JsonObject> | null {
+    const renderedEvents = this.getRenderedDataObject(certificate).events;
     if (!Array.isArray(renderedEvents)) {
       return null;
     }
 
-    return [
-      ...new Set(
-        renderedEvents.flatMap((event) => {
-          if (!event || typeof event !== 'object' || Array.isArray(event)) {
-            return [];
-          }
-
-          const eventId = event.id;
-          return typeof eventId === 'string' && eventId.trim() ? [eventId] : [];
-        }),
-      ),
-    ];
+    const events = new Map<string, Prisma.JsonObject>();
+    for (const value of renderedEvents) {
+      const event = this.asJsonObject(value);
+      if (event && typeof event.id === 'string' && event.id.trim() && !events.has(event.id)) {
+        events.set(event.id, event);
+      }
+    }
+    return events;
   }
 
-  private async listIssuedCertificateEvents(eventIds: string[]): Promise<CertificateValidationEventRecord[]> {
-    if (eventIds.length === 0) {
+  private async listIssuedCertificateEvents(
+    issuedEvents: Map<string, Prisma.JsonObject>,
+  ): Promise<CertificateValidationEventRecord[]> {
+    if (issuedEvents.size === 0) {
       return [];
     }
 
     const events = await this.prisma.event.findMany({
       where: {
         id: {
-          in: eventIds,
+          in: [...issuedEvents.keys()],
         },
         deletedAt: null,
       },
@@ -219,10 +257,48 @@ export class PublicCertificateValidationService {
     });
     const eventsById = new Map(events.map((event) => [event.id, event]));
 
-    return eventIds.flatMap((eventId) => {
+    return [...issuedEvents].flatMap(([eventId, issued]) => {
       const event = eventsById.get(eventId);
-      return event ? [event] : [];
+      if (!event) {
+        return [];
+      }
+
+      // Keep live publication checks, but show the details captured at issuance.
+      return [
+        {
+          ...event,
+          name: this.readNonEmptyString(issued.name, event.name),
+          startDate: this.readDate(issued.startDate, event.startDate),
+          endDate: this.readDate(issued.endDate, event.endDate),
+          creditMinutes: this.readCreditMinutes(issued.creditMinutes, event.creditMinutes),
+          type: this.readEnum(issued.type, EventType, event.type as EventType),
+        },
+      ];
     });
+  }
+
+  private asJsonObject(value: Prisma.JsonValue | undefined): Prisma.JsonObject | null {
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : null;
+  }
+
+  private readNonEmptyString(value: Prisma.JsonValue | undefined, fallback: string): string {
+    return typeof value === 'string' && value.trim() ? value : fallback;
+  }
+
+  private readEnum<T extends string>(value: Prisma.JsonValue | undefined, values: Record<string, T>, fallback: T): T {
+    return Object.values(values).find((candidate) => candidate === value) ?? fallback;
+  }
+
+  private readCreditMinutes(value: Prisma.JsonValue | undefined, fallback: number | null): number | null {
+    if (value === null || (typeof value === 'number' && Number.isInteger(value) && value >= 0)) {
+      return value;
+    }
+    return fallback;
+  }
+
+  private readDate(value: Prisma.JsonValue | undefined, fallback: Date): Date {
+    const date = typeof value === 'string' ? new Date(value) : null;
+    return date && Number.isFinite(date.getTime()) ? date : fallback;
   }
 
   private async listLecturerCertificateEvents(
@@ -525,9 +601,7 @@ export class PublicCertificateValidationService {
 
   private getDefaultSectionTitle(certificate: PublicCertificateValidationRecord): string {
     if (certificate.config.scope === CertificateScope.EVENT_GROUP) {
-      return certificate.config.eventGroup?.shouldIssuePartialCertificate
-        ? 'Eventos com presença'
-        : 'Eventos inscritos';
+      return 'Eventos certificados';
     }
 
     return 'Evento';
@@ -559,23 +633,41 @@ export class PublicCertificateValidationService {
       return undefined;
     }
 
-    if (certificate.config.scope === CertificateScope.EVENT_GROUP && publiclyListedEvents.length === 0) {
+    if (
+      certificate.config.scope === CertificateScope.EVENT_GROUP &&
+      publiclyListedEvents.length === 0 &&
+      !certificate.config.eventGroup?.events?.length
+    ) {
       return undefined;
     }
 
-    if (certificate.config.scope === CertificateScope.OTHER) {
-      return certificate.config.folder?.name ?? undefined;
+    const target = this.getCurrentTarget(certificate);
+    const issuedTarget = this.asJsonObject(this.getRenderedDataObject(certificate).target);
+    if (issuedTarget && issuedTarget.id !== target?.id) {
+      return undefined;
     }
+    return issuedTarget ? this.readNonEmptyString(issuedTarget.name, target?.name ?? '') : target?.name;
+  }
 
-    return (
-      certificate.config.majorEvent?.name ??
-      certificate.config.eventGroup?.name ??
-      certificate.config.event?.name ??
-      undefined
-    );
+  private getCurrentTarget(certificate: PublicCertificateValidationRecord) {
+    switch (certificate.config.scope) {
+      case CertificateScope.EVENT:
+        return certificate.config.event;
+      case CertificateScope.EVENT_GROUP:
+        return certificate.config.eventGroup;
+      case CertificateScope.MAJOR_EVENT:
+        return certificate.config.majorEvent;
+      case CertificateScope.OTHER:
+        return certificate.config.folder;
+    }
+    return null;
   }
 
   private getTargetEmoji(certificate: PublicCertificateValidationRecord): string | undefined {
+    const issuedTarget = this.asJsonObject(this.getRenderedDataObject(certificate).target);
+    if (issuedTarget && issuedTarget.id !== this.getCurrentTarget(certificate)?.id) {
+      return undefined;
+    }
     if (
       certificate.config.scope === CertificateScope.EVENT &&
       !this.isCertificateEventPublic(certificate.config.event)
@@ -599,6 +691,7 @@ export class PublicCertificateValidationService {
   ): event is CertificateValidationEventRecord {
     return Boolean(
       event &&
+        event.deletedAt == null &&
         event.isPubliclyListed &&
         event.publicationState === 'PUBLISHED' &&
         (!event.majorEventId ||

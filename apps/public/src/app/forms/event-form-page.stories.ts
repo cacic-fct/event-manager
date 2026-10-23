@@ -7,6 +7,7 @@ import { applicationConfig } from '@storybook/angular';
 import { HttpResponse, delay, http } from 'msw';
 import { of } from 'rxjs';
 import { expect, within } from 'storybook/test';
+import { SAFE_STORY_ADJECTIVES } from '../testing/safe-story-adjectives';
 import { EventFormPage } from './event-form-page';
 
 faker.seed(20260724);
@@ -318,7 +319,7 @@ function storyForm(args: EventFormPageStoryArgs) {
                   ? 'Boa'
                   : args.longLabels
                     ? faker.company.catchPhrase()
-                    : faker.word.adjective(),
+                    : faker.helpers.arrayElement(SAFE_STORY_ADJECTIVES),
           }))
         : [],
     };

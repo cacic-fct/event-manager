@@ -10,6 +10,7 @@ import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { of } from 'rxjs';
 import { expect, fn, userEvent, within } from 'storybook/test';
+import { SAFE_STORY_ADJECTIVES } from '../../testing/safe-story-adjectives';
 import { MajorEvent } from './event-list-page';
 
 type MajorEventApiState = 'ready' | 'loading';
@@ -277,7 +278,7 @@ function buildMajorEvent(args: MajorEventStoryArgs, index: number): PublicMajorE
     name:
       index === 0
         ? args.name
-        : `${['Semana de tecnologia', 'Mostra científica', 'Festival de extensão'][index % 3]} ${faker.word.adjective()}`,
+        : `${['Semana de tecnologia', 'Mostra científica', 'Festival de extensão'][index % 3]} ${faker.helpers.arrayElement(SAFE_STORY_ADJECTIVES)}`,
     emoji: index === 0 ? args.emoji : ['💻', '🔬', '🌎'][index % 3],
     description: index === 0 ? args.description : faker.lorem.sentences(2),
     rankedSubscriptionEnabled: args.rankedSubscriptionEnabled,

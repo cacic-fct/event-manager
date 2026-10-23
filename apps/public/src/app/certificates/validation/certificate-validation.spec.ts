@@ -7,7 +7,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import type { PublicCertificateValidation } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { MatDialog } from '@angular/material/dialog';
-import { BehaviorSubject, Subject, of } from 'rxjs';
+import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 import { CertificateFileDownloadService } from '../../shared/certificate-file-download.service';
 import { CertificateValidation } from './certificate-validation';
 import { CertificateValidationApiService } from './certificate-validation-api.service';
@@ -264,6 +264,120 @@ describe('CertificateValidation', () => {
     expect(text).toContain('Certificamos a palestra ministrada.');
     expect(text).toContain('Atividade apresentada durante o evento.');
   });
+
+  it('starts a manual lookup before a CAPTCHA token is available', async () => {
+    const { component, fixture } = await createFixture();
+    component.validationForm.certificateId().value.set('certificate-2');
+    fixture.detectChanges();
+    const button = fixture.nativeElement.querySelector('button[type="submit"]') as HTMLButtonElement;
+
+    expect(button.disabled).toBe(false);
+    button.click();
+    fixture.detectChanges();
+
+    expect(component.state()).toEqual({ status: 'challenge', certificateId: 'certificate-2', source: 'manual' });
+    expect(fixture.nativeElement.textContent).toContain('Conclua a verificação para validar.');
+  });
+
+  it('cancels the previous lookup while a new certificate awaits its challenge', async () => {
+    const { api, component, router } = await createFixture({ queryParams: { certificateId: 'certificate-1' } });
+    const previous = new Subject<PublicCertificateValidation>();
+    api.validateCertificate.mockReturnValue(previous);
+    component.onTurnstileTokenChange('first-token');
+
+    await router.navigate(['/validate'], { queryParams: { certificateId: 'certificate-2' } });
+    expect(previous.observed).toBe(false);
+    previous.next(certificateFixture);
+    previous.error(new Error('Old request failed'));
+
+    expect(component.state()).toEqual({ status: 'challenge', certificateId: 'certificate-2', source: 'link' });
+    const nextCertificate = { ...certificateFixture, id: 'certificate-2', personName: 'Outra pessoa' };
+    api.validateCertificate.mockReturnValue(of(nextCertificate));
+    component.onTurnstileTokenChange('second-token');
+    expect(component.state()).toEqual({ status: 'ready', certificate: nextCertificate });
+  });
+
+  it('cancels a previous download when switching certificates and allows a new download', async () => {
+    const { api, component, router, fileDownload } = await createFixture({
+      queryParams: { certificateId: 'certificate-1' },
+    });
+    component.onTurnstileTokenChange('first-token');
+    const previous = new Subject<never>();
+    api.downloadCertificate.mockReturnValue(previous);
+    component.download(certificateFixture);
+    expect(component.downloading()).toBe(true);
+
+    await router.navigate(['/validate'], { queryParams: { certificateId: 'certificate-2' } });
+    expect(previous.observed).toBe(false);
+    expect(component.downloading()).toBe(false);
+    const nextCertificate = { ...certificateFixture, id: 'certificate-2' };
+    api.validateCertificate.mockReturnValue(of(nextCertificate));
+    component.onTurnstileTokenChange('second-token');
+    const download = { fileName: 'certificate-2.pdf', mimeType: 'application/pdf', contentBase64: 'data' };
+    api.downloadCertificate.mockReturnValue(of(download));
+    component.download(nextCertificate);
+    expect(fileDownload.save).toHaveBeenCalledExactlyOnceWith(download);
+  });
+
+  it('clears download errors on a new lookup and prevents duplicate download requests', async () => {
+    const { api, component, router } = await createFixture({ queryParams: { certificateId: 'certificate-1' } });
+    component.onTurnstileTokenChange('first-token');
+    api.downloadCertificate.mockReturnValue(throwError(() => new Error('Falha no download anterior')));
+    component.download(certificateFixture);
+    expect(component.downloadError()).toBe('Falha no download anterior');
+
+    await router.navigate(['/validate'], { queryParams: { certificateId: 'certificate-2' } });
+    expect(component.downloadError()).toBeNull();
+    api.downloadCertificate.mockReturnValue(new Subject());
+    component.download({ ...certificateFixture, id: 'certificate-2' });
+    component.download({ ...certificateFixture, id: 'certificate-2' });
+    expect(api.downloadCertificate).toHaveBeenCalledTimes(2);
+  });
+
+  it('omits empty categories and renders separate activities with identical names and dates', async () => {
+    const { component, fixture } = await createFixture();
+    const startDate = new Date().toISOString();
+    const event = { name: 'Oficina', startDate, endDate: startDate, emoji: '🎓', creditMinutes: 60 };
+    component.state.set({
+      status: 'ready',
+      certificate: {
+        ...certificateFixture,
+        sections: [
+          { title: 'Categoria vazia', creditMinutes: 0, events: [] },
+          {
+            title: 'Eventos certificados',
+            creditMinutes: 120,
+            events: [
+              { ...event, id: 'event-1' },
+              { ...event, id: 'event-2' },
+            ],
+          },
+        ],
+      },
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Categoria vazia');
+    const links = fixture.nativeElement.querySelectorAll('.event-section a') as NodeListOf<HTMLAnchorElement>;
+    expect(links.length).toBe(2);
+    expect(Array.from(links).every((link) => link.textContent?.includes('Oficina'))).toBe(true);
+  });
+
+  it.each([
+    ['OTHER', 'Manual'],
+    ['SPORTS_PLAYER', 'Atleta'],
+    ['SPORTS_ORGANIZER', 'Organização'],
+  ] as const)('labels %s certificates without relying on optional custom labels', async (issuedTo, label) => {
+    const { component } = await createFixture();
+    expect(component.certificateTypeLabel({ ...certificateFixture, issuedTo, certificateTypeLabel: null })).toBe(label);
+  });
+
+  it('does not repeat the certificate name when target metadata is unavailable', async () => {
+    const { component, fixture } = await createFixture();
+    component.state.set({ status: 'ready', certificate: { ...certificateFixture, targetName: null } });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('h2')?.textContent).toBe(certificateFixture.certificateName);
+    expect(fixture.nativeElement.querySelector('.certificate-name')).toBeNull();
+  });
 });
 
 @Component({ template: '' })
@@ -321,9 +435,13 @@ async function createFixture({
     validateCertificate: ReturnType<typeof vi.fn>;
     downloadCertificate: ReturnType<typeof vi.fn>;
   };
+  fileDownload: { save: ReturnType<typeof vi.fn> };
   component: CertificateValidation;
   fixture: ComponentFixture<CertificateValidation>;
-  router: { navigate: ReturnType<typeof vi.fn>; url: string };
+  router: {
+    navigate: ReturnType<typeof vi.fn<(commands: unknown[], extras?: { queryParams?: Params }) => Promise<boolean>>>;
+    url: string;
+  };
 }> {
   const paramMap = new BehaviorSubject(convertToParamMap(routeParams));
   const queryParamMap = new BehaviorSubject(convertToParamMap(queryParams));
@@ -331,6 +449,7 @@ async function createFixture({
     validateCertificate: vi.fn(() => of(certificateFixture)),
     downloadCertificate: vi.fn(),
   };
+  const fileDownload = { save: vi.fn() };
   const router = {
     url: '/validate',
     navigate: vi.fn((commands: unknown[], extras?: { queryParams?: Params }) => {
@@ -370,9 +489,7 @@ async function createFixture({
       },
       {
         provide: CertificateFileDownloadService,
-        useValue: {
-          save: vi.fn(),
-        },
+        useValue: fileDownload,
       },
       {
         provide: MatDialog,
@@ -391,6 +508,7 @@ async function createFixture({
 
   return {
     api,
+    fileDownload,
     component: fixture.componentInstance,
     fixture,
     router,

@@ -11,10 +11,11 @@ import { NetworkStatusService } from '../shared/network-status.service';
 import { OfflineUserDataService } from '../shared/offline-user-data.service';
 import { AttendanceCollectionApiService } from '../attendance/collection/attendance-collection-api.service';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, NgOptimizedImage } from '@angular/common';
 import { catchError, of } from 'rxjs';
 import { DefaultRedirectApiService } from '../landing/default-redirect-api.service';
 import { sportsAutorouteUrl } from '../landing/default-redirect.service';
+import { userAvatarUrl } from '../shared/user-avatar';
 
 @Component({
   selector: 'app-menu.component',
@@ -26,12 +27,14 @@ import { sportsAutorouteUrl } from '../landing/default-redirect.service';
     MatButtonModule,
     MatToolbarModule,
     CacicLogoComponent,
+    NgOptimizedImage,
   ],
   templateUrl: './menu.component.html',
   styleUrl: './menu.component.css',
 })
 export class MenuComponent {
   readonly authService = inject(AuthService);
+  protected readonly userAvatarUrl = userAvatarUrl;
   private readonly networkStatus = inject(NetworkStatusService);
   private readonly offlineUserData = inject(OfflineUserDataService);
   private readonly attendanceCollectionApi = inject(AttendanceCollectionApiService);

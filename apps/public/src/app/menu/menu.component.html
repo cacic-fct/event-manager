@@ -9,7 +9,9 @@
         <mat-list>
           <mat-list-item>
             <img
-              [src]="user.picture || 'https://placehold.co/40x40'"
+              [ngSrc]="userAvatarUrl(user.picture)"
+              disableOptimizedSrcset
+              loading="eager"
               matListItemIcon
               alt="Avatar"
               width="32"

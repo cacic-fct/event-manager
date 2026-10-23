@@ -5,6 +5,7 @@ import { formatCPF, formatUnespRole, isValidCPF } from '@cacic-fct/shared-utils'
 import { WalletBarcodeComponent } from '../barcode/barcode';
 import type { WalletCardUser } from './wallet-card.types';
 import { ticketExpirationReason } from '../../../ticketing/ticket-expiration';
+import { userAvatarUrl } from '../../../../shared/user-avatar';
 
 @Component({
   selector: 'app-wallet-event-ticket-card',
@@ -14,11 +15,10 @@ import { ticketExpirationReason } from '../../../ticketing/ticket-expiration';
     <section class="ticket-holder" aria-label="Dados do portador do bilhete">
       <div class="avatar-frame">
         <img
-          [ngSrc]="
-            googlePictureUrl(user()?.picture ?? eventTicket.holder?.avatarUrl ?? null) ||
-            '/assets/icons/avatar-placeholder.avif'
-          "
+          [ngSrc]="userAvatarUrl(user()?.picture ?? eventTicket.holder?.avatarUrl)"
           fill
+          disableOptimizedSrcset
+          loading="eager"
           alt=""
           class="avatar"
           referrerpolicy="no-referrer" />
@@ -214,18 +214,5 @@ export class WalletEventTicketCard {
     return isValidCPF(value) ? formatCPF(value) : value;
   });
 
-  googlePictureUrl(url: string | null): string {
-    if (!url) {
-      return '';
-    }
-    try {
-      const parsed = new URL(url);
-      if (parsed.protocol !== 'https:' || parsed.hostname !== 'lh3.googleusercontent.com') {
-        return url;
-      }
-      return url.replace(/([=/])s\d+(?=[-/=]|$)/, '$1s512');
-    } catch {
-      return url;
-    }
-  }
+  protected readonly userAvatarUrl = userAvatarUrl;
 }

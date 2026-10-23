@@ -12,6 +12,7 @@ import { applicationConfig } from '@storybook/angular';
 import { HttpResponse, delay, http } from 'msw';
 import { NEVER } from 'rxjs';
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
+import { SAFE_STORY_ADJECTIVES } from '../../../testing/safe-story-adjectives';
 import { MajorEventSubscriptionRealtimeService } from '../realtime.service';
 import { MajorEventSubscription } from './subscription';
 
@@ -429,7 +430,7 @@ function createStoryData(args: SubscriptionStoryArgs): SubscriptionStoryData {
           ? 'Oficina de Angular'
           : args.longEventNames
             ? `Atividade interdisciplinar de tecnologia, ciência e acessibilidade ${index + 1}`
-            : `${['Palestra de acessibilidade', 'Observabilidade para APIs', 'Robótica para a comunidade'][index % 3]} ${faker.word.adjective()}`,
+            : `${['Palestra de acessibilidade', 'Observabilidade para APIs', 'Robótica para a comunidade'][index % 3]} ${faker.helpers.arrayElement(SAFE_STORY_ADJECTIVES)}`,
       shortDescription: faker.company.catchPhrase(),
       emoji: ['🧠', '♿', '📡', '🤖'][index % 4],
       type: ['MINICURSO', 'PALESTRA', 'OTHER'][index % 3] as PublicEvent['type'],

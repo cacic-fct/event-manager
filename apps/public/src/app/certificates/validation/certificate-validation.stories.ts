@@ -13,7 +13,8 @@ const meta: Meta<CertificateValidation> = {
     controls: { disable: true },
     docs: {
       description: {
-        component: 'Certificate validation examples for event, lecturer, disabled, and offline states.',
+        component:
+          'Certificate validation examples for event, manual major-event, lecturer, disabled, and offline states.',
       },
     },
     layout: 'fullscreen',
@@ -40,6 +41,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   if (links[0]) {
     await expect(links[0]).toBeVisible();
   }
+  await canvasElement.ownerDocument.fonts.ready;
 };
 
 export const Playground: Story = {
@@ -56,6 +58,23 @@ export const StandaloneWithoutActivities: Story = {
     await expect(await canvas.findByText('Atividade complementar')).toBeVisible();
     await expect(await canvas.findByText('Texto do verso')).toBeVisible();
     await expect(canvas.queryByText('Atividades')).toBeNull();
+    await canvasElement.ownerDocument.fonts.ready;
+  },
+};
+
+export const ManualMajorEvent: Story = {
+  args: {},
+  decorators: [routeDecorator('certificate-manual-major')],
+  globals: { network: 'online' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'Semana de Computação' })).toBeVisible();
+    await expect(await canvas.findByText('Maria Organizadora')).toBeVisible();
+    await expect(await canvas.findByText('Organização', { exact: true })).toBeVisible();
+    await expect(await canvas.findByText('Texto do verso')).toBeVisible();
+    await expect(canvas.queryByRole('heading', { name: 'Atividades' })).toBeNull();
+    await expect(canvas.queryByLabelText('Carga horária total')).toBeNull();
+    await canvasElement.ownerDocument.fonts.ready;
   },
 };
 
@@ -67,6 +86,7 @@ export const LecturerCertificate: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Palestrante')).toBeVisible();
     await expect(await canvas.findByText('Atividades')).toBeVisible();
+    await canvasElement.ownerDocument.fonts.ready;
   },
 };
 
@@ -78,6 +98,7 @@ export const DisabledCertificate: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('textbox', { name: 'Código do certificado' })).toHaveValue('certificate-disabled');
     await expect(canvas.getByRole('button', { name: 'Validar' })).toBeDisabled();
+    await canvasElement.ownerDocument.fonts.ready;
   },
 };
 
