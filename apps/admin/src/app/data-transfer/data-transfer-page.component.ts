@@ -879,7 +879,7 @@ export class DataTransferPageComponent {
   }
 
   protected itemLabel(item: TransferItem): string {
-    return item.label ? `${this.resourceLabel(item.kind)} · ${item.label}` : this.resourceLabel(item.kind);
+    return item.label ? `${this.resourceLabel(item.kind)}: ${item.label}` : this.resourceLabel(item.kind);
   }
 
   protected fieldLabel(field: string): string {
@@ -924,7 +924,7 @@ export class DataTransferPageComponent {
   }
 
   protected itemReference(item: TransferItem): string {
-    return item.key ? `Chave ${item.key} · ID ${item.id}` : `ID ${item.id}`;
+    return item.key ? `Chave: ${item.key}, ID: ${item.id}` : `ID: ${item.id}`;
   }
 
   protected generatedIdFor(item: TransferItem): string | null {

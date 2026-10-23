@@ -42,6 +42,7 @@ type PublicationWorkspaceInput = {
 const PUBLICATION_WORKSPACE_MAJOR_EVENT_SELECT = {
   id: true,
   name: true,
+  emoji: true,
   publicationState: true,
   scheduledPublishAt: true,
   publishedAt: true,
@@ -60,6 +61,7 @@ const PUBLICATION_WORKSPACE_MAJOR_EVENT_SELECT = {
 const PUBLICATION_WORKSPACE_EVENT_GROUP_SELECT = {
   id: true,
   name: true,
+  emoji: true,
   _count: {
     select: {
       events: {
@@ -74,6 +76,7 @@ const PUBLICATION_WORKSPACE_EVENT_GROUP_SELECT = {
 const PUBLICATION_WORKSPACE_EVENT_SELECT = {
   id: true,
   name: true,
+  emoji: true,
   isPubliclyListed: true,
   publicationState: true,
   scheduledPublishAt: true,
@@ -91,6 +94,7 @@ const PUBLICATION_WORKSPACE_EVENT_SELECT = {
     select: {
       id: true,
       name: true,
+      emoji: true,
       deletedAt: true,
     },
   },
@@ -742,6 +746,7 @@ export class PublicationService {
       targetType: PublicationTargetType.MAJOR_EVENT,
       id: majorEvent.id,
       label: majorEvent.name,
+      emoji: majorEvent.emoji,
       publicationState: majorEvent.publicationState,
       statusLabel: publicationStateLabel(majorEvent.publicationState, majorEvent.scheduledPublishAt),
       scheduledPublishAt: majorEvent.scheduledPublishAt,
@@ -765,6 +770,7 @@ export class PublicationService {
       targetType: PublicationTargetType.EVENT_GROUP,
       id: eventGroup.id,
       label: eventGroup.name,
+      emoji: eventGroup.emoji,
       publicationState,
       statusLabel:
         children.length > 0
@@ -790,6 +796,7 @@ export class PublicationService {
       targetType: PublicationTargetType.EVENT_GROUP,
       id: firstEvent?.eventGroupId ?? '',
       label,
+      emoji: firstEvent?.eventGroup?.emoji,
       publicationState,
       statusLabel: publicationStateLabel(publicationState, scheduledPublishAt),
       scheduledPublishAt,
@@ -810,6 +817,7 @@ export class PublicationService {
       targetType: PublicationTargetType.EVENT,
       id: event.id,
       label: event.name,
+      emoji: event.emoji,
       publicationState: event.publicationState,
       statusLabel: publicationStateLabel(event.publicationState, event.scheduledPublishAt),
       scheduledPublishAt: event.scheduledPublishAt,

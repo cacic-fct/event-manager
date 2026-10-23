@@ -246,7 +246,7 @@ describe('DataTransferPageComponent', () => {
     clickButton('Revisar importação');
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Evento de abertura');
+    expect(fixture.nativeElement.querySelector('mat-panel-title span').textContent).toBe('Evento: Evento de abertura');
     expect(fixture.nativeElement.querySelector('.change-table tbody th').textContent).toBe('Nome');
     const comparison = fixture.nativeElement.querySelector('.review-list') as HTMLElement;
     expect(

@@ -106,6 +106,14 @@ describe('EventApiService', () => {
     });
   });
 
+  it('requests group names with the event list for workspace shortcuts', async () => {
+    await firstValueFrom(service.listEvents({ majorEventId: 'major-1' }));
+
+    expect(graphqlHttp.request).toHaveBeenCalledWith(expect.stringMatching(/eventGroup\s*\{\s*id\s+name\s*\}/), {
+      majorEventId: 'major-1',
+    });
+  });
+
   it('maps event draft operations', async () => {
     await expect(firstValueFrom(service.listEventDrafts({ sourceEventId: 'event-1' }))).resolves.toEqual([
       eventDraftFixture(),

@@ -255,6 +255,7 @@ describe('PublicationService', () => {
       {
         id: 'group-1',
         name: 'Grupo',
+        emoji: '📚',
         _count: { events: 1 },
       },
     ]);
@@ -262,6 +263,7 @@ describe('PublicationService', () => {
       {
         id: 'event-1',
         name: 'Evento publicado',
+        emoji: '🎤',
         isPubliclyListed: true,
         publicationState: PublicationState.PUBLISHED,
         scheduledPublishAt: null,
@@ -273,6 +275,7 @@ describe('PublicationService', () => {
         eventGroup: {
           id: 'group-1',
           name: 'Grupo',
+          emoji: '📚',
           deletedAt: null,
         },
       },
@@ -282,15 +285,17 @@ describe('PublicationService', () => {
       tree: [
         {
           id: 'group-1',
+          emoji: '📚',
           publicationState: PublicationState.PUBLISHED,
-          children: [{ id: 'event-1' }],
+          children: [{ id: 'event-1', emoji: '🎤' }],
         },
       ],
       items: [
         {
           id: 'group-1',
+          emoji: '📚',
           publicationState: PublicationState.PUBLISHED,
-          children: [{ id: 'event-1' }],
+          children: [{ id: 'event-1', emoji: '🎤' }],
         },
       ],
     });
@@ -301,6 +306,7 @@ describe('PublicationService', () => {
     const event = {
       id: 'event-1',
       name: 'Angular avançado',
+      emoji: '💻',
       isPubliclyListed: true,
       publicationState: PublicationState.PUBLISHED,
       scheduledPublishAt: null,
@@ -315,6 +321,7 @@ describe('PublicationService', () => {
       eventGroup: {
         id: 'group-1',
         name: 'Workshops',
+        emoji: '📚',
         deletedAt: null,
       },
     };
@@ -332,6 +339,7 @@ describe('PublicationService', () => {
         {
           id: 'major-1',
           name: 'SECOMPP',
+          emoji: '🎓',
           publicationState: PublicationState.PUBLISHED,
           scheduledPublishAt: null,
           publishedAt: new Date('2026-06-24T10:00:00.000Z'),
@@ -348,10 +356,15 @@ describe('PublicationService', () => {
       tree: [
         {
           id: 'major-1',
+          emoji: '🎓',
           children: [
             {
               id: 'group-1',
-              children: [{ id: 'event-1' }, { id: 'event-2' }],
+              emoji: '📚',
+              children: [
+                { id: 'event-1', emoji: '💻' },
+                { id: 'event-2', emoji: '💻' },
+              ],
             },
           ],
         },
@@ -359,10 +372,15 @@ describe('PublicationService', () => {
       items: [
         {
           id: 'major-1',
+          emoji: '🎓',
           children: [
             {
               id: 'group-1',
-              children: [{ id: 'event-1' }, { id: 'event-2' }],
+              emoji: '📚',
+              children: [
+                { id: 'event-1', emoji: '💻' },
+                { id: 'event-2', emoji: '💻' },
+              ],
             },
           ],
         },

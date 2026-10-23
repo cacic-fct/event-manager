@@ -77,7 +77,7 @@ type AttendanceDetail = {
           <p class="location-coordinates">
             {{ data.collectedLatitude | number: '1.6-6' }}, {{ data.collectedLongitude | number: '1.6-6' }}
             @if (data.collectedAccuracyMeters !== null && data.collectedAccuracyMeters !== undefined) {
-              , precisão de {{ data.collectedAccuracyMeters | number: '1.0-1' }} m
+              <br />Precisão: {{ data.collectedAccuracyMeters | number: '1.0-1' }} m
             }
           </p>
         } @else {

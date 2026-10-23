@@ -87,6 +87,23 @@ describe('PublicationPageComponent', () => {
     expect(component.childCountLabel(2)).toBe('2 itens vinculados');
   });
 
+  it('renders saved emojis throughout the hierarchy and keeps the icon fallback for missing emojis', async () => {
+    const { component, fixture } = await createComponent();
+    component.expandedNodeKeys.set(new Set(['MAJOR_EVENT:major-1', 'EVENT_GROUP:group-1']));
+    fixture.detectChanges();
+
+    const icons = Array.from(fixture.nativeElement.querySelectorAll('.publication-target-icon')) as HTMLElement[];
+    expect(icons.map((icon) => icon.tagName)).toEqual(['LIB-TWEMOJI', 'LIB-TWEMOJI', 'LIB-TWEMOJI']);
+    expect(icons.map((icon) => icon.querySelector('img')?.alt)).toEqual(['🎓', '📚', '🎤']);
+    expect(icons.every((icon) => icon.getAttribute('aria-hidden') === 'true')).toBe(true);
+
+    component.workspace.set(workspaceFixture({ tree: [{ ...eventNode(), emoji: '  ' }] }));
+    fixture.detectChanges();
+    const fallback = fixture.nativeElement.querySelector('.publication-target-icon') as HTMLElement;
+    expect(fallback.tagName).toBe('MAT-ICON');
+    expect(fallback.textContent?.trim()).toBe('event');
+  });
+
   it('honors a parameterized publication deep link and normalizes the target type', async () => {
     routeParamMap = convertToParamMap({ targetType: 'event-group', targetId: 'group-1' });
 
@@ -459,6 +476,7 @@ function majorNode(): PublicationNode {
   return {
     targetType: 'MAJOR_EVENT',
     id: 'major-1',
+    emoji: '🎓',
     label: 'Grande evento',
     publicationState: 'DRAFT',
     statusLabel: 'Rascunho',
@@ -473,6 +491,7 @@ function groupNode(): PublicationNode {
   return {
     targetType: 'EVENT_GROUP',
     id: 'group-1',
+    emoji: '📚',
     label: 'Grupo',
     publicationState: 'PUBLISHED',
     statusLabel: 'Publicado',
@@ -487,6 +506,7 @@ function eventNode(): PublicationNode {
   return {
     targetType: 'EVENT',
     id: 'event-1',
+    emoji: '🎤',
     label: 'Evento',
     publicationState: 'PUBLISHED',
     statusLabel: 'Publicado',

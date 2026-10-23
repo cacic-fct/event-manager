@@ -100,6 +100,7 @@ export function applyStoryBulkOperation(workspace: PublicationWorkspace, input: 
 function majorEventNode(index: number, args: PublicationStoryArgs) {
   return {
     targetType: 'MAJOR_EVENT' as const,
+    emoji: '🎓',
     id: `major-${index}`,
     label: `SECOMPP ${2026 + index}`,
     publicationState: index % 2 === 0 ? ('SCHEDULED' as const) : ('PUBLISHED' as const),
@@ -121,6 +122,7 @@ function majorEventNode(index: number, args: PublicationStoryArgs) {
 function groupNode(id: string, parentLabel: string | null, args: PublicationStoryArgs) {
   return {
     targetType: 'EVENT_GROUP' as const,
+    emoji: '📚',
     id,
     label: parentLabel ? 'Grupo de workshops' : 'Minicursos de Férias',
     publicationState: 'SCHEDULED' as const,
@@ -144,6 +146,7 @@ function eventNode(id: string, parentLabel: string | null, index: number, args: 
   const publicationState = hidden ? 'PUBLISHED' : states[index % states.length];
   return {
     targetType: 'EVENT' as const,
+    emoji: index % 2 === 0 ? '🎤' : '💻',
     id,
     label: parentLabel ?? faker.company.catchPhrase(),
     publicationState,

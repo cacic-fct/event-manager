@@ -177,5 +177,5 @@ const labels: Readonly<Record<string, string>> = {
 export function transferFieldLabel(field: string): string {
   const parts = field.replace(/^data\./, '').split('.');
   // Derived effects already use Portuguese names; preserve unknown fields for diagnosis.
-  return parts.map((part) => labels[part] ?? part).join(' · ');
+  return parts.map((part) => labels[part] ?? part).join(': ');
 }

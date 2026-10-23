@@ -27,6 +27,10 @@ export const EVENT_LIST_FIELDS = `
     audienceCourseCodes
     attendanceEligibility
   }
+  eventGroup {
+    id
+    name
+  }
 `;
 
 export const EVENT_DETAIL_FIELDS = `

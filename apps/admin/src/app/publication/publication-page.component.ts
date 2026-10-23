@@ -12,6 +12,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { firstValueFrom } from 'rxjs';
+import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import {
   ConfirmationDialogComponent,
   ConfirmationDialogData,
@@ -51,6 +52,7 @@ import {
     MatListModule,
     MatTooltipModule,
     NgTemplateOutlet,
+    TwemojiComponent,
   ],
   templateUrl: './publication-page.component.html',
   styleUrls: [

@@ -336,8 +336,16 @@ const handlers = [
       ? []
       : variables['eventGroupId'] === ids.group
         ? Array.from({ length: active.activityCount }, (_, index) => event(`group-activity-${index + 1}`, index, true))
-        : variables['majorEventId'] === ids['major-event'] && variables['isInGroup'] === false
-          ? Array.from({ length: active.activityCount }, (_, index) => event(`activity-${index + 1}`, index))
+        : variables['majorEventId'] === ids['major-event']
+          ? Array.from({ length: active.activityCount }, (_, index) => index)
+              .flatMap((index) => [
+                event(`activity-${index + 1}`, index),
+                event(`group-activity-${index + 1}`, index, true),
+              ])
+              .filter(
+                (item) =>
+                  typeof variables['isInGroup'] !== 'boolean' || Boolean(item.eventGroupId) === variables['isInGroup'],
+              )
           : scoped
             ? [event('unrelated-event')]
             : [event(), event('group-activity-1', 0, true)];
@@ -501,6 +509,35 @@ export const SelectedMajorEvent: Story = {
       'href',
       '#/attendances/major-event/workspace-major',
     );
+    const groupedEvent = await canvas.findByRole('link', { name: 'Laboratório do grupo 1' });
+    await expect(groupedEvent).toHaveAttribute('href', '#/event-workspace/event/group-activity-1/settings');
+    await expect(groupedEvent).toHaveAccessibleDescription(/Grupo: Trilha de desenvolvimento web/);
+    await expect([...canvasElement.querySelectorAll('.activities h3')].map((heading) => heading.textContent)).toEqual([
+      'Eventos',
+      'Grupos de eventos',
+    ]);
+  },
+};
+export const GroupedEventShortcut: Story = {
+  args: { contextKind: 'major-event' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('link', { name: 'Laboratório do grupo 1' })).toBeVisible();
+    const search = canvas.getByRole('searchbox', { name: 'Buscar na programação' });
+    await userEvent.type(search, 'Laboratório');
+    await userEvent.click(canvas.getByRole('button', { name: 'Buscar' }));
+    await waitFor(() =>
+      expect(canvas.queryByRole('link', { name: 'Oficina de acessibilidade 1' })).not.toBeInTheDocument(),
+    );
+    await expect(await canvas.findByRole('link', { name: 'Laboratório do grupo 1' })).toBeVisible();
+    await userEvent.clear(search);
+    await userEvent.click(canvas.getByRole('button', { name: 'Buscar' }));
+    await expect(await canvas.findByRole('link', { name: 'Oficina de acessibilidade 1' })).toBeVisible();
+    const shortcut = await canvas.findByRole('link', { name: 'Laboratório do grupo 1' });
+    shortcut.focus();
+    await userEvent.keyboard('{Enter}');
+    await expect(await canvas.findByRole('heading', { name: 'Editar evento' })).toBeVisible();
+    await expect(await canvas.findByRole('textbox', { name: 'Nome' })).toHaveValue('Laboratório do grupo 1');
   },
 };
 export const SelectedGroup: Story = {

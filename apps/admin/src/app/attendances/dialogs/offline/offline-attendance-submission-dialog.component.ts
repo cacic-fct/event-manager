@@ -84,7 +84,7 @@ export interface OfflineAttendanceSubmissionDialogData {
                 data.submission.collectedAccuracyMeters !== null &&
                 data.submission.collectedAccuracyMeters !== undefined
               ) {
-                , precisão de {{ data.submission.collectedAccuracyMeters | number: '1.0-1' }} m
+                <br />Precisão: {{ data.submission.collectedAccuracyMeters | number: '1.0-1' }} m
               }
             } @else {
               -

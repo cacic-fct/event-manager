@@ -246,18 +246,7 @@ let nextPickerId = 0;
       </li>
     </ng-template>
     <ng-template #nodeMetadata let-node>
-      <span class="node-meta"
-        >{{ kindLabel(node.kind) }}
-        @if (node.eventType) {
-          , tipo: {{ eventTypeLabel(node.eventType) }}
-        }
-        @if (node.startDate) {
-          , {{ node.startDate | date: 'short' }}
-        }
-        @if (node.publicationState) {
-          , publicação: {{ publicationLabel(node.publicationState) }}
-        }
-      </span>
+      <span class="node-meta">{{ metadataLabel(node, node.startDate | date: 'short') }}</span>
       @if (node.locationDescription) {
         <span class="node-meta">{{ node.locationDescription }}</span>
       }
@@ -624,13 +613,25 @@ export class EventContextPickerComponent {
   kindLabel(kind: AdminEventContextKind): string {
     return { EVENT: 'Evento', EVENT_GROUP: 'Grupo de eventos', MAJOR_EVENT: 'Grande evento' }[kind];
   }
-  eventTypeLabel(type: string): string {
+
+  protected metadataLabel(node: AdminEventContextNode, startDate: string | null): string {
+    const eventType = node.kind === 'EVENT' && node.eventType ? this.eventTypeLabel(node.eventType) : null;
+    const parts = [eventType ?? this.kindLabel(node.kind)];
+    if (startDate) {
+      parts.push(startDate);
+    }
+    if (node.publicationState) {
+      parts.push(this.publicationLabel(node.publicationState));
+    }
+    return parts.join(', ');
+  }
+
+  eventTypeLabel(type: string): string | null {
     const labels: Readonly<Record<string, string>> = {
       MINICURSO: 'Minicurso',
       PALESTRA: 'Palestra',
-      OTHER: 'Outro',
     };
-    return labels[type] ?? 'Tipo de evento não informado';
+    return labels[type] ?? null;
   }
 
   publicationLabel(state: string): string {

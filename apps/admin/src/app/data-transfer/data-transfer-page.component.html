@@ -527,10 +527,14 @@
                 @for (item of currentPreview.items; track item.kind + ':' + item.id) {
                   <mat-expansion-panel class="review-item">
                     <mat-expansion-panel-header>
-                      <mat-panel-title>{{ itemLabel(item) }} · {{ actionLabel(item.action) }}</mat-panel-title>
-                      <mat-panel-description
-                        >{{ itemReference(item) }} · {{ statusLabel(item.status) }}</mat-panel-description
-                      >
+                      <mat-panel-title>
+                        <span>{{ itemLabel(item) }}</span>
+                        <span>{{ actionLabel(item.action) }}</span>
+                      </mat-panel-title>
+                      <mat-panel-description>
+                        <span>{{ itemReference(item) }}</span>
+                        <span>{{ statusLabel(item.status) }}</span>
+                      </mat-panel-description>
                     </mat-expansion-panel-header>
                     @if (item.message) {
                       <p class="item-message">{{ item.message }}</p>
@@ -725,11 +729,14 @@
                     <strong>{{ batch.undone ? 'Importação desfeita' : 'Importação concluída' }}</strong>
                     <time [attr.datetime]="batch.createdAt">{{ batch.createdAt | date: 'short' }}</time>
                     <p>
-                      {{ batch.summary.create }} novos · {{ batch.summary.update }} atualizados ·
-                      {{ batch.summary.unchanged }} sem alterações · {{ batch.summary.skip }} ignorados
+                      {{ batch.summary.create }} novos, {{ batch.summary.update }} atualizados,
+                      {{ batch.summary.unchanged }} sem alterações e {{ batch.summary.skip }} ignorados.
                     </p>
                     <p>
-                      Lote <code>{{ batch.batchId }}</code> · Auditoria <code>{{ batch.auditEntryId }}</code>
+                      Lote: <code>{{ batch.batchId }}</code>
+                    </p>
+                    <p>
+                      Auditoria: <code>{{ batch.auditEntryId }}</code>
                     </p>
                     @if (batch.synchronizationPending) {
                       <p role="status">O histórico deste lote ainda está sendo sincronizado.</p>

@@ -73,7 +73,11 @@
             } @else {
               <span class="publication-disclosure-spacer" aria-hidden="true"></span>
             }
-            <mat-icon class="publication-target-icon" aria-hidden="true">{{ targetIcon(node.targetType) }}</mat-icon>
+            @if (node.emoji?.trim()) {
+              <lib-twemoji class="publication-target-icon" [emoji]="node.emoji" aria-hidden="true" />
+            } @else {
+              <mat-icon class="publication-target-icon" aria-hidden="true">{{ targetIcon(node.targetType) }}</mat-icon>
+            }
             <span class="publication-node-content">
               <span class="publication-list-title">{{ node.label }}</span>
               <span class="publication-list-line">{{ targetDescription(node, level) }}</span>

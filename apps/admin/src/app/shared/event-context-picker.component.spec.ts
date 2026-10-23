@@ -1,5 +1,7 @@
 import { within } from '@testing-library/dom';
 import { TestBed } from '@angular/core/testing';
+import { DatePipe } from '@angular/common';
+import { LOCALE_ID } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { of, Subject, throwError } from 'rxjs';
@@ -55,12 +57,36 @@ describe('EventContextPickerComponent paged hierarchy', () => {
     return fixture;
   }
 
-  it('labels event types and uses a contextual fallback for unsupported values', async () => {
+  it('labels specific event types and omits unspecified types', async () => {
     const fixture = await render();
     expect(fixture.componentInstance.eventTypeLabel('MINICURSO')).toBe('Minicurso');
-    expect(fixture.componentInstance.eventTypeLabel('UNKNOWN')).toBe('Tipo de evento não informado');
+    expect(fixture.componentInstance.eventTypeLabel('PALESTRA')).toBe('Palestra');
+    expect(fixture.componentInstance.eventTypeLabel('OTHER')).toBeNull();
+    expect(fixture.componentInstance.eventTypeLabel('UNKNOWN')).toBeNull();
     expect(fixture.componentInstance.publicationLabel('PUBLISHED')).toBe('Publicado');
     expect(fixture.componentInstance.publicationLabel('UNKNOWN')).toBe('Situação da publicação não informada');
+  });
+
+  it.each([
+    { metadata: { eventType: 'MINICURSO' }, expected: 'Minicurso, DATE, Publicado' },
+    { metadata: { eventType: 'PALESTRA' }, expected: 'Palestra, DATE, Publicado' },
+    { metadata: { eventType: 'OTHER' }, expected: 'Evento, DATE, Publicado' },
+    { metadata: { eventType: 'UNKNOWN' }, expected: 'Evento, DATE, Publicado' },
+    { metadata: { eventType: undefined }, expected: 'Evento, DATE, Publicado' },
+    { metadata: { eventType: 'MINICURSO', startDate: undefined }, expected: 'Minicurso, Publicado' },
+    { metadata: { eventType: undefined, startDate: undefined }, expected: 'Evento, Publicado' },
+    {
+      metadata: { eventType: undefined, startDate: undefined, publicationState: undefined },
+      expected: 'Evento',
+    },
+  ])('renders concise metadata with clean comma spacing for %o', async ({ expected, metadata }) => {
+    const node = { ...event, ...metadata };
+    api.listPage.mockReturnValue(of({ nodes: [node], nextCursor: null }));
+    const fixture = await render();
+    const formattedDate = new DatePipe(TestBed.inject(LOCALE_ID)).transform(node.startDate, 'short');
+    expect(fixture.nativeElement.querySelector('.node-meta').textContent).toBe(
+      expected.replace('DATE', formattedDate ?? ''),
+    );
   });
 
   it('browses older root pages without entering a search and restores the previous cursor', async () => {

@@ -346,7 +346,7 @@ INSERT INTO "event_manager_roles" (
 )
 SELECT
   migration_group."roleId",
-  'Acesso migrado · ' || app_user."name" || ' · ' || migration_group."scope" || ' · ' || LEFT(migration_group."roleId", 8),
+  'Acesso migrado: ' || app_user."name" || ', escopo: ' || migration_group."scope" || ', ID: ' || LEFT(migration_group."roleId", 8),
   'Cargo criado automaticamente a partir das concessões anteriores. Revise e renomeie quando apropriado.',
   '📦',
   1000,

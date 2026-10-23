@@ -11,6 +11,7 @@ export interface PublicationNode {
   targetType: PublicationTargetType;
   id: string;
   label: string;
+  emoji?: string | null;
   publicationState: PublicationState;
   statusLabel: string;
   scheduledPublishAt?: string | null;
@@ -80,6 +81,7 @@ const PUBLIC_CONTENT_NODE_FIELDS = `
   targetType
   id
   label
+  emoji
   publicationState
   statusLabel
   isPubliclyListed

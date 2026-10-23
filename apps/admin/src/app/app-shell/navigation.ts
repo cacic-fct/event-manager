@@ -31,7 +31,7 @@ export const navigationItems = [
     description: 'Acompanhe filas operacionais, eventos próximos e alertas do workspace.',
     icon: 'dashboard',
     group: 'Visão geral',
-    helpLink: undefined,
+    helpLink: 'https://docs.eventos.cacic.com.br/Manual/Interface%20administrativa/P%C3%A1gina%20inicial',
   },
   {
     kind: 'divider',
@@ -56,7 +56,7 @@ export const navigationItems = [
     description: 'Exporte e importe estruturas de eventos com revisão antes de aplicar as alterações.',
     icon: 'data_object',
     group: 'Estrutura do evento',
-    helpLink: undefined,
+    helpLink: 'https://docs.eventos.cacic.com.br/Manual/Interface%20administrativa/Dados%20JSON',
   },
   {
     kind: 'link',
@@ -89,7 +89,7 @@ export const navigationItems = [
     description: 'Organize torneios, equipes, tabelas, partidas e revisões esportivas.',
     icon: 'sports',
     group: 'Estrutura do evento',
-    helpLink: undefined,
+    helpLink: 'https://docs.eventos.cacic.com.br/Manual/Interface%20administrativa/Esportes/Vis%C3%A3o%20geral',
   },
   {
     kind: 'link',
@@ -127,7 +127,7 @@ export const navigationItems = [
     description: 'Configure direitos transferíveis, emissões e compras de bilhetes por evento.',
     icon: 'confirmation_number',
     group: 'Participação',
-    helpLink: undefined,
+    helpLink: 'https://docs.eventos.cacic.com.br/Manual/Interface%20administrativa/Bilhetes',
   },
   {
     kind: 'link',
@@ -170,7 +170,7 @@ export const navigationItems = [
     description: 'Configure, execute e audite sorteios vinculados a eventos.',
     icon: 'rewarded_ads',
     group: 'Participação',
-    helpLink: undefined,
+    helpLink: 'https://docs.eventos.cacic.com.br/Manual/Interface%20administrativa/Sorteios',
   },
   {
     kind: 'divider',

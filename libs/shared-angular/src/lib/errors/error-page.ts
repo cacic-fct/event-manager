@@ -33,7 +33,7 @@ export class ErrorPage {
 
   constructor() {
     this.errors.setResponseStatus(this.status);
-    inject(Title).setTitle(`Erro ${this.status} · CACiC Eventos`);
+    inject(Title).setTitle(`Erro ${this.status} - CACiC Eventos`);
     this.meta.updateTag({ name: 'robots', content: 'noindex, nofollow' });
     afterNextRender(() => {
       const heading = this.element.nativeElement.querySelector('h1');

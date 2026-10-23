@@ -24,6 +24,9 @@ export class PublicationNode {
   @Field(() => String)
   label!: string;
 
+  @Field(() => String, { nullable: true })
+  emoji?: string | null;
+
   @Field(() => PublicationState)
   publicationState!: PublicationState;
 

@@ -211,9 +211,7 @@ export class EventWorkspacePageComponent {
           ? this.loadAllChildren(request, (skip, take) =>
               firstValueFrom(
                 this.events.listEvents({
-                  ...(ref.kind === 'group'
-                    ? { eventGroupId: ref.id }
-                    : { majorEventId: ref.id, ...(!query ? { isInGroup: false } : {}) }),
+                  ...(ref.kind === 'group' ? { eventGroupId: ref.id } : { majorEventId: ref.id }),
                   ...(query ? { query } : {}),
                   skip,
                   take,

@@ -80,6 +80,7 @@ describe('PublicationApiService', () => {
     expect(workspaceQuery).toContain('publicationWorkspace');
     expect(workspaceQuery).toContain('warnings');
     expect(workspaceQuery).toContain('children');
+    expect(workspaceQuery.match(/\bemoji\b/g)).toHaveLength(4);
   });
 
   it('omits workspace variables when no filters are supplied', async () => {

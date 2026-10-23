@@ -92,16 +92,14 @@
             <header class="panel-heading">
               <div>
                 <h2 id="context-activities">Programação</h2>
-                <p>Abra um grupo ou evento para trabalhar nesse contexto.</p>
+                <p>Abra um evento para gerenciá-lo.</p>
               </div>
             </header>
             <form class="scope-search" (submit)="$event.preventDefault(); applySearch()">
               <mat-form-field
                 ><mat-label>Buscar na programação</mat-label><mat-icon matPrefix>search</mat-icon
-                ><input matInput type="search" [formControl]="query" /><mat-hint
-                  >Busca também os eventos dentro dos grupos.</mat-hint
-                ></mat-form-field
-              >
+                ><input matInput type="search" [formControl]="query"
+              /></mat-form-field>
               <button mat-stroked-button type="submit">Buscar</button>
             </form>
             @if (activitiesLoading()) {
@@ -110,6 +108,23 @@
             @if (activitiesError()) {
               <p role="alert">{{ activitiesError() }}</p>
               <button mat-button type="button" (click)="loadActivities()">Tentar novamente</button>
+            }
+            @if (workspace.canReadActivities()) {
+              <h3>Eventos</h3>
+              @for (event of activities(); track event.id) {
+                <app-workspace-record [title]="event.name" [link]="contextRoute({ kind: 'event', id: event.id })">
+                  <lib-twemoji recordIcon [emoji]="event.emoji" /><span recordDescription
+                    >{{ event.startDate | date: 'short' }}
+                    @if (context.kind === 'major-event' && event.eventGroup?.name) {
+                      <br />Grupo: {{ event.eventGroup.name }}
+                    }
+                  </span>
+                </app-workspace-record>
+              } @empty {
+                @if (!activitiesLoading() && !activitiesError()) {
+                  <p class="empty-note">Nenhum evento encontrado neste contexto.</p>
+                }
+              }
             }
             @if (context.kind === 'major-event' && permissions.has(Permission.EventGroup.Read)) {
               <h3>Grupos de eventos</h3>
@@ -120,23 +135,6 @@
               } @empty {
                 @if (!activitiesLoading() && !activitiesError()) {
                   <p class="empty-note">Nenhum grupo encontrado neste contexto.</p>
-                }
-              }
-            }
-            @if (workspace.canReadActivities()) {
-              <h3>{{ context.kind === 'major-event' && !appliedQuery() ? 'Eventos fora de grupos' : 'Eventos' }}</h3>
-              @for (event of activities(); track event.id) {
-                <app-workspace-record [title]="event.name" [link]="contextRoute({ kind: 'event', id: event.id })">
-                  <lib-twemoji recordIcon [emoji]="event.emoji" /><span recordDescription
-                    >{{ event.startDate | date: 'short' }}
-                    @if (appliedQuery() && event.eventGroup?.name) {
-                      , grupo: {{ event.eventGroup.name }}
-                    }
-                  </span>
-                </app-workspace-record>
-              } @empty {
-                @if (!activitiesLoading() && !activitiesError()) {
-                  <p class="empty-note">Nenhum evento encontrado neste contexto.</p>
                 }
               }
             }
