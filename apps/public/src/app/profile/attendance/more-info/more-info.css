@@ -13,16 +13,23 @@
   margin-bottom: 16px;
 }
 
+.status-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
 .status-summary {
   align-items: center;
   color: var(--mat-sys-on-surface-variant);
   display: flex;
   font: var(--mat-sys-title-small);
   gap: 8px;
-  margin: 0 0 24px;
+  margin: 0;
 }
 
 .status-summary mat-icon {
+  flex-shrink: 0;
   color: var(--mat-sys-primary);
   font-size: 20px;
   height: 20px;
@@ -127,4 +134,13 @@ mat-toolbar {
   position: sticky;
   top: 0;
   z-index: 1;
+}
+
+.certificate-retry {
+  justify-self: start;
+  margin-inline-start: 28px;
+}
+
+.actions:empty {
+  display: none;
 }

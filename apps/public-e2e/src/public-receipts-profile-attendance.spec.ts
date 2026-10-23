@@ -88,10 +88,17 @@ test('lists current-user subscriptions, standalone certificates, and downloads t
   await expect(page.getByText('Certificado avulso')).toBeVisible();
   await page.getByRole('button', { name: 'Fechar' }).click();
 
-  await page.getByRole('button', { name: 'Baixar todos os certificados' }).click();
+  await page.getByRole('button', { name: 'Selecionar certificados', exact: true }).click();
+  await expect(page.getByRole('checkbox', { name: /SECOMPP Pago/ })).toBeDisabled();
+  await page.getByRole('button', { name: 'Selecionar todos', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Baixar (3)', exact: true })).toBeEnabled();
+  await page.getByRole('checkbox', { name: /Certificado de extensão/ }).uncheck();
+  await expect(page.getByRole('checkbox', { name: /Oficina pública/ })).toBeChecked({ indeterminate: true });
+  await page.getByRole('button', { name: 'Baixar (2)', exact: true }).click();
 
   await expect(page.getByText('Download dos certificados iniciado.')).toBeVisible();
   expect(api.certificateArchiveDownloads()).toBe(1);
+  expect(api.certificateSelections()).toEqual([['event-certificate-1', 'standalone-certificate-1']]);
 });
 
 test('opens a current-user event form and submits answers', async ({ page }) => {
@@ -190,11 +197,13 @@ async function mockPublicApi(
   options: { formSubmissionError?: string; pendingOnlineAttendance?: boolean } = {},
 ): Promise<{
   certificateArchiveDownloads: () => number;
+  certificateSelections: () => string[][];
   formSubmissions: () => Record<string, unknown>[];
   onlineAttendanceConfirmations: () => Array<{ eventId: string; code: string }>;
   receiptUploads: () => Array<{ majorEventId: string; contentType: string; body: string }>;
 }> {
   let certificateArchiveDownloads = 0;
+  const certificateSelections: string[][] = [];
   let onlineAttendanceConfirmed = false;
   const formSubmissions: Record<string, unknown>[] = [];
   const onlineAttendanceConfirmations: Array<{ eventId: string; code: string }> = [];
@@ -222,6 +231,8 @@ async function mockPublicApi(
     }
 
     if (url.pathname === '/api/current-user/certificates/archive.zip') {
+      expect(route.request().method()).toBe('POST');
+      certificateSelections.push(route.request().postDataJSON().certificateIds);
       certificateArchiveDownloads++;
       await route.fulfill({
         status: 200,
@@ -279,6 +290,7 @@ async function mockPublicApi(
 
   return {
     certificateArchiveDownloads: () => certificateArchiveDownloads,
+    certificateSelections: () => certificateSelections,
     formSubmissions: () => formSubmissions,
     onlineAttendanceConfirmations: () => onlineAttendanceConfirmations,
     receiptUploads: () => receiptUploads,
@@ -301,6 +313,16 @@ async function fulfillGraphql(
   const variables = body.variables;
 
   if (await fulfillCurrentUserDefaultRedirect(route, query, 'MAJOR_EVENT')) {
+    return;
+  }
+
+  if (query.includes('query CurrentUserCertificateCatalog')) {
+    await fulfillGraphqlData(route, { currentUserCertificateCatalog: certificateCatalogFixture() });
+    return;
+  }
+
+  if (query.includes('query CurrentUserCertificateArchiveStatus')) {
+    await fulfillGraphqlData(route, { currentUserCertificateArchiveStatus: { cooldownSeconds: 0 } });
     return;
   }
 
@@ -661,4 +683,35 @@ function stringVariable(variables: Record<string, unknown>, key: string): string
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function certificateCatalogFixture() {
+  const template = { id: 'template-1', name: 'Modelo' };
+  const certificate = (id: string, name: string, scope: string) => ({
+    id,
+    configId: id + '-config',
+    issuedAt: publicFixtureDateFromNow(-1, 14),
+    certificateTemplate: template,
+    config: { id: id + '-config', name, scope, certificateTemplate: template },
+  });
+  return {
+    items: [
+      {
+        targetType: 'event',
+        targetId: 'standalone-event',
+        certificate: certificate('event-certificate-1', 'Certificado de participação', 'EVENT'),
+      },
+      {
+        targetType: 'event',
+        targetId: 'standalone-event',
+        certificate: certificate('event-certificate-2', 'Certificado de extensão', 'EVENT'),
+      },
+      {
+        targetType: 'folder',
+        targetId: 'folder-1',
+        certificate: certificate('standalone-certificate-1', 'Certificado avulso', 'OTHER'),
+      },
+    ],
+    nextCursor: null,
+  };
 }

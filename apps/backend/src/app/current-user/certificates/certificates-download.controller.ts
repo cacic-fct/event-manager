@@ -1,10 +1,27 @@
 import { IncludePastParticipation } from '../../audiences/past-participation.decorator';
-import { Controller, Get, Header, NotFoundException, Req, StreamableFile, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
-import { CertificateScope } from '@cacic-fct/shared-data-types';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Header,
+  NotFoundException,
+  Post,
+  Req,
+  StreamableFile,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiProduces,
+  ApiTags,
+} from '@nestjs/swagger';
 import { type Request } from 'express';
-import { Readable } from 'node:stream';
-import { RateLimitService } from '../../rate-limit/rate-limit.service';
 import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { CertificateDownloadService } from '../../certificate/certificate-download.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -23,46 +40,82 @@ export class CurrentUserCertificatesDownloadController {
     private readonly prisma: PrismaService,
     private readonly currentUserContext: CurrentUserContextService,
     private readonly downloadService: CertificateDownloadService,
-    private readonly rateLimits: RateLimitService,
   ) {}
 
-  @Get('archive.zip')
+  @Post('archive.zip')
   @UseGuards(RateLimitGuard)
   @RateLimit(RATE_LIMIT_POLICIES.currentUserCertificateArchive)
   @Header('Cache-Control', 'private, no-store')
   @Header('X-Content-Type-Options', 'nosniff')
   @ApiOperation({
-    summary: 'Download every certificate owned by the current user as a ZIP archive',
-    description: 'Streams rendered certificates into the archive without buffering the complete ZIP in server memory.',
+    summary: 'Download selected certificates owned by the current user',
+    description:
+      'Checks ownership of the entire selection before streaming PDFs and a versioned validation manifest. ' +
+      'Reuses a rendering browser and propagates download backpressure.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['certificateIds'],
+      properties: {
+        certificateIds: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 10000,
+          items: { type: 'string', maxLength: 128 },
+          example: ['certificate-1'],
+        },
+      },
+    },
   })
   @ApiProduces('application/zip')
-  @ApiOkResponse({
-    description: 'A streamed ZIP archive containing the current user certificates and events manifest.',
-  })
-  @ApiNotFoundResponse({ description: 'Returned when the current user has no certificates.' })
+  @ApiOkResponse({ description: 'A streamed ZIP with selected PDFs and certificates.json (schema version 2).' })
+  @ApiBadRequestResponse({ description: 'The certificate selection is empty, malformed, or too large.' })
+  @ApiNotFoundResponse({ description: 'At least one selected certificate is unavailable to the current user.' })
+  @IncludePastParticipation()
+  async downloadSelectedArchive(@Req() request: RequestWithUser, @Body() input: unknown): Promise<StreamableFile> {
+    return this.streamArchive(request, this.readSelectedIds(input));
+  }
+
+  // Preserve existing direct download links; the attendance UI always sends an explicit selection.
+  @Get('archive.zip')
+  @UseGuards(RateLimitGuard)
+  @RateLimit(RATE_LIMIT_POLICIES.currentUserCertificateArchive)
+  @Header('Cache-Control', 'private, no-store')
+  @Header('X-Content-Type-Options', 'nosniff')
+  @ApiOperation({ summary: 'Download all owned certificates', deprecated: true })
+  @ApiProduces('application/zip')
+  @ApiOkResponse({ description: 'A streamed ZIP containing owned certificates and the validation manifest.' })
+  @ApiNotFoundResponse({ description: 'The current user has no certificates.' })
   @IncludePastParticipation()
   async downloadArchive(@Req() request: RequestWithUser): Promise<StreamableFile> {
+    return this.streamArchive(request);
+  }
+
+  private async streamArchive(request: RequestWithUser, selectedIds?: string[]): Promise<StreamableFile> {
     const person = await this.currentUserContext.requireCurrentPerson({ req: request });
     const issuedBefore = new Date();
-    const certificates = this.archiveCertificates(person.id, issuedBefore);
+    if (selectedIds) {
+      const availableCount = await this.prisma.certificate.count({
+        where: { personId: person.id, deletedAt: null, issuedAt: { lte: issuedBefore }, id: { in: selectedIds } },
+      });
+      if (availableCount !== selectedIds.length) {
+        throw new NotFoundException(
+          'One or more selected certificates are unavailable. Refresh the selection and try again.',
+        );
+      }
+    }
+    const certificates = this.archiveCertificates(person.id, issuedBefore, selectedIds);
     const first = await certificates.next();
     if (first.done) {
       throw new NotFoundException('No certificates were found for the current user.');
     }
     const firstCertificate = first.value;
-    async function* certificateIds() {
-      yield firstCertificate.id;
-      for await (const certificate of certificates) {
-        yield certificate.id;
-      }
+    async function* archiveEntries() {
+      yield firstCertificate;
+      yield* certificates;
     }
-
-    const archive = await this.downloadService.createCertificatesArchive(
-      person.name,
-      certificateIds(),
-      Readable.from(this.archiveManifest(person.id, issuedBefore)),
-    );
-
+    const archive = await this.downloadService.createCertificatesArchive(person.name, archiveEntries(), issuedBefore);
     const response = request.res;
     const cancel = () => archive.stream.destroy();
     response?.once('close', cancel);
@@ -74,26 +127,20 @@ export class CurrentUserCertificatesDownloadController {
     });
   }
 
-  @Get('archive-status')
-  @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Read the account archive cooldown without consuming a download' })
-  @ApiOkResponse({
-    description: 'Remaining account cooldown in seconds.',
-    schema: {
-      type: 'object',
-      properties: { cooldownSeconds: { type: 'integer', example: 300 } },
-    },
-  })
-  async archiveStatus(@Req() request: RequestWithUser): Promise<{ cooldownSeconds: number }> {
-    this.currentUserContext.getAuthenticatedUser({ req: request });
-    const status = await this.rateLimits.status({
-      policy: RATE_LIMIT_POLICIES.currentUserCertificateArchive,
-      request,
-    });
-    return { cooldownSeconds: status.disabled ? 0 : status.retryAfterSeconds };
+  private readSelectedIds(input: unknown): string[] {
+    const ids = input && typeof input === 'object' && 'certificateIds' in input ? input.certificateIds : null;
+    if (
+      !Array.isArray(ids) ||
+      ids.length === 0 ||
+      ids.length > 10000 ||
+      ids.some((id: unknown) => typeof id !== 'string' || !id.trim() || id.length > 128)
+    ) {
+      throw new BadRequestException('Select between 1 and 10000 valid certificate IDs.');
+    }
+    return [...new Set((ids as string[]).map((id) => id.trim()))];
   }
 
-  private async *archiveCertificates(personId: string, issuedBefore: Date) {
+  private async *archiveCertificates(personId: string, issuedBefore: Date, selectedIds?: string[]) {
     let lastId: string | undefined;
     while (true) {
       const certificates = await this.prisma.certificate.findMany({
@@ -101,83 +148,17 @@ export class CurrentUserCertificatesDownloadController {
           personId,
           deletedAt: null,
           issuedAt: { lte: issuedBefore },
-          ...(lastId ? { id: { gt: lastId } } : {}),
+          id: { ...(selectedIds ? { in: selectedIds } : {}), ...(lastId ? { gt: lastId } : {}) },
         },
-        select: {
-          id: true,
-          issuedAt: true,
-          configId: true,
-          renderedData: true,
-          config: {
-            select: {
-              scope: true,
-              majorEventId: true,
-              eventGroupId: true,
-              eventId: true,
-              folderId: true,
-              folder: { select: { name: true, emoji: true } },
-            },
-          },
-        },
+        select: { id: true, issuedAt: true },
         orderBy: { id: 'asc' },
         take: 50,
       });
-      for (const certificate of certificates) {
-        yield certificate;
-      }
+      yield* certificates;
       if (certificates.length < 50) {
         return;
       }
       lastId = certificates[certificates.length - 1].id;
     }
-  }
-
-  private async *archiveManifest(personId: string, issuedBefore: Date) {
-    yield `{"schemaVersion":1,"generatedAt":${JSON.stringify(issuedBefore.toISOString())},"certificates":[`;
-    let separator = '';
-    for await (const certificate of this.archiveCertificates(personId, issuedBefore)) {
-      yield separator +
-        JSON.stringify({
-          certificateId: certificate.id,
-          issuedAt: certificate.issuedAt.toISOString(),
-          configId: certificate.configId,
-          scope: certificate.config.scope,
-          targetId:
-            certificate.config.scope === CertificateScope.MAJOR_EVENT
-              ? certificate.config.majorEventId
-              : certificate.config.scope === CertificateScope.EVENT_GROUP
-                ? certificate.config.eventGroupId
-                : certificate.config.scope === CertificateScope.EVENT
-                  ? certificate.config.eventId
-                  : certificate.config.folderId,
-          targetName: certificate.config.folder?.name ?? null,
-          targetEmoji: certificate.config.folder?.emoji ?? null,
-          eventIds: this.readRenderedEventIds(certificate.renderedData),
-        });
-      separator = ',';
-    }
-    yield ']}\n';
-  }
-
-  private readRenderedEventIds(renderedData: unknown): string[] {
-    if (!renderedData || typeof renderedData !== 'object' || Array.isArray(renderedData)) {
-      return [];
-    }
-
-    const events = (renderedData as { events?: unknown }).events;
-    if (!Array.isArray(events)) {
-      return [];
-    }
-
-    return events
-      .map((event) => {
-        if (!event || typeof event !== 'object' || Array.isArray(event)) {
-          return null;
-        }
-
-        const id = (event as { id?: unknown }).id;
-        return typeof id === 'string' && id.trim() ? id : null;
-      })
-      .filter((id): id is string => id !== null);
   }
 }

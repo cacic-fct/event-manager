@@ -17,6 +17,38 @@ import { Attendances } from './attendances';
 const withStoryData: Decorator<AttendancesStoryControls> = (story, context) => {
   const args = { ...attendancesStoryDefaultControls, ...context.args };
   const feed = createAttendancesStoryFeed(args);
+  const sampleCertificate = feed.standaloneCertificateFolders?.[0]?.certificates[0];
+  const catalog = [
+    ...(feed.standaloneCertificateFolders ?? []).map((folder) => ({
+      targetType: 'folder',
+      targetId: folder.id,
+      certificates: folder.certificates,
+    })),
+    ...feed.majorEventItems.map((item, index) => ({
+      targetType: 'major-event',
+      targetId: item.majorEvent.id,
+      certificates:
+        sampleCertificate && index % 2 === 0
+          ? [
+              {
+                ...sampleCertificate,
+                id: `major-${index}-attendee`,
+                config: { ...sampleCertificate.config, name: 'Participação' },
+              },
+              {
+                ...sampleCertificate,
+                id: `major-${index}-lecturer`,
+                config: { ...sampleCertificate.config, name: 'Ministrante' },
+              },
+            ]
+          : [],
+    })),
+    ...feed.eventItems.map((item, index) => ({
+      targetType: item.__typename === 'SubscribedSingleEventItem' ? 'event' : 'event-group',
+      targetId: item.__typename === 'SubscribedSingleEventItem' ? item.event.id : item.eventGroup.id,
+      certificates: sampleCertificate && index % 2 === 0 ? [{ ...sampleCertificate, id: `event-${index}` }] : [],
+    })),
+  ];
   const failCache = args.state === 'error';
 
   return applicationConfig({
@@ -34,6 +66,7 @@ const withStoryData: Decorator<AttendancesStoryControls> = (story, context) => {
               : args.state === 'error'
                 ? throwError(() => new Error('Não foi possível carregar suas inscrições.'))
                 : of(feed),
+          getCurrentUserCertificateCatalog: () => of(catalog),
           getCertificateArchiveCooldown: () => of({ cooldownSeconds: args.certificateArchiveCooldownSeconds }),
           downloadCurrentUserCertificatesArchive: () =>
             of({
@@ -156,6 +189,7 @@ export const CertificateDownloadCooldown: Story = {
   args: { certificateArchiveCooldownSeconds: 15 * 60 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Selecionar certificados' }));
     await expect(await canvas.findByRole('button', { name: /Baixar certificados em/ })).toHaveAttribute(
       'aria-disabled',
       'true',
@@ -167,5 +201,30 @@ export const LongContent: Story = {
   args: { longNames: true, eventCount: 18, majorEventCount: 8, certificateFolderCount: 4 },
   play: async ({ canvasElement }) => {
     await expect((await within(canvasElement).findAllByText(/interdisciplinar/)).length).toBeGreaterThan(8);
+  },
+};
+
+export const CertificateSelection: Story = {
+  args: { majorEventCount: 2, eventCount: 3, certificateFolderCount: 2 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Selecionar certificados' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Selecionar todos' }));
+    await expect(canvas.getByRole('button', { name: /^Baixar \(\d+\)$/ })).toBeEnabled();
+  },
+};
+
+export const FilteredCertificateSelection: Story = {
+  args: { majorEventCount: 2, eventCount: 4, certificateFolderCount: 1 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Filtros' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Eventos' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Selecionar certificados' }));
+    await expect(canvas.getByRole('button', { name: 'Eventos' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(canvas.getByRole('button', { name: /Filtros/ })).toHaveAttribute('aria-expanded', 'true');
+    await expect(canvas.queryByText('Grande evento', { exact: true })).not.toBeInTheDocument();
+    await userEvent.click(canvas.getByRole('button', { name: 'Selecionar todos' }));
+    await expect(canvas.getByRole('button', { name: /^Baixar \(\d+\)$/ })).toBeEnabled();
   },
 };

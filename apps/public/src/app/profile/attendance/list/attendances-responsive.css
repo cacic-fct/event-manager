@@ -15,6 +15,20 @@ mat-toolbar {
     grid-template-columns: 1fr;
   }
 
+  .selection-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .selection-actions .filters-trigger {
+    width: auto;
+  }
+
+  .selection-actions .download-button {
+    flex-basis: 100%;
+  }
+
   .filters-trigger,
   .download-button {
     width: 100%;

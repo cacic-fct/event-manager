@@ -6,6 +6,20 @@ export interface CertificateDownload {
   contentBase64: string;
 }
 
+export interface CertificateArchiveManifestEntry {
+  certificateId: string;
+  issuedAt: DateTimeString;
+  fileName: string;
+  sha256: string;
+}
+
+export interface CertificateArchiveManifest {
+  format: 'cacic-certificates';
+  schemaVersion: 2;
+  generatedAt: DateTimeString;
+  certificates: CertificateArchiveManifestEntry[];
+}
+
 export interface PublicCertificateValidationEvent {
   name: string;
   id: string;

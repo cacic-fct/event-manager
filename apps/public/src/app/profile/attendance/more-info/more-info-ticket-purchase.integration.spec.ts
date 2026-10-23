@@ -70,7 +70,10 @@ describe('MoreInfo ticket purchase placement integration', () => {
         { provide: MatDialog, useValue: { open: vi.fn() } },
         {
           provide: AttendancesApiService,
-          useValue: { getMajorEventDetails: () => of({ subscription, attendances: [] }) },
+          useValue: {
+            getCurrentUserCertificatesForTargets: () => of([]),
+            getMajorEventDetails: () => of({ subscription, attendances: [] }),
+          },
         },
         { provide: PublicEventFormApiService, useValue: { listCurrentUserForms: () => of([]) } },
         { provide: PublicPrizeDrawApiService, useValue: { availability: () => of([]), watch: () => of() } },

@@ -85,6 +85,7 @@ export function buildEventDetail(details: EventDetails): DetailViewModel | null 
     certificateTargets:
       event.shouldIssueCertificate || details.hasIssuedCertificate ? [{ scope: 'EVENT', targetId: event.id }] : [],
     shouldIssueCertificate: Boolean(event.shouldIssueCertificate || details.hasIssuedCertificate),
+    certificateIssuanceEnabled: Boolean(event.shouldIssueCertificate),
     canViewOrganizerInfo: Boolean(details.isLecturer),
     sportsRepresentativeTeams: [],
     buttonText: event.buttonText,
@@ -108,6 +109,7 @@ export function buildEventGroupDetail(details: EventGroupDetails): DetailViewMod
   const events = sortEvents(rawEvents);
   const eventItems = events.map((event) => buildEventItem(event, attendanceByEventId.get(event.id), isSubscribed));
   const certificateTargets = getEventGroupCertificateTargets(eventGroup, events);
+  const certificateIssuanceEnabled = certificateTargets.length > 0;
   if (certificateTargets.length === 0 && details.hasIssuedCertificate) {
     certificateTargets.push({ scope: 'EVENT_GROUP', targetId: eventGroup.id });
   }
@@ -140,6 +142,7 @@ export function buildEventGroupDetail(details: EventGroupDetails): DetailViewMod
     notSubscribedEvents: [],
     certificateTargets,
     shouldIssueCertificate: certificateTargets.length > 0,
+    certificateIssuanceEnabled,
     canViewOrganizerInfo: Boolean(details.isLecturer),
     sportsRepresentativeTeams: [],
   };
@@ -190,6 +193,10 @@ export function buildMajorEventDetail(details: MajorEventDetails): DetailViewMod
         ? [{ scope: 'MAJOR_EVENT', targetId: majorEvent.id }]
         : [],
     shouldIssueCertificate: Boolean(majorEvent.shouldIssueCertificate || details.hasIssuedCertificate),
+    certificateIssuanceEnabled: Boolean(
+      majorEvent.shouldIssueCertificate ||
+        [...selectedEvents, ...notSubscribedEvents].some((event) => event.shouldIssueCertificate),
+    ),
     canViewOrganizerInfo: Boolean(details.isLecturer),
     sportsTournamentId: majorEvent.sportsTournament?.id,
     sportsRepresentativeTeams: details.sportsRepresentativeTeams ?? [],

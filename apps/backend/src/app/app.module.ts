@@ -130,6 +130,7 @@ import { EventFormsResolver } from './event-forms/event-forms.resolver';
 import { EventFormsScheduler } from './event-forms/event-forms.scheduler';
 import { EventFormsService } from './event-forms/event-forms.service';
 import { CurrentUserCertificatesResolver } from './current-user/certificates/resolver';
+import { CurrentUserCertificateSelectionResolver } from './current-user/certificates/certificate-selection.resolver';
 import { CurrentUserCertificatesDownloadController } from './current-user/certificates/certificates-download.controller';
 import { CurrentUserContextService } from './current-user/context.service';
 import { CurrentUserEventMapperService } from './current-user/mapper.service';
@@ -537,6 +538,7 @@ const schedulerProviders = useInMemoryTestInfra
     CurrentUserDefaultRedirectService,
     CurrentUserMyDayService,
     CurrentUserCertificatesResolver,
+    CurrentUserCertificateSelectionResolver,
     CurrentUserProfileResolver,
     CurrentUserMajorEventSubscriptionsResolver,
     CurrentUserEventSubscriptionsResolver,

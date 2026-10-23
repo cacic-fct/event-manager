@@ -53,7 +53,12 @@ describe('configured HTTP raw-body preservation', () => {
     };
     jest.spyOn(SwaggerModule, 'setup').mockImplementation(() => undefined);
     configureBackendHttpApp(app as never);
-    for (const route of ['/api/signed-webhook', '/api/admin/data-transfer/preview', '/api/a/glitchtip']) {
+    for (const route of [
+      '/api/signed-webhook',
+      '/api/admin/data-transfer/preview',
+      '/api/a/glitchtip',
+      '/api/current-user/certificates/archive.zip',
+    ]) {
       http.post(route, (request, response) => {
         const rawBody = (request as typeof request & { rawBody?: Buffer }).rawBody;
         response.json({ rawBody: rawBody?.toString('utf8'), body: request.body });
@@ -95,6 +100,25 @@ describe('configured HTTP raw-body preservation', () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ rawBody: body, body: { name: 'Ação', enabled: 'true' } });
+  });
+
+  it('accepts a large certificate selection without relaxing unrelated request limits', async () => {
+    const body = JSON.stringify({
+      certificateIds: Array.from({ length: 10000 }, (_, index) => `certificate-${index}`),
+    });
+    const selected = await fetch(`${baseUrl}/api/current-user/certificates/archive.zip`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    });
+    expect(selected.status).toBe(200);
+    expect((await selected.json()).body.certificateIds).toHaveLength(10000);
+    const unrelated = await fetch(`${baseUrl}/api/signed-webhook`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    });
+    expect(unrelated.status).toBe(413);
   });
 
   it('keeps Sentry envelope content intact after selecting the JSON parser', async () => {

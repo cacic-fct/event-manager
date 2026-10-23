@@ -1,5 +1,5 @@
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Readable } from 'node:stream';
-import { CertificateScope } from '@cacic-fct/shared-data-types';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { RATE_LIMIT_METADATA_KEY } from '../../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
@@ -7,10 +7,35 @@ import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
 import { CurrentUserCertificatesDownloadController } from './certificates-download.controller';
 const { jest } = import.meta;
 
-describe('CurrentUserCertificatesDownloadController', () => {
-  it('rate limits expensive archive generation for each authenticated user', () => {
-    const handler = CurrentUserCertificatesDownloadController.prototype.downloadArchive;
+function setup() {
+  const archiveStream = new Readable({
+    read() {
+      /* The renderer owns this stream. */
+    },
+  });
+  const issuedAt = new Date(Date.now() - 60000);
+  const prisma = {
+    certificate: {
+      findMany: jest.fn().mockResolvedValue([{ id: 'certificate-1', issuedAt }]),
+      count: jest.fn().mockResolvedValue(1),
+    },
+  };
+  const context = { requireCurrentPerson: jest.fn().mockResolvedValue({ id: 'person-1', name: 'João da Silva' }) };
+  const downloads = {
+    createCertificatesArchive: jest.fn().mockResolvedValue({ fileName: 'certificados.zip', stream: archiveStream }),
+  };
+  const controller = new CurrentUserCertificatesDownloadController(
+    prisma as never,
+    context as never,
+    downloads as never,
+  );
+  const request = { user: { sub: 'user-1' } };
+  return { controller, prisma, context, downloads, archiveStream, issuedAt, request };
+}
 
+describe('CurrentUserCertificatesDownloadController', () => {
+  it.each(['downloadArchive', 'downloadSelectedArchive'] as const)('rate limits %s by authenticated user', (method) => {
+    const handler = CurrentUserCertificatesDownloadController.prototype[method];
     expect(Reflect.getMetadata(GUARDS_METADATA, handler)).toEqual([RateLimitGuard]);
     expect(Reflect.getMetadata(RATE_LIMIT_METADATA_KEY, handler)).toEqual({
       policy: RATE_LIMIT_POLICIES.currentUserCertificateArchive,
@@ -18,76 +43,101 @@ describe('CurrentUserCertificatesDownloadController', () => {
     });
   });
 
-  it('returns a StreamableFile backed by the certificate archive stream', async () => {
-    const archiveStream = Readable.from(['zip-content']);
-    const prisma = {
-      certificate: {
-        findMany: jest.fn().mockResolvedValue([
-          {
-            id: 'certificate-1',
-            issuedAt: new Date(Date.now() - 60_000),
-            configId: 'config-1',
-            renderedData: { events: [{ id: 'event-1' }] },
-            config: {
-              scope: CertificateScope.EVENT,
-              majorEventId: null,
-              eventGroupId: null,
-              eventId: 'event-1',
-              folderId: null,
-              folder: null,
-            },
-          },
-        ]),
+  it('streams selected owned certificates and passes their issuance data to the renderer', async () => {
+    const { controller, prisma, context, downloads, archiveStream, issuedAt, request } = setup();
+    const file = await controller.downloadSelectedArchive(request as never, {
+      certificateIds: [' certificate-1 ', 'certificate-1'],
+    });
+    expect(context.requireCurrentPerson).toHaveBeenCalledWith({ req: request });
+    expect(prisma.certificate.count).toHaveBeenCalledWith({
+      where: {
+        personId: 'person-1',
+        deletedAt: null,
+        issuedAt: { lte: expect.any(Date) },
+        id: { in: ['certificate-1'] },
       },
-    };
-    const currentUserContext = {
-      requireCurrentPerson: jest.fn().mockResolvedValue({ id: 'person-1', name: 'João da Silva' }),
-    };
-    const downloadService = {
-      createCertificatesArchive: jest.fn().mockResolvedValue({
-        fileName: 'joao-da-silva_certificados.zip',
-        stream: archiveStream,
-      }),
-    };
-    const controller = new CurrentUserCertificatesDownloadController(
-      prisma as never,
-      currentUserContext as never,
-      downloadService as never,
-      {} as never,
-    );
-    const request = { user: { sub: 'user-1' } };
-
-    const file = await controller.downloadArchive(request as never);
-
-    expect(currentUserContext.requireCurrentPerson).toHaveBeenCalledWith({ req: request });
-    const [, ids, manifest] = downloadService.createCertificatesArchive.mock.calls[0] as unknown as [
+    });
+    const [personName, entries, generatedAt] = downloads.createCertificatesArchive.mock.calls[0] as unknown as [
       string,
-      AsyncIterable<string>,
-      Readable,
+      AsyncIterable<{ id: string; issuedAt: Date }>,
+      Date,
     ];
-    const certificateIds: string[] = [];
-    for await (const id of ids) {
-      certificateIds.push(id);
-    }
-    expect(certificateIds).toEqual(['certificate-1']);
-    let manifestJson = '';
-    for await (const chunk of manifest) {
-      manifestJson += chunk;
-    }
-    expect(JSON.parse(manifestJson).certificates).toEqual([
-      expect.objectContaining({ certificateId: 'certificate-1', eventIds: ['event-1'], targetId: 'event-1' }),
-    ]);
-    expect(prisma.certificate.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        take: 50,
-        orderBy: { id: 'asc' },
-        where: expect.objectContaining({ personId: 'person-1', deletedAt: null }),
-      }),
-    );
+    const collected = [];
+    for await (const entry of entries) collected.push(entry);
+    expect(personName).toBe('João da Silva');
+    expect(collected).toEqual([{ id: 'certificate-1', issuedAt }]);
+    expect(generatedAt).toBeInstanceOf(Date);
+    expect(prisma.certificate.findMany).toHaveBeenCalledWith({
+      where: { personId: 'person-1', deletedAt: null, issuedAt: { lte: generatedAt }, id: { in: ['certificate-1'] } },
+      select: { id: true, issuedAt: true },
+      orderBy: { id: 'asc' },
+      take: 50,
+    });
     expect(file.getStream()).toBe(archiveStream);
     expect(file.getHeaders()).toEqual({
       type: 'application/zip',
-      disposition: 'attachment; filename="joao-da-silva_certificados.zip"',
+      disposition: 'attachment; filename="certificados.zip"',
     });
+  });
+
+  it.each([
+    undefined,
+    {},
+    { certificateIds: [] },
+    { certificateIds: [''] },
+    { certificateIds: [12] },
+    { certificateIds: ['a'.repeat(129)] },
+    { certificateIds: Array(10001).fill('certificate-1') },
+  ])('rejects malformed or empty selection before querying or rendering', async (body) => {
+    const { controller, prisma, downloads, request } = setup();
+    await expect(controller.downloadSelectedArchive(request as never, body)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(prisma.certificate.count).not.toHaveBeenCalled();
+    expect(downloads.createCertificatesArchive).not.toHaveBeenCalled();
+  });
+
+  it('rejects the entire selection if one ID belongs to somebody else or is unavailable', async () => {
+    const { controller, prisma, downloads, request } = setup();
+    await expect(
+      controller.downloadSelectedArchive(request as never, { certificateIds: ['certificate-1', 'private-or-deleted'] }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.certificate.findMany).not.toHaveBeenCalled();
+    expect(downloads.createCertificatesArchive).not.toHaveBeenCalled();
+  });
+
+  it('uses bounded keyset pages and carries the selection through every page', async () => {
+    const { controller, prisma, downloads, request, issuedAt } = setup();
+    const records = Array.from({ length: 50 }, (_, index) => ({ id: `certificate-${index}`, issuedAt }));
+    prisma.certificate.findMany.mockResolvedValueOnce(records).mockResolvedValueOnce([{ id: 'last', issuedAt }]);
+    await controller.downloadArchive(request as never);
+    const entries = downloads.createCertificatesArchive.mock.calls[0][1] as AsyncIterable<unknown>;
+    const collected = [];
+    for await (const entry of entries) collected.push(entry);
+    expect(collected).toHaveLength(51);
+    expect(prisma.certificate.findMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ id: { gt: 'certificate-49' } }) }),
+    );
+  });
+
+  it('cancels archive rendering on response disconnect', async () => {
+    const { controller, archiveStream, request } = setup();
+    const response = new Readable({
+      read() {
+        /* Event source only. */
+      },
+    });
+    await controller.downloadArchive({ ...request, res: response } as never);
+    response.emit('close');
+    expect(archiveStream.destroyed).toBe(true);
+    await new Promise(setImmediate);
+    expect(response.listenerCount('close')).toBe(0);
+  });
+
+  it('returns a privacy-safe not found error when no owned certificates exist', async () => {
+    const { controller, prisma, downloads, request } = setup();
+    prisma.certificate.findMany.mockResolvedValueOnce([]);
+    await expect(controller.downloadArchive(request as never)).rejects.toBeInstanceOf(NotFoundException);
+    expect(downloads.createCertificatesArchive).not.toHaveBeenCalled();
   });
 });

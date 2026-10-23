@@ -271,11 +271,75 @@ describe('AttendancesApiService', () => {
     });
   });
 
-  it('downloads all current-user certificates as an archive', async () => {
-    const responsePromise = firstValueFrom(service.downloadCurrentUserCertificatesArchive());
+  it('reads the archive cooldown over GraphQL without requesting an archive', async () => {
+    const result = firstValueFrom(service.getCertificateArchiveCooldown());
+    const request = httpTesting.expectOne('/api/graphql');
+    expect(request.request.body.query).toContain('query CurrentUserCertificateArchiveStatus');
+    request.flush({ data: { currentUserCertificateArchiveStatus: { cooldownSeconds: 30 } } });
+    await expect(result).resolves.toEqual({ cooldownSeconds: 30 });
+  });
+
+  it('loads every catalog page and groups child certificates by attendance target', async () => {
+    const result = firstValueFrom(service.getCurrentUserCertificateCatalog());
+    const first = httpTesting.expectOne('/api/graphql');
+    expect(first.request.body.query).toContain('query CurrentUserCertificateCatalog');
+    const certificate = certificateFixture('certificate-1', new Date(Date.now() - 60000).toISOString(), 'EVENT');
+    first.flush({
+      data: {
+        currentUserCertificateCatalog: {
+          items: [{ targetType: 'major-event', targetId: 'major-1', certificate }],
+          nextCursor: certificate.id,
+        },
+      },
+    });
+    const second = httpTesting.expectOne('/api/graphql');
+    expect(second.request.body.variables).toEqual({ cursor: 'certificate-1' });
+    const child = { ...certificate, id: 'certificate-2' };
+    second.flush({
+      data: {
+        currentUserCertificateCatalog: {
+          items: [
+            { targetType: 'major-event', targetId: 'major-1', certificate: child },
+            { targetType: 'folder', targetId: 'folder-1', certificate: { ...certificate, id: 'certificate-3' } },
+          ],
+          nextCursor: null,
+        },
+      },
+    });
+    await expect(result).resolves.toEqual([
+      { targetType: 'major-event', targetId: 'major-1', certificates: [certificate, child] },
+      { targetType: 'folder', targetId: 'folder-1', certificates: [{ ...certificate, id: 'certificate-3' }] },
+    ]);
+  });
+
+  it('does not truncate a target with more than one page of certificates', async () => {
+    const result = firstValueFrom(
+      service.getCurrentUserCertificatesForTargets([{ scope: 'EVENT', targetId: 'event-1' }]),
+    );
+    const page = Array.from({ length: 100 }, (_, index) =>
+      certificateFixture(`certificate-${index}`, new Date(Date.now() - 60000).toISOString(), 'EVENT'),
+    );
+    const first = httpTesting.expectOne('/api/graphql');
+    expect(first.request.body.variables).toEqual({
+      scope: 'EVENT',
+      targetId: 'event-1',
+      take: 100,
+      afterId: undefined,
+    });
+    first.flush({ data: { currentUserCertificates: page } });
+    const second = httpTesting.expectOne('/api/graphql');
+    expect(second.request.body.variables.afterId).toBe('certificate-99');
+    const last = { ...page[0], id: 'certificate-last' };
+    second.flush({ data: { currentUserCertificates: [last] } });
+    await expect(result).resolves.toHaveLength(101);
+  });
+
+  it('downloads only the selected current-user certificates as an archive', async () => {
+    const responsePromise = firstValueFrom(service.downloadCurrentUserCertificatesArchive(['certificate-1']));
 
     const request = httpTesting.expectOne('/api/current-user/certificates/archive.zip');
-    expect(request.request.method).toBe('GET');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ certificateIds: ['certificate-1'] });
     request.flush(new Blob(['PK']), { headers: { 'content-disposition': 'attachment; filename="certificados.zip"' } });
 
     await expect(responsePromise).resolves.toEqual({
@@ -286,7 +350,7 @@ describe('AttendancesApiService', () => {
   });
 
   it('requires a Blob body and safely reads encoded and fallback download names', async () => {
-    const encodedResponse = firstValueFrom(service.downloadCurrentUserCertificatesArchive());
+    const encodedResponse = firstValueFrom(service.downloadCurrentUserCertificatesArchive(['certificate-1']));
     const encodedRequest = httpTesting.expectOne('/api/current-user/certificates/archive.zip');
     encodedRequest.flush(new Blob(['PK']), {
       headers: { 'content-disposition': "attachment; filename*=UTF-8''certificados%20da%20ana.zip" },
@@ -297,7 +361,7 @@ describe('AttendancesApiService', () => {
       cooldownSeconds: 0,
     });
 
-    const fallbackNameResponse = firstValueFrom(service.downloadCurrentUserCertificatesArchive());
+    const fallbackNameResponse = firstValueFrom(service.downloadCurrentUserCertificatesArchive(['certificate-1']));
     const fallbackNameRequest = httpTesting.expectOne('/api/current-user/certificates/archive.zip');
     fallbackNameRequest.flush(new Blob(['PK']));
     await expect(fallbackNameResponse).resolves.toEqual({
@@ -306,14 +370,14 @@ describe('AttendancesApiService', () => {
       cooldownSeconds: 0,
     });
 
-    const fallbackResponse = firstValueFrom(service.downloadCurrentUserCertificatesArchive());
+    const fallbackResponse = firstValueFrom(service.downloadCurrentUserCertificatesArchive(['certificate-1']));
     const fallbackRequest = httpTesting.expectOne('/api/current-user/certificates/archive.zip');
     fallbackRequest.event(new HttpResponse<Blob>({ body: null, status: 200 }));
     await expect(fallbackResponse).rejects.toThrow('O arquivo de certificados não foi retornado pelo servidor.');
   });
 
   it('maps rate-limit headers into an archive cooldown after the final permitted download', async () => {
-    const responsePromise = firstValueFrom(service.downloadCurrentUserCertificatesArchive());
+    const responsePromise = firstValueFrom(service.downloadCurrentUserCertificatesArchive(['certificate-1']));
     const request = httpTesting.expectOne('/api/current-user/certificates/archive.zip');
     request.flush(new Blob(['PK']), {
       headers: {

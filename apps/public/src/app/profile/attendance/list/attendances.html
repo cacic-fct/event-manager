@@ -1,4 +1,4 @@
-<mat-toolbar>
+<mat-toolbar role="navigation" aria-label="Navegação das participações">
   <a matIconButton routerLink="/menu" aria-label="Voltar para o menu">
     <mat-icon>arrow_back</mat-icon>
   </a>
@@ -14,7 +14,7 @@
     <p>{{ currentState.message }}</p>
   </section>
   } @else {
-  <div class="page-actions">
+  <div class="page-actions" [class.selection-actions]="selectionMode()">
     <button
       matButton="outlined"
       type="button"
@@ -25,40 +25,67 @@
       <mat-icon aria-hidden="true">filter_list</mat-icon>
       <span>Filtros</span>
       @if (activeFilterCount() > 0) {
-      <span class="active-filter-count" [attr.aria-label]="activeFilterCount() + ' filtros ativos'">
-        {{ activeFilterCount() }}
-      </span>
+      <span class="active-filter-count" [attr.aria-label]="activeFilterCount() + ' filtros ativos'"
+        >{{ activeFilterCount() }}</span
+      >
       }
     </button>
-
+    @if (!selectionMode()) {
+    <button #selectionTrigger matButton="filled" type="button" (click)="startCertificateSelection()">
+      <mat-icon aria-hidden="true">checklist</mat-icon>
+      Selecionar certificados
+    </button>
+    } @else {
+    <button
+      matButton="text"
+      type="button"
+      class="select-all-button"
+      [disabled]="selectionState() !== 'ready' || visibleCertificateIds().length === 0 || isDownloadingCertificates()"
+      (click)="selectAllCertificates(!allCertificatesSelected())">
+      {{ allCertificatesSelected() ? 'Desmarcar todos' : 'Selecionar todos' }}
+    </button>
+    <button
+      #selectionCancel
+      matButton="text"
+      type="button"
+      [disabled]="isDownloadingCertificates()"
+      (click)="cancelCertificateSelection()">
+      Cancelar
+    </button>
     <button
       matButton="filled"
       type="button"
       class="download-button"
-      [attr.aria-label]="certificateArchiveDownloadButtonLabel()"
-      [disabled]="isCertificateArchiveDownloadDisabled()"
+      [disabled]="selectionState() !== 'ready' || selectedCount() === 0 || isCertificateArchiveDownloadDisabled()"
       [disabledInteractive]="true"
       aria-describedby="certificate-archive-status"
       [attr.aria-busy]="isDownloadingCertificates()"
       (click)="downloadCertificatesArchive()">
       <span class="download-button-content">
         @if (isDownloadingCertificates()) {
-        <mat-progress-spinner mode="indeterminate" [diameter]="18" aria-hidden="true" />
-        } @else {
-        <mat-icon aria-hidden="true">download</mat-icon>
-        }
+        <mat-progress-spinner mode="indeterminate" [diameter]="18" aria-hidden="true" /> } @else {
+        <mat-icon aria-hidden="true">download</mat-icon> }
         <span>{{ certificateArchiveDownloadButtonLabel() }}</span>
       </span>
     </button>
+
+    }
   </div>
 
-  <p id="certificate-archive-status" role="status" class="sr-only">
-    @if (isDownloadingCertificates()) { Preparando o arquivo com todos os seus certificados. } @else if
-    (certificateArchiveCooldownSeconds() > 0) { Aguarde o tempo indicado no botão antes de baixar todos os certificados
-    novamente. } @else { Download de todos os certificados disponível. }
+  @if (selectionMode()) { @if (selectionState() === 'loading') {
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando certificados para seleção" />
+  } @else if (selectionState() === 'error') {
+  <div class="selection-error">
+    <p role="alert">Não foi possível carregar os certificados.</p>
+    <button matButton="text" type="button" (click)="loadCertificateSelection()">Tentar novamente</button>
+  </div>
+  }
+  <p id="certificate-archive-status" class="sr-only" role="status">
+    @if (isDownloadingCertificates()) { Preparando certificados. } @else if (certificateArchiveCooldownSeconds() > 0) {
+    Aguarde o tempo indicado no botão para baixar novamente. } @else { {{ selectedCount() }} {{ selectedCount() === 1 ?
+    'certificado selecionado' : 'certificados selecionados' }}. }
   </p>
-
-  @if (filtersOpen()) {
+  } @if (filtersOpen()) {
   <section id="participation-filter-panel" class="filter-panel" aria-label="Opções de filtro">
     <div class="filter-group">
       <h2>Tipo de participação</h2>
@@ -123,8 +150,19 @@
       <p class="empty-text">{{ emptyFeedText() }}</p>
       } @else {
       <div class="participation-list">
-        @for (item of participations; track item.id) {
-        <a class="participation-item" role="link" [routerLink]="item.route" [attr.aria-label]="itemAriaLabel(item)">
+        @for (item of participations; track item.id) { @if (selectionMode()) { @if (selectionState() === 'ready') {
+        <app-certificate-selection-group
+          [title]="item.title"
+          [subtitle]="item.dateLine"
+          [emojiUrl]="emoji.getTwemojiUrl(item.emoji)"
+          [typeLabel]="item.typeLabel"
+          [warnings]="item.warnings"
+          [certificates]="certificatesFor(item.route[1], item.route[2])"
+          [selectedIds]="selectedCertificateIds()"
+          [disabled]="isDownloadingCertificates()"
+          (selectionChange)="changeCertificateSelection($event)" />
+        } } @else {
+        <a class="participation-item" role="link" [routerLink]="item.route">
           <div class="emoji-frame">
             <img class="twemoji" [src]="emoji.getTwemojiUrl(item.emoji)" alt="" />
           </div>
@@ -152,7 +190,7 @@
             </div>
           </div>
         </a>
-        }
+        } }
       </div>
       }
     </section>
@@ -166,7 +204,16 @@
       <p class="empty-text">Nenhum certificado avulso disponível.</p>
       } @else {
       <div class="certificate-list">
-        @for (folder of currentState.data.standaloneCertificateFolders; track folder.id) {
+        @for (folder of currentState.data.standaloneCertificateFolders; track folder.id) { @if (selectionMode()) { @if
+        (selectionState() === 'ready') {
+        <app-certificate-selection-group
+          [title]="folder.name"
+          [emojiUrl]="emoji.getTwemojiUrl(folder.emoji)"
+          [certificates]="certificatesFor('folder', folder.id)"
+          [selectedIds]="selectedCertificateIds()"
+          [disabled]="isDownloadingCertificates()"
+          (selectionChange)="changeCertificateSelection($event)" />
+        } } @else {
         <button
           class="certificate-item"
           role="button"
@@ -181,10 +228,28 @@
             <div class="certificate-supporting-text">Certificados disponíveis</div>
           </div>
         </button>
-        }
+        } }
       </div>
       }
     </section>
+
+    @if (selectionMode() && selectionState() === 'ready' && additionalCertificateGroups().length > 0) {
+    <section class="certificate-section" aria-labelledby="other-certificates-heading">
+      <div class="section-heading">
+        <h2 id="other-certificates-heading">Outros certificados</h2>
+      </div>
+      <div class="certificate-list">
+        @for (group of additionalCertificateGroups(); track group.targetType + ':' + group.targetId) {
+        <app-certificate-selection-group
+          [title]="group.certificates[0]?.config?.name || 'Certificados anteriores'"
+          [certificates]="group.certificates"
+          [selectedIds]="selectedCertificateIds()"
+          [disabled]="isDownloadingCertificates()"
+          (selectionChange)="changeCertificateSelection($event)" />
+        }
+      </div>
+    </section>
+    }
   </div>
   }
 </main>

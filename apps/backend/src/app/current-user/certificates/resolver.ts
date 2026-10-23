@@ -29,6 +29,7 @@ export class CurrentUserCertificatesResolver {
     @Args('configId', { type: () => String, nullable: true }) configId?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
+    @Args('afterId', { type: () => String, nullable: true }) afterId?: string,
   ): Promise<Certificate[]> {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
     const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
@@ -40,22 +41,21 @@ export class CurrentUserCertificatesResolver {
     const normalizedTargetId = this.validation.normalizeRequiredId('targetId', targetId);
     const normalizedConfigId = this.validation.normalizeOptionalId(configId);
     const pagination = resolvePagination(skip, take);
+    const cursorId = this.validation.normalizeOptionalId(afterId);
 
     const certificates = await this.prisma.certificate.findMany({
       where: {
         personId: person.id,
         deletedAt: null,
         config: {
-          deletedAt: null,
           ...buildConfigTargetWhere(scope, normalizedTargetId),
           ...(normalizedConfigId ? { id: normalizedConfigId } : {}),
         },
       },
       select: CERTIFICATE_SELECT,
-      orderBy: {
-        issuedAt: 'desc',
-      },
-      skip: pagination.skip,
+      orderBy: [{ issuedAt: 'desc' }, { id: 'desc' }],
+      ...(cursorId ? { cursor: { id: cursorId } } : {}),
+      skip: cursorId ? 1 : pagination.skip,
       take: pagination.take,
     });
 

@@ -65,7 +65,7 @@ describe('Attendances', () => {
       majorEvent: { ...majorEvent.majorEvent, id: 'major-2', name: 'Evento para revisar' },
       subscriptionStatus: 'REJECTED_SCHEDULE_CONFLICT',
     };
-    const { component, fixture } = await createFixture({
+    const { fixture } = await createFixture({
       onlineFeed: { ...subscriptionsFeedFixture, majorEventItems: [pendingReceipt, scheduleConflict] },
     });
 
@@ -82,12 +82,6 @@ describe('Attendances', () => {
       'Envie o comprovante de pagamento.',
       'Revise os eventos escolhidos.',
     ]);
-    expect(component.visibleParticipations().map((item) => component.itemAriaLabel(item))).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining('Pendências: Envie o comprovante de pagamento.'),
-        expect.stringContaining('Pendências: Revise os eventos escolhidos.'),
-      ]),
-    );
   });
 
   it('uses the generic warning icon and copy for an unknown actionable subscription status', async () => {
@@ -368,9 +362,199 @@ describe('Attendances', () => {
     expect(clearFiltersButton.disabled).toBe(true);
   });
 
-  it('downloads all certificates through the shared browser file service', async () => {
+  it('preserves participation graphics and metadata while replacing badges with certificate selection', async () => {
+    const { component, fixture } = await createFixture({
+      onlineFeed: {
+        ...subscriptionsFeedFixture,
+        majorEventItems: subscriptionsFeedFixture.majorEventItems.map((item) => ({
+          ...item,
+          subscriptionStatus: 'WAITING_RECEIPT_UPLOAD',
+        })),
+      },
+    });
+    await settle(fixture);
+    const originalRows = Array.from(
+      fixture.nativeElement.querySelectorAll('.participation-list .participation-item'),
+    ) as HTMLElement[];
+    const original = originalRows.map((row) => ({
+      title: row.querySelector('.participation-title')?.textContent,
+      date: row.querySelector('.participation-date')?.textContent,
+      type: row.querySelector('.participation-type')?.textContent,
+      emoji: row.querySelector('img')?.getAttribute('src'),
+      warnings: row.querySelector('.warning-messages')?.textContent,
+    }));
+    component.startCertificateSelection();
+    await settle(fixture);
+    const selectedRows = Array.from(
+      fixture.nativeElement.querySelectorAll('.participation-list .participation-item'),
+    ) as HTMLElement[];
+    expect(
+      selectedRows.map((row) => ({
+        title: row.querySelector('.participation-title')?.textContent,
+        date: row.querySelector('.participation-date')?.textContent,
+        type: row.querySelector('.participation-type')?.textContent,
+        emoji: row.querySelector('img')?.getAttribute('src'),
+        warnings: row.querySelector('.warning-messages')?.textContent,
+      })),
+    ).toEqual(original);
+    expect(fixture.nativeElement.textContent).toContain('Envie o comprovante de pagamento.');
+    expect(fixture.nativeElement.querySelector('.status-icons')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.selection-toolbar')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.filters-trigger')).not.toBeNull();
+  });
+
+  it('keeps active filters and their panel usable when entering and leaving certificate selection', async () => {
+    const { component, fixture } = await createFixture();
+    await settle(fixture);
+    component.toggleFilters();
+    component.setTypeFilter('event', true);
+    component.setStatusFilter('certificate', true);
+    component.startCertificateSelection();
+    await settle(fixture);
+
+    expect(component.selectedTypeFilters()).toEqual(['event']);
+    expect(component.selectedStatusFilters()).toEqual(['certificate']);
+    expect(component.filtersOpen()).toBe(true);
+    expect(component.visibleParticipations().map((item) => item.title)).toEqual(['Oficina pública']);
+    const trigger = fixture.nativeElement.querySelector('.filters-trigger') as HTMLButtonElement;
+    expect(trigger.disabled).toBe(false);
+    trigger.click();
+    fixture.detectChanges();
+    expect(component.filtersOpen()).toBe(false);
+    trigger.click();
+    fixture.detectChanges();
+    expect(component.filtersOpen()).toBe(true);
+
+    component.cancelCertificateSelection();
+    await settle(fixture);
+    expect(component.selectedTypeFilters()).toEqual(['event']);
+    expect(component.selectedStatusFilters()).toEqual(['certificate']);
+    expect(component.filtersOpen()).toBe(true);
+  });
+
+  it('selects visible certificates without losing hidden selections or showing filtered rows as historical groups', async () => {
+    const { component, api, fixture } = await createFixture({
+      onlineFeed: { ...subscriptionsFeedFixture, standaloneCertificateFolders: [] },
+    });
+    const certificate = subscriptionsFeedFixture.standaloneCertificateFolders?.[0]?.certificates[0];
+    if (!certificate) throw new Error('Expected certificate fixture');
+    api.getCurrentUserCertificateCatalog.mockReturnValue(
+      of([
+        { targetType: 'major-event', targetId: 'major-1', certificates: [{ ...certificate, id: 'major-certificate' }] },
+        { targetType: 'event', targetId: 'event-1', certificates: [{ ...certificate, id: 'event-certificate' }] },
+      ]),
+    );
+    component.setTypeFilter('event', true);
+    component.startCertificateSelection();
+    await settle(fixture);
+
+    expect(component.additionalCertificateGroups()).toEqual([]);
+    expect(fixture.nativeElement.textContent).not.toContain('SECOMPP');
+    expect(component.visibleCertificateIds()).toEqual(['event-certificate']);
+    component.selectAllCertificates(true);
+    expect([...component.selectedCertificateIds()]).toEqual(['event-certificate']);
+
+    component.setTypeFilter('event', false);
+    component.setTypeFilter('majorEvent', true);
+    await settle(fixture);
+    expect(component.selectedCount()).toBe(1);
+    expect(component.allCertificatesSelected()).toBe(false);
+    component.selectAllCertificates(true);
+    expect(component.selectedCount()).toBe(2);
+
+    component.setTypeFilter('majorEvent', false);
+    component.setTypeFilter('event', true);
+    await settle(fixture);
+    expect(component.allCertificatesSelected()).toBe(true);
+    component.selectAllCertificates(false);
+    expect([...component.selectedCertificateIds()]).toEqual(['major-certificate']);
+    component.downloadCertificatesArchive();
+    expect(api.downloadCurrentUserCertificatesArchive).toHaveBeenCalledWith(['major-certificate']);
+
+    component.clearFilters();
+    await settle(fixture);
+    expect(component.visibleParticipations()).toHaveLength(2);
+    expect(component.selectedCount()).toBe(1);
+  });
+
+  it('selects only issued certificates, clears selection on cancel, and blocks empty downloads', async () => {
+    const { component, api, fixture } = await createFixture();
+    await settle(fixture);
+    component.startCertificateSelection();
+    fixture.detectChanges();
+    expect(component.selectedCount()).toBe(0);
+    component.downloadCertificatesArchive();
+    expect(api.downloadCurrentUserCertificatesArchive).not.toHaveBeenCalled();
+    component.selectAllCertificates(true);
+    expect(component.selectedCount()).toBeGreaterThan(0);
+    expect(component.allCertificatesSelected()).toBe(true);
+    const selected = [...component.selectedCertificateIds()];
+    component.downloadCertificatesArchive();
+    expect(api.downloadCurrentUserCertificatesArchive).toHaveBeenCalledWith(selected);
+    component.cancelCertificateSelection();
+    expect(component.selectedCount()).toBe(0);
+    expect(component.selectionMode()).toBe(false);
+  });
+
+  it('keeps catalog errors distinct from empty certificate groups and supports retry', async () => {
+    const { component, api } = await createFixture();
+    api.getCurrentUserCertificateCatalog.mockReturnValueOnce(throwError(() => new Error('offline')));
+    component.startCertificateSelection();
+    expect(component.selectionState()).toBe('error');
+    component.loadCertificateSelection();
+    expect(component.selectionState()).toBe('ready');
+  });
+
+  it('includes historical certificates absent from the participation feed in Select all', async () => {
+    const { component, api, fixture } = await createFixture();
+    const certificate = subscriptionsFeedFixture.standaloneCertificateFolders?.[0]?.certificates[0];
+    if (!certificate) throw new Error('Expected certificate fixture');
+    api.getCurrentUserCertificateCatalog.mockReturnValue(
+      of([
+        { targetType: 'folder', targetId: 'historical-folder', certificates: [{ ...certificate, id: 'historical' }] },
+      ]),
+    );
+    component.startCertificateSelection();
+    await settle(fixture);
+    expect(fixture.nativeElement.textContent).toContain('Outros certificados');
+    component.selectAllCertificates(true);
+    expect([...component.selectedCertificateIds()]).toEqual(['historical']);
+    component.downloadCertificatesArchive();
+    expect(api.downloadCurrentUserCertificatesArchive).toHaveBeenCalledWith(['historical']);
+  });
+
+  it('discards an archive response after the account changes', async () => {
+    const { component, api, authUser, fileDownload, fixture } = await createFixture();
+    const response = new Subject<{ blob: Blob; fileName: string; cooldownSeconds: number }>();
+    api.downloadCurrentUserCertificatesArchive.mockReturnValue(response);
+    component.startCertificateSelection();
+    component.selectAllCertificates(true);
+    component.downloadCertificatesArchive();
+    authUser.set({ sub: 'another-user' });
+    await settle(fixture);
+    response.next({ blob: new Blob(['PK']), fileName: 'old-account.zip', cooldownSeconds: 900 });
+    response.complete();
+    expect(fileDownload.saveBlob).not.toHaveBeenCalled();
+    expect(component.certificateArchiveCooldownSeconds()).toBe(0);
+    expect(component.isDownloadingCertificates()).toBe(false);
+  });
+
+  it('removes selections that disappear from a refreshed certificate catalog', async () => {
+    const { component, api, fixture } = await createFixture();
+    component.startCertificateSelection();
+    component.selectAllCertificates(true);
+    expect(component.selectedCount()).toBeGreaterThan(0);
+    api.getCurrentUserCertificateCatalog.mockReturnValue(of([]));
+    component.loadCertificateSelection();
+    await settle(fixture);
+    expect(component.selectedCount()).toBe(0);
+  });
+
+  it('downloads selected certificates through the shared browser file service', async () => {
     const { component, fileDownload, snackBar } = await createFixture();
 
+    component.startCertificateSelection();
+    component.changeCertificateSelection({ ids: ['certificate-1'], selected: true });
     component.downloadCertificatesArchive();
 
     expect(fileDownload.saveBlob).toHaveBeenCalledWith(expect.any(Blob), 'certificados.zip');
@@ -383,6 +567,8 @@ describe('Attendances', () => {
     const download = new Subject<{ blob: Blob; fileName: string; cooldownSeconds: number }>();
     api.downloadCurrentUserCertificatesArchive.mockReturnValue(download);
 
+    component.startCertificateSelection();
+    component.changeCertificateSelection({ ids: ['certificate-1'], selected: true });
     component.downloadCertificatesArchive();
     fixture.detectChanges();
 
@@ -402,11 +588,17 @@ describe('Attendances', () => {
       throwError(() => new HttpErrorResponse({ status: 404 })),
     );
 
+    component.startCertificateSelection();
+    component.changeCertificateSelection({ ids: ['certificate-1'], selected: true });
     component.downloadCertificatesArchive();
 
-    expect(snackBar.open).toHaveBeenCalledWith('Nenhum certificado disponível para download.', 'Fechar', {
-      duration: 5000,
-    });
+    expect(snackBar.open).toHaveBeenCalledWith(
+      'A seleção mudou. Confira os certificados disponíveis e tente novamente.',
+      'Fechar',
+      {
+        duration: 5000,
+      },
+    );
   });
 
   it('shows the archive cooldown inside the disabled download button after the final permitted download', async () => {
@@ -415,6 +607,8 @@ describe('Attendances', () => {
       of({ blob: new Blob(['PK']), fileName: 'certificados.zip', cooldownSeconds: 900 }),
     );
 
+    component.startCertificateSelection();
+    component.changeCertificateSelection({ ids: ['certificate-1'], selected: true });
     component.downloadCertificatesArchive();
     fixture.detectChanges();
 
@@ -435,6 +629,8 @@ describe('Attendances', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(component.certificateArchiveCooldownSeconds()).toBeGreaterThan(0);
+    component.startCertificateSelection();
+    fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.download-button').textContent).toContain('Baixar certificados em');
     api.getCertificateArchiveCooldown.mockReturnValue(of({ cooldownSeconds: 0 }));
     authUser.set({ sub: 'original-user' });
@@ -455,6 +651,8 @@ describe('Attendances', () => {
       ),
     );
 
+    component.startCertificateSelection();
+    component.changeCertificateSelection({ ids: ['certificate-1'], selected: true });
     component.downloadCertificatesArchive();
     fixture.detectChanges();
 
@@ -472,6 +670,8 @@ describe('Attendances', () => {
       throwError(() => new HttpErrorResponse({ status: 500 })),
     );
 
+    component.startCertificateSelection();
+    component.changeCertificateSelection({ ids: ['certificate-1'], selected: true });
     component.downloadCertificatesArchive();
 
     expect(snackBar.open).toHaveBeenCalledWith('Não foi possível baixar seus certificados.', 'Fechar', {
@@ -518,6 +718,7 @@ async function createFixture({
   api: {
     getSubscriptionsFeed: ReturnType<typeof vi.fn>;
     getCertificateArchiveCooldown: ReturnType<typeof vi.fn>;
+    getCurrentUserCertificateCatalog: ReturnType<typeof vi.fn>;
     downloadCurrentUserCertificatesArchive: ReturnType<typeof vi.fn>;
   };
   component: Attendances;
@@ -536,6 +737,15 @@ async function createFixture({
 }> {
   const api = {
     getSubscriptionsFeed: vi.fn(() => (onlineFeedError ? throwError(() => onlineFeedError) : of(onlineFeed))),
+    getCurrentUserCertificateCatalog: vi.fn(() =>
+      of(
+        (onlineFeed.standaloneCertificateFolders ?? []).map((folder) => ({
+          targetType: 'folder' as const,
+          targetId: folder.id,
+          certificates: folder.certificates,
+        })),
+      ),
+    ),
     getCertificateArchiveCooldown: vi.fn(() => of({ cooldownSeconds: 0 })),
     downloadCurrentUserCertificatesArchive: vi.fn(() =>
       of({

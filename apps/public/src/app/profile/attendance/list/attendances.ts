@@ -1,6 +1,18 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  PLATFORM_ID,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { CertificateSelectionGroup } from '../certificate-selection-group/certificate-selection-group';
+import type { CertificateSelectionGroup as CertificateCatalogGroup } from '@cacic-fct/shared-utils';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -103,6 +115,7 @@ const EMPTY_SUBSCRIPTIONS_FEED = {
   styleUrls: ['./attendances.css', './attendances-records.css', './attendances-responsive.css'],
   imports: [
     MatIconModule,
+    CertificateSelectionGroup,
     MatProgressBarModule,
     MatProgressSpinnerModule,
     RouterLink,
@@ -148,8 +161,120 @@ export class Attendances {
 
     return this.certificateArchiveCooldownSeconds() > 0
       ? `Baixar certificados em ${this.certificateArchiveCooldownTime()}`
-      : 'Baixar todos os certificados';
+      : `Baixar (${this.selectedCount()})`;
   });
+  private selectionRequest = 0;
+  readonly selectionMode = signal(false);
+  readonly selectionState = signal<'loading' | 'ready' | 'error'>('loading');
+  readonly certificateCatalog = signal<CertificateCatalogGroup[]>([]);
+  readonly selectedCertificateIds = signal<ReadonlySet<string>>(new Set());
+  readonly selectionTrigger = viewChild('selectionTrigger', { read: ElementRef<HTMLButtonElement> });
+  readonly selectionCancel = viewChild('selectionCancel', { read: ElementRef<HTMLButtonElement> });
+  readonly additionalCertificateGroups = computed(() => {
+    const knownTargets = new Set(this.allParticipations().map((item) => `${item.route[1]}:${item.route[2]}`));
+    const state = this.feedState();
+    if (state.status === 'ready') {
+      for (const folder of state.data.standaloneCertificateFolders) {
+        knownTargets.add(`folder:${folder.id}`);
+      }
+    }
+    return this.certificateCatalog().filter((group) => !knownTargets.has(`${group.targetType}:${group.targetId}`));
+  });
+  readonly selectableIds = computed(() => [
+    ...new Set(this.certificateCatalog().flatMap((group) => group.certificates.map(({ id }) => id))),
+  ]);
+  readonly visibleCertificateIds = computed(() => {
+    const visibleTargets = new Set(this.visibleParticipations().map((item) => `${item.route[1]}:${item.route[2]}`));
+    const state = this.feedState();
+    if (state.status === 'ready') {
+      for (const folder of state.data.standaloneCertificateFolders) {
+        visibleTargets.add(`folder:${folder.id}`);
+      }
+    }
+    for (const group of this.additionalCertificateGroups()) {
+      visibleTargets.add(`${group.targetType}:${group.targetId}`);
+    }
+    return this.certificateCatalog()
+      .filter((group) => visibleTargets.has(`${group.targetType}:${group.targetId}`))
+      .flatMap((group) => group.certificates.map(({ id }) => id));
+  });
+  readonly selectedCount = computed(() => this.selectedCertificateIds().size);
+  readonly allCertificatesSelected = computed(
+    () =>
+      this.visibleCertificateIds().length > 0 &&
+      this.visibleCertificateIds().every((id) => this.selectedCertificateIds().has(id)),
+  );
+
+  private readonly reconcileSelection = effect(() => {
+    if (this.selectionState() !== 'ready') return;
+    const available = new Set(this.selectableIds());
+    const selected = this.selectedCertificateIds();
+    if ([...selected].some((id) => !available.has(id))) {
+      this.selectedCertificateIds.set(new Set([...selected].filter((id) => available.has(id))));
+    }
+  });
+
+  startCertificateSelection(): void {
+    this.selectionMode.set(true);
+    this.selectedCertificateIds.set(new Set());
+    this.loadCertificateSelection();
+    setTimeout(() => this.selectionCancel()?.nativeElement.focus());
+  }
+
+  loadCertificateSelection(): void {
+    const request = ++this.selectionRequest;
+    this.selectionState.set('loading');
+    this.api
+      .getCurrentUserCertificateCatalog()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (groups) => {
+          if (request !== this.selectionRequest) {
+            return;
+          }
+          this.certificateCatalog.set(groups);
+          this.selectionState.set('ready');
+        },
+        error: () => {
+          if (request === this.selectionRequest) {
+            this.selectionState.set('error');
+          }
+        },
+      });
+  }
+
+  cancelCertificateSelection(): void {
+    this.selectionRequest++;
+    this.selectionMode.set(false);
+    this.selectedCertificateIds.set(new Set());
+    setTimeout(() => this.selectionTrigger()?.nativeElement.focus());
+  }
+
+  certificatesFor(targetType: string, targetId: string) {
+    return (
+      this.certificateCatalog().find((group) => group.targetType === targetType && group.targetId === targetId)
+        ?.certificates ?? []
+    );
+  }
+
+  changeCertificateSelection(change: { ids: string[]; selected: boolean }): void {
+    this.selectedCertificateIds.update((current) => {
+      const next = new Set(current);
+      for (const id of change.ids) {
+        if (change.selected) {
+          next.add(id);
+        } else {
+          next.delete(id);
+        }
+      }
+      return next;
+    });
+  }
+
+  selectAllCertificates(selected: boolean): void {
+    this.changeCertificateSelection({ ids: this.visibleCertificateIds(), selected });
+  }
+
   readonly filtersOpen = signal(false);
   readonly selectedTypeFilters = signal<ParticipationTypeFilter[]>([]);
   readonly selectedStatusFilters = signal<AttendanceStatusFilter[]>([]);
@@ -205,6 +330,11 @@ export class Attendances {
           distinctUntilChanged(),
           switchMap((userId) => {
             this.certificateArchiveCooldownEndsAt.set(0);
+            this.isDownloadingCertificates.set(false);
+            this.selectionRequest++;
+            this.selectionMode.set(false);
+            this.selectedCertificateIds.set(new Set());
+            this.certificateCatalog.set([]);
             return userId ? this.api.getCertificateArchiveCooldown().pipe(catchError(() => of(null))) : of(null);
           }),
           takeUntilDestroyed(this.destroyRef),
@@ -227,7 +357,7 @@ export class Attendances {
 
   readonly activeFilterCount = computed(() => this.selectedTypeFilters().length + this.selectedStatusFilters().length);
 
-  readonly visibleParticipations = computed(() => {
+  private readonly allParticipations = computed(() => {
     const state = this.feedState();
     if (state.status !== 'ready') {
       return [];
@@ -236,10 +366,10 @@ export class Attendances {
     return [
       ...state.data.majorEventItems.map((item) => this.majorEventFeedItem(item, state.data.attendances)),
       ...state.data.eventItems.map((item) => this.eventFeedItem(item, state.data.attendances)),
-    ]
-      .filter((item) => this.matchesFilters(item))
-      .sort((left, right) => compareIsoDateDesc(left.startDate, right.startDate));
+    ].sort((left, right) => compareIsoDateDesc(left.startDate, right.startDate));
   });
+
+  readonly visibleParticipations = computed(() => this.allParticipations().filter((item) => this.matchesFilters(item)));
 
   readonly hasParticipations = computed(() => {
     const state = this.feedState();
@@ -271,11 +401,6 @@ export class Attendances {
     return this.hasActiveFilters() && this.hasParticipations()
       ? 'Nenhuma participação encontrada para os filtros selecionados.'
       : 'Nenhuma participação encontrada.';
-  }
-
-  itemAriaLabel(item: ParticipationFeedItem): string {
-    const warnings = item.warnings.length > 0 ? `. Pendências: ${item.warnings.map(({ text }) => text).join(' ')}` : '';
-    return `Abrir detalhes de ${item.title}. ${item.typeLabel}. ${item.dateLine}. Status: ${item.statusLine}${warnings}`;
   }
 
   statusItems(statusLine: string): AttendanceStatusIcon[] {
@@ -331,31 +456,43 @@ export class Attendances {
   }
 
   downloadCertificatesArchive(): void {
-    if (this.isCertificateArchiveDownloadDisabled()) {
+    if (this.isCertificateArchiveDownloadDisabled() || this.selectedCount() === 0) {
       return;
     }
 
+    const requestUserId = this.feedUserId();
     this.isDownloadingCertificates.set(true);
     this.api
-      .downloadCurrentUserCertificatesArchive()
+      .downloadCurrentUserCertificatesArchive([...this.selectedCertificateIds()])
       .pipe(
         takeUntilDestroyed(this.destroyRef),
-        finalize(() => this.isDownloadingCertificates.set(false)),
+        finalize(() => {
+          if (this.feedUserId() === requestUserId) this.isDownloadingCertificates.set(false);
+        }),
       )
       .subscribe({
         next: (download) => {
+          if (this.feedUserId() !== requestUserId) {
+            return;
+          }
           this.certificateFileDownload.saveBlob(download.blob, download.fileName);
           this.startCertificateArchiveCooldown(download.cooldownSeconds);
           this.snackBar.open('Download dos certificados iniciado.', 'Fechar', { duration: 3000 });
         },
         error: (error: unknown) => {
+          if (this.feedUserId() !== requestUserId) {
+            return;
+          }
+          if (error instanceof HttpErrorResponse && error.status === 404) {
+            this.loadCertificateSelection();
+          }
           const retryAfterSeconds = this.retryAfterSeconds(error);
           if (retryAfterSeconds > 0) {
             this.startCertificateArchiveCooldown(retryAfterSeconds);
           }
           const message =
             error instanceof HttpErrorResponse && error.status === 404
-              ? 'Nenhum certificado disponível para download.'
+              ? 'A seleção mudou. Confira os certificados disponíveis e tente novamente.'
               : retryAfterSeconds > 0
                 ? 'Aguarde antes de solicitar outro arquivo de certificados.'
                 : 'Não foi possível baixar seus certificados.';

@@ -47,20 +47,22 @@ export function configureBackendHttpApp(app: INestApplication): void {
   app.getHttpAdapter().getInstance().disable('x-powered-by');
   app.use(cookieParser());
   app.use(requestContextMiddleware);
-  // Keep the default request bound everywhere except the transfer import route,
-  // whose shared schema permits documents up to 5 MiB. Capture raw JSON bodies
-  // for signed integrations just as Nest's default parser does.
+  // Allow bounded larger bodies only for imports and certificate ID selections.
+  // Capture raw JSON bodies for signed integrations as Nest's default parser does.
   const captureRawBody = (request: IncomingMessage, _response: ServerResponse, buffer: Buffer) => {
     (request as IncomingMessage & { rawBody?: Buffer }).rawBody = Buffer.from(buffer);
   };
   const defaultJsonParser = express.json({ limit: '100kb', verify: captureRawBody });
   const transferJsonParser = express.json({ limit: '6mb', verify: captureRawBody });
+  const certificateArchiveJsonParser = express.json({ limit: '2mb', verify: captureRawBody });
   app.use((request: ExpressRequest, response: ExpressResponse, next: NextFunction) => {
     const path = request.path;
     const parser =
       path === '/api/admin/data-transfer' || path.startsWith('/api/admin/data-transfer/')
         ? transferJsonParser
-        : defaultJsonParser;
+        : path === '/api/current-user/certificates/archive.zip' && request.method === 'POST'
+          ? certificateArchiveJsonParser
+          : defaultJsonParser;
     parser(request, response, next);
   });
   app.use(express.urlencoded({ extended: true, limit: '100kb', verify: captureRawBody }));

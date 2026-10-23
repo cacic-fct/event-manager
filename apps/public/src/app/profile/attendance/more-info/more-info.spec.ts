@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -10,6 +11,7 @@ import { PublicDatabaseProvider } from '@cacic-fct/public-indexed-db';
 import type { DetailViewModel } from '@cacic-fct/shared-utils';
 import { NetworkStatusService } from '../../../shared/network-status.service';
 import { PublicPrizeDrawApiService } from '../../../prize-draws/prize-draw-api.service';
+import { AttendancesApiService } from '../attendances-api.service';
 import { MoreInfo } from './more-info';
 
 describe('MoreInfo', () => {
@@ -17,6 +19,7 @@ describe('MoreInfo', () => {
   let fixture: ComponentFixture<MoreInfo>;
   let httpTesting: HttpTestingController;
   let routeParams: Subject<ParamMap>;
+  const online = signal(true);
   let prizeDrawsApi: {
     availability: ReturnType<typeof vi.fn>;
     watch: ReturnType<typeof vi.fn>;
@@ -24,6 +27,7 @@ describe('MoreInfo', () => {
 
   beforeEach(async () => {
     routeParams = new Subject<ParamMap>();
+    online.set(true);
     prizeDrawsApi = {
       availability: vi.fn(() => of([])),
       watch: vi.fn(() => NEVER),
@@ -43,7 +47,7 @@ describe('MoreInfo', () => {
         {
           provide: NetworkStatusService,
           useValue: {
-            isOnline: () => true,
+            isOnline: online,
           },
         },
         {
@@ -70,28 +74,62 @@ describe('MoreInfo', () => {
     }).compileComponents();
 
     httpTesting = TestBed.inject(HttpTestingController);
+    vi.spyOn(TestBed.inject(AttendancesApiService), 'getCurrentUserCertificatesForTargets').mockReturnValue(of([]));
     fixture = TestBed.createComponent(MoreInfo);
     component = fixture.componentInstance;
   });
 
   afterEach(() => httpTesting.verify());
 
-  it('renders the event name in the page body instead of the toolbar', async () => {
-    fixture.detectChanges();
-    routeParams.next(convertToParamMap({ eventType: 'event', eventId: 'event-1' }));
-    await fixture.whenStable();
-    const detailsRequest = expectGraphqlRequest(httpTesting, 'CurrentUserEventDetails');
-    const certificatesRequest = expectGraphqlRequest(httpTesting, 'CurrentUserCertificates');
-    const organizerRequest = expectGraphqlRequest(httpTesting, 'CurrentUserOrganizerInfo');
-    const publicEventRequest = expectGraphqlRequest(httpTesting, 'PublicEventForAttendanceDetails');
+  it.each([false, true])(
+    'renders certificate availability independently of issuance setting %s',
+    async (shouldIssueCertificate) => {
+      fixture.detectChanges();
+      routeParams.next(convertToParamMap({ eventType: 'event', eventId: 'event-1' }));
+      await fixture.whenStable();
+      const detailsRequest = expectGraphqlRequest(httpTesting, 'CurrentUserEventDetails');
+      const certificatesRequest = expectGraphqlRequest(httpTesting, 'CurrentUserCertificates');
+      const organizerRequest = expectGraphqlRequest(httpTesting, 'CurrentUserOrganizerInfo');
+      const publicEventRequest = expectGraphqlRequest(httpTesting, 'PublicEventForAttendanceDetails');
 
-    detailsRequest.flush({
-      data: {
-        currentUserEventSubscription: {
-          eventId: 'event-1',
-          eventGroupSubscriptionId: null,
-          createdAt: publicFixtureDateFromNow(-1, 12),
-          event: {
+      detailsRequest.flush({
+        data: {
+          currentUserEventSubscription: {
+            eventId: 'event-1',
+            eventGroupSubscriptionId: null,
+            createdAt: publicFixtureDateFromNow(-1, 12),
+            event: {
+              id: 'event-1',
+              name: 'Evento teste',
+              creditMinutes: 60,
+              startDate: publicFixtureDateFromNow(1, 12),
+              endDate: publicFixtureDateFromNow(1, 14),
+              emoji: '🎉',
+              type: 'OTHER',
+              description: null,
+              shortDescription: null,
+              latitude: null,
+              longitude: null,
+              locationDescription: null,
+              majorEventId: null,
+              eventGroupId: null,
+              allowSubscription: true,
+              slots: null,
+              shouldIssueCertificate,
+              shouldCollectAttendance: false,
+              isOnlineAttendanceAllowed: false,
+              onlineAttendanceStartDate: null,
+              onlineAttendanceEndDate: null,
+              isPubliclyListed: true,
+              youtubeCode: null,
+              buttonText: null,
+              buttonLink: null,
+              majorEvent: null,
+              eventGroup: null,
+            },
+          },
+          currentUserEventAttendance: null,
+          publicEvent: {
             id: 'event-1',
             name: 'Evento teste',
             creditMinutes: 60,
@@ -108,7 +146,7 @@ describe('MoreInfo', () => {
             eventGroupId: null,
             allowSubscription: true,
             slots: null,
-            shouldIssueCertificate: false,
+            shouldIssueCertificate,
             shouldCollectAttendance: false,
             isOnlineAttendanceAllowed: false,
             onlineAttendanceStartDate: null,
@@ -121,69 +159,89 @@ describe('MoreInfo', () => {
             eventGroup: null,
           },
         },
-        currentUserEventAttendance: null,
-        publicEvent: {
-          id: 'event-1',
-          name: 'Evento teste',
-          creditMinutes: 60,
-          startDate: publicFixtureDateFromNow(1, 12),
-          endDate: publicFixtureDateFromNow(1, 14),
-          emoji: '🎉',
-          type: 'OTHER',
-          description: null,
-          shortDescription: null,
-          latitude: null,
-          longitude: null,
-          locationDescription: null,
-          majorEventId: null,
-          eventGroupId: null,
-          allowSubscription: true,
-          slots: null,
-          shouldIssueCertificate: false,
-          shouldCollectAttendance: false,
-          isOnlineAttendanceAllowed: false,
-          onlineAttendanceStartDate: null,
-          onlineAttendanceEndDate: null,
-          isPubliclyListed: true,
-          youtubeCode: null,
-          buttonText: null,
-          buttonLink: null,
-          majorEvent: null,
-          eventGroup: null,
+      });
+      certificatesRequest.flush({
+        data: {
+          currentUserCertificates: [],
         },
-      },
-    });
-    certificatesRequest.flush({
-      data: {
-        currentUserCertificates: [],
-      },
-    });
-    organizerRequest.flush({
-      data: {
-        currentUserOrganizerInfo: null,
-      },
-    });
-    publicEventRequest.flush({
-      data: {
-        publicEvent: null,
-      },
-    });
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    const formsRequest = expectGraphqlRequest(httpTesting, 'CurrentUserEventForms');
-    formsRequest.flush({
-      data: {
-        currentUserEventForms: [],
-      },
-    });
-    await fixture.whenStable();
-    fixture.detectChanges();
+      });
+      organizerRequest.flush({
+        data: {
+          currentUserOrganizerInfo: null,
+        },
+      });
+      publicEventRequest.flush({
+        data: {
+          publicEvent: null,
+        },
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const formsRequest = expectGraphqlRequest(httpTesting, 'CurrentUserEventForms');
+      formsRequest.flush({
+        data: {
+          currentUserEventForms: [],
+        },
+      });
+      await fixture.whenStable();
+      fixture.detectChanges();
 
-    expect(component).toBeTruthy();
-    const host = fixture.nativeElement as HTMLElement;
-    expect(host.querySelector('mat-toolbar > span')?.textContent?.trim()).toBe('Detalhes');
-    expect(host.querySelector('mat-toolbar h1')).toBeNull();
-    expect(host.querySelector('.detail-header h1')?.textContent?.trim()).toBe('Evento teste');
-  });
+      expect(component).toBeTruthy();
+      const host = fixture.nativeElement as HTMLElement;
+      expect(host.querySelector('mat-toolbar > span')?.textContent?.trim()).toBe('Detalhes');
+      expect(host.querySelector('mat-toolbar h1')).toBeNull();
+      expect(host.querySelector('.detail-header h1')?.textContent?.trim()).toBe('Evento teste');
+      if (shouldIssueCertificate) {
+        expect(host.textContent).toContain('Nenhum certificado emitido');
+      } else {
+        expect(host.textContent).not.toContain('Nenhum certificado emitido');
+        expect(host.textContent).not.toContain('Emissão de certificados desativada');
+      }
+      expect(
+        Array.from(host.querySelectorAll('button')).some(
+          (button) => button.textContent?.trim() === 'workspace_premium Certificados',
+        ),
+      ).toBe(false);
+      const certificatesApi = vi.mocked(TestBed.inject(AttendancesApiService).getCurrentUserCertificatesForTargets);
+      certificatesApi.mockReturnValueOnce(throwError(() => new Error('Unavailable')));
+      component.retryCertificates();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(host.textContent).toContain('Não foi possível consultar seus certificados.');
+      certificatesApi.mockReturnValueOnce(
+        of([
+          {
+            id: 'issued',
+            configId: 'config',
+            issuedAt: publicFixtureDateFromNow(-1, 12),
+            config: {
+              id: 'config',
+              name: 'Participação',
+              scope: 'EVENT',
+              certificateTemplate: { id: 'template', name: 'Modelo' },
+            },
+            certificateTemplate: { id: 'template', name: 'Modelo' },
+          },
+        ]),
+      );
+      component.retryCertificates();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(component.issuedCertificates()).toHaveLength(1);
+      expect(host.querySelector('.certificate-status')).toBeNull();
+      online.set(false);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(host.textContent).toContain('Conecte-se à internet');
+      online.set(true);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(component.certificateState().status).toBe('ready');
+    },
+  );
 
   it('builds direct sports and representative-area routes', () => {
     expect(

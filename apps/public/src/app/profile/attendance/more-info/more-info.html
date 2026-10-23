@@ -1,6 +1,6 @@
 @let currentState = detailState();
 
-<mat-toolbar>
+<mat-toolbar role="navigation" aria-label="Navegação dos detalhes">
   <a matIconButton routerLink="/profile/attendances" aria-label="Voltar para inscrições">
     <mat-icon>arrow_back</mat-icon>
   </a>
@@ -23,11 +23,33 @@
     </div>
   </header>
 
-  @if (detail.statusLabel; as statusLabel) {
-  <p class="status-summary" role="status">
-    <mat-icon aria-hidden="true">{{ statusIcon(detail) }}</mat-icon>
-    <span>{{ statusLabel }}</span>
-  </p>
+  @let certificates = certificateState(); @let certificateIssuanceEnabled = detail.certificateIssuanceEnabled ??
+  detail.shouldIssueCertificate; @let showCertificateStatus = certificates.status !== 'ready' ||
+  (issuedCertificates().length === 0 && certificateIssuanceEnabled); @if (detail.statusLabel || showCertificateStatus) {
+  <div class="status-list">
+    @if (detail.statusLabel; as statusLabel) {
+    <p class="status-summary" role="status">
+      <mat-icon aria-hidden="true">{{ statusIcon(detail) }}</mat-icon>
+      <span>{{ statusLabel }}</span>
+    </p>
+    } @if (showCertificateStatus) {
+    <p class="status-summary certificate-status" role="status">
+      <mat-icon aria-hidden="true"
+        >{{ certificates.status === 'error' || certificates.status === 'offline' ? 'cloud_off' : 'workspace_premium'
+        }}</mat-icon
+      >
+      <span>
+        @if (certificates.status === 'loading') { Consultando certificados… } @else if (certificates.status === 'error')
+        { Não foi possível consultar seus certificados. } @else if (certificates.status === 'offline') { Conecte-se à
+        internet para consultar seus certificados. } @else { Nenhum certificado emitido }
+      </span>
+    </p>
+    @if (certificates.status === 'error') {
+    <button matButton="text" type="button" class="certificate-retry" (click)="retryCertificates()">
+      Tentar novamente
+    </button>
+    } }
+  </div>
   }
 
   <div class="actions">
@@ -56,7 +78,7 @@
       <mat-icon>admin_panel_settings</mat-icon>
       Informações do organizador
     </a>
-    } @if (detail.shouldIssueCertificate) {
+    } @if (certificateState().status === 'ready' && issuedCertificates().length > 0) {
     <button mat-flat-button type="button" (click)="openCertificates(detail)">
       <mat-icon>workspace_premium</mat-icon>
       Certificados

@@ -1,6 +1,8 @@
 import { jest as jestEsm } from '@jest/globals';
 import { NotFoundException } from '@nestjs/common';
-import { PassThrough } from 'node:stream';
+import { PassThrough, Readable } from 'node:stream';
+import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
 const { jest } = import.meta;
 
 jestEsm.unstable_mockModule('@bwip-js/node', () => ({
@@ -245,10 +247,7 @@ describe('CertificateDownloadService', () => {
 
     const archive = await service.createCertificatesArchive(
       ' João da Silva / CACiC ',
-      ['certificate-1', 'certificate-2'],
-      {
-        events: [{ id: 'event-1', name: 'Evento' }],
-      },
+      archiveSources('certificate-1', 'certificate-2'),
     );
     expect(archive.fileName).toMatch(/^certificados-\d{4}-\d{2}-\d{2}-joao-da-silva-cacic\.zip$/);
     await archiveStream.completed;
@@ -258,9 +257,30 @@ describe('CertificateDownloadService', () => {
     expect(browser.close).toHaveBeenCalledTimes(1);
     expect(archiveStream.append).toHaveBeenNthCalledWith(1, Buffer.from('pdf-1'), { name: 'primeiro-certificado.pdf' });
     expect(archiveStream.append).toHaveBeenNthCalledWith(2, Buffer.from('pdf-2'), { name: 'segundo-certificado.pdf' });
-    expect(archiveStream.append).toHaveBeenNthCalledWith(3, expect.stringContaining('"name": "Evento"'), {
-      name: 'joao-da-silva-cacic_events.json',
+    expect(archiveStream.append).toHaveBeenNthCalledWith(3, expect.any(Readable), { name: 'certificates.json' });
+    expect(JSON.parse(archiveStream.manifest())).toEqual({
+      format: 'cacic-certificates',
+      schemaVersion: 2,
+      generatedAt: expect.any(String),
+      certificates: [
+        {
+          certificateId: 'certificate-1',
+          issuedAt: expect.any(String),
+          fileName: 'primeiro-certificado.pdf',
+          sha256: createHash('sha256').update('pdf-1').digest('hex'),
+        },
+        {
+          certificateId: 'certificate-2',
+          issuedAt: expect.any(String),
+          fileName: 'segundo-certificado.pdf',
+          sha256: createHash('sha256').update('pdf-2').digest('hex'),
+        },
+      ],
     });
+    const manifestSource = archiveStream.append.mock.calls[2][0] as Readable & { path: string };
+    // Cleanup runs after finalization; wait for the detached task to release its archive slot.
+    await waitUntil(() => service['activeArchives'] === 0);
+    expect(existsSync(manifestSource.path)).toBe(false);
     expect(archiveStream.finalize).toHaveBeenCalledTimes(1);
   });
 
@@ -277,13 +297,13 @@ describe('CertificateDownloadService', () => {
       content: Buffer.alloc(1024),
     });
     const closed = new Promise<void>((resolve) => archiveStream.once('close', resolve));
-    await service.createCertificatesArchive('Ana', ['first', 'second'], {});
-    await new Promise(setImmediate);
+    await service.createCertificatesArchive('Ana', archiveSources('first', 'second'));
+    await waitUntil(() => render.mock.calls.length === 1);
     expect(render).toHaveBeenCalledTimes(1);
     expect(archiveStream.append).toHaveBeenCalledTimes(1);
     archiveStream.destroy();
     await closed;
-    await new Promise(setImmediate);
+    await waitUntil(() => service['activeArchives'] === 0);
     expect(render).toHaveBeenCalledTimes(1);
     expect(browser.close).toHaveBeenCalled();
     expect(service['activeArchives']).toBe(0);
@@ -304,17 +324,17 @@ describe('CertificateDownloadService', () => {
     jest
       .spyOn(service as never, 'renderCertificateFile')
       .mockResolvedValue({ fileName: 'certificate.pdf', content: Buffer.from('pdf') });
-    await service.createCertificatesArchive('Ana', ['first'], {});
-    await service.createCertificatesArchive('Bia', ['second'], {});
-    await expect(service.createCertificatesArchive('Caio', ['third'], {})).rejects.toThrow(
+    await service.createCertificatesArchive('Ana', archiveSources('first'));
+    await service.createCertificatesArchive('Bia', archiveSources('second'));
+    await expect(service.createCertificatesArchive('Caio', archiveSources('third'))).rejects.toThrow(
       'Certificate downloads are busy.',
     );
-    await new Promise(setImmediate);
+    await waitUntil(() => jest.mocked(chromium.launch).mock.calls.length === 2);
     expect(chromium.launch).toHaveBeenCalledTimes(2);
     for (const archive of archives) {
       archive.destroy();
     }
-    await new Promise(setImmediate);
+    await waitUntil(() => service['activeArchives'] === 0);
     expect(service['activeArchives']).toBe(0);
   });
 
@@ -328,10 +348,10 @@ describe('CertificateDownloadService', () => {
       content: Buffer.from('pdf'),
     });
 
-    const archive = await service.createCertificatesArchive(' !!! ', ['certificate-1'], {});
+    const archive = await service.createCertificatesArchive(' !!! ', archiveSources('certificate-1'));
     expect(archive.fileName).toMatch(/^certificados-\d{4}-\d{2}-\d{2}-certificados\.zip$/);
     await archiveStream.completed;
-    expect(archiveStream.append).toHaveBeenLastCalledWith(expect.any(String), { name: 'certificados_events.json' });
+    expect(archiveStream.append).toHaveBeenLastCalledWith(expect.any(Readable), { name: 'certificates.json' });
   });
 
   it('destroys the archive when rendering a certificate fails without emitting an unhandled error', async () => {
@@ -342,7 +362,7 @@ describe('CertificateDownloadService', () => {
     jest.spyOn(service as never, 'renderCertificateFile').mockRejectedValue(new Error('render failed'));
 
     const closed = new Promise<void>((resolve) => archiveStream.once('close', resolve));
-    await service.createCertificatesArchive('Ana', ['certificate-1'], {});
+    await service.createCertificatesArchive('Ana', archiveSources('certificate-1'));
     await closed;
 
     expect(archiveStream.destroyed).toBe(true);
@@ -392,7 +412,7 @@ describe('CertificateDownloadService', () => {
     });
 
     const closed = new Promise<void>((resolve) => archiveStream.once('close', resolve));
-    await service.createCertificatesArchive('Ana', ['certificate-1'], {});
+    await service.createCertificatesArchive('Ana', archiveSources('certificate-1'));
     await archiveStream.completed;
     await closed;
 
@@ -400,17 +420,40 @@ describe('CertificateDownloadService', () => {
   });
 });
 
+function archiveSources(...ids: string[]) {
+  return ids.map((id) => ({ id, issuedAt: new Date(Date.now() - 60000) }));
+}
+
 function createArchive() {
   const archive = new PassThrough();
   let complete!: () => void;
   const completed = new Promise<void>((resolve) => {
     complete = resolve;
   });
+  let manifest = '';
   return Object.assign(archive, {
-    append: jest.fn().mockImplementation(() => {
-      queueMicrotask(() => archive.emit('entry'));
+    manifest: () => manifest,
+    append: jest.fn().mockImplementation((content: unknown) => {
+      if (content instanceof Readable) {
+        void (async () => {
+          for await (const chunk of content) {
+            manifest += String(chunk);
+          }
+          archive.emit('entry');
+        })();
+      } else {
+        queueMicrotask(() => archive.emit('entry'));
+      }
     }),
     finalize: jest.fn().mockImplementation(async () => complete()),
     completed,
   });
+}
+
+async function waitUntil(condition: () => boolean): Promise<void> {
+  const deadline = Date.now() + 2000;
+  while (!condition()) {
+    if (Date.now() > deadline) throw new Error('Archive task did not reach the expected state.');
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
 }

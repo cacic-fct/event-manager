@@ -6,7 +6,7 @@ import type {
   PublicPrizeDrawAvailability,
 } from '@cacic-fct/event-manager-public-contracts';
 import { Component, DestroyRef, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -17,12 +17,18 @@ import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { AuthService, MarkdownComponent } from '@cacic-fct/shared-angular';
 import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import { OfflineAttendanceDetail, PublicDataAccessService } from '@cacic-fct/public-indexed-db';
-import { DetailViewModel, buildDetailViewModel, parseEventTargetType } from '@cacic-fct/shared-utils';
+import {
+  CertificateTarget,
+  DetailViewModel,
+  buildDetailViewModel,
+  parseEventTargetType,
+} from '@cacic-fct/shared-utils';
 import {
   EMPTY,
   Observable,
   auditTime,
   catchError,
+  combineLatest,
   defer,
   forkJoin,
   from,
@@ -181,11 +187,56 @@ export class MoreInfo {
     onCleanup(() => subscription.unsubscribe());
   });
 
+  private readonly certificateRefresh = signal(0);
+  readonly certificateState = toSignal(
+    combineLatest([
+      toObservable(this.detailStateSnapshot),
+      toObservable(this.certificateRefresh),
+      toObservable(this.networkStatus.isOnline),
+    ]).pipe(
+      switchMap(([state, , online]) => {
+        if (state.status !== 'ready') return of({ status: 'loading' } as const);
+        if (!online) return of({ status: 'offline' } as const);
+        return this.api.getCurrentUserCertificatesForTargets(this.certificateTargets(state.detail)).pipe(
+          map((certificates) => ({ status: 'ready', certificates }) as const),
+          catchError(() => of({ status: 'error' } as const)),
+          startWith({ status: 'loading' } as const),
+        );
+      }),
+    ),
+    { initialValue: { status: 'loading' } as const },
+  );
+
+  readonly issuedCertificates = computed(() => {
+    const state = this.certificateState();
+    return state.status === 'ready' ? state.certificates : [];
+  });
+
+  retryCertificates(): void {
+    this.certificateRefresh.update((value) => value + 1);
+  }
+
+  private certificateTargets(detail: DetailViewModel): CertificateTarget[] {
+    const scope = { event: 'EVENT', 'event-group': 'EVENT_GROUP', 'major-event': 'MAJOR_EVENT' } as const;
+    const targets: CertificateTarget[] = [
+      { scope: scope[detail.targetType], targetId: detail.targetId },
+      ...detail.certificateTargets,
+      ...[...detail.events, ...detail.notSubscribedEvents].flatMap(({ event }): CertificateTarget[] => [
+        { scope: 'EVENT', targetId: event.id },
+        ...(event.eventGroupId ? [{ scope: 'EVENT_GROUP' as const, targetId: event.eventGroupId }] : []),
+      ]),
+    ];
+    const unique = new Map(targets.map((target) => [`${target.scope}:${target.targetId}`, target]));
+    return [...unique.values()];
+  }
+
   openCertificates(detail: DetailViewModel): void {
+    const state = this.certificateState();
+    if (state.status !== 'ready' || state.certificates.length === 0) return;
     this.dialog.open<CertificateDialog, CertificateDialogData>(CertificateDialog, {
       data: {
         title: detail.title,
-        targets: detail.certificateTargets,
+        certificates: [...state.certificates],
       },
       width: 'min(560px, calc(100vw - 32px))',
     });

@@ -13,6 +13,8 @@ import {
 import { compareIsoDateDesc } from '@cacic-fct/shared-utils';
 import type {
   Certificate,
+  CertificateCatalogPage,
+  CertificateSelectionGroup,
   CertificateTarget,
   CurrentUserEventAttendance,
   CurrentUserEventGroupSubscription,
@@ -26,11 +28,12 @@ import type {
   SubscribedItem,
   SubscriptionsFeed,
 } from '@cacic-fct/shared-utils';
-import { Observable, catchError, forkJoin, map, of } from 'rxjs';
+import { EMPTY, Observable, catchError, expand, forkJoin, from, map, mergeMap, of, reduce } from 'rxjs';
 import { graphqlError } from '../../shared/rate-limit-error';
 
 export type {
   Certificate,
+  CertificateSelectionGroup,
   CertificateTarget,
   CurrentUserEventAttendance,
   CurrentUserMajorEventFeedItem,
@@ -562,8 +565,13 @@ export class AttendancesApiService {
       return of([]);
     }
 
-    return forkJoin(targets.map((target) => this.getCurrentUserCertificates(target.scope, target.targetId))).pipe(
-      map((certificateGroups) => this.deduplicateCertificates(certificateGroups.flat())),
+    const uniqueTargets = [
+      ...new Map(targets.map((target) => [`${target.scope}:${target.targetId}`, target])).values(),
+    ];
+    return from(uniqueTargets).pipe(
+      mergeMap((target) => this.getCurrentUserCertificates(target.scope, target.targetId), 4),
+      reduce((certificates, group) => [...certificates, ...group], [] as Certificate[]),
+      map((certificates) => this.deduplicateCertificates(certificates)),
     );
   }
 
@@ -583,12 +591,55 @@ export class AttendancesApiService {
   }
 
   getCertificateArchiveCooldown(): Observable<{ cooldownSeconds: number }> {
-    return this.http.get<{ cooldownSeconds: number }>('/api/current-user/certificates/archive-status');
+    return this.query<{ currentUserCertificateArchiveStatus: { cooldownSeconds: number } }>(
+      `
+      query CurrentUserCertificateArchiveStatus {
+        currentUserCertificateArchiveStatus { cooldownSeconds }
+      }
+    `,
+    ).pipe(map((data) => data.currentUserCertificateArchiveStatus));
   }
 
-  downloadCurrentUserCertificatesArchive(): Observable<CertificateArchiveDownload> {
+  getCurrentUserCertificateCatalog(): Observable<CertificateSelectionGroup[]> {
+    const loadPage = (cursor?: string) =>
+      this.query<{ currentUserCertificateCatalog: CertificateCatalogPage }>(
+        `
+        query CurrentUserCertificateCatalog($cursor: String) {
+          currentUserCertificateCatalog(cursor: $cursor) {
+            items {
+              targetType
+              targetId
+              certificate { ${CERTIFICATE_FIELDS} }
+            }
+            nextCursor
+          }
+        }
+      `,
+        { cursor },
+      ).pipe(map((data) => data.currentUserCertificateCatalog));
+
+    return loadPage().pipe(
+      expand((page) => (page.nextCursor ? loadPage(page.nextCursor) : EMPTY), 1),
+      reduce((groups, page) => {
+        for (const item of page.items) {
+          const key = `${item.targetType}:${item.targetId}`;
+          const group = groups.get(key) ?? { targetType: item.targetType, targetId: item.targetId, certificates: [] };
+          group.certificates.push(item.certificate);
+          groups.set(key, group);
+        }
+        return groups;
+      }, new Map<string, CertificateSelectionGroup>()),
+      map((groups) => [...groups.values()]),
+    );
+  }
+
+  downloadCurrentUserCertificatesArchive(certificateIds: readonly string[]): Observable<CertificateArchiveDownload> {
     return this.http
-      .get('/api/current-user/certificates/archive.zip', { observe: 'response', responseType: 'blob' })
+      .post(
+        '/api/current-user/certificates/archive.zip',
+        { certificateIds },
+        { observe: 'response', responseType: 'blob' },
+      )
       .pipe(
         map((response) => ({
           blob: this.requireDownloadBody(response.body),
@@ -599,16 +650,23 @@ export class AttendancesApiService {
   }
 
   private getCurrentUserCertificates(scope: CertificateScope, targetId: string): Observable<Certificate[]> {
-    return this.query<{ currentUserCertificates: Certificate[] }>(
-      `
-        query CurrentUserCertificates($scope: CertificateScope!, $targetId: String!) {
-          currentUserCertificates(scope: $scope, targetId: $targetId) {
+    const pageSize = 100;
+    const loadPage = (afterId?: string): Observable<Certificate[]> =>
+      this.query<{ currentUserCertificates: Certificate[] }>(
+        `
+        query CurrentUserCertificates($scope: CertificateScope!, $targetId: String!, $take: Int!, $afterId: String) {
+          currentUserCertificates(scope: $scope, targetId: $targetId, take: $take, afterId: $afterId) {
             ${CERTIFICATE_FIELDS}
           }
         }
       `,
-      { scope, targetId },
-    ).pipe(map((data) => data.currentUserCertificates));
+        { scope, targetId, take: pageSize, afterId },
+      ).pipe(map((data) => data.currentUserCertificates));
+
+    return loadPage().pipe(
+      expand((page) => (page.length === pageSize ? loadPage(page[page.length - 1].id) : EMPTY), 1),
+      reduce((certificates, page) => [...certificates, ...page], [] as Certificate[]),
+    );
   }
 
   private readDownloadFileName(contentDisposition: string | null): string {

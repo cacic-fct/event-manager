@@ -21,7 +21,5 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 export class UpdateModalComponent {
   readonly phase = input<'downloading' | 'ready'>('downloading');
   readonly title = computed(() => (this.phase() === 'ready' ? 'Atualização pronta' : 'Atualização do aplicativo'));
-  readonly message = computed(() =>
-    this.phase() === 'ready' ? 'Aguarde um instante.' : 'A página será recarregada automaticamente.',
-  );
+  readonly message = computed(() => (this.phase() === 'ready' ? 'Aguarde um instante.' : 'Não recarregue a página.'));
 }

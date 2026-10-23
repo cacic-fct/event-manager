@@ -153,6 +153,17 @@ export interface CertificateTarget {
   targetId: string;
 }
 
+export interface CertificateSelectionGroup {
+  targetType: EventTargetType | 'folder';
+  targetId: string;
+  certificates: Certificate[];
+}
+
+export interface CertificateCatalogPage {
+  items: Array<Omit<CertificateSelectionGroup, 'certificates'> & { certificate: Certificate }>;
+  nextCursor: string | null;
+}
+
 export interface InfoRow {
   label: string;
   value: string;
@@ -182,6 +193,7 @@ export interface DetailViewModel {
   notSubscribedEvents: DetailEventItem[];
   certificateTargets: CertificateTarget[];
   shouldIssueCertificate: boolean;
+  certificateIssuanceEnabled?: boolean;
   canViewOrganizerInfo?: boolean;
   sportsTournamentId?: string;
   sportsRepresentativeTeams: Array<{ id: string; name: string }>;

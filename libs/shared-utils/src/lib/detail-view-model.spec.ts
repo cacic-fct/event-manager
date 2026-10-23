@@ -7,6 +7,29 @@ import {
 } from './detail-view-model';
 
 describe('detail view model', () => {
+  it('keeps historical certificate availability separate from current issuance settings', () => {
+    const detail = buildEventDetail({
+      subscription: null,
+      event: event('historical', new Date(Date.now() - 86400000).toISOString(), { shouldIssueCertificate: false }),
+      attendance: null,
+      hasIssuedCertificate: true,
+    });
+    expect(detail?.shouldIssueCertificate).toBe(true);
+    expect(detail?.certificateIssuanceEnabled).toBe(false);
+  });
+
+  it('recognizes child certificate issuance in a major event with no aggregate certificate', () => {
+    const child = event('child', new Date(Date.now() - 86400000).toISOString(), { shouldIssueCertificate: true });
+    const owner = majorEvent({ shouldIssueCertificate: false });
+    const detail = buildMajorEventDetail({
+      subscription: null,
+      majorEvent: owner,
+      events: [child],
+      attendances: [{ eventId: child.id, attendedAt: child.endDate }],
+    });
+    expect(detail?.certificateIssuanceEnabled).toBe(true);
+  });
+
   it('builds grouped event details with sorted events, certificate targets, and attendance summary', () => {
     const group = eventGroup({
       shouldIssueCertificate: true,

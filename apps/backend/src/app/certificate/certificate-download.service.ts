@@ -1,4 +1,5 @@
 import { CertificateDownload } from '@cacic-fct/shared-data-types';
+import type { CertificateArchiveManifestEntry } from '@cacic-fct/event-manager-public-contracts';
 import {
   BadRequestException,
   Injectable,
@@ -9,6 +10,11 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { Browser, Page } from 'playwright';
+import { createHash } from 'node:crypto';
+import { createReadStream } from 'node:fs';
+import { mkdtemp, open, rm, type FileHandle } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { PrismaService } from '../prisma/prisma.service';
 import { CertificateValidationService } from './certificate-validation.service';
@@ -25,6 +31,8 @@ export type CertificateArchive = {
   fileName: string;
   stream: ZipArchiveStream;
 };
+
+export type CertificateArchiveSource = { id: string; issuedAt: Date };
 
 @Injectable()
 export class CertificateDownloadService {
@@ -124,8 +132,8 @@ export class CertificateDownloadService {
 
   async createCertificatesArchive(
     personName: string,
-    certificateIds: Iterable<string> | AsyncIterable<string>,
-    metadata: unknown,
+    certificates: Iterable<CertificateArchiveSource> | AsyncIterable<CertificateArchiveSource>,
+    generatedAt = new Date(),
   ): Promise<CertificateArchive> {
     const safeName = this.normalizeFileNamePart(personName) || 'certificados';
     // Reject instead of building an unbounded queue of expensive rendering jobs.
@@ -142,7 +150,7 @@ export class CertificateDownloadService {
     }
     stream.on('warning', (error) => this.logger.warn(error.message, error.stack));
     stream.on('error', (error) => this.logger.error(error.message, error.stack));
-    void this.appendCertificatesToArchive(stream, safeName, certificateIds, metadata)
+    void this.appendCertificatesToArchive(stream, certificates, generatedAt)
       .catch((error: unknown) => {
         const archiveError = error instanceof Error ? error : new Error('Failed to create certificate archive.');
         this.logger.error('Detached certificate archive generation failed.', archiveError.stack);
@@ -162,11 +170,13 @@ export class CertificateDownloadService {
 
   private async appendCertificatesToArchive(
     archive: ZipArchiveStream,
-    safeName: string,
-    certificateIds: Iterable<string> | AsyncIterable<string>,
-    metadata: unknown,
+    certificates: Iterable<CertificateArchiveSource> | AsyncIterable<CertificateArchiveSource>,
+    generatedAt: Date,
   ): Promise<void> {
     let browser: Browser | undefined;
+    let manifestDirectory: string | undefined;
+    let manifestFile: FileHandle | undefined;
+    let manifestStream: Readable | undefined;
     const cancel = () => {
       void browser?.close().catch(() => undefined);
     };
@@ -177,22 +187,43 @@ export class CertificateDownloadService {
     );
     deadline.unref();
     try {
+      // Spool the small manifest while rendering, then stream it into the ZIP.
+      // This records the exact PDFs produced without retaining an unbounded array
+      // or requerying certificates that may have changed during the download.
+      manifestDirectory = await mkdtemp(join(tmpdir(), 'cacic-certificates-'));
+      const manifestPath = join(manifestDirectory, 'certificates.json');
+      manifestFile = await open(manifestPath, 'wx', 0o600);
+      await manifestFile.writeFile(
+        `{"format":"cacic-certificates","schemaVersion":2,"generatedAt":${JSON.stringify(generatedAt.toISOString())},"certificates":[`,
+      );
+      let separator = '';
+      if (archive.destroyed) {
+        return;
+      }
       browser = await this.launchBrowser();
-      for await (const certificateId of certificateIds) {
+      for await (const source of certificates) {
         if (archive.destroyed) {
           return;
         }
 
-        const certificate = await this.renderCertificateFile(certificateId, false, browser);
+        const certificate = await this.renderCertificateFile(source.id, false, browser);
         await this.appendArchiveEntry(archive, certificate.content, certificate.fileName);
+        const entry: CertificateArchiveManifestEntry = {
+          certificateId: source.id,
+          issuedAt: source.issuedAt.toISOString(),
+          fileName: certificate.fileName,
+          sha256: createHash('sha256').update(certificate.content).digest('hex'),
+        };
+        await manifestFile.writeFile(separator + JSON.stringify(entry));
+        separator = ',';
       }
 
       if (!archive.destroyed) {
-        await this.appendArchiveEntry(
-          archive,
-          metadata instanceof Readable ? metadata : `${JSON.stringify(metadata, null, 2)}\n`,
-          `${safeName}_events.json`,
-        );
+        await manifestFile.writeFile(']}\n');
+        await manifestFile.close();
+        manifestFile = undefined;
+        manifestStream = createReadStream(manifestPath);
+        await this.appendArchiveEntry(archive, manifestStream, 'certificates.json');
         await archive.finalize();
       }
     } catch (error) {
@@ -200,9 +231,7 @@ export class CertificateDownloadService {
     } finally {
       clearTimeout(deadline);
       archive.off('close', cancel);
-      if (metadata instanceof Readable) {
-        metadata.destroy();
-      }
+      manifestStream?.destroy();
       if (browser) {
         try {
           await browser.close();
@@ -216,6 +245,13 @@ export class CertificateDownloadService {
             Object.defineProperty(cleanupError, 'cause', { value: error, configurable: true });
             archive.destroy(cleanupError);
           }
+        }
+      }
+      try {
+        await manifestFile?.close();
+      } finally {
+        if (manifestDirectory) {
+          await rm(manifestDirectory, { recursive: true, force: true });
         }
       }
     }

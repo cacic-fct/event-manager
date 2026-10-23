@@ -1,24 +1,30 @@
 import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
-import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
+import type { EventTargetType, PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { PublicDataAccessService, type OfflineAttendanceDetail } from '@cacic-fct/public-indexed-db';
 import { RouteErrorService } from '@cacic-fct/shared-angular';
+import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { HttpResponse, delay, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
+import { of } from 'rxjs';
 import {
   PublicEventStoryControls,
   createPublicStoryEventFromControls,
+  createPublicStoryEventGroup,
+  createPublicStoryMajorEvent,
   publicEventStoryControlArgTypes,
   publicEventStoryDefaultControls,
 } from '../../../testing/public-event-story-fixtures';
 import { MoreInfo } from './more-info';
 
 interface MoreInfoStoryArgs extends PublicEventStoryControls {
+  targetType: EventTargetType;
   apiState: 'ready' | 'loading' | 'error';
   latencyMs: number;
   hasAttendance: boolean;
   hasIssuedCertificate: boolean;
+  shouldIssueCertificate: boolean;
   certificateCount: number;
   isSubscribed: boolean;
   isLecturer: boolean;
@@ -31,10 +37,12 @@ interface MoreInfoStoryArgs extends PublicEventStoryControls {
 const defaultArgs: MoreInfoStoryArgs = {
   ...publicEventStoryDefaultControls,
   context: 'short-description',
+  targetType: 'event',
   apiState: 'ready',
   latencyMs: 120,
   hasAttendance: true,
   hasIssuedCertificate: false,
+  shouldIssueCertificate: true,
   certificateCount: 1,
   isSubscribed: true,
   isLecturer: false,
@@ -62,6 +70,17 @@ const meta: Meta<MoreInfoStoryArgs> = {
         providers: [
           { provide: RouteErrorService, useValue: { navigate: navigateRouteError } },
           {
+            provide: ActivatedRoute,
+            useValue: {
+              paramMap: of(
+                convertToParamMap({
+                  eventType: context.args.targetType,
+                  eventId: storyTargetId(context.args.targetType),
+                }),
+              ),
+            },
+          },
+          {
             provide: PublicDataAccessService,
             useValue: {
               replaceAttendanceDetail: async () => undefined,
@@ -81,12 +100,14 @@ const meta: Meta<MoreInfoStoryArgs> = {
   argTypes: {
     ...publicEventStoryControlArgTypes,
     context: { control: false, table: { disable: true } },
+    targetType: { control: 'inline-radio', options: ['event', 'event-group', 'major-event'] },
     majorEventName: { control: false, table: { disable: true } },
     eventGroupName: { control: false, table: { disable: true } },
     apiState: { control: 'inline-radio', options: ['ready', 'loading', 'error'] },
     latencyMs: { control: { type: 'range', min: 0, max: 2_000, step: 100 } },
     hasAttendance: { control: 'boolean' },
     hasIssuedCertificate: { control: 'boolean' },
+    shouldIssueCertificate: { control: 'boolean' },
     certificateCount: { control: { type: 'range', min: 0, max: 20, step: 1 }, if: { arg: 'hasIssuedCertificate' } },
     isSubscribed: { control: 'boolean' },
     isLecturer: { control: 'boolean' },
@@ -155,6 +176,14 @@ export const WithCertificates: Story = {
   args: { hasIssuedCertificate: true, certificateCount: 6 },
 };
 
+export const EventGroupWithCertificates: Story = {
+  args: { targetType: 'event-group', hasIssuedCertificate: true, certificateCount: 2 },
+};
+
+export const MajorEventWithCertificates: Story = {
+  args: { targetType: 'major-event', hasIssuedCertificate: true, certificateCount: 2 },
+};
+
 export const OrganizerWorkspace: Story = {
   args: {
     isLecturer: true,
@@ -218,13 +247,15 @@ function storyParameters(context: MoreInfoStoryContext) {
             if (context.args.latencyMs > 0) {
               await delay(context.args.latencyMs);
             }
-            const body = (await request.json()) as { query?: string };
+            const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
             if (context.args.apiState === 'error') {
               return HttpResponse.json({
                 errors: [{ message: 'Não foi possível carregar os detalhes da participação.' }],
               });
             }
-            return HttpResponse.json({ data: moreInfoGraphqlData(body.query ?? '', context.args) });
+            return HttpResponse.json({
+              data: moreInfoGraphqlData(body.query ?? '', context.args, body.variables ?? {}),
+            });
           }),
         ],
       },
@@ -232,14 +263,57 @@ function storyParameters(context: MoreInfoStoryContext) {
   };
 }
 
-function moreInfoGraphqlData(query: string, args: MoreInfoStoryArgs) {
+function moreInfoGraphqlData(query: string, args: MoreInfoStoryArgs, variables: Record<string, unknown> = {}) {
   const event = buildEvent(args);
+  const events = [event];
+  const targetId = storyTargetId(args.targetType);
   if (query.includes('PublicPrizeDrawAvailability')) {
     return { publicPrizeDrawAvailability: [] };
   }
   if (query.includes('CurrentUserEventForms')) {
     return { currentUserEventForms: [] };
   }
+  if (query.includes('CurrentUserMajorEventDetails')) {
+    return {
+      currentUserMajorEventSubscription: null,
+      currentUserMajorEventEventSubscriptions: [],
+      currentUserEventAttendances: events.map(currentUserEventAttendance),
+      publicEvents: events,
+    };
+  }
+
+  if (query.includes('CurrentUserMajorEventFeedItem')) {
+    return {
+      currentUserMajorEventFeed: [
+        {
+          id: 'major-subscription-story',
+          majorEventId: targetId,
+          subscriptionStatus: 'CONFIRMED',
+          amountPaid: null,
+          paymentDate: null,
+          paymentTier: null,
+          sportsRepresentativeTeams: [],
+          majorEvent: event.majorEvent,
+          participation: {
+            isSubscribed: true,
+            isInterested: false,
+            isLecturer: false,
+            hasIssuedCertificate: args.hasIssuedCertificate,
+            isSportsManager: false,
+          },
+        },
+      ],
+    };
+  }
+
+  if (query.includes('CurrentUserEventGroupDetails')) {
+    return {
+      currentUserEventGroupSubscription: null,
+      currentUserEventAttendances: events.map(currentUserEventAttendance),
+      publicEvents: events,
+    };
+  }
+
   if (query.includes('CurrentUserEventDetails')) {
     return {
       currentUserEventSubscription: args.isSubscribed
@@ -257,22 +331,30 @@ function moreInfoGraphqlData(query: string, args: MoreInfoStoryArgs) {
   }
 
   if (query.includes('CurrentUserCertificates')) {
+    const requestedScope = variables['scope'];
+    const isOwnerCertificate =
+      args.targetType === 'event'
+        ? requestedScope === 'EVENT'
+        : args.targetType === 'event-group'
+          ? requestedScope === 'EVENT_GROUP'
+          : requestedScope === 'MAJOR_EVENT';
     return {
-      currentUserCertificates: args.hasIssuedCertificate
-        ? Array.from({ length: Math.max(0, Math.min(20, Math.round(args.certificateCount))) }, (_, index) => ({
-            id: `certificate-story-${index + 1}`,
-            configId: `certificate-config-story-${index + 1}`,
-            issuedAt: event.endDate,
-            config: {
-              id: `certificate-config-story-${index + 1}`,
-              name: `Certificado ${index + 1} de ${event.name}`,
-              scope: 'EVENT',
-              certificateText: 'Certificado emitido para a atividade de demonstração.',
+      currentUserCertificates:
+        args.hasIssuedCertificate && isOwnerCertificate
+          ? Array.from({ length: Math.max(0, Math.min(20, Math.round(args.certificateCount))) }, (_, index) => ({
+              id: `certificate-story-${index + 1}`,
+              configId: `certificate-config-story-${index + 1}`,
+              issuedAt: event.endDate,
+              config: {
+                id: `certificate-config-story-${index + 1}`,
+                name: `Certificado ${index + 1} de ${event.name}`,
+                scope: String(requestedScope),
+                certificateText: 'Certificado emitido para a atividade de demonstração.',
+                certificateTemplate: { id: 'certificate-template-story', name: 'Modelo CACiC' },
+              },
               certificateTemplate: { id: 'certificate-template-story', name: 'Modelo CACiC' },
-            },
-            certificateTemplate: { id: 'certificate-template-story', name: 'Modelo CACiC' },
-          }))
-        : [],
+            }))
+          : [],
     };
   }
 
@@ -315,10 +397,62 @@ function moreInfoGraphqlData(query: string, args: MoreInfoStoryArgs) {
 }
 
 function buildEvent(args: MoreInfoStoryArgs): PublicEvent {
-  return createPublicStoryEventFromControls(args, {
-    id: 'event-1',
-    shouldIssueCertificate: true,
-  });
+  if (args.targetType === 'event-group') {
+    const eventGroup = createPublicStoryEventGroup({
+      id: 'event-group-story',
+      name: args.eventGroupName,
+      emoji: '✨',
+      shouldIssueCertificate: args.shouldIssueCertificate,
+      shouldIssueCertificateForEachEvent: false,
+      shouldIssuePartialCertificate: true,
+    });
+    const event = createPublicStoryEventFromControls(
+      { ...args, context: 'event-group' },
+      {
+        id: 'event-group-child-story',
+        shouldIssueCertificate: false,
+      },
+    );
+    return {
+      ...event,
+      majorEvent: null,
+      majorEventId: null,
+      eventGroup,
+      eventGroupId: eventGroup.id,
+      shouldIssueCertificate: false,
+    };
+  }
+
+  if (args.targetType === 'major-event') {
+    const majorEvent = createPublicStoryMajorEvent({
+      id: 'major-event-story',
+      name: args.majorEventName,
+      shouldIssueCertificate: args.shouldIssueCertificate,
+    });
+    const event = createPublicStoryEventFromControls(
+      { ...args, context: 'major-event' },
+      {
+        id: 'major-event-child-story',
+        shouldIssueCertificate: false,
+      },
+    );
+    return {
+      ...event,
+      majorEvent,
+      majorEventId: majorEvent.id,
+      eventGroup: null,
+      eventGroupId: null,
+      shouldIssueCertificate: false,
+    };
+  }
+
+  const event = createPublicStoryEventFromControls(
+    { ...args, context: 'short-description' },
+    {
+      id: 'event-1',
+    },
+  );
+  return { ...event, shouldIssueCertificate: args.shouldIssueCertificate };
 }
 
 function cachedDetail(args: MoreInfoStoryArgs): OfflineAttendanceDetail {
@@ -350,3 +484,23 @@ function currentUserEventAttendance(event: PublicEvent) {
     event,
   };
 }
+
+function storyTargetId(targetType: EventTargetType): string {
+  return targetType === 'event-group'
+    ? 'event-group-story'
+    : targetType === 'major-event'
+      ? 'major-event-story'
+      : 'event-1';
+}
+
+export const AwaitingCertificates: Story = {
+  args: { hasIssuedCertificate: false, shouldIssueCertificate: true },
+};
+
+export const IssuanceDisabled: Story = {
+  args: { hasIssuedCertificate: false, shouldIssueCertificate: false },
+};
+
+export const PreviouslyIssuedCertificates: Story = {
+  args: { hasIssuedCertificate: true, shouldIssueCertificate: false, certificateCount: 2 },
+};
