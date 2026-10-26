@@ -1,6 +1,7 @@
 import { RenderMode, ServerRoute } from '@angular/ssr';
+import { NOINDEX_HEADERS, shouldNoindexPublicPath } from './search-indexing';
 
-export const serverRoutes: ServerRoute[] = [
+const routes: ServerRoute[] = [
   {
     path: '',
     renderMode: RenderMode.Prerender,
@@ -270,3 +271,7 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Server,
   },
 ];
+
+export const serverRoutes: ServerRoute[] = routes.map((route) =>
+  shouldNoindexPublicPath(route.path) ? { ...route, headers: NOINDEX_HEADERS } : route,
+);

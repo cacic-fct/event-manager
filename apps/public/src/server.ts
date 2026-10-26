@@ -10,6 +10,7 @@ import { readFile } from 'node:fs/promises';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { appRoutes } from './app/app.routes';
+import { NOINDEX_HEADERS, shouldNoindexPublicPath } from './app/search-indexing';
 import { frontendVersionStream } from './server/frontend-version-stream';
 
 import { collectPaths } from '@cacic-fct/shared-angular';
@@ -51,8 +52,11 @@ const angularApp = new AngularNodeAppEngine({
   ],
 });
 
-app.use((_req, res, next) => {
+app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', publicReferrerPolicy);
+  if (req.path.startsWith('/app/') && shouldNoindexPublicPath(req.originalUrl.slice('/app/'.length))) {
+    res.set(NOINDEX_HEADERS);
+  }
   next();
 });
 
@@ -73,7 +77,7 @@ app.get('/app/sitemap.xml', (_req, res) => {
 app.get('/app/sitemaps/static.xml', (_req, res) => {
   const routes = Array.from(new Set(collectPaths(appRoutes)))
     .map((route) => (route.startsWith('/') ? route : `/${route}`))
-    .filter((route) => !route.includes(':') && !route.startsWith('/error/') && route !== '/auth/error');
+    .filter((route) => !route.includes(':') && !shouldNoindexPublicPath(route));
 
   sendXml(res, buildUrlSet(routes.map((route) => ({ loc: `${publicAppOrigin}/app${route}` }))));
 });

@@ -45,6 +45,10 @@ export function configureBackendHttpApp(app: INestApplication): void {
     .filter(Boolean);
   app.getHttpAdapter().getInstance().set('trust proxy', trustedProxyIps);
   app.getHttpAdapter().getInstance().disable('x-powered-by');
+  app.use((_request: ExpressRequest, response: ExpressResponse, next: NextFunction) => {
+    response.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    next();
+  });
   app.use(cookieParser());
   app.use(requestContextMiddleware);
   // Allow bounded larger bodies only for imports and certificate ID selections.

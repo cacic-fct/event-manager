@@ -27,6 +27,7 @@ const angularApp = new AngularNodeAppEngine({
 });
 
 app.use((_req, res, next) => {
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   res.setHeader('Referrer-Policy', adminReferrerPolicy);
   next();
 });

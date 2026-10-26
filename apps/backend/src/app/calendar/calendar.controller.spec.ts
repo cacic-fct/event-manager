@@ -28,6 +28,7 @@ describe('CalendarController', () => {
     expect(calendars.buildPublicEventCalendar).toHaveBeenCalledWith('event-1', 'https://eventos.cacic.com.br');
     expect(response.setHeader).toHaveBeenCalledWith('Content-Type', 'text/calendar; charset=utf-8');
     expect(response.setHeader).toHaveBeenCalledWith('Content-Disposition', 'attachment; filename="oficina.ics"');
+    expect(response.setHeader).toHaveBeenCalledWith('X-Robots-Tag', 'noindex, nofollow');
     expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'private, max-age=3600');
     expect(response.send).toHaveBeenCalledWith('BEGIN:VCALENDAR');
   });
@@ -62,6 +63,7 @@ describe('CalendarController', () => {
     await controller.downloadPrivateUserCalendarFeed('private-key', response as never);
 
     expect(calendars.buildPrivateUserCalendarFeed).toHaveBeenCalledWith('private-key', 'https://eventos.cacic.com.br');
+    expect(response.setHeader).toHaveBeenCalledWith('X-Robots-Tag', 'noindex, nofollow');
     expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'private, max-age=900');
   });
 
@@ -83,6 +85,7 @@ describe('CalendarController', () => {
       'Content-Disposition',
       'attachment; filename="calendario-admin-cacic-eventos.ics"',
     );
+    expect(response.setHeader).toHaveBeenCalledWith('X-Robots-Tag', 'noindex, nofollow');
     expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'private, max-age=900');
     expect(response.send).toHaveBeenCalledWith('ADMIN:VCALENDAR');
   });
@@ -105,6 +108,7 @@ describe('CalendarController', () => {
       'Content-Disposition',
       'attachment; filename="calendario-super-admin-cacic-eventos.ics"',
     );
+    expect(response.setHeader).toHaveBeenCalledWith('X-Robots-Tag', 'noindex, nofollow');
     expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'private, max-age=900');
     expect(response.send).toHaveBeenCalledWith('SUPER:VCALENDAR');
   });

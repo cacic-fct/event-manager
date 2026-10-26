@@ -121,6 +121,7 @@ export class CalendarController {
   }
 
   private sendCalendar(response: Response, download: CalendarDownload, cacheControl: string): void {
+    response.setHeader('X-Robots-Tag', 'noindex, nofollow');
     response.setHeader('Content-Type', 'text/calendar; charset=utf-8');
     response.setHeader('Content-Disposition', `attachment; filename="${download.fileName}"`);
     response.setHeader('Cache-Control', cacheControl);

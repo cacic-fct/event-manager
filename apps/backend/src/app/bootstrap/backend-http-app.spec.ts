@@ -53,6 +53,9 @@ describe('configured HTTP raw-body preservation', () => {
     };
     jest.spyOn(SwaggerModule, 'setup').mockImplementation(() => undefined);
     configureBackendHttpApp(app as never);
+    http.get('/api/sports/public/teams/team-1/logo/hash', (_request, response) => {
+      response.type('image/png').send('logo');
+    });
     for (const route of [
       '/api/signed-webhook',
       '/api/admin/data-transfer/preview',
@@ -73,6 +76,24 @@ describe('configured HTTP raw-body preservation', () => {
   afterAll(async () => {
     await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
     jest.restoreAllMocks();
+  });
+
+  it.each([
+    '/api/graphql',
+    '/api/auth/login',
+    '/api/docs',
+    '/api/current-user/certificates/archive.zip',
+    '/api/sports/public/matches/match-1/overlay',
+    '/api/realtime/public/catalog/events',
+  ])('marks API and operational responses as noindex at %s, including errors', async (route) => {
+    const response = await fetch(`${baseUrl}${route}`, { redirect: 'manual' });
+    expect(response.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
+  });
+
+  it('also excludes public API image assets from indexing', async () => {
+    const response = await fetch(`${baseUrl}/api/sports/public/teams/team-1/logo/hash`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
   });
 
   it.each(['/api/signed-webhook', '/api/admin/data-transfer/preview'])(
@@ -119,6 +140,7 @@ describe('configured HTTP raw-body preservation', () => {
       body,
     });
     expect(unrelated.status).toBe(413);
+    expect(unrelated.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
   });
 
   it('keeps Sentry envelope content intact after selecting the JSON parser', async () => {
