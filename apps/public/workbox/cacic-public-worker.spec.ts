@@ -394,12 +394,12 @@ describe('cacic-public-worker', () => {
     });
   });
 
-  it('caches Twemoji SVG assets for one year', () => {
+  it('caches maintained Twemoji SVG assets for one year', () => {
     const harness = createWorkerHarness();
 
     const twemojiRoute = harness.routes.find((route) =>
       route.matcher(
-        requestContext('https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f389.svg', {
+        requestContext('https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/1f389.svg', {
           destination: 'image',
         }),
       ),
@@ -407,7 +407,14 @@ describe('cacic-public-worker', () => {
 
     expect(twemojiRoute?.handler).toBeInstanceOf(MockCacheFirst);
     expect(
-      twemojiRoute?.matcher(requestContext('https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/png/1f389.png')),
+      twemojiRoute?.matcher(requestContext('https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/png/1f389.png')),
+    ).toBe(false);
+    expect(
+      twemojiRoute?.matcher(
+        requestContext('https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f389.svg', {
+          destination: 'image',
+        }),
+      ),
     ).toBe(false);
     const twemojiHandler = twemojiRoute?.handler as unknown as MockCacheFirst;
     expect(twemojiHandler.options).toMatchObject({

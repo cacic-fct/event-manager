@@ -647,11 +647,11 @@ function routeParams(target: FormsStoryTarget): Record<string, string> {
 function buildEvents(count = 2): Event[] {
   const dates = upcomingTargetDates();
   const events = [
-    createAdminEvent({ ...dates, id: 'event-1', name: 'Oficina de Angular', emoji: 'computer' }),
-    createAdminEvent({ ...dates, id: 'event-2', name: 'Mesa redonda de acessibilidade', emoji: 'accessibility_new' }),
+    createAdminEvent({ ...dates, id: 'event-1', name: 'Oficina de Angular', emoji: '💻' }),
+    createAdminEvent({ ...dates, id: 'event-2', name: 'Mesa redonda de acessibilidade', emoji: '♿' }),
   ];
   for (let index = events.length; index < count; index++) {
-    events.push(createAdminEvent({ ...dates, id: `event-${index + 1}`, name: `Evento ${index + 1}`, emoji: 'event' }));
+    events.push(createAdminEvent({ ...dates, id: `event-${index + 1}`, name: `Evento ${index + 1}`, emoji: '📅' }));
   }
   return events;
 }
@@ -659,8 +659,8 @@ function buildEvents(count = 2): Event[] {
 function buildMajorEvents(count = 2): MajorEvent[] {
   const dates = upcomingTargetDates();
   const majorEvents = [
-    createAdminMajorEvent({ ...dates, id: 'major-event-1', name: 'Semana da Computação', emoji: 'school' }),
-    createAdminMajorEvent({ ...dates, id: 'major-event-2', name: 'Jornada de Extensão', emoji: 'rocket_launch' }),
+    createAdminMajorEvent({ ...dates, id: 'major-event-1', name: 'Semana da Computação', emoji: '🎓' }),
+    createAdminMajorEvent({ ...dates, id: 'major-event-2', name: 'Jornada de Extensão', emoji: '🚀' }),
   ];
   for (let index = majorEvents.length; index < count; index++) {
     majorEvents.push(
@@ -668,7 +668,7 @@ function buildMajorEvents(count = 2): MajorEvent[] {
         ...dates,
         id: `major-event-${index + 1}`,
         name: `Grande evento ${index + 1}`,
-        emoji: 'event',
+        emoji: '📅',
       }),
     );
   }

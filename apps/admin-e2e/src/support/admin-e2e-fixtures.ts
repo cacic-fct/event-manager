@@ -316,7 +316,7 @@ export function createAdminE2EDashboardInsights(
       {
         id: 'event-1',
         name: 'Credenciamento',
-        emoji: 'clipboard',
+        emoji: '📋',
         type: 'OTHER',
         startDate: startsAt.toISOString(),
         endDate: endsAt.toISOString(),
@@ -335,7 +335,7 @@ export function createAdminE2EDashboardInsights(
       {
         id: 'event-2',
         name: 'Palestra de encerramento',
-        emoji: 'microphone',
+        emoji: '🎤',
         type: 'PALESTRA',
         startDate: tomorrow.toISOString(),
         endDate: tomorrow.toISOString(),
@@ -367,7 +367,7 @@ export function createAdminE2EDashboardInsights(
       {
         majorEventId: 'major-event-1',
         name: 'Semana da Computação',
-        emoji: 'festival',
+        emoji: '🎪',
         startDate: startsAt.toISOString(),
         endDate: tomorrow.toISOString(),
         pendingCount: 3,
@@ -378,7 +378,7 @@ export function createAdminE2EDashboardInsights(
       {
         eventId: 'event-1',
         name: 'Credenciamento',
-        emoji: 'clipboard',
+        emoji: '📋',
         startDate: startsAt.toISOString(),
         endDate: endsAt.toISOString(),
         pendingCount: 2,
@@ -408,7 +408,7 @@ export function createAdminE2EMajorEvent(overrides: Record<string, unknown> = {}
   return {
     id: 'major-event-1',
     name: 'Semana da Computação',
-    emoji: 'festival',
+    emoji: '🎪',
     interestEnabled: true,
     attendanceEligibility: 'APPROVED_REGISTRATIONS_ONLY',
     startDate: relativeIsoDate(-2, 12),
@@ -454,7 +454,7 @@ export function createAdminE2EEventGroup(overrides: Record<string, unknown> = {}
   return {
     id: 'event-group-1',
     name: 'Trilha de Minicursos',
-    emoji: 'school',
+    emoji: '🎓',
     interestEnabled: true,
     attendanceEligibility: null,
     requiresImageLicenseAgreement: false,
@@ -482,7 +482,7 @@ export function createAdminE2EEvent(overrides: Record<string, unknown> = {}): Ad
     creditMinutes: 120,
     startDate: relativeIsoDate(-1, 17),
     endDate: relativeIsoDate(-1, 19),
-    emoji: 'computer',
+    emoji: '💻',
     type: 'MINICURSO',
     description: 'Atividade prática.',
     shortDescription: 'Angular no painel admin.',

@@ -155,7 +155,7 @@ function certificateConfig(scope: CertificateScope): CertificateConfig {
       const eventGroup = createAdminEventGroup({
         id: 'group-1',
         name: 'Trilha de Desenvolvimento',
-        emoji: 'code',
+        emoji: '💻',
       });
       return createAdminCertificateConfig({
         scope,
@@ -173,7 +173,7 @@ function certificateConfig(scope: CertificateScope): CertificateConfig {
       const majorEvent = createAdminMajorEvent({
         id: 'major-event-1',
         name: 'CACiC Tech Week',
-        emoji: 'festival',
+        emoji: '🎪',
       });
       return createAdminCertificateConfig({
         scope,
@@ -206,7 +206,7 @@ function certificateConfig(scope: CertificateScope): CertificateConfig {
       const event = createAdminEvent({
         id: 'event-1',
         name: 'Minicurso de Angular',
-        emoji: 'computer',
+        emoji: '💻',
       });
       return createAdminCertificateConfig({
         scope: 'EVENT',
@@ -242,16 +242,16 @@ function certificateApi(
   return {
     listCertificateIssuableEvents: () =>
       result<Event>([
-        createAdminEvent({ id: 'event-1', name: 'Minicurso de Angular', emoji: 'computer' }),
-        createAdminEvent({ id: 'event-2', name: 'Oficina de UX', emoji: 'palette' }),
+        createAdminEvent({ id: 'event-1', name: 'Minicurso de Angular', emoji: '💻' }),
+        createAdminEvent({ id: 'event-2', name: 'Oficina de UX', emoji: '🎨' }),
       ]),
     listCertificateIssuableEventGroups: () =>
       result<EventGroup>([
-        createAdminEventGroup({ id: 'group-1', name: 'Trilha de Desenvolvimento', emoji: 'code' }),
-        createAdminEventGroup({ id: 'group-2', name: 'Trilha de Gestão', emoji: 'briefcase' }),
+        createAdminEventGroup({ id: 'group-1', name: 'Trilha de Desenvolvimento', emoji: '💻' }),
+        createAdminEventGroup({ id: 'group-2', name: 'Trilha de Gestão', emoji: '💼' }),
       ]),
     listCertificateIssuableMajorEvents: () =>
-      result<MajorEvent>([createAdminMajorEvent({ id: 'major-event-1', name: 'CACiC Tech Week', emoji: 'festival' })]),
+      result<MajorEvent>([createAdminMajorEvent({ id: 'major-event-1', name: 'CACiC Tech Week', emoji: '🎪' })]),
     listCertificateFolders: () =>
       result<CertificateFolder>([
         certificateFolder({ id: 'folder-1', name: 'Certificados avulsos' }),
@@ -264,7 +264,7 @@ function certificateFolder(overrides: Partial<CertificateFolder> = {}): Certific
   return {
     id: 'folder-1',
     name: 'Certificados avulsos',
-    emoji: 'folder',
+    emoji: '📁',
     createdAt: '2026-05-21T12:00:00.000Z',
     createdById: 'admin-user-1',
     updatedAt: '2026-05-21T12:00:00.000Z',

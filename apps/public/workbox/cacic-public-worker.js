@@ -98,7 +98,7 @@ const isGoogleProfilePictureUrl = (url) =>
   url.origin === 'https://lh3.googleusercontent.com' && /^\/a(?:-|\/)/.test(url.pathname);
 const isTwemojiSvgUrl = (url) =>
   url.origin === 'https://cdn.jsdelivr.net' &&
-  /^\/gh\/twitter\/twemoji@latest\/assets\/svg\/[^/]+\.svg$/.test(url.pathname);
+  /^\/gh\/jdecked\/twemoji@latest\/assets\/svg\/[a-f0-9-]+\.svg$/.test(url.pathname);
 const isOpenStreetMapTileUrl = (url) =>
   url.origin === 'https://tile.openstreetmap.org' && /^\/\d+\/\d+\/\d+\.png$/.test(url.pathname);
 const hasPrivateCacheControl = (response) => {

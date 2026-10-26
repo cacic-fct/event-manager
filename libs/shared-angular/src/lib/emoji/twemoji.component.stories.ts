@@ -56,3 +56,12 @@ export const EmptyValueFallback: Story = {
     await expect(within(canvasElement).getByRole('img', { name: 'emoji' })).toBeVisible();
   },
 };
+
+export const SymbolWithoutPresentationSelector: Story = {
+  args: { emoji: '✏' },
+  play: async ({ canvasElement }) => {
+    const emoji = within(canvasElement).getByRole('img', { name: '✏' });
+    await expect(emoji).toBeVisible();
+    await expect(emoji).toHaveAttribute('src', expect.stringContaining('/270f.svg'));
+  },
+};
