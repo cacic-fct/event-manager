@@ -209,6 +209,8 @@ export const EVENT_SELECT = {
   latitude: true,
   longitude: true,
   locationDescription: true,
+  locationName: true,
+  isVirtual: true,
   majorEventId: true,
   majorEvent: {
     select: MAJOR_EVENT_BASE_SELECT,

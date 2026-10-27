@@ -493,6 +493,28 @@ describe('Event', () => {
     expect(description?.textContent).toContain('<img src=x onerror=alert(1)>');
   });
 
+  it.each([
+    {
+      locationName: 'Auditório',
+      locationDescription: 'Auditório - Bloco 5',
+      locationDetails: 'Bloco 5',
+      expected: 'Auditório Bloco 5',
+    },
+    { locationName: null, locationDescription: 'Bloco 5', locationDetails: 'Bloco 5', expected: 'Bloco 5' },
+  ])('renders each location detail only once: $expected', async ({ expected, ...location }) => {
+    TestBed.resetTestingModule();
+    const eventPageData = defaultEventPageData();
+    eventPageData.event = { ...eventPageData.event, ...location };
+    const newFixture = await createEventComponentFixture({}, { eventPageData });
+    await newFixture.whenStable();
+
+    const line = (newFixture.nativeElement as HTMLElement)
+      .querySelector('.location-line')
+      ?.cloneNode(true) as HTMLElement;
+    line.querySelector('mat-icon')?.remove();
+    expect(line.textContent?.replace(/\s+/g, ' ').trim()).toBe(expected);
+  });
+
   it('publishes complete metadata and structured data for public events', async () => {
     TestBed.resetTestingModule();
     const eventPageData = defaultEventPageData();

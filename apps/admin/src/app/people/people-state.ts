@@ -1,5 +1,5 @@
 import { DestroyRef, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -10,6 +10,7 @@ import { PeopleApiService } from '../graphql/people-api.service';
 import { createWorkspaceListPagination } from '../pagination/list-pagination';
 import { bindLiveSearch } from '../search/live-search';
 import { AdminRouteResourceErrorService } from '../shared/admin-route-resource-error.service';
+import { PEOPLE_PRESENCE_FILTERS, PeoplePresenceFilter } from './people-search-filters';
 
 export abstract class PeopleState {
   protected readonly api = inject(PeopleApiService);
@@ -46,13 +47,29 @@ export abstract class PeopleState {
 
   readonly peopleSearchForm = this.formBuilder.nonNullable.group({
     query: [''],
-    hasLecturerProfile: [false],
+    hasUser: this.formBuilder.nonNullable.control<PeoplePresenceFilter>('ALL'),
+    hasLecturerProfile: this.formBuilder.nonNullable.control<PeoplePresenceFilter>('ALL'),
+    lecturerSelfEditingBlocked: this.formBuilder.nonNullable.control<PeoplePresenceFilter>('ALL'),
+    hasEmail: this.formBuilder.nonNullable.control<PeoplePresenceFilter>('ALL'),
+    hasPhone: this.formBuilder.nonNullable.control<PeoplePresenceFilter>('ALL'),
+    hasIdentityDocument: this.formBuilder.nonNullable.control<PeoplePresenceFilter>('ALL'),
+    hasAcademicId: this.formBuilder.nonNullable.control<PeoplePresenceFilter>('ALL'),
+  });
+
+  readonly peoplePresenceFilters = PEOPLE_PRESENCE_FILTERS;
+  private readonly peopleSearchValue = toSignal(this.peopleSearchForm.valueChanges, {
+    initialValue: this.peopleSearchForm.getRawValue(),
+  });
+  readonly activePeopleFilterCount = computed(() => {
+    const value = this.peopleSearchValue();
+    return PEOPLE_PRESENCE_FILTERS.filter(({ key }) => value[key] && value[key] !== 'ALL').length;
   });
 
   readonly lecturerProfileForm = this.formBuilder.nonNullable.group({
     displayName: ['', [Validators.required]],
     biography: [''],
     publishGoogleUserPicture: [false],
+    selfEditingBlocked: [false],
     email: [''],
     whatsapp: [''],
     linkedin: [''],
@@ -60,17 +77,28 @@ export abstract class PeopleState {
 
   constructor() {
     bindLiveSearch({
-      control: this.peopleSearchForm.controls.query,
+      control: this.peopleSearchForm,
       destroyRef: this.destroyRef,
-      search: (query) => this.searchPeople(query),
+      search: async () => {
+        try {
+          await this.searchPeople(this.peopleSearchForm.controls.query.value);
+        } catch (error) {
+          this.feedback.error(error, 'Não foi possível carregar as pessoas.');
+        }
+      },
     });
-    this.peopleSearchForm.controls.hasLecturerProfile.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        void this.searchPeople(this.peopleSearchForm.controls.query.value).catch((error: unknown) =>
-          this.feedback.error(error, 'Não foi possível carregar as pessoas.'),
-        );
-      });
+  }
+
+  clearPeopleFilters(): void {
+    this.peopleSearchForm.patchValue({
+      hasUser: 'ALL',
+      hasLecturerProfile: 'ALL',
+      lecturerSelfEditingBlocked: 'ALL',
+      hasEmail: 'ALL',
+      hasPhone: 'ALL',
+      hasIdentityDocument: 'ALL',
+      hasAcademicId: 'ALL',
+    });
   }
 
   abstract searchPeople(query: string): Promise<void>;

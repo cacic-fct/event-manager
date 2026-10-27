@@ -60,6 +60,12 @@
       }
     },
     "test": {
+      "inputs": [
+        "default",
+        "^default",
+        "{workspaceRoot}/tools/generate-audience-relations.mjs",
+        "{workspaceRoot}/tools/generate-audience-relations.test.mjs"
+      ],
       "options": {
         "env": { "NODE_OPTIONS": "--experimental-vm-modules" },
         "passWithNoTests": true,

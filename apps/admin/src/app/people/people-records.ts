@@ -13,8 +13,11 @@ import {
 } from '../pagination/list-pagination';
 import { buildPeopleSearchFilters } from './people-lookup';
 import { PeopleState } from './people-state';
+import type { PeopleFilters } from '../graphql/people-api.service';
 
 export abstract class PeopleRecords extends PeopleState {
+  private peopleRequestId = 0;
+
   async searchPeople(query: string, options?: { preserveSelection?: boolean }): Promise<void> {
     const normalizedQuery = query.trim();
     if (this.peopleSearchForm.controls.query.value !== query) {
@@ -149,6 +152,7 @@ export abstract class PeopleRecords extends PeopleState {
       displayName: raw.displayName.trim(),
       biography: raw.biography.trim() || null,
       publishGoogleUserPicture: raw.publishGoogleUserPicture,
+      selfEditingBlocked: raw.selfEditingBlocked,
       email: raw.email.trim() || null,
       whatsapp: this.normalizeWhatsapp(raw.whatsapp.trim()),
       linkedin: raw.linkedin.trim() || null,
@@ -231,6 +235,7 @@ export abstract class PeopleRecords extends PeopleState {
   }
 
   private async loadPeoplePage(normalizedQuery: string, options?: { preserveSelection?: boolean }): Promise<void> {
+    const requestId = ++this.peopleRequestId;
     const people = await firstValueFrom(
       this.api.listPeopleSummaries(
         buildPeopleSearchFilters(normalizedQuery, {
@@ -239,6 +244,9 @@ export abstract class PeopleRecords extends PeopleState {
         }),
       ),
     );
+    if (requestId !== this.peopleRequestId) {
+      return;
+    }
     this.people.set(applyPagedResult(people, this.peoplePagination));
 
     const selectedPerson = this.selectedPerson();
@@ -283,6 +291,7 @@ export abstract class PeopleRecords extends PeopleState {
       displayName: person.lecturerProfile?.displayName ?? '',
       biography: person.lecturerProfile?.biography ?? '',
       publishGoogleUserPicture: person.lecturerProfile?.publishGoogleUserPicture ?? false,
+      selfEditingBlocked: person.lecturerProfile?.selfEditingBlocked ?? false,
       email: person.lecturerProfile?.email ?? '',
       whatsapp: person.lecturerProfile?.whatsapp ?? '',
       linkedin: person.lecturerProfile?.linkedin ?? '',
@@ -294,6 +303,7 @@ export abstract class PeopleRecords extends PeopleState {
       displayName: '',
       biography: '',
       publishGoogleUserPicture: false,
+      selfEditingBlocked: false,
       email: '',
       whatsapp: '',
       linkedin: '',
@@ -316,9 +326,14 @@ export abstract class PeopleRecords extends PeopleState {
     return /^\+[1-9]\d{7,14}$/.test(normalized) ? normalized : value;
   }
 
-  private buildPeopleSearchApiFilters(): { hasLecturerProfile?: boolean } {
-    return {
-      ...(this.peopleSearchForm.controls.hasLecturerProfile.value ? { hasLecturerProfile: true } : {}),
-    };
+  private buildPeopleSearchApiFilters(): PeopleFilters {
+    const filters: PeopleFilters = {};
+    const value = this.peopleSearchForm.getRawValue();
+    for (const { key } of this.peoplePresenceFilters) {
+      if (value[key] !== 'ALL') {
+        filters[key] = value[key] === 'YES';
+      }
+    }
+    return filters;
   }
 }

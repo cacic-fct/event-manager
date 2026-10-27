@@ -3,6 +3,11 @@ generator client {
   previewFeatures = ["partialIndexes"]
 }
 
+generator audienceRelations {
+  provider = "node ./tools/generate-audience-relations.mjs"
+  output   = "../../src/app/audiences/audience-relations.generated.ts"
+}
+
 generator erd {
   provider                  = "prisma-erd-generator"
   output                    = "database-erd.md"

@@ -7,6 +7,8 @@ import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
@@ -26,6 +28,8 @@ import { unespRoleListLabel, userRoleLabel } from './people-labels';
     MatButtonModule,
     MatCheckboxModule,
     MatFormFieldModule,
+    MatExpansionModule,
+    MatSelectModule,
     MatIconModule,
     MatInputModule,
     MatListModule,
@@ -36,6 +40,7 @@ import { unespRoleListLabel, userRoleLabel } from './people-labels';
   ],
   templateUrl: './people-page.component.html',
   styleUrls: [
+    '../event-filters/event-filter-panel.component.scss',
     '../app-shell/layout/page-layout.shared.scss',
     '../app-shell/layout/lists-layout.shared.scss',
     '../app-shell/layout/entity-permissions.shared.scss',

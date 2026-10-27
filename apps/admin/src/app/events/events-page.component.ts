@@ -1,3 +1,4 @@
+import { EventSubscriberInformationComponent } from './event-subscriber-information.component';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { combineLatest, of } from 'rxjs';
 import { CreationParentError, type CreationParentSummary } from '../events/events.service';
@@ -66,6 +67,7 @@ import { WorkspacePendingChangesService } from '../app-shell/workspace-pending-c
     TwemojiComponent,
     PersonSearchComponent,
     AudienceEditorComponent,
+    EventSubscriberInformationComponent,
   ],
   templateUrl: './events-page.component.html',
   styleUrls: [
@@ -179,6 +181,16 @@ export class EventsPageComponent {
       data: {
         content: this.workspace.eventForm.controls.description.value,
         title: 'Pré-visualização da descrição do evento',
+      },
+      maxWidth: 'calc(100vw - 32px)',
+    });
+  }
+
+  protected previewLocationNotes(): void {
+    this.dialog.open(MarkdownPreviewDialogComponent, {
+      data: {
+        content: this.workspace.eventForm.controls.locationInternalNotes.value,
+        title: 'Observações internas do local',
       },
       maxWidth: 'calc(100vw - 32px)',
     });

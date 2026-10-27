@@ -93,7 +93,7 @@ describe('non-regular attendance ticket rescan', () => {
             return { count: 1 };
           }),
         },
-        eventTicketHistory: { create: jest.fn() },
+        eventTicketHistory: { count: jest.fn().mockResolvedValue(0), create: jest.fn() },
         ticketTransfer: { findMany: jest.fn().mockResolvedValue([]) },
         user: { findUnique: jest.fn().mockResolvedValue({ name: 'Coletor', email: null }) },
         auditLogEntry: { create: jest.fn() },

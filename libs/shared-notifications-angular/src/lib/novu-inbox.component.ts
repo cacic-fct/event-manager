@@ -19,6 +19,7 @@ import type { Notification, Preference } from '@novu/js';
 import { filter, firstValueFrom } from 'rxjs';
 import { NovuListNotificationsArgs, NovuNotificationsService } from './novu-notifications.service';
 import { NovuPushPermissionDialogComponent } from './novu-push-permission-dialog.component';
+import { isRequiredNotificationPreference, notificationPreferenceGroups } from './notification-preferences';
 
 type InboxTab = 'inbox' | 'unread' | 'archived' | 'preferences';
 type NotificationRedirectResult = 'opened' | 'failed' | 'invalid' | 'none';
@@ -62,6 +63,8 @@ export class NovuInboxComponent {
   protected readonly selectedTab = signal<InboxTab>('inbox');
   protected readonly notificationList = signal<Notification[]>([]);
   protected readonly preferences = signal<Preference[]>([]);
+  protected readonly preferenceGroups = computed(() => notificationPreferenceGroups(this.preferences()));
+  protected readonly globalPreference = computed(() => this.preferences().find((preference) => !preference.workflow));
   protected readonly loading = signal(false);
   protected readonly hasMore = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -208,12 +211,12 @@ export class NovuInboxComponent {
     return notification.isRead ? 'notifications' : 'notifications_unread';
   }
 
-  protected channelsLabel(preference: Preference): string {
-    const channels = Object.entries(preference.channels)
-      .filter(([, enabled]) => enabled)
-      .map(([channel]) => channel.replace('_', ' '));
+  protected channelBlockedByGlobal(preference: Preference, channel: 'in_app' | 'push'): boolean {
+    return Boolean(preference.workflow) && this.globalPreference()?.channels[channel] === false;
+  }
 
-    return channels.length > 0 ? channels.join(', ') : 'Nenhum canal ativo';
+  protected preferenceChannelEnabled(preference: Preference, channel: 'in_app' | 'push'): boolean {
+    return !this.channelBlockedByGlobal(preference, channel) && preference.channels[channel] !== false;
   }
 
   protected async updatePreferenceChannel(
@@ -221,11 +224,20 @@ export class NovuInboxComponent {
     channel: 'in_app' | 'push',
     enabled: boolean,
   ): Promise<void> {
-    await this.performMutation(() =>
-      this.notifications.updatePreferenceChannels(preference, {
-        ...preference.channels,
-        [channel]: enabled,
-      }),
+    if (
+      isRequiredNotificationPreference(preference) ||
+      this.channelBlockedByGlobal(preference, channel) ||
+      this.busy()
+    ) {
+      return;
+    }
+    await this.performMutation(
+      () =>
+        this.notifications.updatePreferenceChannels(preference, {
+          ...preference.channels,
+          [channel]: enabled,
+        }),
+      'Não foi possível salvar a preferência. Tente novamente.',
     );
   }
 

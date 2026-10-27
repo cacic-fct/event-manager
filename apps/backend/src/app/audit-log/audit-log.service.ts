@@ -36,6 +36,7 @@ import { getAuditFieldLabel } from './audit-log.field-labels';
 import { AuditLogEntry, AuditLogExplorerInput, AuditLogExplorerResult } from './audit-log.models';
 import { getAuditLogRevertConfig, isReversibleAuditOperation } from './audit-log.revert-config';
 import { applyAuditLogRevertInvariants } from './audit-log.revert-invariants';
+import { legacyEventLocationBefore } from './audit-log.legacy-event-location';
 import { synchronizeRevertedAuditEntity } from './audit-log.reverted-entity-sync';
 import { TicketIssuanceService } from '../tickets/ticket-issuance.service';
 import {
@@ -164,15 +165,33 @@ export class AuditLogService {
     entityId: string,
     actor: AuthenticatedUser | undefined,
     take = 80,
+    skip = 0,
   ): Promise<AuditLogEntry[]> {
     await this.assertCanReadEntityHistory(entityType, entityId, actor);
+    const pagination = resolvePagination(skip, take);
+    const where =
+      entityType === AuditLogEntityType.PERSON
+        ? {
+            OR: [
+              { entityType, entityId },
+              {
+                entityType: AuditLogEntityType.LECTURER_PROFILE,
+                OR: [
+                  { before: { path: ['personId'], equals: entityId } },
+                  { after: { path: ['personId'], equals: entityId } },
+                ],
+              },
+            ],
+          }
+        : {
+            entityType,
+            entityId,
+          };
     const entries = await this.prisma.auditLogEntry.findMany({
-      where: {
-        entityType,
-        entityId,
-      },
+      where,
       orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
-      take: Math.min(Math.max(Math.trunc(take), 1), 150),
+      skip: pagination.skip,
+      take: Math.min(Math.max(pagination.take, 1), 150),
     });
 
     return entries.map((entry) => mapAuditLogEntry(entry, (auditEntry) => this.canRevertEntry(auditEntry)));
@@ -475,6 +494,7 @@ export class AuditLogService {
     return (
       !isPublicationLifecycleEntry(entry) &&
       !isBatchAuditEntry(entry.metadata) &&
+      !legacyEventLocationBefore(entry) &&
       entry.operation === options.operation &&
       (entry.actorId ?? null) === (actor.id ?? null) &&
       entry.actorName === actor.name &&
@@ -637,8 +657,11 @@ export class AuditLogService {
   }
 
   private async findLaterChangedFields(targetEntry: PrismaAuditLogEntry): Promise<string[]> {
-    const targetFields = new Set(targetEntry.changedFields);
-    const targetRootFields = new Set(targetEntry.changedFields.map((field) => field.split('.')[0]));
+    const targetFields = new Set([
+      ...targetEntry.changedFields,
+      ...Object.keys(legacyEventLocationBefore(targetEntry) ?? {}),
+    ]);
+    const targetRootFields = new Set([...targetFields].map((field) => field.split('.')[0]));
     const laterEntries = await this.prisma.auditLogEntry.findMany({
       where: {
         entityType: targetEntry.entityType,
@@ -704,6 +727,10 @@ export class AuditLogService {
           throw new BadRequestException(`O campo ${getAuditFieldLabel(field)} não pode ser desfeito automaticamente.`);
         }
         data[rootField] = before[rootField] ?? null;
+      }
+      const legacyLocation = legacyEventLocationBefore(entry);
+      if (legacyLocation) {
+        Object.assign(data, legacyLocation);
       }
     }
 

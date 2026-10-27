@@ -1,3 +1,4 @@
+import { assertEventLocation, normalizeEventLocation, type EventLocationInput } from './event-location';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { DeletionResult, EventDraft, EventDraftSaveInput, EventUpdateInput } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
@@ -123,6 +124,9 @@ const EVENT_DETAIL_SELECT = {
   latitude: true,
   longitude: true,
   locationDescription: true,
+  locationName: true,
+  locationInternalNotes: true,
+  isVirtual: true,
   majorEventId: true,
   majorEvent: {
     select: MAJOR_EVENT_SELECT,
@@ -185,6 +189,9 @@ const EVENT_AUDIT_SELECT = {
   latitude: true,
   longitude: true,
   locationDescription: true,
+  locationName: true,
+  locationInternalNotes: true,
+  isVirtual: true,
   majorEventId: true,
   eventGroupId: true,
   allowSubscription: true,
@@ -295,6 +302,7 @@ export class EventDraftsService {
       await this.normalizeEventCertificateInput(input.input, sourceEvent.id),
     );
     await this.assertCanWriteDraft(sourceEvent.id, normalizedInput, user);
+    assertEventLocation(normalizedInput, sourceEvent);
 
     const actor = await this.resolveDraftActor(user);
     const payload = this.normalizeDraftPayload(normalizedInput);
@@ -385,6 +393,12 @@ export class EventDraftsService {
     const event = await this.prisma.$transaction(async (tx) => {
       if (payload.endDate instanceof Date) {
         await this.ticketIssuance.lockEventExpirationAlignment(tx, draft.sourceEventId, 'UPDATE');
+      } else {
+        await tx.$executeRaw`
+          SELECT "id" FROM "events"
+          WHERE "id" = ${draft.sourceEventId} AND "deletedAt" IS NULL
+          FOR UPDATE
+        `;
       }
       const previousEvent = await tx.event.findFirst({
         where: { id: draft.sourceEventId, deletedAt: null },
@@ -393,6 +407,7 @@ export class EventDraftsService {
       if (!previousEvent) {
         throw new NotFoundException(`Event ${draft.sourceEventId} was not found.`);
       }
+      assertEventLocation(payload, previousEvent);
       await this.sportsBackingLifecycle.assertEventUpdateAllowed(tx, draft.sourceEventId, payload);
 
       await validateAttendancePriceTiers(tx, payload, previousEvent);
@@ -582,10 +597,21 @@ export class EventDraftsService {
     return events.map((event) => event.id);
   }
 
-  private async readSourceEventForDraft(sourceEventId: string): Promise<{ id: string; name: string; endDate: Date }> {
+  private async readSourceEventForDraft(
+    sourceEventId: string,
+  ): Promise<{ id: string; name: string; endDate: Date } & EventLocationInput> {
     const sourceEvent = await this.prisma.event.findFirst({
       where: { id: sourceEventId, deletedAt: null },
-      select: { id: true, name: true, endDate: true },
+      select: {
+        id: true,
+        name: true,
+        endDate: true,
+        locationName: true,
+        locationDescription: true,
+        latitude: true,
+        longitude: true,
+        isVirtual: true,
+      },
     });
     if (!sourceEvent) {
       throw new NotFoundException(`Event ${sourceEventId} was not found.`);
@@ -643,7 +669,8 @@ export class EventDraftsService {
     return this.normalizeJsonRecord(input);
   }
 
-  private normalizeEventLivestreamFields(input: EventUpdateInput): EventUpdateInput {
+  private normalizeEventLivestreamFields(raw: EventUpdateInput): EventUpdateInput {
+    const input = normalizeEventLocation(raw);
     const youtubeCode = normalizeYoutubeCode(input.youtubeCode);
     const twitchChannel = normalizeTwitchChannel(input.twitchChannel);
     if (input.youtubeCode?.trim() && !youtubeCode) {

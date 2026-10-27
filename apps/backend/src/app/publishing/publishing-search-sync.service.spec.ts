@@ -170,4 +170,33 @@ describe('PublicationSearchSyncService', () => {
     expect(typesenseSearch.upsertEvent).not.toHaveBeenCalled();
     expect(typesenseSearch.upsertMajorEvent).not.toHaveBeenCalled();
   });
+
+  it.each([
+    { locationName: 'Auditório', locationDescription: null, expected: 'Auditório' },
+    { locationName: 'Auditório', locationDescription: 'Bloco 5', expected: 'Auditório - Bloco 5' },
+    { locationName: null, locationDescription: null, isVirtual: true, expected: 'Evento on-line' },
+  ])('preserves the location label when publishing: $expected', async ({ expected, ...location }) => {
+    const { prisma, service, typesenseSearch } = createService();
+    prisma.event.findMany.mockResolvedValue([
+      {
+        id: 'event',
+        name: 'Atividade',
+        emoji: '📍',
+        type: 'OTHER',
+        majorEventId: null,
+        eventGroupId: null,
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 60 * 60_000),
+        publicationState: PublicationState.PUBLISHED,
+        ...location,
+      },
+    ]);
+
+    await service.syncSearch({ eventIds: ['event'], majorEventIds: [] });
+
+    expect(PUBLICATION_EVENT_SELECT).toMatchObject({ locationName: true, isVirtual: true });
+    expect(typesenseSearch.upsertEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ locationDescription: expected }),
+    );
+  });
 });

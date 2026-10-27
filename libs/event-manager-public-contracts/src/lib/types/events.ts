@@ -125,7 +125,11 @@ export interface PublicEvent {
   shortDescription?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  /** Display label returned by the standard public GraphQL fragments. */
   locationDescription?: string | null;
+  locationName?: string | null;
+  locationDetails?: string | null;
+  isVirtual?: boolean;
   majorEventId?: string | null;
   majorEvent?: PublicMajorEvent | null;
   eventGroupId?: string | null;
@@ -163,7 +167,11 @@ export interface PublicMapEvent {
   emoji: string;
   latitude: number;
   longitude: number;
+  /** Display label returned by the standard public GraphQL fragments. */
   locationDescription?: string | null;
+  locationName?: string | null;
+  locationDetails?: string | null;
+  isVirtual?: boolean;
 }
 
 export interface PublicEventSubscriptionSummary {

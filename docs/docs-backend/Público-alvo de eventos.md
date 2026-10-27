@@ -37,8 +37,6 @@ Os convites são editados pelo componente compartilhado de busca de pessoas e pe
 
 Um rascunho por convite pode começar vazio. Antes de publicar ou agendar, é necessário selecionar pelo menos uma pessoa convidada. A duplicação preserva a restrição de público, sem copiar automaticamente destinatários; duplicar um registro por convite exige a permissão de acesso fora do público-alvo.
 
-As notificações usam o workflow Novu `audience-invitation`, configurável por `NOVU_AUDIENCE_INVITATION_WORKFLOW_IDENTIFIER`. Configure o workflow com `title`, `subject`, `body`, `actionLabel` e `actionUrl`; os dados também incluem `targetType`, `targetId` e `targetName`. A entrega só ocorre após a transação, para quem pode acessar o recurso e seus níveis superiores. A identificação da entrega inclui a data de criação do convite para distinguir uma nova inclusão após remoção.
-
 Convites sem confirmação de entrega permanecem pendentes no próprio registro. A reconciliação verifica até 100 por rodada, com intervalo mínimo de cinco minutos entre tentativas e concorrência limitada. Recursos ainda não publicados ou indisponíveis ao destinatário aguardam uma tentativa futura. Fusões de contas e pessoas preservam os convites e seu estado de entrega; desfazer uma fusão restaura os vínculos movidos.
 
 ## Aplicação das regras
@@ -47,6 +45,6 @@ O interceptor de público estabelece o contexto de cada requisição. A extensã
 
 Sitemaps e caches compartilhados usam somente conteúdo anônimo. Consultas destinadas aos caches públicos enviam `X-Event-Audience: public`, evitando que um cookie de sessão ainda não restaurado pela interface personalize uma resposta que será compartilhada. Os resultados personalizados não são persistidos nesses caches. As filas de presença off-line mantêm sua própria identificação de coletor e remetente.
 
-A metadata de cardinalidade e propriedade das relações é gerada a partir do schema, pois o DMMF público do Prisma em execução não contém esses atributos. Após alterar relações do schema, execute `node tools/generate-audience-relations.mjs`. O teste de integridade recusa metadata desatualizada.
+A metadata de cardinalidade e propriedade das relações é gerada automaticamente pelo gerador `audienceRelations` durante `bunx prisma generate --schema apps/backend/prisma/schema`, executado na raiz do repositório, pois o DMMF público do Prisma em execução não contém esses atributos. Não é necessário executar um script separado após alterar relações do schema. O teste de integridade recusa metadata desatualizada.
 
 A migração `20260913200000_event_audiences` adiciona os públicos e as tabelas de convites. Sua aplicação exige a confirmação do responsável pelo banco, conforme as instruções do projeto.

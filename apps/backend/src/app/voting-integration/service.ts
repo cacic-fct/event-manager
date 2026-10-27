@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { formatEventLocation } from '@cacic-fct/shared-utils';
 import type {
   EventManagerVotingAttendanceCheckResponse,
   EventManagerVotingEvent,
@@ -18,6 +19,8 @@ const VOTING_EVENT_SELECT = {
   startDate: true,
   endDate: true,
   locationDescription: true,
+  locationName: true,
+  isVirtual: true,
   shouldCollectAttendance: true,
 } satisfies Prisma.EventSelect;
 
@@ -201,7 +204,7 @@ export class VotingIntegrationService {
       name: event.name,
       startDate: event.startDate.toISOString(),
       endDate: event.endDate.toISOString(),
-      locationDescription: event.locationDescription,
+      locationDescription: formatEventLocation(event),
       shouldCollectAttendance: event.shouldCollectAttendance,
     };
   }

@@ -362,62 +362,79 @@ describe('EventSubscriptionsResolver', () => {
     );
   });
 
-  it('returns full event presentation and live slot availability for new subscriptions', async () => {
-    const startDate = new Date();
-    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
-    const prisma = {
-      event: {
-        findMany: jest.fn().mockResolvedValue([
-          {
-            id: 'event-1',
-            name: 'Abertura',
-            startDate,
-            eventGroupId: 'group-1',
-            eventGroup: { name: 'Grupo de palestras' },
-            endDate,
-            emoji: '🎓',
-            type: 'PALESTRA',
-            shortDescription: 'Recepção',
-            locationDescription: 'Auditório',
-            slots: 10,
-            queueCount: 3,
-            lecturers: [],
-          },
-        ]),
-      },
-      eventSubscription: {
-        groupBy: jest.fn().mockResolvedValue([{ eventId: 'event-1', _count: { _all: 4 } }]),
-      },
-    };
-    const resolver = new EventSubscriptionsResolver(
-      prisma as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+  it.each([
+    { locationName: 'Auditório', locationDescription: null, isVirtual: false, expectedLocation: 'Auditório' },
+    {
+      locationName: 'Auditório',
+      locationDescription: 'Bloco 5',
+      isVirtual: false,
+      expectedLocation: 'Auditório - Bloco 5',
+    },
+    { locationName: null, locationDescription: null, isVirtual: true, expectedLocation: 'Evento on-line' },
+  ])(
+    'returns full event presentation and live slot availability with $expectedLocation',
+    async ({ expectedLocation, ...location }) => {
+      const startDate = new Date();
+      const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+      const prisma = {
+        event: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              id: 'event-1',
+              name: 'Abertura',
+              startDate,
+              eventGroupId: 'group-1',
+              eventGroup: { name: 'Grupo de palestras' },
+              endDate,
+              emoji: '🎓',
+              type: 'PALESTRA',
+              shortDescription: 'Recepção',
+              ...location,
+              slots: 10,
+              queueCount: 3,
+              lecturers: [],
+            },
+          ]),
+        },
+        eventSubscription: {
+          groupBy: jest.fn().mockResolvedValue([{ eventId: 'event-1', _count: { _all: 4 } }]),
+        },
+      };
+      const resolver = new EventSubscriptionsResolver(
+        prisma as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+      );
 
-    await expect(resolver.workspaceMajorEventSubscriptionEvents('major-1')).resolves.toEqual([
-      expect.objectContaining({
-        eventId: 'event-1',
-        eventName: 'Abertura',
-        eventGroupId: 'group-1',
-        eventGroupName: 'Grupo de palestras',
-        eventEmoji: '🎓',
-        eventType: 'PALESTRA',
-        eventShortDescription: 'Recepção',
-        eventStartDate: startDate,
-        eventEndDate: endDate,
-        eventLocationDescription: 'Auditório',
-        eventSlots: 10,
-        availableSlots: 6,
-        projectedQueuePosition: 4,
-        subscribed: false,
-        isLecturerSubscription: false,
-      }),
-    ]);
-    expect(prisma.eventSubscription.groupBy).toHaveBeenCalledTimes(1);
-  });
+      await expect(resolver.workspaceMajorEventSubscriptionEvents('major-1')).resolves.toEqual([
+        expect.objectContaining({
+          eventId: 'event-1',
+          eventName: 'Abertura',
+          eventGroupId: 'group-1',
+          eventGroupName: 'Grupo de palestras',
+          eventEmoji: '🎓',
+          eventType: 'PALESTRA',
+          eventShortDescription: 'Recepção',
+          eventStartDate: startDate,
+          eventEndDate: endDate,
+          eventLocationDescription: expectedLocation,
+          eventSlots: 10,
+          availableSlots: 6,
+          projectedQueuePosition: 4,
+          subscribed: false,
+          isLecturerSubscription: false,
+        }),
+      ]);
+      expect(prisma.event.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          select: expect.objectContaining({ locationName: true, locationDescription: true, isVirtual: true }),
+        }),
+      );
+      expect(prisma.eventSubscription.groupBy).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it('does not load major-event events when the subscription page is empty', async () => {
     const prisma = {

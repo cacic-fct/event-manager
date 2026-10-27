@@ -1,6 +1,10 @@
-import { LecturerProfile, LecturerProfileUpsertInput } from '@cacic-fct/shared-data-types';
+import {
+  AdminLecturerProfileUpsertInput,
+  LecturerProfile,
+  LecturerProfileUpsertInput,
+} from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -18,6 +22,7 @@ const LECTURER_PROFILE_SELECT = {
       user: true,
     },
   },
+  selfEditingBlocked: true,
   displayName: true,
   biography: true,
   publishGoogleUserPicture: true,
@@ -46,6 +51,7 @@ type LecturerProfileAuditSnapshot = Pick<
   Prisma.LecturerProfileGetPayload<{ select: typeof LECTURER_PROFILE_SELECT }>,
   | 'id'
   | 'personId'
+  | 'selfEditingBlocked'
   | 'displayName'
   | 'biography'
   | 'publishGoogleUserPicture'
@@ -82,11 +88,14 @@ export class LecturerProfilesResolver {
   @RequirePermissions(Permission.Person.Update)
   async upsertLecturerProfile(
     @Args('personId', { type: () => String }) personId: string,
-    @Args('input', { type: () => LecturerProfileUpsertInput }) input: LecturerProfileUpsertInput,
+    @Args('input', { type: () => AdminLecturerProfileUpsertInput }) input: AdminLecturerProfileUpsertInput,
     @Context() context: GraphqlContext,
   ) {
     await this.ensurePersonExists(personId);
-    const data = this.buildProfileData(input, this.getActorId(context));
+    const data = {
+      ...this.buildProfileData(input, this.getActorId(context)),
+      selfEditingBlocked: input.selfEditingBlocked ?? undefined,
+    };
 
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.lecturerProfile.findUnique({ where: { personId }, select: LECTURER_PROFILE_SELECT });
@@ -144,8 +153,13 @@ export class LecturerProfilesResolver {
         where: { personId: person.id },
         select: LECTURER_PROFILE_SELECT,
       });
+      if (existing?.selfEditingBlocked) {
+        throw new ForbiddenException(
+          'A edição deste perfil foi bloqueada pela organização. Entre em contato para solicitar alterações.',
+        );
+      }
       const profile = await tx.lecturerProfile.upsert({
-        where: { personId: person.id },
+        where: { personId: person.id, selfEditingBlocked: false },
         create: { personId: person.id, ...data, createdById: actorId },
         update: data,
         select: LECTURER_PROFILE_SELECT,
@@ -196,6 +210,7 @@ export class LecturerProfilesResolver {
     return {
       id: profile.id,
       personId: profile.personId,
+      selfEditingBlocked: profile.selfEditingBlocked,
       displayName: profile.displayName,
       biography: profile.biography,
       publishGoogleUserPicture: profile.publishGoogleUserPicture,

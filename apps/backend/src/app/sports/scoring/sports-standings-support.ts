@@ -197,6 +197,9 @@ export abstract class SportsStandingsSupport {
         latitude: number | null;
         longitude: number | null;
         locationDescription: string | null;
+        locationName?: string | null;
+        locationInternalNotes?: string | null;
+        isVirtual?: boolean;
       };
       categoryId: string;
       stageId: string | null;
@@ -232,6 +235,9 @@ export abstract class SportsStandingsSupport {
         latitude: source.event.latitude,
         longitude: source.event.longitude,
         locationDescription: source.event.locationDescription,
+        locationName: source.event.locationName,
+        locationInternalNotes: source.event.locationInternalNotes,
+        isVirtual: source.event.isVirtual,
         allowSubscription: false,
         shouldCollectAttendance: true,
         isPubliclyListed: false,

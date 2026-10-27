@@ -37,15 +37,15 @@ export interface AuditLogExplorerInput {
 export class AuditLogApiService {
   private readonly graphqlHttp = inject(GraphqlHttpService);
 
-  listEntityHistory(input: AuditLogEntityHistoryInput, take = 80) {
+  listEntityHistory(input: AuditLogEntityHistoryInput, take = 80, skip = 0) {
     return this.graphqlHttp
       .request<{ auditLogEntries: AuditLogEntry[] }>(
-        `query AuditLogEntries($input: AuditLogEntityHistoryInput!, $take: Int) {
-          auditLogEntries(input: $input, take: $take) {
+        `query AuditLogEntries($input: AuditLogEntityHistoryInput!, $take: Int, $skip: Int) {
+          auditLogEntries(input: $input, take: $take, skip: $skip) {
             ${AUDIT_LOG_ENTRY_FIELDS}
           }
         }`,
-        { input, take },
+        { input, take, skip },
       )
       .pipe(map((data) => data.auditLogEntries));
   }

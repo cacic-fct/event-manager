@@ -298,10 +298,30 @@ describe('PlacePresetsResolver', () => {
     await expect(resolver.deletePlacePreset('missing-place')).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('merges presets without touching event location data', async () => {
+  it('records both sides of a no-op scalar merge without touching event location data', async () => {
     const prisma = createPrismaMock();
     const auditLog = createAuditLogMock();
     const resolver = new PlacePresetsResolver(prisma as never, auditLog as never);
+    const target = {
+      id: 'target-place',
+      name: 'Sala final',
+      latitude: -22.1,
+      longitude: -49.2,
+      locationDescription: 'Bloco A',
+      internalNotes: null,
+      deletedAt: null,
+    };
+    const source = {
+      id: 'source-place',
+      name: 'Sala antiga',
+      latitude: null,
+      longitude: null,
+      locationDescription: null,
+      internalNotes: null,
+      deletedAt: null,
+    };
+    prisma.placePreset.findFirst.mockResolvedValueOnce(target).mockResolvedValueOnce(source);
+    prisma.placePreset.findUniqueOrThrow.mockResolvedValue(target);
 
     await resolver.mergePlacePreset('target-place', 'source-place', {
       name: 'Sala final',
@@ -335,7 +355,11 @@ describe('PlacePresetsResolver', () => {
         entityType: AuditLogEntityType.PLACE_PRESET,
         entityId: 'target-place',
         operation: AuditLogOperation.MERGE,
+        before: target,
+        after: target,
         scope: { permission: Permission.PlacePreset.Merge },
+        summary: 'Local unificado com Sala antiga.',
+        force: true,
       }),
       prisma,
     );
@@ -345,6 +369,8 @@ describe('PlacePresetsResolver', () => {
         entityId: 'source-place',
         operation: AuditLogOperation.MERGE,
         scope: { permission: Permission.PlacePreset.Delete },
+        summary: 'Local absorvido por Sala final.',
+        force: true,
       }),
       prisma,
     );

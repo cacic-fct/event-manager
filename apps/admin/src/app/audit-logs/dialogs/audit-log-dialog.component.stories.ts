@@ -5,7 +5,7 @@ import { fakerPT_BR as faker } from '@faker-js/faker';
 import { HttpResponse, delay, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
-import { expect, screen, userEvent, within } from 'storybook/test';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import {
   AuditLogActorType,
   AuditLogEntry,
@@ -24,12 +24,17 @@ type AuditLogDialogStoryArgs = {
   groupedChanges: boolean;
   includeReverted: boolean;
   allowRevert: boolean;
+  includeRelatedProfile: boolean;
   requestState: RequestState;
   responseDelay: number;
 };
 
 type GraphqlBody = {
   query?: string;
+  variables?: {
+    skip?: number;
+    take?: number;
+  };
 };
 
 const defaultArgs: AuditLogDialogStoryArgs = {
@@ -39,6 +44,7 @@ const defaultArgs: AuditLogDialogStoryArgs = {
   groupedChanges: true,
   includeReverted: false,
   allowRevert: true,
+  includeRelatedProfile: false,
   requestState: 'success',
   responseDelay: 100,
 };
@@ -89,9 +95,14 @@ const meta: Meta<AuditLogDialogStoryArgs> = {
       description: 'Name of the audited record.',
     },
     entryCount: {
-      control: { type: 'range', min: 1, max: 10, step: 1 },
+      control: { type: 'range', min: 1, max: 125, step: 1 },
       description: 'Number of history entries to generate.',
       if: { arg: 'requestState', eq: 'success' },
+    },
+    includeRelatedProfile: {
+      control: 'boolean',
+      description: 'Includes a lecturer-profile entry in a person history.',
+      if: { arg: 'entityType', eq: 'PERSON' },
     },
     groupedChanges: {
       control: 'boolean',
@@ -152,11 +163,10 @@ const meta: Meta<AuditLogDialogStoryArgs> = {
               return HttpResponse.json({ errors: [{ message: 'Não foi possível consultar o histórico simulado.' }] });
             }
 
-            return HttpResponse.json({
-              data: {
-                auditLogEntries: activeArgs.requestState === 'empty' ? [] : buildEntries(activeArgs),
-              },
-            });
+            const entries = activeArgs.requestState === 'empty' ? [] : buildEntries(activeArgs);
+            const skip = body.variables?.skip ?? 0;
+            const take = body.variables?.take ?? entries.length;
+            return HttpResponse.json({ data: { auditLogEntries: entries.slice(skip, skip + take) } });
           }),
         ],
       },
@@ -178,6 +188,37 @@ export const Playground: Story = {
     const page = await openAuditLogDialog(canvasElement);
     await expect(await page.findByText('Histórico')).toBeVisible();
     await expect(await page.findByText('Programação e publicação alteradas.')).toBeVisible();
+  },
+};
+
+export const RelatedLecturerProfileHistory: Story = {
+  args: {
+    entityType: 'PERSON',
+    entityLabel: 'Ana Silva',
+    entryCount: 1,
+    includeRelatedProfile: true,
+    responseDelay: 0,
+  },
+  play: async ({ canvasElement }) => {
+    const page = await openAuditLogDialog(canvasElement);
+    await expect(await page.findByText('Perfil de palestrante: Ana Silva')).toBeVisible();
+  },
+};
+
+export const LongHistory: Story = {
+  args: {
+    entityType: 'PERSON',
+    entityLabel: 'Ana Silva',
+    entryCount: 81,
+    responseDelay: 0,
+  },
+  play: async ({ canvasElement }) => {
+    const page = await openAuditLogDialog(canvasElement);
+    const firstPage = await page.findAllByRole('article');
+    await expect(firstPage).toHaveLength(50);
+    await userEvent.click(await page.findByRole('button', { name: 'Carregar mais' }));
+    await waitFor(() => expect(page.getAllByRole('article')).toHaveLength(81));
+    await expect(page.queryByRole('button', { name: 'Carregar mais' })).not.toBeInTheDocument();
   },
 };
 
@@ -274,7 +315,20 @@ export const RequestError: Story = {
 function buildEntries(args: AuditLogDialogStoryArgs): AuditLogEntry[] {
   faker.seed(20260621 + args.entryCount);
 
-  return Array.from({ length: args.entryCount }, (_, index) => buildEntry(args, index));
+  return Array.from({ length: args.entryCount }, (_, index) => {
+    const entry = buildEntry(args, index);
+    if (args.includeRelatedProfile && args.entityType === 'PERSON' && index === 0) {
+      return {
+        ...entry,
+        entityType: 'LECTURER_PROFILE',
+        entityId: 'lecturer-profile-story',
+        entityLabel: 'Ana Silva',
+        summary: 'Perfil de palestrante atualizado.',
+      };
+    }
+
+    return entry;
+  });
 }
 
 function buildEntry(args: AuditLogDialogStoryArgs, index: number): AuditLogEntry {
@@ -290,6 +344,14 @@ function buildEntry(args: AuditLogDialogStoryArgs, index: number): AuditLogEntry
           'REJECT',
           'ISSUE',
           'SCAN',
+          'SUBMIT',
+          'REQUEST_CHANGES',
+          'ASSIGN',
+          'START',
+          'PAUSE',
+          'RESUME',
+          'SCORE',
+          'FINALIZE',
         ]);
   const recordedAt = faker.date.between({
     from: '2026-05-01T12:00:00.000Z',
@@ -367,7 +429,7 @@ type AuditLogScenario = {
   changes: (entityLabel: string, index: number) => AuditLogEntry['changes'];
 };
 
-const scenarioByEntityType: Record<AuditLogEntityType, AuditLogScenario> = {
+const scenarioByEntityType: Partial<Record<AuditLogEntityType, AuditLogScenario>> = {
   PERSON: {
     entityId: 'person-story',
     label: 'pessoa',
@@ -784,7 +846,24 @@ const scenarioByEntityType: Record<AuditLogEntityType, AuditLogScenario> = {
 };
 
 function scenarioForEntity(entityType: AuditLogEntityType): AuditLogScenario {
-  return scenarioByEntityType[entityType];
+  const knownScenario = scenarioByEntityType[entityType];
+  if (knownScenario) {
+    return knownScenario;
+  }
+
+  const label = auditLogEntityTypeLabel(entityType).toLocaleLowerCase('pt-BR');
+  return {
+    entityId: `${entityType.toLocaleLowerCase('en-US')}-story`,
+    label,
+    primaryOperation: 'UPDATE',
+    summary: `${label} atualizado.`,
+    permission: null,
+    actorTypes: ['USER'],
+    eventId: null,
+    majorEventId: null,
+    eventGroupId: null,
+    changes: () => [{ field: 'status', label: 'Situação', beforeValue: 'Anterior', afterValue: 'Atualizado' }],
+  };
 }
 
 function actorNameForType(actorType: AuditLogActorType): string {
@@ -831,5 +910,21 @@ function summaryForOperation(
       return `Histórico de ${fallbackLabel} revertido.`;
     case 'USER_CREATE':
       return `${entityLabel} criado pelo usuário.`;
+    case 'SUBMIT':
+      return `${entityLabel} enviado.`;
+    case 'REQUEST_CHANGES':
+      return `Ajustes solicitados para ${entityLabel}.`;
+    case 'ASSIGN':
+      return `${entityLabel} atribuído.`;
+    case 'START':
+      return `${entityLabel} iniciado.`;
+    case 'PAUSE':
+      return `${entityLabel} pausado.`;
+    case 'RESUME':
+      return `${entityLabel} retomado.`;
+    case 'SCORE':
+      return `${entityLabel} pontuado.`;
+    case 'FINALIZE':
+      return `${entityLabel} finalizado.`;
   }
 }

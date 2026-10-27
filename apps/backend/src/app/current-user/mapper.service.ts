@@ -121,6 +121,8 @@ export class CurrentUserEventMapperService {
       latitude: event.latitude ?? undefined,
       longitude: event.longitude ?? undefined,
       locationDescription: event.locationDescription ?? undefined,
+      locationName: event.locationName ?? undefined,
+      isVirtual: event.isVirtual,
       majorEventId: event.majorEventId ?? undefined,
       majorEvent: event.majorEvent ? this.mapPublicMajorEvent(event.majorEvent as PublicMajorEventRecord) : undefined,
       eventGroupId: event.eventGroupId ?? undefined,

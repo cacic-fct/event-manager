@@ -4,6 +4,48 @@ import { insightEvent } from './insights-service.fixtures';
 describe('buildInconsistencies', () => {
   const now = new Date('2026-05-22T11:00:00.000Z');
 
+  it('recognizes named and virtual locations without coordinates and checks physical conflicts', () => {
+    const current = new Date();
+    const startDate = new Date(current.getTime() + 86_400_000);
+    const endDate = new Date(startDate.getTime() + 3_600_000);
+    const events = [
+      { id: 'named-1', locationName: 'Auditório', isVirtual: false },
+      { id: 'named-2', locationName: 'Auditório', isVirtual: false },
+      { id: 'other-place', locationName: 'Laboratório', isVirtual: false },
+      { id: 'online-1', locationName: null, isVirtual: true },
+      { id: 'online-2', locationName: null, isVirtual: true },
+      { id: 'missing-place', locationName: null, isVirtual: false },
+    ].map((location) =>
+      insightEvent({
+        ...location,
+        startDate,
+        endDate,
+        locationDescription: null,
+        lecturers: [{ personId: location.id, person: { id: location.id, name: 'Ministrante' } }],
+      }),
+    );
+    const result = buildInconsistencies({
+      now: current,
+      events,
+      singleEventGroups: [],
+      mismatchingCertificateGroupEvents: [],
+      pastCertificateEventsWithoutAttendance: [],
+      pastCertificateEventsWithoutAttendanceCollection: [],
+      majorEventsWithSubscriptionDates: [],
+    });
+
+    expect(result.filter((item) => item.type === 'EVENT_WITHOUT_PLACE').map((item) => item.eventId)).toEqual([
+      'missing-place',
+    ]);
+    expect(result.filter((item) => item.type === 'PLACE_DOUBLE_BOOKED')).toEqual([
+      expect.objectContaining({
+        eventId: 'named-1',
+        relatedEventId: 'named-2',
+        description: expect.stringContaining('Auditório:'),
+      }),
+    ]);
+  });
+
   it('reports all dashboard inconsistency categories and limits the result list', () => {
     const result = buildInconsistencies({
       now,

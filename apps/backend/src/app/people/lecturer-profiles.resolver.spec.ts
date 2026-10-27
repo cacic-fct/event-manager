@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { AuditLogOperation } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
@@ -87,6 +87,44 @@ describe('LecturerProfilesResolver current-user operations', () => {
     );
   });
 
+  it('rejects self editing of a locked profile without writing or auditing', async () => {
+    lecturerProfile.findUnique.mockResolvedValueOnce(profileFixture({ selfEditingBlocked: true }));
+    await expect(
+      resolver().upsertCurrentUserLecturerProfile(
+        { displayName: 'Changed', selfEditingBlocked: false } as never,
+        context as never,
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(lecturerProfile.upsert).not.toHaveBeenCalled();
+    expect(auditLog.record).not.toHaveBeenCalled();
+  });
+
+  it.each([true, false])('allows an administrator to set the lock to %s on a locked profile', async (blocked) => {
+    prisma.people.findFirst.mockResolvedValueOnce({ id: 'person-1' });
+    lecturerProfile.findUnique.mockResolvedValueOnce(profileFixture({ selfEditingBlocked: true }));
+    lecturerProfile.upsert.mockResolvedValueOnce(profileFixture({ selfEditingBlocked: blocked }));
+    await resolver().upsertLecturerProfile(
+      'person-1',
+      {
+        displayName: 'Maria',
+        selfEditingBlocked: blocked,
+      },
+      context as never,
+    );
+    expect(lecturerProfile.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ selfEditingBlocked: blocked }),
+      }),
+    );
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        before: expect.objectContaining({ selfEditingBlocked: true }),
+        after: expect.objectContaining({ selfEditingBlocked: blocked }),
+      }),
+      expect.anything(),
+    );
+  });
+
   it('loads only the authenticated person lecturer profile', async () => {
     const expected = profileFixture();
     lecturerProfile.findUnique.mockResolvedValueOnce(expected);
@@ -126,7 +164,7 @@ describe('LecturerProfilesResolver current-user operations', () => {
 
     expect(lecturerProfile.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { personId: 'person-1' },
+        where: { personId: 'person-1', selfEditingBlocked: false },
         create: expect.objectContaining({
           personId: 'person-1',
           displayName: 'Maria Silva',
@@ -264,6 +302,7 @@ describe('LecturerProfilesResolver current-user operations', () => {
 function profileFixture(overrides: Record<string, unknown> = {}) {
   return {
     id: 'profile-1',
+    selfEditingBlocked: false,
     personId: 'person-1',
     person: { id: 'person-1', user: { id: 'user-1' } },
     displayName: 'Maria',

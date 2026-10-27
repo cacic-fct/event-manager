@@ -109,6 +109,9 @@ export interface PublicEvent {
   latitude?: number | null;
   longitude?: number | null;
   locationDescription?: string | null;
+  locationName?: string | null;
+  isVirtual?: boolean;
+  locationLabel?: string | null;
   majorEventId?: string | null;
   majorEvent?: PublicMajorEvent | null;
   eventGroupId?: string | null;

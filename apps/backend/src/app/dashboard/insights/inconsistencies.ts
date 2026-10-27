@@ -1,4 +1,5 @@
 import { DashboardInconsistency } from '../models';
+import { formatEventLocation } from '@cacic-fct/shared-utils';
 import { DEFAULT_EMOJI, EIGHT_HOURS_MS, SUSPICIOUS_EARLIEST_DATE } from './constants';
 import { type InsightEvent } from './insight-event.select';
 
@@ -312,7 +313,7 @@ export function buildInconsistencies(input: {
             targetId: sportsEvent ? sportsTargetId(sportsEvent) : left.id,
             severity: 'CRITICAL',
             title: sportsEvent ? 'Local da partida alocado no mesmo horário' : 'Local alocado em eventos simultâneos',
-            description: `${left.locationDescription ?? 'Local sem nome'}: ${left.name} e ${right.name}`,
+            description: `${formatEventLocation(left) ?? 'Local sem nome'}: ${left.name} e ${right.name}`,
             eventId: left.id,
             relatedEventId: right.id,
           });
@@ -329,7 +330,11 @@ function sportsTargetId(event: InsightEvent): string | null {
 }
 
 function hasPlace(event: InsightEvent): boolean {
-  return Boolean(normalizeText(event.locationDescription)) || (event.latitude !== null && event.longitude !== null);
+  return (
+    event.isVirtual ||
+    Boolean(normalizeText(formatEventLocation(event))) ||
+    (event.latitude !== null && event.longitude !== null)
+  );
 }
 
 function hasWeakDescription(event: InsightEvent): boolean {
@@ -364,7 +369,8 @@ function describeSubscriptionDateIssue(target: SubscriptionDateTarget): string |
 }
 
 function resolvePlaceConflictKey(event: InsightEvent): string | null {
-  const locationDescription = normalizeText(event.locationDescription);
+  if (event.isVirtual) return null;
+  const locationDescription = normalizeText(formatEventLocation(event));
   if (locationDescription) {
     return `description:${locationDescription}`;
   }

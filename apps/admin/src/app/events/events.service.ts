@@ -177,7 +177,7 @@ export class EventsService {
       search: () => this.searchEventGroupsForEvent(),
     });
     bindLiveSearch({
-      control: this.eventForm.controls.locationDescription,
+      control: this.eventForm.controls.locationName,
       destroyRef: this.destroyRef,
       search: () => this.searchPlacePresetSuggestions(),
     });
@@ -198,6 +198,8 @@ export class EventsService {
     this.eventForm.controls.latitude.valueChanges.subscribe(() => this.syncLocationPresetControl());
     this.eventForm.controls.longitude.valueChanges.subscribe(() => this.syncLocationPresetControl());
     this.eventForm.controls.locationDescription.valueChanges.subscribe(() => this.syncLocationPresetControl());
+    this.eventForm.controls.locationName.valueChanges.subscribe(() => this.syncLocationPresetControl());
+    this.eventForm.controls.isVirtual.valueChanges.subscribe(() => this.syncLocationPresetControl());
     this.eventForm.valueChanges.subscribe(() => this.editorRevision.update((revision) => revision + 1));
     this.captureEditorBaseline();
   }
@@ -440,6 +442,9 @@ export class EventsService {
       latitude: '',
       longitude: '',
       locationDescription: '',
+      locationName: '',
+      locationInternalNotes: '',
+      isVirtual: false,
       locationPresetId: CUSTOM_PLACE_PRESET_ID,
       majorEventId: '',
       eventGroupId: '',
@@ -855,7 +860,7 @@ export class EventsService {
       return;
     }
 
-    const query = this.eventForm.controls.locationDescription.value.trim();
+    const query = this.eventForm.controls.locationName.value.trim();
     if (!query) {
       this.placePresetSuggestions.set([]);
       this.syncLocationPresetControl();
@@ -872,15 +877,23 @@ export class EventsService {
       return;
     }
 
-    const place = this.placePresetsService.placePresets().find((preset) => preset.id === placeId);
+    const place = this.allKnownPlacePresets().find((preset) => preset.id === placeId);
     if (!place) {
       return;
     }
 
     this.eventForm.controls.latitude.setValue(place.latitude?.toString() ?? '', { emitEvent: false });
     this.eventForm.controls.longitude.setValue(place.longitude?.toString() ?? '', { emitEvent: false });
-    this.eventForm.controls.locationDescription.setValue(place.locationDescription ?? place.name, { emitEvent: false });
-    this.placePresetSuggestions.set([]);
+    this.eventForm.patchValue(
+      {
+        locationName: place.name,
+        locationDescription: place.locationDescription ?? '',
+        locationInternalNotes: place.internalNotes ?? '',
+        isVirtual: false,
+      },
+      { emitEvent: false },
+    );
+    this.placePresetSuggestions.set([place]);
     this.syncLocationPresetControl();
   }
 
@@ -892,7 +905,7 @@ export class EventsService {
     const place = [...this.placePresetsService.placePresets(), ...this.placePresetSuggestions()].find(
       (preset) => preset.id === placeId,
     );
-    return place?.locationDescription || place?.name || '';
+    return place?.name || placeId;
   }
 
   eventGroupNameById(groupId: string): string {
@@ -1234,9 +1247,12 @@ export class EventsService {
       type: raw.type as EventInput['type'],
       description: raw.description.trim() || null,
       shortDescription: raw.shortDescription.trim() || null,
-      latitude: raw.latitude ? Number(raw.latitude) : null,
-      longitude: raw.longitude ? Number(raw.longitude) : null,
-      locationDescription: raw.locationDescription.trim() || null,
+      latitude: !raw.isVirtual && raw.latitude ? Number(raw.latitude) : null,
+      longitude: !raw.isVirtual && raw.longitude ? Number(raw.longitude) : null,
+      locationDescription: raw.isVirtual ? null : raw.locationDescription.trim() || null,
+      locationName: raw.isVirtual ? null : raw.locationName.trim() || null,
+      locationInternalNotes: raw.locationInternalNotes.trim() || null,
+      isVirtual: raw.isVirtual,
       majorEventId: raw.majorEventId || null,
       eventGroupId: raw.eventGroupId || null,
       audience: raw.audience,
@@ -1329,20 +1345,21 @@ export class EventsService {
 
   private buildManualPlacePresetPayload(): PlacePresetInput | null {
     const raw = this.eventForm.getRawValue();
-    if (raw.locationPresetId !== CUSTOM_PLACE_PRESET_ID) {
+    if (raw.isVirtual || raw.locationPresetId !== CUSTOM_PLACE_PRESET_ID) {
       return null;
     }
 
-    const name = raw.locationDescription.trim();
+    const name = raw.locationName.trim();
     if (!name) {
       return null;
     }
 
     return {
       name,
-      latitude: raw.latitude ? Number(raw.latitude) : null,
-      longitude: raw.longitude ? Number(raw.longitude) : null,
-      locationDescription: name,
+      latitude: !raw.isVirtual && raw.latitude ? Number(raw.latitude) : null,
+      longitude: !raw.isVirtual && raw.longitude ? Number(raw.longitude) : null,
+      locationDescription: raw.locationDescription.trim() || null,
+      internalNotes: raw.locationInternalNotes.trim() || null,
     };
   }
 
@@ -1405,6 +1422,9 @@ export class EventsService {
       latitude: eventItem.latitude?.toString() ?? '',
       longitude: eventItem.longitude?.toString() ?? '',
       locationDescription: eventItem.locationDescription ?? '',
+      locationName: eventItem.locationName ?? '',
+      locationInternalNotes: eventItem.locationInternalNotes ?? '',
+      isVirtual: eventItem.isVirtual ?? false,
       locationPresetId: selectedPlacePreset?.id ?? CUSTOM_PLACE_PRESET_ID,
       majorEventId: eventItem.majorEventId ?? '',
       eventGroupId: eventItem.eventGroupId ?? '',
@@ -1537,11 +1557,13 @@ export class EventsService {
 
   private matchCurrentPlacePresetId(): string | null {
     const raw = this.eventForm.getRawValue();
+    if (raw.isVirtual) return null;
     return (
       this.matchPlacePreset({
-        latitude: raw.latitude ? Number(raw.latitude) : null,
-        longitude: raw.longitude ? Number(raw.longitude) : null,
+        latitude: !raw.isVirtual && raw.latitude ? Number(raw.latitude) : null,
+        longitude: !raw.isVirtual && raw.longitude ? Number(raw.longitude) : null,
         locationDescription: raw.locationDescription,
+        locationName: raw.locationName,
       })?.id ?? null
     );
   }
@@ -1550,20 +1572,22 @@ export class EventsService {
     latitude?: number | null;
     longitude?: number | null;
     locationDescription?: string | null;
+    locationName?: string | null;
   }): PlacePreset | null {
     return findMatchingPlacePreset(input, this.allKnownPlacePresets());
   }
 
   private async resolvePlacePresetForEvent(
-    eventItem: Pick<Event, 'latitude' | 'longitude' | 'locationDescription'>,
+    eventItem: Pick<Event, 'latitude' | 'longitude' | 'locationDescription' | 'locationName'>,
     request = this.selectionRequest,
   ): Promise<PlacePreset | null> {
     const localMatch = this.matchPlacePreset(eventItem);
-    if (localMatch || !eventItem.locationDescription?.trim() || !this.permissions.has(Permission.PlacePreset.Read)) {
+    const query = eventItem.locationName?.trim() || eventItem.locationDescription?.trim();
+    if (localMatch || !query || !this.permissions.has(Permission.PlacePreset.Read)) {
       return localMatch;
     }
 
-    const suggestions = await this.placePresetsService.searchPlacePresets(eventItem.locationDescription, 8);
+    const suggestions = await this.placePresetsService.searchPlacePresets(query, 8);
     if (request !== this.selectionRequest) {
       return null;
     }

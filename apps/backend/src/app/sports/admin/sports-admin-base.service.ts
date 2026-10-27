@@ -47,6 +47,8 @@ export abstract class SportsAdminBaseService extends SportsAdminLookupService {
           latitude: number | null;
           longitude: number | null;
           locationDescription: string | null;
+          name?: string;
+          internalNotes?: string | null;
         };
       } | null;
     },
@@ -84,6 +86,9 @@ export abstract class SportsAdminBaseService extends SportsAdminLookupService {
         allowSubscription: false,
         ...(scope.venue
           ? {
+              locationName: scope.venue.placePreset.name ?? null,
+              locationInternalNotes: scope.venue.placePreset.internalNotes ?? null,
+              isVirtual: false,
               latitude: scope.venue.placePreset.latitude,
               longitude: scope.venue.placePreset.longitude,
               locationDescription: [

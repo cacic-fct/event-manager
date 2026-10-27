@@ -133,6 +133,9 @@ export interface Event {
   latitude?: number | null;
   longitude?: number | null;
   locationDescription?: string | null;
+  locationName?: string | null;
+  locationInternalNotes?: string | null;
+  isVirtual?: boolean;
   majorEventId?: string | null;
   majorEvent?: MajorEvent | null;
   eventGroupId?: string | null;
@@ -193,6 +196,7 @@ export interface EventDraft {
 }
 
 export interface PlacePreset {
+  internalNotes?: string | null;
   id: string;
   name: string;
   latitude?: number | null;
@@ -323,6 +327,9 @@ export interface EventInput {
   latitude?: number | null;
   longitude?: number | null;
   locationDescription?: string | null;
+  locationName?: string | null;
+  locationInternalNotes?: string | null;
+  isVirtual?: boolean;
   majorEventId?: string | null;
   eventGroupId?: string | null;
   allowSubscription?: boolean;
@@ -368,8 +375,12 @@ export interface EventCloneInput {
 }
 
 export interface PlacePresetInput {
+  internalNotes?: string | null;
   name?: string;
   latitude?: number | null;
   longitude?: number | null;
   locationDescription?: string | null;
+  locationName?: string | null;
+  locationInternalNotes?: string | null;
+  isVirtual?: boolean;
 }

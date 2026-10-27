@@ -6,6 +6,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { parseTransferDocument } from '@cacic-fct/shared-data-transfer';
 import type {
   ResolvedTransferDocument,
   TransferApplyRequest,
@@ -250,7 +251,7 @@ describe('data transfer commit safety', () => {
       expect(publish).not.toHaveBeenCalled();
       expect(fixture.consume).not.toHaveBeenCalled();
       expect(fixture.recovery.recoverPending).not.toHaveBeenCalled();
-      expect(fixture.allocations.apply(input, actor.sub, allocation.token).resources[0].id).toBe(
+      expect(fixture.allocations.apply(parseTransferDocument(input), actor.sub, allocation.token).resources[0].id).toBe(
         allocation.ids['NEW-EVENT'],
       );
     },

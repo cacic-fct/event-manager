@@ -200,6 +200,9 @@ describe('SportsVenueAdminService', () => {
         data: {
           latitude: -22.12,
           longitude: -51.4,
+          locationName: 'Complexo esportivo',
+          locationInternalNotes: null,
+          isVirtual: false,
           locationDescription: 'Campus universitário, Ginásio Renovado, Quadra 2',
           updatedById: 'admin-1',
         },

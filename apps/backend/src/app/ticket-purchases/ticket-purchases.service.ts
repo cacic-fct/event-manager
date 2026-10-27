@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { AuditLogEntityType, AuditLogOperation, Prisma, type TicketPurchase } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { formatEventLocation } from '@cacic-fct/shared-utils';
 import { randomUUID } from 'node:crypto';
 import { addYears } from 'date-fns';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
@@ -362,7 +363,7 @@ export class TicketPurchasesService {
               type: purchase.event.type,
               startDate: purchase.event.startDate,
               endDate: purchase.event.endDate,
-              locationDescription: purchase.event.locationDescription,
+              locationDescription: formatEventLocation(purchase.event),
               autoSubscribe: false,
               selectedForConfirmation: false,
               hasScheduleConflict: false,

@@ -13,6 +13,24 @@ describe('ReceiptQueueMapper', () => {
     mapper = new ReceiptQueueMapper(allocator as never);
   });
 
+  it.each([
+    { locationName: 'Auditório', locationDescription: null, isVirtual: false, expectedLocation: 'Auditório' },
+    {
+      locationName: 'Auditório',
+      locationDescription: 'Bloco 5',
+      isVirtual: false,
+      expectedLocation: 'Auditório - Bloco 5',
+    },
+    { locationName: null, locationDescription: null, isVirtual: true, expectedLocation: 'Evento on-line' },
+  ])('preserves $expectedLocation in receipt queue event locations', ({ expectedLocation, ...eventLocation }) => {
+    const item = mapper.mapAdminQueueItem(createSubscription({ eventLocation }));
+
+    expect(item.events[0].locationDescription).toBe(expectedLocation);
+    expect(mapper.adminQueueSubscriptionSelect().selectedEvents.select.event.select).toEqual(
+      expect.objectContaining({ locationName: true, locationDescription: true, isVirtual: true }),
+    );
+  });
+
   it('maps the admin queue item and hides OCR fields until there is a match', () => {
     const item = mapper.mapAdminQueueItem(createSubscription({ amountMatched: false, nameMatched: false }));
 
@@ -87,6 +105,7 @@ function createSubscription(
     amountMatched?: boolean;
     matchedAmountText?: string | null;
     nameMatched?: boolean;
+    eventLocation?: { locationName: string | null; locationDescription: string | null; isVirtual: boolean };
   } = {},
 ) {
   const startDate = new Date('2026-01-01T10:00:00.000Z');
@@ -127,6 +146,7 @@ function createSubscription(
           startDate,
           endDate,
           locationDescription: null,
+          ...overrides.eventLocation,
           slots: 10,
           slotsAvailable: 2,
           autoSubscribe: false,

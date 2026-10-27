@@ -25,13 +25,13 @@ describe('AuditLogResolver', () => {
     }
   });
 
-  it('loads bounded entity history with the req actor', async () => {
+  it('loads a bounded entity-history page with the req actor', async () => {
     const input = { entityType: 'Event', entityId: 'event-1' } as AuditLogEntityHistoryInput;
     const expected = [{ id: 'audit-1' }];
     auditLog.listEntityHistory.mockResolvedValueOnce(expected);
 
-    await expect(resolver.auditLogEntries(input, { req: { user: actor } }, 25)).resolves.toBe(expected);
-    expect(auditLog.listEntityHistory).toHaveBeenCalledWith('Event', 'event-1', actor, 25);
+    await expect(resolver.auditLogEntries(input, { req: { user: actor } }, 25, 75)).resolves.toBe(expected);
+    expect(auditLog.listEntityHistory).toHaveBeenCalledWith('Event', 'event-1', actor, 25, 75);
   });
 
   it('searches the explorer with the request actor fallback', async () => {

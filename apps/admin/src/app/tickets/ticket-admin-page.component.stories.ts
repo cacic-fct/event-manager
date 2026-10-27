@@ -129,9 +129,17 @@ const historyEntries = [
   }),
   createAdminTicketHistoryEntry({
     ticketId: ticket.id,
+    id: 'history-holder-change',
+    operation: 'HOLDER_CHANGED',
+    previousHolder: holder,
+    newHolder: createTicketPersonSummary({ personId: 'person-merged', fullName: 'Alan Turing' }),
+    reason: 'Titularidade ajustada durante a unificação de pessoas.',
+  }),
+  createAdminTicketHistoryEntry({
+    ticketId: ticket.id,
     id: 'history-transfer',
     operation: 'TRANSFERRED',
-    previousHolder: holder,
+    previousHolder: createTicketPersonSummary({ personId: 'person-merged', fullName: 'Alan Turing' }),
     newHolder: createTicketPersonSummary({ personId: 'person-2', fullName: 'Grace Hopper' }),
     reason: 'Transferência confirmada.',
   }),
@@ -150,6 +158,13 @@ const historyEntries = [
     previousHolder: holder,
     newHolder: null,
     reason: 'Solicitação do titular.',
+  }),
+  createAdminTicketHistoryEntry({
+    ticketId: ticket.id,
+    id: 'history-restored',
+    operation: 'RESTORED',
+    actorName: 'Unificação de pessoas desfeita',
+    reason: 'Bilhete duplicado restaurado ao desfazer a unificação de pessoas.',
   }),
 ];
 const transfer = createTicketTransfer({

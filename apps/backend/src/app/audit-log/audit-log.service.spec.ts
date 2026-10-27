@@ -194,6 +194,32 @@ describe('AuditLogService', () => {
     expect(prisma.auditLogEntry.create).toHaveBeenCalled();
   });
 
+  it('keeps structured location edits separate from legacy combined snapshots', async () => {
+    prisma.auditLogEntry.findFirst.mockResolvedValue(
+      createAuditEntry({
+        entityType: AuditLogEntityType.EVENT,
+        entityId: 'event-1',
+        lastRecordedAt: new Date(),
+        changedFields: ['locationDescription'],
+        before: { locationDescription: 'Auditório A - Bloco 1' },
+        after: { locationDescription: 'Auditório B - Bloco 2' },
+        metadata: { eventLocationFormat: 'legacy-combined' },
+      }),
+    );
+
+    await service.record({
+      entityType: AuditLogEntityType.EVENT,
+      entityId: 'event-1',
+      operation: AuditLogOperation.UPDATE,
+      actor: { id: 'admin-1', name: 'Admin', type: AuditLogActorType.USER },
+      before: { locationName: 'Auditório B', locationDescription: 'Bloco 2' },
+      after: { locationName: 'Auditório C', locationDescription: 'Bloco 2' },
+    });
+
+    expect(prisma.auditLogEntry.update).not.toHaveBeenCalled();
+    expect(prisma.auditLogEntry.create).toHaveBeenCalled();
+  });
+
   it('blocks an individual import audit entry from bypassing the atomic batch undo', async () => {
     prisma.auditLogEntry.findUnique.mockResolvedValue(
       createAuditEntry({ metadata: { dataTransferBatchId: 'batch-1' } }),
@@ -992,13 +1018,87 @@ describe('AuditLogService', () => {
       },
     );
     expect(prisma.auditLogEntry.findMany).toHaveBeenCalledWith({
-      where: {
-        entityType: AuditLogEntityType.EVENT,
-        entityId: 'event-1',
-      },
+      where: { entityType: AuditLogEntityType.EVENT, entityId: 'event-1' },
       orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
+      skip: 0,
       take: 150,
     });
+  });
+
+  it('includes lecturer-profile history associated by person id and accepts a bounded page offset', async () => {
+    prisma.auditLogEntry.findMany.mockResolvedValue([
+      createAuditEntry({
+        id: 'audit-profile',
+        entityType: AuditLogEntityType.LECTURER_PROFILE,
+        entityId: 'profile-1',
+        entityLabel: 'Ana Silva',
+        operation: AuditLogOperation.CREATE,
+        before: null,
+        after: { id: 'profile-1', personId: 'person-1', displayName: 'Ana Silva' },
+        changes: Prisma.JsonNull,
+      }),
+      createAuditEntry({
+        id: 'audit-profile-delete',
+        entityType: AuditLogEntityType.LECTURER_PROFILE,
+        entityId: 'profile-2',
+        entityLabel: 'Ana Silva',
+        operation: AuditLogOperation.DELETE,
+        before: { id: 'profile-2', personId: 'person-1', displayName: 'Ana Silva' },
+        after: null,
+        changes: Prisma.JsonNull,
+      }),
+    ]);
+
+    await expect(service.listEntityHistory(AuditLogEntityType.PERSON, 'person-1', undefined, 51, 75)).resolves.toEqual([
+      expect.objectContaining({ id: 'audit-profile', entityType: AuditLogEntityType.LECTURER_PROFILE }),
+      expect.objectContaining({ id: 'audit-profile-delete', entityType: AuditLogEntityType.LECTURER_PROFILE }),
+    ]);
+
+    expect(prisma.auditLogEntry.findMany).toHaveBeenCalledWith({
+      where: {
+        OR: [
+          { entityType: AuditLogEntityType.PERSON, entityId: 'person-1' },
+          {
+            entityType: AuditLogEntityType.LECTURER_PROFILE,
+            OR: [
+              { before: { path: ['personId'], equals: 'person-1' } },
+              { after: { path: ['personId'], equals: 'person-1' } },
+            ],
+          },
+        ],
+      },
+      orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
+      skip: 75,
+      take: 51,
+    });
+  });
+
+  it('keeps event-form history scoped to the form entity without importing response history', async () => {
+    prisma.auditLogEntry.findMany.mockResolvedValue([
+      createAuditEntry({
+        id: 'audit-form',
+        entityType: AuditLogEntityType.EVENT_FORM,
+        entityId: 'form-1',
+      }),
+    ]);
+
+    await expect(service.listEntityHistory(AuditLogEntityType.EVENT_FORM, 'form-1', undefined)).resolves.toEqual([
+      expect.objectContaining({ id: 'audit-form', entityType: AuditLogEntityType.EVENT_FORM }),
+    ]);
+
+    expect(prisma.auditLogEntry.findMany).toHaveBeenCalledWith({
+      where: { entityType: AuditLogEntityType.EVENT_FORM, entityId: 'form-1' },
+      orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
+      skip: 0,
+      take: 80,
+    });
+  });
+
+  it('rejects entity-history offsets beyond the shared pagination limit', async () => {
+    await expect(
+      service.listEntityHistory(AuditLogEntityType.PERSON, 'person-1', undefined, 51, 10_001),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.auditLogEntry.findMany).not.toHaveBeenCalled();
   });
 
   it('rejects global audit exploration for non-super-admin users', async () => {
@@ -1831,6 +1931,95 @@ describe('AuditLogService', () => {
       permission: null,
     });
     expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    {
+      description: 'Auditório A - Bloco 1 - Piso térreo',
+      expected: { locationName: 'Auditório A', locationDescription: 'Bloco 1 - Piso térreo', isVirtual: false },
+    },
+    {
+      description: 'Praça da Geo',
+      expected: { locationName: 'Praça da Geo', locationDescription: null, isVirtual: false },
+    },
+    { description: null, expected: { locationName: null, locationDescription: null, isVirtual: false } },
+    {
+      description: ' Evento on-line ',
+      expected: { locationName: null, locationDescription: null, isVirtual: true, latitude: null, longitude: null },
+    },
+    {
+      description: 'Local '.repeat(60).trim(),
+      expected: { locationName: 'Local '.repeat(60).trim(), locationDescription: null, isVirtual: false },
+    },
+  ])('translates a legacy location during undo: $description', async ({ description, expected }) => {
+    const targetEntry = createAuditEntry({
+      entityType: AuditLogEntityType.EVENT,
+      entityId: 'event-1',
+      changedFields: ['locationDescription'],
+      before: { locationDescription: description },
+      after: { locationDescription: 'Auditório B - Bloco 2' },
+      metadata: { eventLocationFormat: 'legacy-combined' },
+    });
+    const currentEvent = {
+      id: 'event-1',
+      locationName: 'Auditório B',
+      locationDescription: 'Bloco 2',
+      isVirtual: false,
+    };
+    const revertLog = createAuditEntry({ id: 'revert-location', operation: AuditLogOperation.REVERT });
+    const tx = createTransaction({ ...currentEvent, ...expected }, revertLog);
+    prisma.auditLogEntry.findUnique.mockResolvedValue(targetEntry);
+    prisma.event.findUnique.mockResolvedValue(currentEvent);
+    prisma.$transaction.mockImplementation(async (operation: (transaction: typeof tx) => Promise<unknown>) =>
+      operation(tx),
+    );
+    prisma.auditLogEntry.findUniqueOrThrow.mockResolvedValue(revertLog);
+
+    await service.revertEntry({ entryId: targetEntry.id, mode: AuditLogRevertMode.ENTRY_ONLY }, undefined);
+
+    expect(tx.event.update).toHaveBeenCalledWith(expect.objectContaining({ data: expected }));
+  });
+
+  it('does not interpret a new description-only edit as a legacy combined location', async () => {
+    const targetEntry = createAuditEntry({
+      entityType: AuditLogEntityType.EVENT,
+      entityId: 'event-1',
+      changedFields: ['locationDescription'],
+      before: { locationDescription: 'Bloco 1 - Piso térreo' },
+      after: { locationDescription: 'Bloco 2' },
+    });
+    const currentEvent = { id: 'event-1', locationName: 'Auditório', locationDescription: 'Bloco 2' };
+    const revertLog = createAuditEntry({ id: 'revert-description', operation: AuditLogOperation.REVERT });
+    const tx = createTransaction({ ...currentEvent, locationDescription: 'Bloco 1 - Piso térreo' }, revertLog);
+    prisma.auditLogEntry.findUnique.mockResolvedValue(targetEntry);
+    prisma.event.findUnique.mockResolvedValue(currentEvent);
+    prisma.$transaction.mockImplementation(async (operation: (transaction: typeof tx) => Promise<unknown>) =>
+      operation(tx),
+    );
+    prisma.auditLogEntry.findUniqueOrThrow.mockResolvedValue(revertLog);
+
+    await service.revertEntry({ entryId: targetEntry.id, mode: AuditLogRevertMode.ENTRY_ONLY }, undefined);
+
+    expect(tx.event.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { locationDescription: 'Bloco 1 - Piso térreo' } }),
+    );
+  });
+
+  it.each(['locationName', 'isVirtual'])('blocks legacy undo after a later %s edit', async (field) => {
+    const targetEntry = createAuditEntry({
+      entityType: AuditLogEntityType.EVENT,
+      entityId: 'event-1',
+      changedFields: ['locationDescription'],
+      before: { locationDescription: 'Auditório A - Bloco 1' },
+      metadata: { eventLocationFormat: 'legacy-combined' },
+    });
+    prisma.auditLogEntry.findUnique.mockResolvedValue(targetEntry);
+    prisma.auditLogEntry.findMany.mockResolvedValue([{ changedFields: [field] }]);
+
+    await expect(
+      service.revertEntry({ entryId: targetEntry.id, mode: AuditLogRevertMode.ENTRY_ONLY }, undefined),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('validates reverted event tier IDs and recalculates attendance in the same transaction', async () => {

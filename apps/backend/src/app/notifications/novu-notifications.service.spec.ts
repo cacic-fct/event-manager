@@ -196,6 +196,41 @@ describe('NovuNotificationsService', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('uses the published workflow contract even when a legacy environment override exists', async () => {
+    const getConfiguration = config.get.getMockImplementation();
+    config.get.mockImplementation((key: string, fallback?: string) =>
+      key.endsWith('_WORKFLOW_IDENTIFIER') ? 'legacy-workflow-override' : getConfiguration?.(key, fallback),
+    );
+    const configuredService = new NovuNotificationsService(config as unknown as ConfigService);
+
+    await configuredService.notifyMajorEventSubscriptionStatusChanged(notificationFixture());
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).name).toBe('major-event-subscription-status-changed');
+    expect(config.get.mock.calls.some(([key]) => String(key).endsWith('_WORKFLOW_IDENTIFIER'))).toBe(false);
+  });
+
+  it('sends ticket transfer notifications with the published workflow and no action buttons', async () => {
+    const actionUrl = '/profile/wallet/ticket-transfers/transfer-1';
+    await expect(
+      service.notifyTicketTransfer({
+        notificationType: 'RECIPIENT_REQUESTED',
+        transferId: 'transfer-1',
+        recipientUserId: 'user-1',
+        ticketName: 'Ingresso da festa',
+        eventName: 'Festa',
+        actorFirstName: 'Ada',
+        actionUrl,
+      }),
+    ).resolves.toBe(true);
+
+    const request = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(request.name).toBe('ticket-transfer');
+    expect(request.payload.redirectUrl).toBe(actionUrl);
+    expect(request.payload).not.toHaveProperty('actionLabel');
+    expect(request.payload).not.toHaveProperty('actionUrl');
+    expect(request.overrides.fcm.data.url).toBe(actionUrl);
+  });
+
   it('sends subscription status payloads to Novu with labels and action data', async () => {
     await service.notifyMajorEventSubscriptionStatusChanged(
       notificationFixture({
@@ -730,6 +765,22 @@ describe('NovuNotificationsService', () => {
     await expect(service.cancelTriggeredNotification('winner-transaction')).resolves.toBe(true);
     await expect(service.deleteNotificationMessages('winner-transaction')).resolves.toBe(true);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it('links subscriber information notices to the authenticated detail and uses an idempotent revision', async () => {
+    const revision = new Date().toISOString();
+    await service.notifyEventSubscriberInformation({
+      eventId: 'event-1',
+      eventName: 'Atividade on-line',
+      revision,
+      recipient: { subscriberId: 'user-1' },
+    });
+    const request = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(request.name).toBe('event-subscriber-information');
+    expect(request.transactionId).toBe(`event-information:event-1:${revision}:user-1`);
+    expect(request.payload.actionUrl).toBe(
+      `/profile/attendances/event/event-1?informationRevision=${encodeURIComponent(revision)}`,
+    );
+    expect(request.payload).not.toHaveProperty('content');
   });
 });
 

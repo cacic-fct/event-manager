@@ -4,6 +4,8 @@ interface SportsMatchEventVenue {
   name: string;
   courtLabel: string | null;
   placePreset: {
+    name?: string;
+    internalNotes?: string | null;
     latitude: number | null;
     longitude: number | null;
     locationDescription: string | null;
@@ -15,6 +17,9 @@ function sportsMatchLocation(venue: SportsMatchEventVenue | null | undefined) {
     ? {
         latitude: venue.placePreset.latitude,
         longitude: venue.placePreset.longitude,
+        locationName: venue.placePreset.name ?? null,
+        locationInternalNotes: venue.placePreset.internalNotes ?? null,
+        isVirtual: false,
         locationDescription: [venue.placePreset.locationDescription, venue.name, venue.courtLabel]
           .filter(Boolean)
           .join(', '),
@@ -23,6 +28,9 @@ function sportsMatchLocation(venue: SportsMatchEventVenue | null | undefined) {
         latitude: null,
         longitude: null,
         locationDescription: null,
+        locationName: null,
+        locationInternalNotes: null,
+        isVirtual: false,
       };
 }
 

@@ -47,6 +47,9 @@ export const EVENT_DETAIL_FIELDS = `
   latitude
   longitude
   locationDescription
+  locationName
+  locationInternalNotes
+  isVirtual
   majorEventId
   eventGroupId
   audience
@@ -337,6 +340,7 @@ export const PLACE_PRESET_FIELDS = `
   latitude
   longitude
   locationDescription
+  internalNotes
 `;
 
 export const PERSON_SEARCH_FIELDS = `
@@ -517,7 +521,8 @@ export const PERSON_DETAIL_FIELDS = `
     personId
     displayName
     biography
-    publishGoogleUserPicture
+    selfEditingBlocked
+  publishGoogleUserPicture
     googleUserPicture
     email
     whatsapp

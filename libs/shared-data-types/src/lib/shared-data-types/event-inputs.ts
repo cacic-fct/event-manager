@@ -57,6 +57,15 @@ export class EventCreateInput {
   locationDescription?: string;
 
   @Field(() => String, { nullable: true })
+  locationName?: string | null;
+
+  @Field(() => String, { nullable: true })
+  locationInternalNotes?: string | null;
+
+  @Field(() => Boolean, { nullable: true })
+  isVirtual?: boolean;
+
+  @Field(() => String, { nullable: true })
   majorEventId?: string;
 
   @Field(() => String, { nullable: true })
@@ -193,6 +202,15 @@ export class EventUpdateInput {
 
   @Field(() => String, { nullable: true })
   locationDescription?: string;
+
+  @Field(() => String, { nullable: true })
+  locationName?: string | null;
+
+  @Field(() => String, { nullable: true })
+  locationInternalNotes?: string | null;
+
+  @Field(() => Boolean, { nullable: true })
+  isVirtual?: boolean;
 
   @Field(() => String, { nullable: true })
   majorEventId?: string;

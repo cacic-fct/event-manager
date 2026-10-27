@@ -104,6 +104,8 @@ export const PUBLIC_EVENT_SELECT = {
   latitude: true,
   longitude: true,
   locationDescription: true,
+  locationName: true,
+  isVirtual: true,
   majorEventId: true,
   majorEvent: {
     select: PUBLIC_MAJOR_EVENT_SELECT,
@@ -173,6 +175,8 @@ export const PUBLIC_MAP_EVENT_SELECT = {
   latitude: true,
   longitude: true,
   locationDescription: true,
+  locationName: true,
+  isVirtual: true,
 } satisfies Prisma.EventSelect;
 
 export const PUBLIC_MAJOR_EVENT_WHERE = {
@@ -829,6 +833,18 @@ export class PublicMapEvent {
     description: 'Optional participant-facing description of the mapped location.',
   })
   locationDescription?: string | null;
+
+  @Field(() => String, { nullable: true })
+  locationName?: string | null;
+
+  @Field(() => Boolean, { nullable: true })
+  isVirtual?: boolean;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'Formatted public place name and description, or Evento on-line.',
+  })
+  locationLabel?: string | null;
 }
 
 @ObjectType({
@@ -915,6 +931,18 @@ export class PublicEvent {
     description: 'Human-readable location text.',
   })
   locationDescription?: string | null;
+
+  @Field(() => String, { nullable: true })
+  locationName?: string | null;
+
+  @Field(() => Boolean, { nullable: true })
+  isVirtual?: boolean;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'Formatted public place name and description, or Evento on-line.',
+  })
+  locationLabel?: string | null;
 
   @Field(() => String, {
     nullable: true,

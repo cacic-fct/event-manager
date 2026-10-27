@@ -18,14 +18,16 @@
         informações salvas aqui serão públicas.
       </p>
     </div>
-    @if (!isEditing()) {
+    @if (!isEditing() && !selfEditingBlocked()) {
     <button matIconButton type="button" (click)="edit()" aria-label="Editar perfil">
       <mat-icon>edit</mat-icon>
     </button>
     }
   </section>
 
-  @if (!isEditing()) { @if (profilePreview(); as profile) {
+  @if (selfEditingBlocked()) {
+  <p>A edição deste perfil foi bloqueada pela organização. Entre em contato para solicitar alterações.</p>
+  } @if (!isEditing()) { @if (profilePreview(); as profile) {
   <h2>Pré-visualização</h2>
   <section class="profile-card">
     @if (profile.publishGoogleUserPicture && profile.googleUserPicture) {

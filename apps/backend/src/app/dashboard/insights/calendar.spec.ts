@@ -2,6 +2,14 @@ import { insightEvent } from './insights-service.fixtures';
 import { mapCalendarEvent } from './calendar';
 
 describe('mapCalendarEvent', () => {
+  it.each([
+    { locationName: 'Auditório', locationDescription: null, isVirtual: false, expected: 'Auditório' },
+    { locationName: 'Auditório', locationDescription: 'Bloco 5', isVirtual: false, expected: 'Auditório - Bloco 5' },
+    { locationName: null, locationDescription: null, isVirtual: true, expected: 'Evento on-line' },
+  ])('keeps the structured location visible: $expected', ({ expected, ...location }) => {
+    expect(mapCalendarEvent(insightEvent(location), new Date()).locationDescription).toBe(expected);
+  });
+
   it('maps event details and enables attendance collection inside the two-hour window', () => {
     const result = mapCalendarEvent(
       insightEvent({

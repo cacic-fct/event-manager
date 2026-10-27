@@ -340,60 +340,99 @@
 
           <section class="surface field-group">
             <h3>Local</h3>
-            <div class="field-grid">
-              <mat-form-field class="span-2">
-                <mat-label>Local</mat-label>
-                <mat-select
-                  formControlName="locationPresetId"
-                  (selectionChange)="workspace.applyPlacePreset($event.value)">
-                  <mat-option value="PERSONALIZADO">Personalizado</mat-option>
-                  @for (place of workspace.placePresetsService.sortedPlacePresets(); track place.id) {
-                    <mat-option [value]="place.id">
-                      {{ place.name }}
-                    </mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-              <mat-form-field class="span-2">
-                <mat-label>Nome e descrição exibidos aos usuários</mat-label>
-                <input matInput formControlName="locationDescription" [matAutocomplete]="placePresetAutocomplete" />
-                <mat-autocomplete
-                  #placePresetAutocomplete="matAutocomplete"
-                  [displayWith]="displayPlacePresetSuggestion"
-                  (optionSelected)="workspace.applyPlacePreset($event.option.value)">
-                  @for (place of workspace.placePresetSuggestions(); track place.id) {
-                    <mat-option [value]="place.id">
-                      <span>{{ place.locationDescription || place.name }}</span>
-                      @if (place.locationDescription && place.locationDescription !== place.name) {
-                        <small>{{ place.name }}</small>
-                      }
-                    </mat-option>
-                  }
-                </mat-autocomplete>
-              </mat-form-field>
-            </div>
-            <button mat-stroked-button type="button" (click)="openLocationPicker()">
-              <mat-icon>map</mat-icon>
-              Selecionar no mapa</button
-            ><mat-expansion-panel [expanded]="workspace.eventForm.hasError('latitudeRequireslongitude')">
-              <mat-expansion-panel-header
-                ><mat-panel-title>Ajustar coordenadas</mat-panel-title></mat-expansion-panel-header
-              >
+            <mat-form-field>
+              <mat-label>Formato</mat-label>
+              <mat-select formControlName="isVirtual">
+                <mat-option [value]="false">Presencial</mat-option>
+                <mat-option [value]="true">On-line</mat-option>
+              </mat-select>
+            </mat-form-field>
+            @if (!workspace.eventForm.controls.isVirtual.value) {
               <div class="field-grid">
-                <mat-form-field>
-                  <mat-label>Latitude</mat-label>
-                  <input matInput formControlName="latitude" />
+                <mat-form-field class="span-2">
+                  <mat-label>Nome do local</mat-label>
+                  <input
+                    matInput
+                    formControlName="locationName"
+                    maxlength="250"
+                    [matAutocomplete]="placePresetAutocomplete"
+                    [attr.aria-invalid]="workspace.eventForm.hasError('locationNameRequired')"
+                    [attr.aria-describedby]="
+                      workspace.eventForm.hasError('locationNameRequired') ? 'event-location-name-error' : null
+                    " />
+                  <mat-autocomplete
+                    #placePresetAutocomplete="matAutocomplete"
+                    [displayWith]="displayPlacePresetSuggestion"
+                    (optionSelected)="workspace.applyPlacePreset($event.option.value)">
+                    @for (place of workspace.placePresetSuggestions(); track place.id) {
+                      <mat-option [value]="place.id"
+                        >{{ place.name }}
+                        @if (place.locationDescription) {
+                          — {{ place.locationDescription }}
+                        }
+                      </mat-option>
+                    }
+                  </mat-autocomplete>
                 </mat-form-field>
-                <mat-form-field>
-                  <mat-label>Longitude</mat-label>
-                  <input matInput formControlName="longitude" />
+                <mat-form-field class="span-2">
+                  <mat-label>Descrição do local</mat-label>
+                  <textarea matInput rows="2" formControlName="locationDescription" maxlength="2000"></textarea>
+                  <mat-hint>Bloco, sala ou como chegar.</mat-hint>
                 </mat-form-field>
               </div>
-              @if (workspace.eventForm.hasError('latitudeRequireslongitude')) {
-                <mat-error>Preencha latitude e longitude juntas.</mat-error>
+              @if (workspace.eventForm.hasError('locationNameRequired')) {
+                <mat-error id="event-location-name-error"
+                  >Informe o nome do local ao preencher a descrição ou as coordenadas.</mat-error
+                >
               }
+              <button mat-stroked-button type="button" (click)="openLocationPicker()">
+                <mat-icon>map</mat-icon>Selecionar no mapa
+              </button>
+              <mat-expansion-panel [expanded]="workspace.eventForm.hasError('latitudeRequireslongitude')">
+                <mat-expansion-panel-header
+                  ><mat-panel-title>Ajustar coordenadas</mat-panel-title></mat-expansion-panel-header
+                >
+                <div class="field-grid">
+                  <mat-form-field
+                    ><mat-label>Latitude</mat-label><input matInput formControlName="latitude"
+                  /></mat-form-field>
+                  <mat-form-field
+                    ><mat-label>Longitude</mat-label><input matInput formControlName="longitude"
+                  /></mat-form-field>
+                </div>
+                @if (workspace.eventForm.hasError('latitudeRequireslongitude')) {
+                  <mat-error>Preencha latitude e longitude juntas.</mat-error>
+                }
+              </mat-expansion-panel>
+            } @else {
+              <p>Publique o link de acesso em Informações para inscritos.</p>
+            }
+            <mat-expansion-panel>
+              <mat-expansion-panel-header>
+                <mat-panel-title>Observações internas</mat-panel-title>
+                @if (workspace.eventForm.controls.locationInternalNotes.value) {
+                  <mat-panel-description>Com anotações</mat-panel-description>
+                }
+              </mat-expansion-panel-header>
+              <div class="field-grid">
+                <mat-form-field class="span-2">
+                  <mat-label>Observações do local</mat-label>
+                  <textarea matInput rows="3" formControlName="locationInternalNotes" maxlength="10000"></textarea>
+                  <mat-hint>Markdown. Somente administradores.</mat-hint>
+                  <button
+                    mat-icon-button
+                    matSuffix
+                    type="button"
+                    aria-label="Pré-visualizar observações internas"
+                    matTooltip="Pré-visualizar"
+                    (click)="previewLocationNotes()">
+                    <mat-icon>preview</mat-icon>
+                  </button>
+                </mat-form-field>
+              </div>
             </mat-expansion-panel>
           </section>
+
           <mat-expansion-panel
             [expanded]="
               workspace.eventForm.hasError('buttonTextRequiresbuttonLink') ||
@@ -738,6 +777,12 @@
             }
           </div>
         </section>
+        @if (workspace.selectedEvent(); as event) {
+          <app-event-subscriber-information
+            [eventId]="event.id"
+            [published]="event.publicationState === 'PUBLISHED'"
+            [editable]="canEditEvent(event)" />
+        }
       </section>
     </div>
   </section>

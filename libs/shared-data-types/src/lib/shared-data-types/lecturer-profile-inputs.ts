@@ -20,3 +20,9 @@ export class LecturerProfileUpsertInput {
   @Field(() => String, { nullable: true })
   linkedin?: string | null;
 }
+
+@InputType()
+export class AdminLecturerProfileUpsertInput extends LecturerProfileUpsertInput {
+  @Field(() => Boolean, { nullable: true })
+  selfEditingBlocked?: boolean;
+}

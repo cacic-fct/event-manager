@@ -84,7 +84,7 @@ it('resolves Nest providers and uses the injected authorization services for tre
   try {
     const actor = { sub: 'organizer-1' } as AuthenticatedUser;
     expect(await module.get(DataTransferController).schema({ user: actor } as never)).toMatchObject({
-      $id: 'urn:cacic:event-data:v1',
+      $id: 'urn:cacic:event-data:v2',
     });
     const exported = await module
       .get(DataTransferService)
@@ -92,6 +92,7 @@ it('resolves Nest providers and uses the injected authorization services for tre
         { target: { kind: 'event', id: event.id }, includeDescendants: false, includeConfiguration: false },
         actor,
       );
+    expect(exported.document).toMatchObject({ $schema: 'urn:cacic:event-data:v2', version: 2 });
     expect(exported.document.resources).toEqual([
       expect.objectContaining({ kind: 'event', id: event.id, data: expect.objectContaining({ name: event.name }) }),
     ]);

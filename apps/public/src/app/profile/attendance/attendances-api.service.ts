@@ -5,6 +5,7 @@ import {
   PUBLIC_EVENT_GROUP_DETAIL_FIELDS,
   PUBLIC_MAJOR_EVENT_PROFILE_FIELDS,
   type CertificateDownload,
+  type CertificateParticipationSummary,
   type CertificateScope,
   type EventTargetType,
   type PublicEvent,
@@ -113,6 +114,7 @@ export interface OrganizerInfo {
 }
 
 export interface LecturerProfile {
+  selfEditingBlocked: boolean;
   id: string;
   personId: string;
   displayName: string;
@@ -158,6 +160,7 @@ const LECTURER_PROFILE_FIELDS = `
   personId
   displayName
   biography
+  selfEditingBlocked
   publishGoogleUserPicture
   googleUserPicture
   email
@@ -168,6 +171,15 @@ const LECTURER_PROFILE_FIELDS = `
 @Service()
 export class AttendancesApiService {
   private readonly http = inject(HttpClient);
+
+  getCertificateParticipation(scope: CertificateScope, targetId: string): Observable<CertificateParticipationSummary> {
+    return this.query<{ currentUserCertificateParticipation: CertificateParticipationSummary }>(
+      `query CurrentUserCertificateParticipation($scope: CertificateScope!, $targetId: String!) {
+        currentUserCertificateParticipation(scope: $scope, targetId: $targetId) { status actionTargetId }
+      }`,
+      { scope, targetId },
+    ).pipe(map((data) => data.currentUserCertificateParticipation));
+  }
 
   getSubscriptionsFeed(): Observable<SubscriptionsFeed> {
     return this.query<{
@@ -226,7 +238,7 @@ export class AttendancesApiService {
                 type
                 description
                 shortDescription
-                locationDescription
+                locationDescription: locationLabel
                 majorEventId
                 eventGroupId
                 eventGroup {
@@ -378,6 +390,24 @@ export class AttendancesApiService {
         };
       }),
     );
+  }
+
+  getSubscriberInformationForEvents(eventIds: string[]) {
+    return this.query<{ currentUserEventSubscriberInformationList: { eventId: string; content: string | null }[] }>(
+      `query CurrentUserEventSubscriberInformationList($eventIds: [String!]!) {
+        currentUserEventSubscriberInformationList(eventIds: $eventIds) { eventId content }
+      }`,
+      { eventIds },
+    ).pipe(map((data) => data.currentUserEventSubscriberInformationList));
+  }
+
+  getSubscriberInformation(eventId: string) {
+    return this.query<{ currentUserEventSubscriberInformation: { content: string | null } | null }>(
+      `query CurrentUserEventSubscriberInformation($eventId: String!) {
+        currentUserEventSubscriberInformation(eventId: $eventId) { content }
+      }`,
+      { eventId },
+    ).pipe(map((data) => data.currentUserEventSubscriberInformation?.content ?? null));
   }
 
   getEventDetails(eventId: string): Observable<EventDetails> {

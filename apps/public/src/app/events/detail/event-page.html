@@ -290,7 +290,10 @@
     @if (event.locationDescription) {
     <p class="location-line">
       <mat-icon aria-hidden="true">place</mat-icon>
-      {{ event.locationDescription }}
+      {{ event.isVirtual ? 'Evento on-line' : (event.locationName || event.locationDescription) }} @if (!event.isVirtual
+      && event.locationName && event.locationDetails && event.locationDetails !== event.locationName) {
+      <span>{{ event.locationDetails }}</span>
+      }
     </p>
     } @if (event.latitude !== null && event.longitude !== null) { @defer (on viewport) {
     <app-event-location-map

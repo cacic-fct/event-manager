@@ -31,12 +31,9 @@
 @if (!disabled() && results().length) {
   <div class="person-search-results" aria-label="Pessoas encontradas">
     @for (person of results(); track person.id) {
-      <button
-        class="person-search-result"
-        type="button"
-        [attr.aria-label]="resultActionLabel() + ' ' + person.name"
-        (click)="selectPerson(person)">
+      <button class="person-search-result" type="button" (click)="selectPerson(person)">
         <span>
+          <span class="person-search-action">{{ resultActionLabel() }}</span>
           <strong>{{ person.name }}</strong>
           <small>{{ person.email || 'Sem e-mail principal' }}</small>
           @if (showIdentitySummary()) {

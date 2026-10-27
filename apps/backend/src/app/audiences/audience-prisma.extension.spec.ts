@@ -36,9 +36,6 @@ jestEsm.unstable_mockModule('@prisma/adapter-pg', () => ({
 const { PrismaService: PrismaServiceClass } = await import('../prisma/prisma.service');
 const { ANONYMOUS_AUDIENCE, audienceContext } = await import('./audience-context');
 const { scopeAudienceQuery } = await import('./audience-prisma.extension');
-const generateAudienceRelationsPath = fileURLToPath(
-  new URL('../../../../../tools/generate-audience-relations.mjs', import.meta.url),
-);
 const generateAudienceRelationsTestPath = fileURLToPath(
   new URL('../../../../../tools/generate-audience-relations.test.mjs', import.meta.url),
 );
@@ -53,11 +50,7 @@ describe('event audience query boundary', () => {
     await prisma.$disconnect();
   });
 
-  it('keeps foreign-key ownership and relation cardinalities synchronized with the schema', () => {
-    expect(() => execFileSync(process.execPath, [generateAudienceRelationsPath, '--check'])).not.toThrow();
-  });
-
-  it('accepts formatted relation metadata while rejecting stale relation data', () => {
+  it('generates relation metadata through Prisma and keeps it synchronized with the schema', () => {
     execFileSync(process.execPath, ['--test', generateAudienceRelationsTestPath]);
   });
 

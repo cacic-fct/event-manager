@@ -40,6 +40,9 @@ function placePreset(index: number, incomplete = false): PlacePreset {
       : faker.helpers.arrayElement(['FCT-Unesp', 'Piso térreo', 'Próximo à secretaria']),
     createdAt: '2026-05-16T12:00:00.000Z',
     updatedAt: '2026-05-16T12:00:00.000Z',
+    internalNotes: incomplete
+      ? null
+      : '**Acesso:** retirar a chave na secretaria.\n\n- Testar o projetor antes do evento.',
     createdById: 'storybook-admin',
     updatedById: 'storybook-admin',
   });

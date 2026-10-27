@@ -213,6 +213,9 @@ export class SportsVenueAdminService extends SportsAdminBaseService {
           data: {
             latitude: result.placePreset.latitude,
             longitude: result.placePreset.longitude,
+            locationName: result.placePreset.name,
+            locationInternalNotes: result.placePreset.internalNotes,
+            isVirtual: false,
             locationDescription: [result.placePreset.locationDescription, result.name, result.courtLabel]
               .filter(Boolean)
               .join(', '),

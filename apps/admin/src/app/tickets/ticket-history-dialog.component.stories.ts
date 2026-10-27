@@ -17,6 +17,7 @@ const originalHolder = createTicketPersonSummary({
   firstName: 'Grace',
 });
 const currentHolder = createTicketPersonSummary({ personId: 'person-2', fullName: 'Ada Lovelace', firstName: 'Ada' });
+const mergedHolder = createTicketPersonSummary({ personId: 'person-merged', fullName: 'Alan Turing' });
 const ticket = createAdminEventTicket({
   id: '019af4e8-6830-7000-a000-123456789abc',
   eventId: event.id,
@@ -41,9 +42,18 @@ const history = [
   }),
   createAdminTicketHistoryEntry({
     ticketId: ticket.id,
+    id: 'history-holder-changed',
+    operation: 'HOLDER_CHANGED',
+    previousHolder: originalHolder,
+    newHolder: mergedHolder,
+    actorName: 'Unificação de pessoas',
+    reason: 'Titularidade ajustada durante a unificação de pessoas.',
+  }),
+  createAdminTicketHistoryEntry({
+    ticketId: ticket.id,
     id: 'history-transfer',
     operation: 'TRANSFERRED',
-    previousHolder: originalHolder,
+    previousHolder: mergedHolder,
     newHolder: currentHolder,
     actorName: 'Equipe de eventos',
     reason: 'Transferência confirmada por Ada Lovelace.',
@@ -63,8 +73,15 @@ const history = [
     operation: 'REVOKED',
     previousHolder: currentHolder,
     newHolder: null,
-    actorName: 'Equipe de eventos',
-    reason: 'Solicitação do titular.',
+    actorName: 'Unificação de pessoas',
+    reason: 'Bilhete duplicado arquivado durante a unificação de pessoas.',
+  }),
+  createAdminTicketHistoryEntry({
+    ticketId: ticket.id,
+    id: 'history-restored',
+    operation: 'RESTORED',
+    actorName: 'Unificação de pessoas desfeita',
+    reason: 'Bilhete duplicado restaurado ao desfazer a unificação de pessoas.',
   }),
 ];
 
@@ -98,11 +115,17 @@ const meta: Meta<TicketHistoryStoryArgs> = {
               history: context.args.empty
                 ? []
                 : history
-                    .filter(
-                      (entry) =>
-                        (entry.operation !== 'CONSUMED' && entry.operation !== 'REVOKED') ||
-                        entry.operation === context.args.status,
-                    )
+                    .filter((entry) => {
+                      if (entry.operation === 'RESTORED') return context.args.status === 'ACTIVE';
+                      if (entry.operation === 'REVOKED') {
+                        return (
+                          context.args.status === 'REVOKED' ||
+                          (context.args.status === 'ACTIVE' &&
+                            entry.reason === 'Bilhete duplicado arquivado durante a unificação de pessoas.')
+                        );
+                      }
+                      return entry.operation !== 'CONSUMED' || context.args.status === 'CONSUMED';
+                    })
                     .map((entry) => ({
                       ...entry,
                       reason: context.args.longReason
@@ -127,9 +150,10 @@ export const OwnershipTrail: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Histórico do bilhete' })).toBeVisible();
     await expect(canvas.getByText('Titularidade transferida')).toBeVisible();
-    const transfer = canvasElement.querySelectorAll('.history-entry')[1];
+    await expect(canvas.getByText('Titularidade ajustada')).toBeVisible();
+    const transfer = canvasElement.querySelectorAll('.history-entry')[2];
     expect(transfer).not.toBeNull();
-    await expect(transfer).toHaveTextContent('Grace Hopper');
+    await expect(transfer).toHaveTextContent('Alan Turing');
     await expect(transfer).toHaveTextContent('Ada Lovelace');
   },
 };
@@ -145,6 +169,21 @@ export const RevokedTicket: Story = {
   args: { status: 'REVOKED' },
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByText('Bilhete revogado')).toBeVisible();
+  },
+};
+
+export const RestoredTicket: Story = {
+  args: { status: 'ACTIVE' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Bilhete restaurado')).toBeVisible();
+    await expect(canvas.getByText('Bilhete revogado')).toBeVisible();
+    await expect(
+      canvas.getByText('Motivo: Bilhete duplicado arquivado durante a unificação de pessoas.'),
+    ).toBeVisible();
+    await expect(
+      canvas.getByText('Motivo: Bilhete duplicado restaurado ao desfazer a unificação de pessoas.'),
+    ).toBeVisible();
   },
 };
 

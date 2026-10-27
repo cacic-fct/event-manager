@@ -1,5 +1,15 @@
 import { DatePipe } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+  viewChildren,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -17,8 +27,10 @@ import {
   ConfirmationDialogComponent,
   ConfirmationDialogData,
 } from '../../app-shell/dialogs/confirmation-dialog.component';
-import { auditLogOperationIcon, auditLogOperationLabel } from '../audit-log.utils';
+import { auditLogEntityTypeLabel, auditLogOperationIcon, auditLogOperationLabel } from '../audit-log.utils';
 import { AdminFeedbackService } from '../../feedback/admin-feedback.service';
+
+const HISTORY_PAGE_SIZE = 50;
 
 export interface AuditLogDialogData {
   entityType: AuditLogEntityType;
@@ -62,7 +74,13 @@ export interface AuditLogDialogData {
       } @else {
         <section class="timeline" aria-label="Histórico de alterações">
           @for (entry of entries(); track entry.id) {
-            <article class="history-entry" [class.reverted]="entry.revertedAt">
+            <article
+              #historyEntry
+              class="history-entry"
+              tabindex="-1"
+              [attr.aria-label]="entry.summary || fallbackSummary(entry)"
+              [attr.data-audit-entry-id]="entry.id"
+              [class.reverted]="entry.revertedAt">
               <div class="entry-marker">
                 <mat-icon>{{ operationIcon(entry.operation) }}</mat-icon>
               </div>
@@ -91,6 +109,10 @@ export interface AuditLogDialogData {
                     <span>{{ entry.groupedCount }} alterações agrupadas</span>
                   }
                 </div>
+
+                @if (entryContext(entry); as context) {
+                  <p class="entry-context">{{ context }}</p>
+                }
 
                 @if (entry.groupedCount > 1) {
                   <p class="grouping-note">
@@ -152,6 +174,27 @@ export interface AuditLogDialogData {
             </div>
           }
         </section>
+
+        @if (hasMore()) {
+          <div class="history-pagination" aria-live="polite">
+            @if (loadMoreError()) {
+              <p role="alert">{{ loadMoreError() }}</p>
+              <button mat-stroked-button type="button" (click)="loadMore()">
+                <mat-icon>refresh</mat-icon>
+                Tentar carregar novamente
+              </button>
+            } @else {
+              <button mat-stroked-button type="button" [disabled]="loadingMore()" (click)="loadMore()">
+                @if (loadingMore()) {
+                  <mat-spinner diameter="18" />
+                } @else {
+                  <mat-icon>expand_more</mat-icon>
+                }
+                {{ loadingMore() ? 'Carregando...' : 'Carregar mais' }}
+              </button>
+            }
+          </div>
+        }
       }
     </mat-dialog-content>
 
@@ -164,6 +207,21 @@ export interface AuditLogDialogData {
       display: grid;
       gap: 1rem;
       min-width: min(44rem, 100%);
+    }
+
+    .history-pagination {
+      align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: center;
+      padding: 0.25rem 0 0.5rem;
+    }
+
+    .history-pagination p {
+      color: var(--mat-sys-error);
+      font: var(--mat-sys-body-small);
+      margin: 0;
     }
 
     .history-header {
@@ -187,6 +245,7 @@ export interface AuditLogDialogData {
 
     .history-header span,
     .entry-meta,
+    .entry-context,
     .grouping-note,
     .reverted-note {
       color: var(--mat-sys-on-surface-variant);
@@ -272,6 +331,10 @@ export interface AuditLogDialogData {
       flex-wrap: wrap;
     }
 
+    .entry-context {
+      margin: -0.25rem 0 0;
+    }
+
     .entry-meta span,
     .change-values {
       align-items: center;
@@ -346,36 +409,121 @@ export class AuditLogDialogComponent {
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly feedback = inject(AdminFeedbackService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
+  private readonly historyEntryElements = viewChildren<ElementRef<HTMLElement>>('historyEntry');
 
   protected readonly entries = signal<AuditLogEntry[]>([]);
   protected readonly loading = signal(true);
+  protected readonly loadingMore = signal(false);
+  protected readonly hasMore = signal(false);
+  protected readonly loadMoreError = signal<string | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly confirmingEntryId = signal<string | null>(null);
   protected readonly revertingEntryId = signal<string | null>(null);
   protected readonly title = computed(() => this.data.entityLabel || this.data.entityId);
   protected readonly busyEntryId = computed(() => this.confirmingEntryId() ?? this.revertingEntryId());
+  private readonly nextSkip = signal(0);
+  private requestGeneration = 0;
 
   constructor() {
+    this.destroyRef.onDestroy(() => {
+      this.requestGeneration += 1;
+    });
     void this.load();
   }
 
   protected async load(): Promise<void> {
+    const generation = ++this.requestGeneration;
     this.loading.set(true);
+    this.loadingMore.set(false);
     this.error.set(null);
+    this.entries.set([]);
+    this.hasMore.set(false);
+    this.loadMoreError.set(null);
+    this.nextSkip.set(0);
 
     try {
       const entries = await firstValueFrom(
-        this.api.listEntityHistory({
-          entityType: this.data.entityType,
-          entityId: this.data.entityId,
-        }),
+        this.api.listEntityHistory(
+          {
+            entityType: this.data.entityType,
+            entityId: this.data.entityId,
+          },
+          HISTORY_PAGE_SIZE + 1,
+          0,
+        ),
       );
-      this.entries.set(entries);
+      if (generation !== this.requestGeneration) {
+        return;
+      }
+
+      const page = entries.slice(0, HISTORY_PAGE_SIZE);
+      this.entries.set(page);
+      this.nextSkip.set(page.length);
+      this.hasMore.set(entries.length > HISTORY_PAGE_SIZE);
     } catch (error) {
-      this.error.set(error instanceof Error ? error.message : 'Erro desconhecido.');
+      if (generation === this.requestGeneration) {
+        this.error.set(this.errorMessage(error));
+      }
     } finally {
-      this.loading.set(false);
+      if (generation === this.requestGeneration) {
+        this.loading.set(false);
+      }
     }
+  }
+
+  protected async loadMore(): Promise<void> {
+    if (this.loadingMore() || !this.hasMore()) {
+      return;
+    }
+
+    const skip = this.nextSkip();
+    const generation = this.requestGeneration;
+    this.loadingMore.set(true);
+    this.loadMoreError.set(null);
+
+    try {
+      const entries = await firstValueFrom(
+        this.api.listEntityHistory(
+          {
+            entityType: this.data.entityType,
+            entityId: this.data.entityId,
+          },
+          HISTORY_PAGE_SIZE + 1,
+          skip,
+        ),
+      );
+      if (generation !== this.requestGeneration) {
+        return;
+      }
+
+      const page = entries.slice(0, HISTORY_PAGE_SIZE);
+      const existingIds = new Set(this.entries().map((entry) => entry.id));
+      const newEntries = page.filter((entry) => !existingIds.has(entry.id));
+      this.entries.update((current) => [...current, ...newEntries]);
+      this.nextSkip.set(skip + page.length);
+      this.hasMore.set(entries.length > HISTORY_PAGE_SIZE);
+      if (newEntries[0]) {
+        this.focusEntryAfterRender(newEntries[0].id, generation);
+      }
+    } catch (error) {
+      if (generation === this.requestGeneration) {
+        this.loadMoreError.set(this.errorMessage(error));
+      }
+    } finally {
+      if (generation === this.requestGeneration) {
+        this.loadingMore.set(false);
+      }
+    }
+  }
+
+  protected entryContext(entry: AuditLogEntry): string | null {
+    if (entry.entityType === this.data.entityType && entry.entityId === this.data.entityId) {
+      return null;
+    }
+
+    return `${auditLogEntityTypeLabel(entry.entityType)}: ${entry.entityLabel || entry.entityId}`;
   }
 
   protected async requestRevert(entry: AuditLogEntry, mode: AuditLogRevertMode): Promise<void> {
@@ -443,6 +591,25 @@ export class AuditLogDialogComponent {
 
   protected operationIcon(operation: AuditLogOperation): string {
     return auditLogOperationIcon(operation);
+  }
+
+  private errorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Erro desconhecido.';
+  }
+
+  private focusEntryAfterRender(entryId: string, generation: number): void {
+    afterNextRender(
+      () => {
+        if (generation !== this.requestGeneration) {
+          return;
+        }
+
+        this.historyEntryElements()
+          .find(({ nativeElement }) => nativeElement.dataset['auditEntryId'] === entryId)
+          ?.nativeElement.focus();
+      },
+      { injector: this.injector },
+    );
   }
 
   private revertConfirmationData(entry: AuditLogEntry, mode: AuditLogRevertMode): ConfirmationDialogData {

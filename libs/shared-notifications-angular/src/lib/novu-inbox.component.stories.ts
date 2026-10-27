@@ -127,23 +127,26 @@ function createNotification(
   return notification;
 }
 
+const preferenceWorkflows = [
+  { identifier: 'prize-draw-undone', name: 'Sorteio desfeito' },
+  { identifier: 'audience-invitation', name: 'Convite para atividade' },
+  { identifier: 'certificate-available', name: 'Certificado disponível' },
+  { identifier: 'offline-attendance-review-queued', name: 'Revisão de presença off-line' },
+  { identifier: 'event-form-available', name: 'Formulário disponível' },
+  { identifier: 'ticket-transfer', name: 'Transferência de bilhete' },
+  { identifier: 'online-attendance-available', name: 'Presença on-line disponível' },
+  { identifier: 'major-event-subscription-status-changed', name: 'Inscrição em grande evento' },
+  { identifier: 'event-subscriber-information', name: 'Informações do evento' },
+  { identifier: 'prize-draw-winner', name: 'Resultado de sorteio' },
+];
+
 function createPreference(index: number): MutablePreference {
+  const workflow = preferenceWorkflows[index - 1];
   const preference = {
-    level: index === 0 ? 'global' : 'template',
+    level: workflow ? 'template' : 'global',
     enabled: true,
-    channels: {
-      in_app: true,
-      push: index !== 2,
-      email: index === 1,
-    },
-    workflow:
-      index === 0
-        ? undefined
-        : {
-            id: `workflow-${index}`,
-            name: faker.helpers.arrayElement(['Inscrições', 'Pagamentos', 'Certificados']),
-            identifier: `workflow-${index}`,
-          },
+    channels: { in_app: true, push: index !== 5 },
+    workflow: workflow ? { ...workflow, id: workflow.identifier, critical: false } : undefined,
     update: async ({ channels }: { channels: ChannelPreference }) => {
       preference.channels = channels;
       return result(preference);
@@ -153,10 +156,14 @@ function createPreference(index: number): MutablePreference {
   return preference;
 }
 
+function createPreferences(): MutablePreference[] {
+  return Array.from({ length: preferenceWorkflows.length + 1 }, (_, index) => createPreference(index));
+}
+
 class MockNovuNotificationsService {
   private readonly configured = signal(true);
   private readonly notifications = signal<MutableNotification[]>([]);
-  private readonly preferences = signal<MutablePreference[]>([0, 1, 2].map((index) => createPreference(index)));
+  private readonly preferences = signal<MutablePreference[]>(createPreferences());
   private readonly moreAvailable = signal(false);
   private readonly scenarioVersion = signal(0);
 
@@ -193,7 +200,7 @@ class MockNovuNotificationsService {
     this.unreadCount.set(
       nextNotifications.filter((notification) => !notification.isRead && !notification.isArchived).length,
     );
-    this.preferences.set([0, 1, 2].map((index) => createPreference(index)));
+    this.preferences.set(createPreferences());
     this.scenarioVersion.update((version) => version + 1);
   }
 
@@ -503,5 +510,28 @@ export const AdminUnreadReview: Story = {
     const page = within(canvasElement.ownerDocument.body);
     await userEvent.click(await page.findByRole('menuitem', { name: /Marcar todas como lidas/ }));
     await expect(await canvas.findByText('Nenhuma notificação')).toBeVisible();
+  },
+};
+
+export const Preferences: Story = {
+  args: { ...defaultArgs, permission: 'granted', pushPromptDismissed: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Configurações' }));
+    await expect(canvas.queryByRole('region', { name: 'Notificações obrigatórias' })).toBeNull();
+    await expect(canvas.queryByText('Convites para eventos')).toBeNull();
+    await expect(canvas.queryByText('Revisão de presenças offline')).toBeNull();
+    const certificate = await canvas.findByRole('switch', { name: 'Certificados: no navegador' });
+    await expect(certificate).toBeChecked();
+    await userEvent.click(certificate);
+    await expect(certificate).not.toBeChecked();
+    await expect(certificate).toBeEnabled();
+    const globalPush = canvas.getByRole('switch', { name: 'Avisos opcionais: no navegador' });
+    await userEvent.click(globalPush);
+    await expect(globalPush).not.toBeChecked();
+    await expect(certificate).toBeDisabled();
+    await userEvent.click(globalPush);
+    await expect(certificate).toBeEnabled();
+    await expect(certificate).not.toBeChecked();
   },
 };

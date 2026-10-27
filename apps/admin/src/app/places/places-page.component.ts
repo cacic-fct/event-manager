@@ -1,5 +1,6 @@
+import { MarkdownPreviewDialogComponent } from '@cacic-fct/shared-angular';
 import { DOCUMENT } from '@angular/common';
-import { Component, ElementRef, OnDestroy, afterNextRender, inject, viewChild } from '@angular/core';
+import { Component, ElementRef, OnDestroy, afterNextRender, effect, inject, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -63,6 +64,10 @@ export class PlacesPageComponent implements OnDestroy {
   private renderVersion = 0;
 
   constructor() {
+    effect(() => {
+      this.mapTarget();
+      if (this.hasRendered) void this.renderMap();
+    });
     void this.workspace.loadPlacePresets();
     afterNextRender(() => {
       this.hasRendered = true;
@@ -99,6 +104,13 @@ export class PlacesPageComponent implements OnDestroy {
 
   protected hasLocation(): boolean {
     return this.location() !== null;
+  }
+
+  protected previewInternalNotes(): void {
+    this.dialog.open(MarkdownPreviewDialogComponent, {
+      data: { content: this.workspace.placeForm.controls.internalNotes.value, title: 'Observações internas do local' },
+      maxWidth: 'calc(100vw - 32px)',
+    });
   }
 
   protected openLocationPicker(): void {

@@ -74,7 +74,12 @@ describe('MoreInfo', () => {
     }).compileComponents();
 
     httpTesting = TestBed.inject(HttpTestingController);
+    vi.spyOn(TestBed.inject(AttendancesApiService), 'getSubscriberInformation').mockReturnValue(of(null));
+    vi.spyOn(TestBed.inject(AttendancesApiService), 'getSubscriberInformationForEvents').mockReturnValue(of([]));
     vi.spyOn(TestBed.inject(AttendancesApiService), 'getCurrentUserCertificatesForTargets').mockReturnValue(of([]));
+    vi.spyOn(TestBed.inject(AttendancesApiService), 'getCertificateParticipation').mockReturnValue(
+      of({ status: 'ATTENDANCE_CONFIRMED' }),
+    );
     fixture = TestBed.createComponent(MoreInfo);
     component = fixture.componentInstance;
   });
@@ -190,12 +195,8 @@ describe('MoreInfo', () => {
       expect(host.querySelector('mat-toolbar > span')?.textContent?.trim()).toBe('Detalhes');
       expect(host.querySelector('mat-toolbar h1')).toBeNull();
       expect(host.querySelector('.detail-header h1')?.textContent?.trim()).toBe('Evento teste');
-      if (shouldIssueCertificate) {
-        expect(host.textContent).toContain('Nenhum certificado emitido');
-      } else {
-        expect(host.textContent).not.toContain('Nenhum certificado emitido');
-        expect(host.textContent).not.toContain('Emissão de certificados desativada');
-      }
+      expect(host.textContent).toContain('Meu certificado');
+      expect(host.textContent).toContain('O certificado aguarda a liberação da organização.');
       expect(
         Array.from(host.querySelectorAll('button')).some(
           (button) => button.textContent?.trim() === 'workspace_premium Certificados',
@@ -207,7 +208,7 @@ describe('MoreInfo', () => {
       fixture.detectChanges();
       await fixture.whenStable();
       fixture.detectChanges();
-      expect(host.textContent).toContain('Não foi possível consultar seus certificados.');
+      expect(host.textContent).toContain('Não foi possível consultar');
       certificatesApi.mockReturnValueOnce(
         of([
           {
@@ -229,7 +230,8 @@ describe('MoreInfo', () => {
       await fixture.whenStable();
       fixture.detectChanges();
       expect(component.issuedCertificates()).toHaveLength(1);
-      expect(host.querySelector('.certificate-status')).toBeNull();
+      expect(host.textContent).toContain('Certificado disponível');
+      expect(host.textContent).toContain('Baixar certificado');
       online.set(false);
       fixture.detectChanges();
       await fixture.whenStable();

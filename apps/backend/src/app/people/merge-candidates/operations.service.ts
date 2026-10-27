@@ -604,7 +604,7 @@ export class MergeCandidateOperationsService {
         }
 
         if (movedRelations.ticketRelations) {
-          await restoreTicketPersonRelations(tx, movedRelations.ticketRelations);
+          await restoreTicketPersonRelations(tx, movedRelations.ticketRelations, actorId);
         }
 
         await tx.people.update({

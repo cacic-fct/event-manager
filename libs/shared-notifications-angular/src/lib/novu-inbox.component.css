@@ -41,7 +41,6 @@
 .inbox-header,
 .header-actions,
 .notification-actions,
-.preference-actions,
 .load-more,
 .permission-card mat-card-content {
   display: flex;
@@ -105,12 +104,6 @@
   padding-block: 8px;
 }
 
-:host ::ng-deep .preference-list .mat-mdc-list-item.preference-item {
-  height: auto;
-  min-height: 72px;
-  padding-block: 8px;
-}
-
 .error-state {
   color: var(--mat-sys-error);
 }
@@ -158,8 +151,7 @@
     overflow-x: auto;
   }
 
-  .notification-actions,
-  .preference-actions {
+  .notification-actions {
     align-items: flex-end;
     flex-direction: column;
     gap: 4px;
@@ -175,8 +167,7 @@
     padding-inline: 4px;
   }
 
-  :host ::ng-deep .notification-list .mat-mdc-list-item .mdc-list-item__content,
-  :host ::ng-deep .preference-list .mat-mdc-list-item .mdc-list-item__content {
+  :host ::ng-deep .notification-list .mat-mdc-list-item .mdc-list-item__content {
     min-width: 0;
   }
 }
@@ -188,16 +179,11 @@
 .notification-actions {
   flex-wrap: wrap;
 }
-.preference-actions {
-  flex-wrap: wrap;
-}
 @media (max-width: 720px) {
-  :host ::ng-deep .notification-list .mat-mdc-list-item.notification-item,
-  :host ::ng-deep .preference-list .mat-mdc-list-item.preference-item {
+  :host ::ng-deep .notification-list .mat-mdc-list-item.notification-item {
     flex-wrap: wrap;
   }
-  .notification-actions,
-  .preference-actions {
+  .notification-actions {
     flex-direction: row;
     flex-basis: 100%;
     justify-content: flex-end;
@@ -211,4 +197,110 @@
 .preference-list {
   min-width: 0;
   max-width: 100%;
+}
+
+.preferences-panel {
+  width: 100%;
+  max-width: 1120px;
+  margin-inline: auto;
+  padding-block: 12px 24px;
+}
+
+.preferences-heading h2 {
+  margin: 0 0 8px;
+  font: var(--mat-sys-title-large);
+}
+
+.preferences-heading p,
+.preference-copy p,
+.preference-channel-hint {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+}
+
+.preferences-heading .preference-save-status {
+  margin-top: 8px;
+  font: var(--mat-sys-body-small);
+}
+
+.preference-group {
+  margin-top: 32px;
+}
+
+.preference-group-heading {
+  margin-bottom: 12px;
+}
+
+.preference-group-heading h3 {
+  margin: 0 0 4px;
+  font: var(--mat-sys-title-medium);
+}
+
+.preference-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-block: 1px solid var(--mat-sys-outline-variant);
+}
+
+.preference-item {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 4px;
+}
+
+.preference-item + .preference-item {
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.preference-icon {
+  color: var(--mat-sys-on-surface-variant);
+  align-self: start;
+  margin-top: 2px;
+}
+
+.preference-copy h4 {
+  margin: 0 0 4px;
+  font: var(--mat-sys-title-small);
+}
+
+.preference-copy p {
+  max-width: 65ch;
+}
+
+.preference-copy,
+.preference-controls {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.preference-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+}
+
+.preference-actions mat-slide-toggle {
+  min-height: 44px;
+}
+
+.preference-channel-hint {
+  max-width: 38ch;
+  margin-top: 4px;
+  font: var(--mat-sys-body-small);
+}
+
+@media (max-width: 960px) {
+  .preference-item {
+    grid-template-columns: 24px minmax(0, 1fr);
+    column-gap: 12px;
+    row-gap: 8px;
+  }
+
+  .preference-controls {
+    grid-column: 2;
+  }
 }

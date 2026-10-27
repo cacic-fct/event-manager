@@ -1,3 +1,4 @@
+import { assertEventLocation, normalizeEventLocation } from './event-location';
 import { PUBLICATION_EVENT_SELECT } from '../publishing/publishing.selects';
 import { normalizeTwitchChannel, normalizeYoutubeCode } from '@cacic-fct/shared-livestream';
 import {
@@ -144,6 +145,9 @@ const EVENT_BASE_SELECT = {
   latitude: true,
   longitude: true,
   locationDescription: true,
+  locationName: true,
+  locationInternalNotes: true,
+  isVirtual: true,
   majorEventId: true,
   majorEvent: {
     select: MAJOR_EVENT_SELECT,
@@ -205,6 +209,9 @@ const EVENT_AUDIT_SELECT = {
   latitude: true,
   longitude: true,
   locationDescription: true,
+  locationName: true,
+  locationInternalNotes: true,
+  isVirtual: true,
   majorEventId: true,
   eventGroupId: true,
   allowSubscription: true,
@@ -465,7 +472,10 @@ export class EventsResolver {
     await this.assertEventCreateRelationPermissions(input, user);
     await this.frozenResources.assertEventCreateTargetsMutable(input, user);
     const certificateInput = await this.normalizeEventCertificateInput(input);
-    const normalizedInput = this.applyEventCreateDefaults(normalizeEventLivestreamFields(certificateInput));
+    const normalizedInput = this.applyEventCreateDefaults(
+      normalizeEventLocation(normalizeEventLivestreamFields(certificateInput)),
+    );
+    assertEventLocation(normalizedInput);
     const eventInput = withoutAudienceInput(normalizedInput);
     let audienceChange: AudienceChange | undefined;
     const lecturerPersonIds = eventInput.lecturerPersonIds;
@@ -568,7 +578,7 @@ export class EventsResolver {
     const { publishAfterUpdate = false, ...eventInput } = withoutAudienceInput(input);
     let audienceChange: AudienceChange | undefined;
     const certificateInput = await this.normalizeEventCertificateInput(eventInput, id);
-    const normalizedInput = normalizeEventLivestreamFields(certificateInput);
+    const normalizedInput = normalizeEventLocation(normalizeEventLivestreamFields(certificateInput));
     const event = await this.prisma.$transaction(async (tx) => {
       if (normalizedInput.endDate instanceof Date) {
         await this.ticketIssuance.lockEventExpirationAlignment(tx, id, 'UPDATE');
@@ -586,6 +596,7 @@ export class EventsResolver {
       if (!previousEvent) {
         throw new NotFoundException(`Event ${id} was not found.`);
       }
+      assertEventLocation(normalizedInput, previousEvent);
       await this.sportsBackingLifecycle.assertEventUpdateAllowed(tx, id, {
         ...normalizedInput,
         publishAfterUpdate,
@@ -779,6 +790,9 @@ export class EventsResolver {
             latitude: source.latitude ?? undefined,
             longitude: source.longitude ?? undefined,
             locationDescription: source.locationDescription ?? undefined,
+            locationName: source.locationName ?? undefined,
+            locationInternalNotes: source.locationInternalNotes ?? undefined,
+            isVirtual: source.isVirtual,
           }
         : {}),
       ...(parts?.subscriptionSettings

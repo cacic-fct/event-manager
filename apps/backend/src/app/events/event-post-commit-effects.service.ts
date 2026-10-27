@@ -1,3 +1,4 @@
+import { formatEventLocation } from '@cacic-fct/shared-utils';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { EventType, Prisma, PublicationState } from '@prisma/client';
 import { OnlineAttendanceNotificationJobsService } from '../attendance/online-attendance-notification-jobs.service';
@@ -19,6 +20,8 @@ export interface EventPostCommitRecord {
   description: string | null;
   shortDescription: string | null;
   locationDescription: string | null;
+  locationName?: string | null;
+  isVirtual?: boolean;
   majorEventId: string | null;
   eventGroupId: string | null;
   shouldIssueCertificate: boolean;
@@ -52,6 +55,8 @@ const EVENT_EFFECTS_SELECT = {
   description: true,
   shortDescription: true,
   locationDescription: true,
+  locationName: true,
+  isVirtual: true,
   majorEventId: true,
   eventGroupId: true,
   shouldIssueCertificate: true,
@@ -258,7 +263,7 @@ export class EventPostCommitEffectsService {
       type: event.type,
       description: event.description,
       shortDescription: event.shortDescription,
-      locationDescription: event.locationDescription,
+      locationDescription: formatEventLocation(event),
       majorEventId: event.majorEventId,
       eventGroupId: event.eventGroupId,
       shouldIssueCertificate: event.shouldIssueCertificate,

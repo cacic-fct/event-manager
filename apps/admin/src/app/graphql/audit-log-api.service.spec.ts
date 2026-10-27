@@ -64,6 +64,7 @@ describe('AuditLogApiService', () => {
     expect(graphqlHttp.request).toHaveBeenNthCalledWith(1, expect.stringContaining('AuditLogEntries'), {
       input: { entityType: 'PERSON', entityId: 'person-1' },
       take: 80,
+      skip: 0,
     });
     expect(graphqlHttp.request).toHaveBeenNthCalledWith(
       2,
@@ -80,6 +81,18 @@ describe('AuditLogApiService', () => {
     expect(graphqlHttp.request.mock.calls[1][0]).toContain('metadataJson');
     expect(graphqlHttp.request).toHaveBeenNthCalledWith(3, expect.stringContaining('RevertAuditLogEntry'), {
       input: { entryId: 'audit-1', mode: 'ENTRY_ONLY' },
+    });
+  });
+
+  it('passes the requested page offset and size for entity history', async () => {
+    await expect(
+      firstValueFrom(service.listEntityHistory({ entityType: 'PERSON', entityId: 'person-1' }, 51, 50)),
+    ).resolves.toEqual([auditLogEntryFixture()]);
+
+    expect(graphqlHttp.request).toHaveBeenCalledWith(expect.stringContaining('skip: $skip'), {
+      input: { entityType: 'PERSON', entityId: 'person-1' },
+      take: 51,
+      skip: 50,
     });
   });
 });

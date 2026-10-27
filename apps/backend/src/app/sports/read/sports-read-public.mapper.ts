@@ -1,3 +1,4 @@
+import { formatEventLocation } from '@cacic-fct/shared-utils';
 import { SportsMatchState } from '@prisma/client';
 import { normalizeSportsScoreboard } from '../domain/sports-scoreboard';
 import { projectSportsMatch } from '../operations/sports-match-projector';
@@ -75,7 +76,7 @@ export class SportsReadPublicMapper {
       schedule: {
         startDate: match.event.startDate,
         endDate: match.event.endDate,
-        locationDescription: match.event.locationDescription,
+        locationDescription: formatEventLocation(match.event),
         latitude: match.event.latitude,
         longitude: match.event.longitude,
         venueName: match.venue?.name ?? null,

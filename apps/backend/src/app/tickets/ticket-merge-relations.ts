@@ -28,7 +28,6 @@ export type TicketHolderMergeSnapshot = {
   expectedStatus: EventTicketStatus;
   expectedRevokedAt: string | null;
   expectedRevokedReason: string | null;
-  archiveHistoryId?: string | null;
 };
 
 export type TicketTransferPersonMergeSnapshot = {
@@ -187,6 +186,7 @@ export async function moveTicketPersonRelations(
 export async function restoreTicketPersonRelations(
   tx: Prisma.TransactionClient,
   snapshot: TicketPersonRelationsSnapshot,
+  actorUserId: string | null = null,
 ): Promise<void> {
   for (const ticket of snapshot.holderSnapshots.filter((entry) => entry.action === 'MOVED')) {
     const restored = await tx.eventTicket.updateMany({
@@ -198,6 +198,17 @@ export async function restoreTicketPersonRelations(
         `O bilhete ${ticket.id} foi alterado após a unificação e não pode ser restaurado com segurança.`,
       );
     }
+    await tx.eventTicketHistory.create({
+      data: {
+        ticketId: ticket.id,
+        operation: TicketHistoryOperation.HOLDER_CHANGED,
+        previousHolderPersonId: ticket.expectedHolderPersonId,
+        newHolderPersonId: ticket.holderPersonId,
+        actorUserId,
+        actorName: actorUserId ? undefined : 'Unificação de pessoas desfeita',
+        reason: 'Titularidade restaurada ao desfazer a unificação de pessoas.',
+      },
+    });
   }
 
   for (const ticket of snapshot.holderSnapshots.filter((entry) => entry.action === 'ARCHIVED')) {
@@ -214,14 +225,14 @@ export async function restoreTicketPersonRelations(
         `O bilhete duplicado ${ticket.id} foi alterado após a unificação e não pode ser restaurado com segurança.`,
       );
     }
-  }
-
-  for (const ticket of snapshot.holderSnapshots.filter((entry) => entry.action === 'ARCHIVED')) {
-    if (!ticket.archiveHistoryId) {
-      continue;
-    }
-    await tx.eventTicketHistory.deleteMany({
-      where: { id: ticket.archiveHistoryId, ticketId: ticket.id, operation: TicketHistoryOperation.REVOKED },
+    await tx.eventTicketHistory.create({
+      data: {
+        ticketId: ticket.id,
+        operation: TicketHistoryOperation.RESTORED,
+        actorUserId,
+        actorName: actorUserId ? undefined : 'Unificação de pessoas desfeita',
+        reason: 'Bilhete duplicado restaurado ao desfazer a unificação de pessoas.',
+      },
     });
   }
 
@@ -512,6 +523,17 @@ async function moveTicketHolder(
       `O bilhete ${ticket.id} foi alterado durante a unificação. Revise o bilhete e tente novamente.`,
     );
   }
+  await tx.eventTicketHistory.create({
+    data: {
+      ticketId: ticket.id,
+      operation: TicketHistoryOperation.HOLDER_CHANGED,
+      previousHolderPersonId: ticket.holderPersonId,
+      newHolderPersonId: targetPersonId,
+      actorUserId,
+      actorName: actorUserId ? undefined : 'Unificação de pessoas',
+      reason: 'Titularidade ajustada durante a unificação de pessoas.',
+    },
+  });
   await recordTicketAudit(tx, {
     entityType: AuditLogEntityType.TICKET,
     entityId: ticket.id,
@@ -576,7 +598,7 @@ async function archiveDuplicateTicket(
     );
   }
 
-  const archiveHistory = await tx.eventTicketHistory.create({
+  await tx.eventTicketHistory.create({
     data: {
       ticketId: ticket.id,
       operation: TicketHistoryOperation.REVOKED,
@@ -586,7 +608,6 @@ async function archiveDuplicateTicket(
       reason: 'Bilhete duplicado arquivado durante a unificação de pessoas.',
     },
   });
-  snapshot.archiveHistoryId = archiveHistory.id;
   await recordTicketAudit(tx, {
     entityType: AuditLogEntityType.TICKET,
     entityId: ticket.id,

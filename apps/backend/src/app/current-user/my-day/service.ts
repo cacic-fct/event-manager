@@ -1,3 +1,4 @@
+import { formatEventLocation } from '@cacic-fct/shared-utils';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { SubscriptionStatus } from '@prisma/client';
 import { subMonths } from 'date-fns';
@@ -370,7 +371,7 @@ export class CurrentUserMyDayService {
       emoji: event.emoji,
       startDate: event.startDate,
       endDate: event.endDate,
-      locationDescription: event.locationDescription,
+      locationDescription: formatEventLocation(event),
       roles,
       attendanceAction,
       sportsActions,

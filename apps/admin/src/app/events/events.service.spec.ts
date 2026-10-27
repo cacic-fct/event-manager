@@ -187,6 +187,23 @@ describe('EventsService', () => {
     expect(service.unsavedChanges()).toBe(false);
   });
 
+  it('allows a physical event without a location or with only a location name', () => {
+    expect(service.eventForm.hasError('locationNameRequired')).toBe(false);
+    service.eventForm.controls.locationName.setValue('Auditório');
+    expect(service.eventForm.hasError('locationNameRequired')).toBe(false);
+  });
+
+  it('requires a name when a physical description or coordinates are provided', () => {
+    service.eventForm.patchValue({ locationName: '  ', locationDescription: 'Bloco 5' });
+    expect(service.eventForm.hasError('locationNameRequired')).toBe(true);
+    service.eventForm.patchValue({ locationDescription: '', latitude: '0', longitude: '0' });
+    expect(service.eventForm.hasError('locationNameRequired')).toBe(true);
+    service.eventForm.controls.locationName.setValue('Praça');
+    expect(service.eventForm.hasError('locationNameRequired')).toBe(false);
+    service.eventForm.patchValue({ locationName: '', isVirtual: true });
+    expect(service.eventForm.hasError('locationNameRequired')).toBe(false);
+  });
+
   it('opens the cloned event workspace so subsequent operations target the copy', async () => {
     const copy = createAdminEvent({ id: 'event-copy', name: 'Cópia' });
     api.cloneEvent.mockReturnValue(of(copy));
@@ -829,11 +846,36 @@ describe('EventsService', () => {
       updatedAt: '2026-05-21T12:00:00.000Z',
     };
     vi.mocked(placePresets.searchPlacePresets).mockResolvedValue([suggestion]);
-    service.eventForm.controls.locationDescription.setValue('lab', { emitEvent: false });
+    service.eventForm.controls.locationName.setValue('lab', { emitEvent: false });
 
     await service.searchPlacePresetSuggestions();
 
     expect(placePresets.searchPlacePresets).toHaveBeenCalledWith('lab', 8);
     expect(service.placePresetSuggestions()).toEqual([suggestion]);
+  });
+  it('copies the public name, description and private notes into an independent event snapshot', () => {
+    const places = TestBed.inject(PlacePresetsService);
+    places.placePresets.set([
+      {
+        id: 'structured-place',
+        name: 'Auditório',
+        locationDescription: 'Bloco 5',
+        internalNotes: '**Chave** na secretaria',
+        latitude: null,
+        longitude: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ]);
+    service.applyPlacePreset('structured-place');
+    expect(service.eventForm.getRawValue()).toMatchObject({
+      locationName: 'Auditório',
+      locationDescription: 'Bloco 5',
+      locationInternalNotes: '**Chave** na secretaria',
+      isVirtual: false,
+    });
+    places.placePresets.set([]);
+    expect(service.eventForm.controls.locationName.value).toBe('Auditório');
+    expect(service.displayPlacePresetSuggestion('Auditório')).toBe('Auditório');
   });
 });

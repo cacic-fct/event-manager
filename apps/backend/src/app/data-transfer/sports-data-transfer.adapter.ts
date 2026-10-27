@@ -2192,7 +2192,7 @@ export class SportsDataTransferAdapter implements DataTransferAdapter {
       'major-event-subscription': [],
       'event-subscription': [],
       'group-subscription': [],
-      'place-preset': ['name', 'latitude', 'longitude', 'locationDescription'],
+      'place-preset': ['name', 'latitude', 'longitude', 'locationDescription', 'internalNotes'],
       'event-form': [],
       'form-link': [],
       'certificate-config': [],
@@ -2611,6 +2611,7 @@ export class SportsDataTransferAdapter implements DataTransferAdapter {
     latitude: number | null;
     longitude: number | null;
     locationDescription: string | null;
+    internalNotes?: string | null;
     updatedAt: Date;
   }): TransferResource {
     return this.resource(
@@ -2621,6 +2622,7 @@ export class SportsDataTransferAdapter implements DataTransferAdapter {
         latitude: place.latitude,
         longitude: place.longitude,
         locationDescription: place.locationDescription,
+        internalNotes: place.internalNotes ?? null,
       },
       place.updatedAt.toISOString(),
     );

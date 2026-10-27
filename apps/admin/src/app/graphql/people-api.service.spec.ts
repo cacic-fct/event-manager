@@ -56,7 +56,13 @@ describe('PeopleApiService', () => {
       skip: 5,
       take: 20,
       permissionGrantFilter: 'ACTIVE' as const,
-      hasLecturerProfile: true,
+      hasLecturerProfile: false,
+      lecturerSelfEditingBlocked: false,
+      hasUser: false,
+      hasEmail: true,
+      hasPhone: false,
+      hasIdentityDocument: true,
+      hasAcademicId: false,
     };
     const input = { name: 'Ada Lovelace' } as never;
     const lecturerInput = { displayName: 'Ada', biography: 'Matemática', linkedin: 'ada-lovelace' } as never;
@@ -122,6 +128,21 @@ describe('PeopleApiService', () => {
     expect(graphqlHttp.request).toHaveBeenNthCalledWith(10, expect.stringContaining('mutation DeletePerson'), {
       id: 'person-1',
     });
+    for (const callIndex of [0, 1]) {
+      const query = graphqlHttp.request.mock.calls[callIndex]?.[0];
+      for (const key of [
+        'hasUser',
+        'hasLecturerProfile',
+        'lecturerSelfEditingBlocked',
+        'hasEmail',
+        'hasPhone',
+        'hasIdentityDocument',
+        'hasAcademicId',
+      ]) {
+        expect(query).toContain(`$${key}: Boolean`);
+        expect(query).toContain(`${key}: $${key}`);
+      }
+    }
     expect(graphqlHttp.request.mock.calls[5]?.[0]).toContain('linkedin');
     expect(graphqlHttp.request.mock.calls[6]?.[0]).toContain('linkedin');
   });

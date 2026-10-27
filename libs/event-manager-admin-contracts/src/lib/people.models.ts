@@ -119,6 +119,7 @@ export interface EventManagerPermissionGrantUpdateInput {
 }
 
 export interface LecturerProfile {
+  selfEditingBlocked: boolean;
   id: string;
   personId: string;
   displayName: string;
@@ -135,6 +136,7 @@ export interface LecturerProfile {
 }
 
 export interface LecturerProfileInput {
+  selfEditingBlocked?: boolean;
   displayName: string;
   biography?: string | null;
   publishGoogleUserPicture?: boolean;

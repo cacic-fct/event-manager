@@ -24,6 +24,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { TRANSFER_MAX_RESOURCES } from '@cacic-fct/shared-data-transfer';
 import { normalizeEventCertificateSettings, type EventCertificateSettings } from '../events/event-certificate-settings';
 import { normalizeTwitchChannel, normalizeYoutubeCode } from '@cacic-fct/shared-livestream';
+import { assertEventLocation, normalizeEventLocation } from '../events/event-location';
 import { applyAudienceSettings, withAudienceAudit, type AudienceChange } from '../audiences/audience-input';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { AudienceInvitationService } from '../audiences/audience-invitation.service';
@@ -67,6 +68,9 @@ const EVENT_FIELDS = [
   'latitude',
   'longitude',
   'locationDescription',
+  'locationName',
+  'locationInternalNotes',
+  'isVirtual',
   'majorEventId',
   'eventGroupId',
   'audience',
@@ -181,6 +185,9 @@ const EVENT_SELECT = {
   latitude: true,
   longitude: true,
   locationDescription: true,
+  locationName: true,
+  locationInternalNotes: true,
+  isVirtual: true,
   majorEventId: true,
   eventGroupId: true,
   interestEnabled: true,
@@ -560,6 +567,7 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
     await validateTransferAudienceAndPublication(snapshot, context);
     const data = dataOf(snapshot.resource);
     if (snapshot.resource.kind === 'event') {
+      assertEventLocation(data, snapshot.current ? dataOf(snapshot.current) : undefined);
       requireNameIfCreating(snapshot, data);
       if (snapshot.current === null) {
         requireDate(data, 'startDate');
@@ -1203,6 +1211,7 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
     if (action === 'create') {
       const createData = mapPrismaData(input, EVENT_FIELDS, DATE_FIELDS);
       const normalized = normalizeEventData(createData, true);
+      assertEventLocation(normalized);
       await this.validateAttendancePriceTierReferences(
         context,
         input['majorEventId'] === undefined ? undefined : asId(input['majorEventId']),
@@ -1263,6 +1272,7 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
     }
     const createData = mapPrismaData(input, EVENT_FIELDS, DATE_FIELDS);
     const normalized = normalizeEventData(createData, false);
+    assertEventLocation(normalized, before);
     const previousAudit = eventContentAuditSnapshot(before);
     if (normalized['endDate'] instanceof Date) {
       await this.ticketIssuance.lockEventExpirationAlignment(context.tx, resource.id, 'UPDATE');
@@ -1722,7 +1732,7 @@ function omitAudience(data: Record<string, unknown>): Record<string, unknown> {
 }
 
 function normalizeEventData(data: Record<string, unknown>, applyCreateDefaults: boolean): Record<string, unknown> {
-  const normalized = { ...data };
+  const normalized = normalizeEventLocation(data);
   if (normalized['name'] !== undefined) normalized['name'] = requiredName(normalized['name'], 'Evento');
   if (normalized['emoji'] !== undefined) normalized['emoji'] = stringValue(normalized['emoji'], 'emoji').trim() || '❔';
   if (applyCreateDefaults && normalized['type'] === undefined) normalized['type'] = 'OTHER';

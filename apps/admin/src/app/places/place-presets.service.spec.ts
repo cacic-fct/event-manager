@@ -101,6 +101,7 @@ describe('PlacePresetsService', () => {
     });
 
     expect(api.createPlacePreset).toHaveBeenCalledWith({
+      internalNotes: null,
       name: 'Sala 5',
       latitude: -22.1,
       longitude: -49.2,

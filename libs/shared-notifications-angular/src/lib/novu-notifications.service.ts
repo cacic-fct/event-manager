@@ -15,6 +15,7 @@ import { AuthService } from '@cacic-fct/shared-angular/auth';
 import type { AuthenticatedUser } from '@cacic-fct/shared-angular/auth/types';
 import type { NovuSubscriberSession } from '@cacic-fct/shared-data-types';
 import { firstValueFrom, retry, throwError, timer } from 'rxjs';
+import { isRequiredNotificationPreference } from './notification-preferences';
 
 export type NotificationPermissionState = 'unsupported' | 'default' | 'granted' | 'denied';
 
@@ -236,6 +237,9 @@ export class NovuNotificationsService {
   }
 
   async updatePreferenceChannels(preference: Preference, channels: ChannelPreference): Promise<void> {
+    if (isRequiredNotificationPreference(preference)) {
+      throw new Error('Required notification preferences cannot be changed.');
+    }
     const { error } = await preference.update({ channels });
     if (error) {
       throw error;

@@ -13,23 +13,41 @@
         </button>
       </div>
 
-      <form class="compact-form" [formGroup]="workspace.peopleSearchForm">
-        <mat-form-field class="span-2">
+      <form
+        class="event-filter-panel"
+        [formGroup]="workspace.peopleSearchForm"
+        (ngSubmit)="workspace.searchPeople(workspace.peopleSearchForm.controls.query.value)">
+        <mat-form-field class="query-field">
           <mat-label>Buscar pessoa</mat-label>
-          <mat-icon matPrefix>search</mat-icon>
-          <input matInput formControlName="query" />
+          <mat-icon matPrefix aria-hidden="true">search</mat-icon>
+          <input matInput type="search" formControlName="query" />
+          <button matIconButton matSuffix type="submit" aria-label="Buscar pessoas">
+            <mat-icon aria-hidden="true">arrow_forward</mat-icon>
+          </button>
           <mat-hint>Nome, e-mail principal ou secundário, telefone, documento ou RA</mat-hint>
         </mat-form-field>
-        <mat-checkbox class="search-filter-checkbox" formControlName="hasLecturerProfile">
-          Com perfil de ministrante
-        </mat-checkbox>
-        <button
-          mat-flat-button
-          type="button"
-          (click)="workspace.searchPeople(workspace.peopleSearchForm.controls.query.value)">
-          <mat-icon>search</mat-icon>
-          Buscar
-        </button>
+
+        <mat-expansion-panel class="advanced-filters">
+          <mat-expansion-panel-header>
+            <mat-panel-title><mat-icon aria-hidden="true">tune</mat-icon>Filtros</mat-panel-title>
+            @if (workspace.activePeopleFilterCount(); as count) {
+              <mat-panel-description>{{ count }} {{ count === 1 ? 'ativo' : 'ativos' }}</mat-panel-description>
+            }
+          </mat-expansion-panel-header>
+          <div class="filter-fields">
+            @for (filter of workspace.peoplePresenceFilters; track filter.key) {
+              <mat-form-field>
+                <mat-label>{{ filter.label }}</mat-label>
+                <mat-select [formControlName]="filter.key">
+                  <mat-option value="ALL">Todos</mat-option>
+                  <mat-option value="YES">{{ filter.yes }}</mat-option>
+                  <mat-option value="NO">{{ filter.no }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+            }
+          </div>
+          <button mat-button type="button" (click)="workspace.clearPeopleFilters()">Limpar filtros</button>
+        </mat-expansion-panel>
       </form>
 
       <mat-list class="result-list">
@@ -260,6 +278,14 @@
                   O nome da pessoa sempre aparece nas páginas públicas dos eventos em que ela estiver vinculada como
                   ministrante, mesmo sem perfil de ministrante. Crie o perfil apenas para publicar biografia, foto e
                   contatos.
+                </p>
+
+                <mat-checkbox formControlName="selfEditingBlocked" aria-describedby="lecturer-editing-lock-help">
+                  Bloquear edição pelo ministrante
+                </mat-checkbox>
+                <p id="lecturer-editing-lock-help" class="empty-note">
+                  Ao salvar, impede que esta pessoa altere o próprio perfil na interface pública. A organização continua
+                  podendo editar.
                 </p>
 
                 <div class="field-grid">

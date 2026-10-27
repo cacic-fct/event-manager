@@ -161,8 +161,8 @@
           <h4>Dados do local</h4>
           <div class="field-grid">
             <mat-form-field class="span-2">
-              <mat-label>Nome</mat-label>
-              <input matInput formControlName="name" />
+              <mat-label>Nome do local</mat-label>
+              <input matInput formControlName="name" maxlength="250" />
             </mat-form-field>
 
             <button mat-stroked-button type="button" class="span-2" (click)="openLocationPicker()">
@@ -171,8 +171,9 @@
             </button>
 
             <mat-form-field class="span-2">
-              <mat-label>Nome e descrição exibidos aos usuários</mat-label>
-              <input matInput formControlName="locationDescription" />
+              <mat-label>Descrição do local</mat-label>
+              <textarea matInput rows="2" formControlName="locationDescription" maxlength="2000"></textarea>
+              <mat-hint>Bloco, sala ou como chegar.</mat-hint>
             </mat-form-field>
           </div>
           <mat-expansion-panel>
@@ -193,15 +194,38 @@
           </mat-expansion-panel>
         </section>
 
-        <section class="surface field-group">
-          <h4>Mapa</h4>
-          <div class="map-preview" aria-label="Prévia da localização">
-            <div #mapTarget class="map-target"></div>
-            @if (!hasLocation()) {
-              <span class="empty-note">Preencha latitude e longitude para visualizar o ponto.</span>
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title>Observações internas</mat-panel-title>
+            @if (workspace.placeForm.controls.internalNotes.value) {
+              <mat-panel-description>Com anotações</mat-panel-description>
             }
+          </mat-expansion-panel-header>
+          <div class="field-grid">
+            <mat-form-field class="span-2">
+              <mat-label>Observações do local</mat-label>
+              <textarea matInput rows="4" formControlName="internalNotes" maxlength="10000"></textarea>
+              <mat-hint>Markdown. Somente administradores.</mat-hint>
+              <button
+                mat-icon-button
+                matSuffix
+                type="button"
+                aria-label="Pré-visualizar observações internas"
+                matTooltip="Pré-visualizar"
+                (click)="previewInternalNotes()">
+                <mat-icon>preview</mat-icon>
+              </button>
+            </mat-form-field>
           </div>
-        </section>
+        </mat-expansion-panel>
+        @if (hasLocation()) {
+          <section class="surface field-group">
+            <h4>Mapa</h4>
+            <div class="map-preview" aria-label="Prévia da localização">
+              <div #mapTarget class="map-target"></div>
+            </div>
+          </section>
+        }
       </form>
     </section>
   </div>

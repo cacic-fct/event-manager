@@ -158,6 +158,8 @@ export const PUBLIC_MATCH_SELECT = {
       startDate: true,
       endDate: true,
       locationDescription: true,
+      locationName: true,
+      isVirtual: true,
       latitude: true,
       longitude: true,
     },

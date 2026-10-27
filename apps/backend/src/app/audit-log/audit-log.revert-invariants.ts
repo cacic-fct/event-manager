@@ -1,6 +1,7 @@
 import { AuditLogEntityType, Prisma } from '@prisma/client';
 import { BadRequestException } from '@nestjs/common';
 import { validateAttendancePriceTiers } from '../events/attendance-price-tier-policy';
+import { assertEventLocation } from '../events/event-location';
 
 export async function applyAuditLogRevertInvariants(
   tx: Prisma.TransactionClient,
@@ -8,6 +9,7 @@ export async function applyAuditLogRevertInvariants(
   updated: Record<string, unknown>,
 ): Promise<void> {
   if (entityType === AuditLogEntityType.EVENT) {
+    assertEventLocation(updated);
     const eventGroupId = typeof updated['eventGroupId'] === 'string' ? updated['eventGroupId'] : null;
     const majorEventId = typeof updated['majorEventId'] === 'string' ? updated['majorEventId'] : null;
     if (eventGroupId && majorEventId) {

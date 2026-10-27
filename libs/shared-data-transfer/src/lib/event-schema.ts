@@ -37,7 +37,10 @@ export const EventResourceSchema = checkedResource<EventTransferOwner>()('event'
   shortDescription: nullable(Text),
   latitude: nullable(Type.Number({ minimum: -90, maximum: 90 })),
   longitude: nullable(Type.Number({ minimum: -180, maximum: 180 })),
-  locationDescription: nullable(Text),
+  locationDescription: nullable(Type.String({ maxLength: 2000 })),
+  locationName: nullable(Type.String({ maxLength: 250 })),
+  locationInternalNotes: nullable(Type.String({ maxLength: 10000 })),
+  isVirtual: Type.Boolean(),
   majorEventId: nullable(Id),
   eventGroupId: nullable(Id),
   ...audienceFields,
@@ -126,8 +129,9 @@ export const PriceTierResourceSchema = checkedResource<PriceTierTransferOwner, B
 );
 
 export const PlaceResourceSchema = checkedResource<PlacePresetTransferOwner>()('place-preset', {
-  name: Name,
+  name: Type.String({ minLength: 1, maxLength: 250 }),
   latitude: nullable(Type.Number({ minimum: -90, maximum: 90 })),
   longitude: nullable(Type.Number({ minimum: -180, maximum: 180 })),
-  locationDescription: nullable(Text),
+  locationDescription: nullable(Type.String({ maxLength: 2000 })),
+  internalNotes: nullable(Type.String({ maxLength: 10000 })),
 });

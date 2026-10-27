@@ -14,6 +14,9 @@ export class LecturerProfile {
   @Field(() => Person, { nullable: true })
   person?: Relation<Person>;
 
+  @Field(() => Boolean)
+  selfEditingBlocked!: boolean;
+
   @Field(() => String)
   displayName!: string;
 

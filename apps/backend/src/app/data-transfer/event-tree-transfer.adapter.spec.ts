@@ -1,4 +1,9 @@
-import { TRANSFER_MAX_RESOURCES, type TransferResource } from '@cacic-fct/shared-data-transfer';
+import {
+  parseTransferDocument,
+  TRANSFER_MAX_RESOURCES,
+  TRANSFER_VERSION,
+  type TransferResource,
+} from '@cacic-fct/shared-data-transfer';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { diffResourceData } from './data-transfer.service';
 import type { TransferAdapterContext } from './data-transfer-adapter';
@@ -10,6 +15,84 @@ import { TransferKeyAllocations } from './transfer-key-allocations';
 const { jest } = import.meta;
 
 describe('EventTreeTransferAdapter normalization and mutations', () => {
+  it.each(['create', 'update'] as const)('imports a legacy version 1 location on %s', async (action) => {
+    const event = eventRecord({ locationName: 'Local atual', locationDescription: 'Descrição atual' });
+    const tx = {
+      event: {
+        ...eventUpdateTransaction(action === 'create' ? null : event, event).event,
+        create: jest.fn().mockResolvedValue(event),
+      },
+    };
+    const document = parseTransferDocument({
+      format: 'cacic-event-data',
+      version: 1,
+      resources: [
+        {
+          kind: 'event',
+          id: event.id,
+          data: {
+            name: 'Evento importado',
+            startDate: relativeDate(7),
+            endDate: relativeDate(7, 1),
+            locationDescription: 'Auditório - Bloco 5',
+          },
+        },
+      ],
+    });
+    const resource = document.resources[0];
+    if (!resource.id) throw new Error('Expected an existing transfer ID.');
+    const resolvedResource: TransferResource = { ...resource, id: resource.id };
+    const context = {
+      ...createContext(tx, [resolvedResource]),
+      document: { ...document, resources: [resolvedResource] },
+    };
+    const adapter = createAdapter(tx);
+
+    const snapshot = await adapter.resolve(resolvedResource, context);
+    await adapter.validate(snapshot, context);
+    await adapter.apply(snapshot, action, context);
+
+    expect(action === 'create' ? tx.event.create : tx.event.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ locationName: 'Auditório', locationDescription: 'Bloco 5', isVirtual: false }),
+      }),
+    );
+  });
+
+  it.each([{ locationName: null }, { locationName: '   ' }])(
+    'rejects an import that leaves a description without a name: %j',
+    async (data) => {
+      const before = eventRecord({ locationName: 'Auditório', locationDescription: 'Bloco 5' });
+      const tx = eventUpdateTransaction(before, before);
+      const adapter = createAdapter(tx);
+      const resource: TransferResource = { kind: 'event', id: before.id, data };
+      const context = createContext(tx, [resource]);
+      const snapshot = await adapter.resolve(resource, context);
+
+      await expect(adapter.validate(snapshot, context)).rejects.toThrow('Informe o nome do local');
+      await expect(adapter.apply(snapshot, 'update', context)).rejects.toThrow('Informe o nome do local');
+      expect(tx.event.updateMany).not.toHaveBeenCalled();
+    },
+  );
+
+  it('preserves the saved location name for a description-only import', async () => {
+    const before = eventRecord({ locationName: 'Auditório', locationDescription: 'Bloco 5' });
+    const tx = eventUpdateTransaction(before, before);
+    const adapter = createAdapter(tx);
+    const resource: TransferResource = { kind: 'event', id: before.id, data: { locationDescription: ' Bloco 6 ' } };
+    const context = createContext(tx, [resource]);
+    const snapshot = await adapter.resolve(resource, context);
+
+    await adapter.validate(snapshot, context);
+    await adapter.apply(snapshot, 'update', context);
+
+    expect(tx.event.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ locationDescription: 'Bloco 6' }),
+      }),
+    );
+  });
+
   it('persists an imported schedule with lifecycle dates and the current publication actor', async () => {
     const before = eventRecord({ publicationState: 'PUBLISHED', publishedAt: new Date() });
     const scheduledPublishAt = relativeDate(1);
@@ -818,7 +901,11 @@ function createContext(tx: Record<string, unknown>, resources: TransferResource[
   return {
     tx: tx as never,
     actor: { sub: 'organizer-1' } as never,
-    document: { format: 'cacic-event-data', version: 1, resources } as TransferAdapterContext['document'],
+    document: {
+      format: 'cacic-event-data',
+      version: TRANSFER_VERSION,
+      resources,
+    } as TransferAdapterContext['document'],
     frozenResources: {
       assertEventMutable: jest.fn().mockResolvedValue(undefined),
       assertEventUpdateMutable: jest.fn().mockResolvedValue(undefined),
@@ -828,7 +915,7 @@ function createContext(tx: Record<string, unknown>, resources: TransferResource[
   };
 }
 
-function eventUpdateTransaction(current: Record<string, unknown>, updated: Record<string, unknown>) {
+function eventUpdateTransaction(current: Record<string, unknown> | null, updated: Record<string, unknown>) {
   return {
     event: {
       findFirst: jest.fn().mockResolvedValue(current),

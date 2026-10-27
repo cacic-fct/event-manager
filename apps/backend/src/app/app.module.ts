@@ -1,3 +1,6 @@
+import { EVENT_INFORMATION_QUEUE } from './events/event-subscriber-information';
+import { EventSubscriberInformationResolver } from './events/event-subscriber-information.resolver';
+import { EventInformationProcessor } from './events/event-information.processor';
 import { TicketsResolver } from './tickets/tickets.resolver';
 import { DataTransferController } from './data-transfer/data-transfer.controller';
 import { DataTransferService } from './data-transfer/data-transfer.service';
@@ -131,6 +134,7 @@ import { EventFormsScheduler } from './event-forms/event-forms.scheduler';
 import { EventFormsService } from './event-forms/event-forms.service';
 import { CurrentUserCertificatesResolver } from './current-user/certificates/resolver';
 import { CurrentUserCertificateSelectionResolver } from './current-user/certificates/certificate-selection.resolver';
+import { CurrentUserCertificateParticipationResolver } from './current-user/certificates/certificate-participation.resolver';
 import { CurrentUserCertificatesDownloadController } from './current-user/certificates/certificates-download.controller';
 import { CurrentUserContextService } from './current-user/context.service';
 import { CurrentUserEventMapperService } from './current-user/mapper.service';
@@ -165,7 +169,7 @@ import { EventGroupsResolver } from './event-groups/resolver';
 import { EventLecturersResolver } from './events/lecturers.resolver';
 import { EventsResolver } from './events/resolver';
 import { MajorEventsResolver } from './major-events/resolver';
-import { PublicEventsResolver } from './public-events/events.resolver';
+import { PublicEventsResolver, PublicMapEventLocationResolver } from './public-events/events.resolver';
 import { PublicMajorEventsResolver } from './public-events/major-events.resolver';
 import { PlacePresetsResolver } from './places/resolver';
 import { MergeCandidateOperationsService } from './people/merge-candidates/operations.service';
@@ -291,6 +295,7 @@ import { PrizeDrawNotificationJobsProcessor } from './prize-draw/prize-draw-noti
 const useInMemoryTestInfra = process.env.BACKEND_E2E_IN_MEMORY_INFRA === 'true';
 const backendQueueNames = [
   'weather',
+  EVENT_INFORMATION_QUEUE,
   DASHBOARD_INSIGHTS_QUEUE,
   PUBLIC_PLATFORM_STATS_QUEUE,
   MAJOR_EVENT_RECEIPTS_QUEUE,
@@ -308,6 +313,7 @@ const queueImports = useInMemoryTestInfra
         connection: getRedisConnectionOptions(),
         prefix: process.env.BACKEND_E2E_QUEUE_PREFIX,
       }),
+      BullModule.registerQueue({ name: EVENT_INFORMATION_QUEUE }),
       BullModule.registerQueue({
         name: 'weather',
       }),
@@ -349,6 +355,7 @@ const queueProcessorProviders = useInMemoryTestInfra
       WeatherProcessor,
       CertificateNotificationJobsProcessor,
       OnlineAttendanceNotificationJobsProcessor,
+      EventInformationProcessor,
       LgpdStorageCleanupProcessor,
       PrizeDrawNotificationJobsProcessor,
     ];
@@ -501,10 +508,12 @@ const schedulerProviders = useInMemoryTestInfra
     EventGroupsResolver,
     PlacePresetsResolver,
     EventsResolver,
+    EventSubscriberInformationResolver,
     EventDraftsResolver,
     EventDraftsService,
     EventPostCommitEffectsService,
     PublicEventsResolver,
+    PublicMapEventLocationResolver,
     EventSitemapResolver,
     EventSitemapService,
     ServerVersionResolver,
@@ -539,6 +548,7 @@ const schedulerProviders = useInMemoryTestInfra
     CurrentUserMyDayService,
     CurrentUserCertificatesResolver,
     CurrentUserCertificateSelectionResolver,
+    CurrentUserCertificateParticipationResolver,
     CurrentUserProfileResolver,
     CurrentUserMajorEventSubscriptionsResolver,
     CurrentUserEventSubscriptionsResolver,

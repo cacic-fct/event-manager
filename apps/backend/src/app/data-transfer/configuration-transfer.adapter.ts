@@ -135,7 +135,7 @@ const PRICE_TIER_FIELDS = [
   'maxUncategorizedPerAttendee',
 ] as const;
 const PRICE_FIELDS = ['majorEventId', 'type'] as const;
-const PLACE_FIELDS = ['name', 'latitude', 'longitude', 'locationDescription'] as const;
+const PLACE_FIELDS = ['name', 'latitude', 'longitude', 'locationDescription', 'internalNotes'] as const;
 const TICKET_OPTION_FIELDS = ['ticketConfigId', 'priceTierId', 'label', 'amountCents'] as const;
 const FORM_DATES = new Set(['availableFrom', 'availableUntil']);
 const CERTIFICATE_DATE_FIELDS = new Set<string>();
@@ -246,6 +246,7 @@ const PLACE_SELECT = {
   latitude: true,
   longitude: true,
   locationDescription: true,
+  internalNotes: true,
   deletedAt: true,
   updatedAt: true,
 } satisfies Prisma.PlacePresetSelect;

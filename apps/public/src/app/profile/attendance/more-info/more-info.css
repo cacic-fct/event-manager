@@ -13,12 +13,6 @@
   margin-bottom: 16px;
 }
 
-.status-list {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 24px;
-}
-
 .status-summary {
   align-items: center;
   color: var(--mat-sys-on-surface-variant);
@@ -136,11 +130,51 @@ mat-toolbar {
   z-index: 1;
 }
 
-.certificate-retry {
-  justify-self: start;
-  margin-inline-start: 28px;
-}
-
 .actions:empty {
   display: none;
+}
+
+.participation-status {
+  margin-bottom: 20px;
+}
+
+.certificate-summary {
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.certificate-summary h2 {
+  font: var(--mat-sys-title-medium);
+  margin-bottom: 16px;
+}
+
+.certificate-copy {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.certificate-copy mat-icon {
+  flex-shrink: 0;
+  color: var(--mat-sys-primary);
+}
+
+.certificate-copy h3 {
+  font: var(--mat-sys-title-small);
+  margin: 0;
+}
+
+.certificate-copy p {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+  margin: 4px 0 0;
+  max-width: 65ch;
+}
+
+.certificate-summary > button,
+.certificate-summary > a {
+  margin-top: 16px;
+  max-width: 100%;
 }

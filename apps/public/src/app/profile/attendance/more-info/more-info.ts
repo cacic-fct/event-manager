@@ -1,3 +1,4 @@
+import { SubscriberInformation } from './subscriber-information';
 import { isPlatformBrowser } from '@angular/common';
 import type {
   EventFormTargetType,
@@ -48,6 +49,7 @@ import { PublicEventFormApiService } from '../../../forms/event-form-api.service
 import { PublicPrizeDrawApiService } from '../../../prize-draws/prize-draw-api.service';
 import { TicketPurchaseOptionsSectionComponent } from '../../../major-events/payment/ticket-purchase-options-section.component';
 import { privateResourceErrorStatus } from '../../../shared/route-error-handling';
+import { certificateStatusCopy, type CertificateStatusCopy } from './certificate-status';
 
 type DetailFormLink = {
   formId: string;
@@ -79,6 +81,7 @@ const PRIZE_DRAW_RECONNECT_MAX_DELAY_MS = 30_000;
     MatProgressBarModule,
     MatToolbarModule,
     MarkdownComponent,
+    SubscriberInformation,
     RouterLink,
     TicketPurchaseOptionsSectionComponent,
   ],
@@ -197,8 +200,14 @@ export class MoreInfo {
       switchMap(([state, , online]) => {
         if (state.status !== 'ready') return of({ status: 'loading' } as const);
         if (!online) return of({ status: 'offline' } as const);
-        return this.api.getCurrentUserCertificatesForTargets(this.certificateTargets(state.detail)).pipe(
-          map((certificates) => ({ status: 'ready', certificates }) as const),
+        const scope = { event: 'EVENT', 'event-group': 'EVENT_GROUP', 'major-event': 'MAJOR_EVENT' } as const;
+        return forkJoin({
+          certificates: this.api.getCurrentUserCertificatesForTargets(this.certificateTargets(state.detail)),
+          participation: this.api
+            .getCertificateParticipation(scope[state.detail.targetType], state.detail.targetId)
+            .pipe(catchError(() => of(null))),
+        }).pipe(
+          map((result) => ({ status: 'ready', ...result }) as const),
           catchError(() => of({ status: 'error' } as const)),
           startWith({ status: 'loading' } as const),
         );
@@ -210,6 +219,42 @@ export class MoreInfo {
   readonly issuedCertificates = computed(() => {
     const state = this.certificateState();
     return state.status === 'ready' ? state.certificates : [];
+  });
+
+  readonly certificateSummary = computed<CertificateStatusCopy>(() => {
+    const state = this.certificateState();
+    if (state.status === 'offline')
+      return {
+        title: 'Consulta indisponível sem internet',
+        icon: 'cloud_off',
+        description: 'Conecte-se à internet para conferir suas presenças e seus certificados atualizados.',
+      };
+    if (state.status === 'loading')
+      return {
+        title: 'Consultando seu certificado…',
+        icon: 'workspace_premium',
+        description: '',
+      };
+    if (state.status === 'ready' && state.certificates.length > 0)
+      return {
+        title: state.certificates.length === 1 ? 'Certificado disponível' : 'Certificados disponíveis',
+        icon: 'workspace_premium',
+        description: 'A emissão já foi concluída. Você pode baixar os certificados disponíveis.',
+      };
+    if (state.status === 'error' || !state.participation)
+      return {
+        title: 'Não foi possível consultar',
+        icon: 'cloud_off',
+        description: 'Tente novamente para conferir a situação do seu certificado.',
+      };
+    return certificateStatusCopy(state.participation);
+  });
+
+  readonly certificateNeedsRetry = computed(() => {
+    const state = this.certificateState();
+    return (
+      state.status === 'error' || (state.status === 'ready' && !state.participation && state.certificates.length === 0)
+    );
   });
 
   retryCertificates(): void {
@@ -240,10 +285,6 @@ export class MoreInfo {
       },
       width: 'min(560px, calc(100vw - 32px))',
     });
-  }
-
-  registerAttendanceLater(): void {
-    console.info('Online attendance registration will be implemented later.');
   }
 
   eventRoute(eventId: string): string[] {

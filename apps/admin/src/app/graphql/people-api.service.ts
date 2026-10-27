@@ -22,6 +22,12 @@ export type PeopleFilters = {
   take?: number;
   permissionGrantFilter?: 'ACTIVE' | 'ANY';
   hasLecturerProfile?: boolean;
+  lecturerSelfEditingBlocked?: boolean;
+  hasUser?: boolean;
+  hasEmail?: boolean;
+  hasPhone?: boolean;
+  hasIdentityDocument?: boolean;
+  hasAcademicId?: boolean;
 };
 
 type RelatedPeopleFilters = Pick<PeopleFilters, 'query' | 'take'> & {
@@ -46,6 +52,12 @@ export class PeopleApiService {
           $take: Int
           $permissionGrantFilter: String
           $hasLecturerProfile: Boolean
+          $lecturerSelfEditingBlocked: Boolean
+          $hasUser: Boolean
+          $hasEmail: Boolean
+          $hasPhone: Boolean
+          $hasIdentityDocument: Boolean
+          $hasAcademicId: Boolean
         ) {
           people(
             query: $query
@@ -57,6 +69,12 @@ export class PeopleApiService {
             take: $take
             permissionGrantFilter: $permissionGrantFilter
             hasLecturerProfile: $hasLecturerProfile
+            lecturerSelfEditingBlocked: $lecturerSelfEditingBlocked
+            hasUser: $hasUser
+            hasEmail: $hasEmail
+            hasPhone: $hasPhone
+            hasIdentityDocument: $hasIdentityDocument
+            hasAcademicId: $hasAcademicId
           ) {
             ${PERSON_DETAIL_FIELDS}
           }
@@ -79,6 +97,12 @@ export class PeopleApiService {
           $take: Int
           $permissionGrantFilter: String
           $hasLecturerProfile: Boolean
+          $lecturerSelfEditingBlocked: Boolean
+          $hasUser: Boolean
+          $hasEmail: Boolean
+          $hasPhone: Boolean
+          $hasIdentityDocument: Boolean
+          $hasAcademicId: Boolean
         ) {
           people(
             query: $query
@@ -90,6 +114,12 @@ export class PeopleApiService {
             take: $take
             permissionGrantFilter: $permissionGrantFilter
             hasLecturerProfile: $hasLecturerProfile
+            lecturerSelfEditingBlocked: $lecturerSelfEditingBlocked
+            hasUser: $hasUser
+            hasEmail: $hasEmail
+            hasPhone: $hasPhone
+            hasIdentityDocument: $hasIdentityDocument
+            hasAcademicId: $hasAcademicId
           ) {
             ${PERSON_SEARCH_FIELDS}
           }
@@ -168,7 +198,7 @@ export class PeopleApiService {
   upsertLecturerProfile(personId: string, input: LecturerProfileInput) {
     return this.graphqlHttp
       .request<{ upsertLecturerProfile: LecturerProfile }>(
-        `mutation UpsertLecturerProfile($personId: String!, $input: LecturerProfileUpsertInput!) {
+        `mutation UpsertLecturerProfile($personId: String!, $input: AdminLecturerProfileUpsertInput!) {
           upsertLecturerProfile(personId: $personId, input: $input) {
             ${LECTURER_PROFILE_FIELDS}
           }
@@ -247,6 +277,7 @@ const LECTURER_PROFILE_FIELDS = `
   personId
   displayName
   biography
+  selfEditingBlocked
   publishGoogleUserPicture
   googleUserPicture
   email

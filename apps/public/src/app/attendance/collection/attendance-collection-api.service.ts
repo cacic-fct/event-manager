@@ -94,7 +94,7 @@ const PUBLIC_EVENT_FIELDS = `
   endDate
   emoji
   type
-  locationDescription
+  locationDescription: locationLabel
   onlineAttendanceStartDate
   onlineAttendanceEndDate
   shouldAllowOralAttendance

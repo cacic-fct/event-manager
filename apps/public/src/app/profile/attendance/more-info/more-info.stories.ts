@@ -1,5 +1,9 @@
 import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
-import type { EventTargetType, PublicEvent } from '@cacic-fct/event-manager-public-contracts';
+import type {
+  CertificateParticipationStatus,
+  EventTargetType,
+  PublicEvent,
+} from '@cacic-fct/event-manager-public-contracts';
 import { PublicDataAccessService, type OfflineAttendanceDetail } from '@cacic-fct/public-indexed-db';
 import { RouteErrorService } from '@cacic-fct/shared-angular';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
@@ -20,6 +24,8 @@ import { MoreInfo } from './more-info';
 
 interface MoreInfoStoryArgs extends PublicEventStoryControls {
   targetType: EventTargetType;
+  certificateStatus: CertificateParticipationStatus;
+  certificateApiState: 'ready' | 'error';
   apiState: 'ready' | 'loading' | 'error';
   latencyMs: number;
   hasAttendance: boolean;
@@ -38,6 +44,8 @@ const defaultArgs: MoreInfoStoryArgs = {
   ...publicEventStoryDefaultControls,
   context: 'short-description',
   targetType: 'event',
+  certificateStatus: 'ATTENDANCE_CONFIRMED',
+  certificateApiState: 'ready',
   apiState: 'ready',
   latencyMs: 120,
   hasAttendance: true,
@@ -106,6 +114,23 @@ const meta: Meta<MoreInfoStoryArgs> = {
     apiState: { control: 'inline-radio', options: ['ready', 'loading', 'error'] },
     latencyMs: { control: { type: 'range', min: 0, max: 2_000, step: 100 } },
     hasAttendance: { control: 'boolean' },
+    certificateStatus: {
+      control: 'select',
+      options: [
+        'ATTENDANCE_CONFIRMED',
+        'AWAITING_RELEASE',
+        'PARTICIPATION_PENDING',
+        'ATTENDANCE_UNCONFIRMED',
+        'GROUP_ATTENDANCE_INCOMPLETE',
+        'ATTENDANCE_UNDER_REVIEW',
+        'PAYMENT_PENDING',
+        'PAYMENT_UNDER_REVIEW',
+        'REGISTRATION_PENDING',
+        'RULES_UNDER_REVIEW',
+        'NOT_OFFERED',
+      ],
+    },
+    certificateApiState: { control: 'inline-radio', options: ['ready', 'error'] },
     hasIssuedCertificate: { control: 'boolean' },
     shouldIssueCertificate: { control: 'boolean' },
     certificateCount: { control: { type: 'range', min: 0, max: 20, step: 1 }, if: { arg: 'hasIssuedCertificate' } },
@@ -184,6 +209,29 @@ export const MajorEventWithCertificates: Story = {
   args: { targetType: 'major-event', hasIssuedCertificate: true, certificateCount: 2 },
 };
 
+export const AttendanceConfirmed: Story = { args: { certificateStatus: 'ATTENDANCE_CONFIRMED' } };
+export const ParticipationPending: Story = {
+  args: { hasAttendance: false, certificateStatus: 'PARTICIPATION_PENDING' },
+};
+export const AttendanceUnconfirmed: Story = {
+  args: { hasAttendance: false, certificateStatus: 'ATTENDANCE_UNCONFIRMED' },
+};
+export const AttendanceUnderReview: Story = {
+  args: { hasAttendance: false, certificateStatus: 'ATTENDANCE_UNDER_REVIEW' },
+};
+export const PaymentPending: Story = { args: { targetType: 'major-event', certificateStatus: 'PAYMENT_PENDING' } };
+export const PaymentUnderReview: Story = {
+  args: { targetType: 'major-event', certificateStatus: 'PAYMENT_UNDER_REVIEW' },
+};
+export const RegistrationPending: Story = { args: { certificateStatus: 'REGISTRATION_PENDING' } };
+export const GroupAttendanceIncomplete: Story = {
+  args: { targetType: 'event-group', certificateStatus: 'GROUP_ATTENDANCE_INCOMPLETE' },
+};
+export const RulesUnderReview: Story = { args: { targetType: 'event-group', certificateStatus: 'RULES_UNDER_REVIEW' } };
+export const CertificateNotOffered: Story = { args: { shouldIssueCertificate: false } };
+export const CertificateQueryError: Story = { args: { certificateApiState: 'error' } };
+export const PreviouslyIssued: Story = { args: { hasIssuedCertificate: true, shouldIssueCertificate: false } };
+
 export const OrganizerWorkspace: Story = {
   args: {
     isLecturer: true,
@@ -248,7 +296,11 @@ function storyParameters(context: MoreInfoStoryContext) {
               await delay(context.args.latencyMs);
             }
             const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
-            if (context.args.apiState === 'error') {
+            if (
+              context.args.apiState === 'error' ||
+              (context.args.certificateApiState === 'error' &&
+                body.query?.includes('CurrentUserCertificateParticipation'))
+            ) {
               return HttpResponse.json({
                 errors: [{ message: 'Não foi possível carregar os detalhes da participação.' }],
               });
@@ -267,6 +319,14 @@ function moreInfoGraphqlData(query: string, args: MoreInfoStoryArgs, variables: 
   const event = buildEvent(args);
   const events = [event];
   const targetId = storyTargetId(args.targetType);
+  if (query.includes('CurrentUserCertificateParticipation')) {
+    return {
+      currentUserCertificateParticipation: {
+        status: args.shouldIssueCertificate ? args.certificateStatus : 'NOT_OFFERED',
+        actionTargetId: 'major-event-story',
+      },
+    };
+  }
   if (query.includes('PublicPrizeDrawAvailability')) {
     return { publicPrizeDrawAvailability: [] };
   }
@@ -327,6 +387,18 @@ function moreInfoGraphqlData(query: string, args: MoreInfoStoryArgs, variables: 
       currentUserEventAttendance: args.hasAttendance ? currentUserEventAttendance(event) : null,
       publicEvent: event,
       currentUserCertificates: [],
+    };
+  }
+
+  if (query.includes('CurrentUserEventSubscriberInformationList')) {
+    return { currentUserEventSubscriberInformationList: [] };
+  }
+
+  if (query.includes('CurrentUserEventSubscriberInformation')) {
+    return {
+      currentUserEventSubscriberInformation: args.isSubscribed
+        ? { content: 'Confira as orientações da organização antes do evento.' }
+        : null,
     };
   }
 

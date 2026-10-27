@@ -165,7 +165,7 @@ type Story = StoryObj<PeoplePermissionsStoryArgs>;
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.type(await canvas.findByLabelText(/buscar pessoa/i), 'ana');
+    await userEvent.type(await canvas.findByRole('searchbox', { name: 'Buscar pessoa' }), 'ana');
     await userEvent.click(await canvas.findByRole('button', { name: /buscar/i }));
     await expect(await canvas.findByRole('heading', { name: activeData.people[0].name })).toBeVisible();
 
@@ -174,6 +174,11 @@ export const Playground: Story = {
     await userEvent.click(await canvas.findByRole('tab', { name: 'Ministrante' }));
     const publishPhoto = await canvas.findByRole('checkbox', { name: /publicar foto do usuário Google/i });
     await waitFor(() => expect(publishPhoto.closest('mat-checkbox')).toBeVisible(), { timeout: 1_000 });
+    const editingLock = await canvas.findByRole('checkbox', { name: 'Bloquear edição pelo ministrante' });
+    await expect(editingLock).not.toBeChecked();
+    await userEvent.click(editingLock);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Salvar perfil' }));
+    await waitFor(() => expect(activeData.people[0].lecturerProfile?.selfEditingBlocked).toBe(true));
     await expect(publishPhoto).toBeEnabled();
     await expect(publishPhoto).not.toBeChecked();
     expect(canvas.queryByRole('switch', { name: /publicar foto do usuário Google/i })).toBeNull();
@@ -197,7 +202,7 @@ export const EmptyPeople: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.type(await canvas.findByLabelText(/buscar pessoa/i), 'ana');
+    await userEvent.type(await canvas.findByRole('searchbox', { name: 'Buscar pessoa' }), 'ana');
     await userEvent.click(await canvas.findByRole('button', { name: /buscar/i }));
     await expect(await canvas.findByText('Nenhuma pessoa encontrada')).toBeVisible();
   },
@@ -211,6 +216,44 @@ export const DeletablePersonWithoutLinks: Story = {
     await expect(await screen.findByRole('heading', { name: 'Vínculos da pessoa' })).toBeVisible();
     await expect(await screen.findByText('Nenhum vínculo encontrado')).toBeVisible();
     await expect(await screen.findByRole('button', { name: 'Excluir pessoa' })).toBeEnabled();
+  },
+};
+
+export const SearchFilters: Story = {
+  args: { selectedPersonId: null, latencyMs: 0 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Filtros' }));
+    await userEvent.click(await canvas.findByRole('combobox', { name: 'Perfil de ministrante' }));
+    await userEvent.click(await screen.findByRole('option', { name: /^Sem perfil$/ }));
+    await userEvent.click(await canvas.findByRole('combobox', { name: /^Telefone$/ }));
+    await userEvent.click(await screen.findByRole('option', { name: /^Sem telefone$/ }));
+    await expect(await canvas.findByText('2 ativos')).toBeVisible();
+    await waitFor(() => expect(canvas.getAllByRole('link', { name: /Abrir cadastro de/ })).toHaveLength(3));
+
+    await userEvent.type(await canvas.findByLabelText('Buscar pessoa'), 'Ana Clara');
+    await expect(await canvas.findByText('Nenhuma pessoa encontrada')).toBeVisible();
+    await userEvent.click(await canvas.findByRole('button', { name: 'Limpar filtros' }));
+    await expect(await canvas.findByLabelText('Buscar pessoa')).toHaveValue('Ana Clara');
+    await waitFor(() => expect(canvas.getAllByRole('link', { name: /Abrir cadastro de/ })).toHaveLength(1));
+    await expect(canvas.queryByText('2 ativos')).toBeNull();
+  },
+};
+
+export const LecturerEditingFilter: Story = {
+  args: { selectedPersonId: null, latencyMs: 0 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Filtros' }));
+    await userEvent.click(await canvas.findByRole('combobox', { name: 'Edição pelo ministrante' }));
+    await userEvent.click(await screen.findByRole('option', { name: /^Bloqueada$/ }));
+    await expect(await canvas.findByText('1 ativo')).toBeVisible();
+    await expect(await canvas.findByText('Nenhuma pessoa encontrada')).toBeVisible();
+    await userEvent.click(await canvas.findByRole('combobox', { name: 'Edição pelo ministrante' }));
+    await userEvent.click(await screen.findByRole('option', { name: /^Permitida$/ }));
+    await waitFor(() => expect(canvas.getAllByRole('link', { name: /Abrir cadastro de/ })).toHaveLength(1));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Limpar filtros' }));
+    await waitFor(() => expect(canvas.getAllByRole('link', { name: /Abrir cadastro de/ })).toHaveLength(6));
   },
 };
 
@@ -234,13 +277,29 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
   if (query.includes('ListPeople') || query.includes('ListPeopleSummaries')) {
     const search = typeof variables['query'] === 'string' ? variables['query'].toLocaleLowerCase('pt-BR') : '';
     const permissionGrantFilter = variables['permissionGrantFilter'];
-    const hasLecturerProfile = variables['hasLecturerProfile'] === true;
+    const presenceFilters = [
+      ['hasUser', (person: Person) => Boolean(person.userId)],
+      ['hasLecturerProfile', (person: Person) => Boolean(person.lecturerProfile)],
+      ['hasEmail', (person: Person) => Boolean(person.email)],
+      ['hasPhone', (person: Person) => Boolean(person.phone)],
+      ['hasIdentityDocument', (person: Person) => Boolean(person.identityDocument)],
+      ['hasAcademicId', (person: Person) => Boolean(person.academicId)],
+    ] as const;
     const people = activeData.people.filter((person) => {
       if (search && !person.name.toLocaleLowerCase('pt-BR').includes(search)) {
         return false;
       }
 
-      if (hasLecturerProfile && !person.lecturerProfile) {
+      if (
+        presenceFilters.some(
+          ([key, present]) => typeof variables[key] === 'boolean' && variables[key] !== present(person),
+        )
+      ) {
+        return false;
+      }
+
+      const editingBlocked = variables['lecturerSelfEditingBlocked'];
+      if (typeof editingBlocked === 'boolean' && person.lecturerProfile?.selfEditingBlocked !== editingBlocked) {
         return false;
       }
 
@@ -258,8 +317,20 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
     });
 
     return {
-      people,
+      people: people.slice(
+        Number(variables['skip'] ?? 0),
+        Number(variables['skip'] ?? 0) + Number(variables['take'] ?? 50),
+      ),
     };
+  }
+
+  if (query.includes('UpsertLecturerProfile')) {
+    const person = activeData.people.find((person) => person.id === variables['personId']);
+    const input = variables['input'] as Record<string, unknown>;
+    if (person?.lecturerProfile) {
+      person.lecturerProfile = { ...person.lecturerProfile, selfEditingBlocked: input['selfEditingBlocked'] === true };
+    }
+    return { upsertLecturerProfile: person?.lecturerProfile ?? null };
   }
 
   if (query.includes('GetPerson')) {
@@ -488,9 +559,9 @@ function person(index: number): Person {
     name: `${firstName} ${lastName}${activeArgs.longNames ? ` ${faker.company.catchPhrase()}` : ''}`,
     email: faker.internet.email({ firstName, lastName }).toLocaleLowerCase('pt-BR'),
     secondaryEmails: [faker.internet.email().toLocaleLowerCase('pt-BR')],
-    phone: faker.phone.number({ style: 'national' }),
+    phone: index % 2 === 0 ? faker.phone.number({ style: 'national' }) : null,
     identityDocument: faker.string.numeric(11),
-    academicId: faker.string.numeric(9),
+    academicId: index % 2 === 0 ? faker.string.numeric(9) : null,
     userId,
     user: {
       id: userId,
@@ -509,6 +580,7 @@ function person(index: number): Person {
       index === 0
         ? {
             id: 'lecturer-profile-1',
+            selfEditingBlocked: false,
             personId: id,
             displayName: `${firstName} ${lastName}`,
             biography: 'Ministrante convidada pela comunidade CACiC.',

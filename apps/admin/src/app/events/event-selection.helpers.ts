@@ -74,11 +74,11 @@ export function getEventGroupCertificatePermissions(resolution: EventGroupResolu
 }
 
 export function findMatchingPlacePreset(
-  input: Pick<PlacePreset, 'latitude' | 'longitude' | 'locationDescription'>,
+  input: Pick<PlacePreset, 'latitude' | 'longitude' | 'locationDescription'> & { locationName?: string | null },
   placePresets: readonly PlacePreset[],
 ): PlacePreset | null {
   const description = normalizePlaceText(input.locationDescription);
-  if (!description) {
+  if (!description && !input.locationName?.trim()) {
     return null;
   }
   const latitude = input.latitude ?? null;
@@ -86,7 +86,8 @@ export function findMatchingPlacePreset(
   return (
     placePresets.find(
       (place) =>
-        normalizePlaceText(place.locationDescription ?? place.name) === description &&
+        (!input.locationName || normalizePlaceText(place.name) === normalizePlaceText(input.locationName)) &&
+        normalizePlaceText(place.locationDescription ?? (input.locationName ? null : place.name)) === description &&
         (place.latitude ?? null) === latitude &&
         (place.longitude ?? null) === longitude,
     ) ?? null

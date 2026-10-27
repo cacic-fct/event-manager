@@ -19,6 +19,7 @@ import { cacicEventosHandlers } from './storybook-mocks';
 import { ptBR } from 'date-fns/locale/pt-BR';
 import { NEVER } from 'rxjs';
 import { RealtimeApiService } from '../src/app/graphql/realtime-api.service';
+import { adminFormFieldDefaultsProvider } from '../src/app/material-form-field.config';
 
 registerLocaleData(localePt);
 configure({ asyncUtilTimeout: 5_000 });
@@ -183,6 +184,7 @@ const preview: Preview = {
     applicationConfig({
       providers: [
         { provide: LOCALE_ID, useValue: 'pt-BR' },
+        adminFormFieldDefaultsProvider,
         { provide: MAT_DATE_LOCALE, useValue: ptBR },
         provideDateFnsAdapter(),
         provideHttpClient(),

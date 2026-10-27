@@ -89,37 +89,81 @@
 
     @if (error()) {
       <p class="error-state" role="alert">{{ error() }}</p>
+      @if (selectedTab() === 'preferences') {
+        <button mat-button type="button" [disabled]="loading() || busy()" (click)="reload()">Tentar novamente</button>
+      }
     }
 
     @if (selectedTab() === 'preferences') {
-      <mat-list class="preference-list">
-        @for (preference of preferences(); track preference.workflow?.id ?? preference.level) {
-          <mat-list-item class="preference-item">
-            <mat-icon matListItemIcon>rule</mat-icon>
-            <span matListItemTitle>{{ preference.workflow?.name ?? 'Preferências globais' }}</span>
-            <span matListItemLine>{{ channelsLabel(preference) }}</span>
-            <div matListItemMeta class="preference-actions">
-              <mat-slide-toggle
-                [disabled]="busy()"
-                [checked]="preference.channels.in_app !== false"
-                (change)="updatePreferenceChannel(preference, 'in_app', $event.checked)">
-                No aplicativo
-              </mat-slide-toggle>
-              <mat-slide-toggle
-                [disabled]="busy()"
-                [checked]="preference.channels.push !== false"
-                (change)="updatePreferenceChannel(preference, 'push', $event.checked)">
-                No navegador
-              </mat-slide-toggle>
-            </div>
-          </mat-list-item>
+      <div class="preferences-panel" [attr.aria-busy]="loading() || saving()">
+        <header class="preferences-heading">
+          <h2>Preferências</h2>
+          <p>Avisos obrigatórios permanecem ativos.</p>
+          <p class="preference-save-status" role="status">
+            {{ saving() ? 'Salvando…' : loading() ? 'Carregando…' : 'Alterações salvas automaticamente.' }}
+          </p>
+        </header>
+
+        @for (group of preferenceGroups(); track group.id) {
+          <section class="preference-group" [attr.aria-labelledby]="'preference-group-' + group.id">
+            <header class="preference-group-heading">
+              <h3 [id]="'preference-group-' + group.id">{{ group.title }}</h3>
+            </header>
+            <ul class="preference-list">
+              @for (item of group.items; track item.key) {
+                <li class="preference-item">
+                  <mat-icon class="preference-icon" aria-hidden="true">{{ item.icon }}</mat-icon>
+                  <div class="preference-copy">
+                    <h4 [id]="'preference-title-' + item.key">{{ item.title }}</h4>
+                    <p [id]="'preference-description-' + item.key">{{ item.description }}</p>
+                  </div>
+                  <div class="preference-controls">
+                    <div
+                      class="preference-actions"
+                      role="group"
+                      [attr.aria-labelledby]="'preference-title-' + item.key">
+                      @if (item.preference.channels.in_app !== undefined) {
+                        <mat-slide-toggle
+                          [disabled]="busy() || loading() || channelBlockedByGlobal(item.preference, 'in_app')"
+                          [checked]="preferenceChannelEnabled(item.preference, 'in_app')"
+                          [aria-label]="item.title + ': no aplicativo'"
+                          [aria-describedby]="'preference-description-' + item.key"
+                          (change)="updatePreferenceChannel(item.preference, 'in_app', $event.checked)">
+                          Aplicativo
+                        </mat-slide-toggle>
+                      }
+                      @if (item.preference.channels.push !== undefined) {
+                        <mat-slide-toggle
+                          [disabled]="busy() || loading() || channelBlockedByGlobal(item.preference, 'push')"
+                          [checked]="preferenceChannelEnabled(item.preference, 'push')"
+                          [aria-label]="item.title + ': no navegador'"
+                          [aria-describedby]="'preference-description-' + item.key"
+                          (change)="updatePreferenceChannel(item.preference, 'push', $event.checked)">
+                          Navegador
+                        </mat-slide-toggle>
+                      }
+                    </div>
+                    @if (
+                      channelBlockedByGlobal(item.preference, 'in_app') ||
+                      channelBlockedByGlobal(item.preference, 'push')
+                    ) {
+                      <p class="preference-channel-hint">Ative o canal em “Canais”.</p>
+                    } @else if (
+                      item.preference.channels.in_app === undefined && item.preference.channels.push === undefined
+                    ) {
+                      <p class="preference-channel-hint">Nenhum canal disponível.</p>
+                    }
+                  </div>
+                </li>
+              }
+            </ul>
+          </section>
         } @empty {
-          <mat-list-item>
-            <mat-icon matListItemIcon>tune</mat-icon>
-            <span matListItemTitle>Nenhuma preferência disponível</span>
-          </mat-list-item>
+          @if (!loading() && !error()) {
+            <p>Nenhuma preferência disponível para sua conta.</p>
+          }
         }
-      </mat-list>
+      </div>
     } @else {
       <mat-list class="notification-list">
         @for (notification of notificationList(); track notification.id) {

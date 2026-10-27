@@ -34,7 +34,10 @@ export class EventFormStateService {
         shortDescription: [''],
         latitude: [''],
         longitude: [''],
-        locationDescription: [''],
+        locationDescription: ['', Validators.maxLength(2000)],
+        locationName: ['', Validators.maxLength(250)],
+        locationInternalNotes: ['', Validators.maxLength(10000)],
+        isVirtual: [false],
         locationPresetId: ['PERSONALIZADO'],
         majorEventId: [''],
         eventGroupId: [''],
@@ -68,7 +71,16 @@ export class EventFormStateService {
       },
       {
         validators: [
-          this.requireBothOrNeither('latitude', 'longitude'),
+          (control: AbstractControl) => {
+            if (control.get('isVirtual')?.value === true || control.get('locationName')?.value?.trim()) return null;
+            return ['locationDescription', 'latitude', 'longitude'].some((key) => control.get(key)?.value?.trim())
+              ? { locationNameRequired: true }
+              : null;
+          },
+          (control: AbstractControl) =>
+            control.get('isVirtual')?.value === true
+              ? null
+              : this.requireBothOrNeither('latitude', 'longitude')(control),
           this.requireBothOrNeither('buttonText', 'buttonLink'),
           dateRangeValidator('startDate', 'endDate', 'eventDateRange'),
           dateRangeValidator('subscriptionStartDate', 'subscriptionEndDate', 'subscriptionDateRange'),

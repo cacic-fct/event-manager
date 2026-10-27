@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { formatEventLocation } from '@cacic-fct/shared-utils';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { PUBLICATION_EVENT_SELECT } from './publishing.selects';
@@ -49,7 +50,7 @@ export class PublicationSearchSyncService {
           type: event.type,
           description: event.description,
           shortDescription: event.shortDescription,
-          locationDescription: event.locationDescription,
+          locationDescription: formatEventLocation(event),
           majorEventId: event.majorEventId,
           eventGroupId: event.eventGroupId,
           shouldIssueCertificate: event.shouldIssueCertificate,

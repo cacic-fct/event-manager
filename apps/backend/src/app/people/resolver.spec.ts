@@ -209,6 +209,114 @@ describe('PeopleResolver', () => {
     );
   });
 
+  it.each([true, false])(
+    'applies account and data presence (%s) before pagination and bypasses Typesense',
+    async (present) => {
+      const prisma = createPrisma();
+      const typesenseSearch = createTypesenseSearch();
+      typesenseSearch.isEnabled.mockReturnValue(true);
+      const resolver = createResolver(prisma, createAuthorizationPolicy(), { typesenseSearch });
+      await resolver.people(
+        'Ana',
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        50,
+        51,
+        undefined,
+        present,
+        userContext(),
+        present,
+        present,
+        present,
+        present,
+        present,
+      );
+      expect(typesenseSearch.searchPeople).not.toHaveBeenCalled();
+      const where = prisma.people.findMany.mock.calls[0][0].where;
+      expect(where.deletedAt).toBeNull();
+      expect(where.lecturerProfile).toEqual(present ? { isNot: null } : { is: null });
+      expect(where.AND).toHaveLength(5);
+      expect(where.OR).toContainEqual({ name: { contains: 'Ana', mode: 'insensitive' } });
+      expect(prisma.people.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skip: 50,
+          take: 51,
+          orderBy: [{ name: 'asc' }, { id: 'asc' }],
+        }),
+      );
+    },
+  );
+
+  it.each([true, false])('filters lecturer self-editing blocked=%s before search pagination', async (blocked) => {
+    const prisma = createPrisma();
+    const typesenseSearch = createTypesenseSearch();
+    typesenseSearch.isEnabled.mockReturnValue(true);
+    const resolver = createResolver(prisma, createAuthorizationPolicy(), { typesenseSearch });
+    await resolver.people(
+      'Ana',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      50,
+      51,
+      undefined,
+      undefined,
+      userContext(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      blocked,
+    );
+    expect(typesenseSearch.searchPeople).not.toHaveBeenCalled();
+    expect(prisma.people.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          deletedAt: null,
+          AND: [{ lecturerProfile: { is: { selfEditingBlocked: blocked } } }],
+          OR: expect.arrayContaining([{ name: { contains: 'Ana', mode: 'insensitive' } }]),
+        }),
+        skip: 50,
+        take: 51,
+        orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      }),
+    );
+  });
+
+  it('combines the lecturer editing lock with profile presence instead of replacing it', async () => {
+    const prisma = createPrisma();
+    await createResolver(prisma).people(
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      0,
+      10,
+      undefined,
+      false,
+      userContext(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      true,
+    );
+    expect(prisma.people.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          lecturerProfile: { is: null },
+          AND: [{ lecturerProfile: { is: { selfEditingBlocked: true } } }],
+        }),
+      }),
+    );
+  });
+
   it('loads a single person or throws when it is missing', async () => {
     const resolver = createResolver(createPrisma());
 

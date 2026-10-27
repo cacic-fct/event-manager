@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { formatEventLocation } from '@cacic-fct/shared-utils';
 import { Prisma } from '@prisma/client';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import {
@@ -140,7 +141,7 @@ export class TicketPurchaseCatalogService {
               config.event.audience === 'PUBLIC' &&
               (!config.event.eventGroup || config.event.eventGroup.audience === 'PUBLIC') &&
               (!config.event.majorEvent || config.event.majorEvent.audience === 'PUBLIC'),
-            locationDescription: config.event.locationDescription,
+            locationDescription: formatEventLocation(config.event),
           },
         });
       }

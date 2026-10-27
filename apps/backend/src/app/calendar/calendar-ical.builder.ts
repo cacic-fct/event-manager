@@ -1,3 +1,4 @@
+import { formatEventLocation } from '@cacic-fct/shared-utils';
 import ical, { ICalCalendarMethod, ICalEventClass, ICalEventStatus, ICalEventTransparency } from 'ical-generator';
 import type { ICalLocation } from 'ical-generator';
 import { adminEventWorkspacePath } from '@cacic-fct/shared-utils';
@@ -143,7 +144,7 @@ export function buildEventDescription(event: CalendarEventRecord): string | null
 }
 
 export function buildEventLocation(event: CalendarEventRecord): ICalLocation | string | null {
-  const title = event.locationDescription?.trim();
+  const title = formatEventLocation(event);
   const latitude = event.latitude;
   const longitude = event.longitude;
   const hasCoordinates = latitude != null && longitude != null;

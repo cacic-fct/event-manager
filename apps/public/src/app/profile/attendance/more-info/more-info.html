@@ -23,34 +23,34 @@
     </div>
   </header>
 
-  @let certificates = certificateState(); @let certificateIssuanceEnabled = detail.certificateIssuanceEnabled ??
-  detail.shouldIssueCertificate; @let showCertificateStatus = certificates.status !== 'ready' ||
-  (issuedCertificates().length === 0 && certificateIssuanceEnabled); @if (detail.statusLabel || showCertificateStatus) {
-  <div class="status-list">
-    @if (detail.statusLabel; as statusLabel) {
-    <p class="status-summary" role="status">
-      <mat-icon aria-hidden="true">{{ statusIcon(detail) }}</mat-icon>
-      <span>{{ statusLabel }}</span>
-    </p>
-    } @if (showCertificateStatus) {
-    <p class="status-summary certificate-status" role="status">
-      <mat-icon aria-hidden="true"
-        >{{ certificates.status === 'error' || certificates.status === 'offline' ? 'cloud_off' : 'workspace_premium'
-        }}</mat-icon
-      >
-      <span>
-        @if (certificates.status === 'loading') { Consultando certificados… } @else if (certificates.status === 'error')
-        { Não foi possível consultar seus certificados. } @else if (certificates.status === 'offline') { Conecte-se à
-        internet para consultar seus certificados. } @else { Nenhum certificado emitido }
-      </span>
-    </p>
-    @if (certificates.status === 'error') {
-    <button matButton="text" type="button" class="certificate-retry" (click)="retryCertificates()">
-      Tentar novamente
+  @if (detail.statusLabel && detail.statusLabel !== 'Certificado emitido') {
+  <p class="status-summary participation-status">
+    <mat-icon aria-hidden="true">{{ statusIcon(detail) }}</mat-icon>
+    <span>{{ detail.statusLabel }}</span>
+  </p>
+  } @let certificate = certificateSummary();
+  <section class="certificate-summary" aria-labelledby="certificate-heading" aria-live="polite" aria-atomic="true">
+    <h2 id="certificate-heading">Meu certificado</h2>
+    <div class="certificate-copy">
+      <mat-icon aria-hidden="true">{{ certificate.icon }}</mat-icon>
+      <div>
+        <h3>{{ certificate.title }}</h3>
+        @if (certificate.description) {
+        <p>{{ certificate.description }}</p>
+        }
+      </div>
+    </div>
+    @if (issuedCertificates().length > 0) {
+    <button matButton="filled" type="button" (click)="openCertificates(detail)">
+      <mat-icon>download</mat-icon>
+      {{ issuedCertificates().length === 1 ? 'Baixar certificado' : 'Ver certificados' }}
     </button>
-    } }
-  </div>
-  }
+    } @else if (certificate.action; as action) {
+    <a matButton="filled" [routerLink]="action.route">{{ action.label }}</a>
+    } @else if (certificateNeedsRetry()) {
+    <button matButton="outlined" type="button" (click)="retryCertificates()">Tentar novamente</button>
+    }
+  </section>
 
   <div class="actions">
     @if (detail.sportsTournamentId) {
@@ -78,21 +78,19 @@
       <mat-icon>admin_panel_settings</mat-icon>
       Informações do organizador
     </a>
-    } @if (certificateState().status === 'ready' && issuedCertificates().length > 0) {
-    <button mat-flat-button type="button" (click)="openCertificates(detail)">
-      <mat-icon>workspace_premium</mat-icon>
-      Certificados
-    </button>
     } @if (currentState.hasPrizeDraws) {
     <a mat-stroked-button [routerLink]="prizeDrawRoute(detail)">
       <mat-icon>rewarded_ads</mat-icon>
       Sorteios
     </a>
     } @if (detail.isSubscribed && detail.events.length === 1 && detail.events[0].canRegisterAttendance) {
-    <button mat-stroked-button type="button" (click)="registerAttendanceLater()">
+    <a
+      mat-stroked-button
+      [routerLink]="['/attendance/register', detail.events[0].event.id]"
+      [queryParams]="eventRouteQueryParams()">
       <mat-icon>how_to_reg</mat-icon>
       Registrar presença
-    </button>
+    </a>
     } @if (detail.isSubscribed && detail.buttonLink) {
     <a mat-stroked-button [href]="detail.buttonLink" target="_blank" rel="noopener noreferrer">
       <mat-icon>open_in_new</mat-icon>
@@ -119,6 +117,10 @@
     <h2>Sobre</h2>
     <lib-markdown class="description" [content]="detail.description" />
   </section>
+  } @if (detail.targetType === 'event') {
+  <app-subscriber-information [eventId]="detail.targetId" />
+  } @else {
+  <app-subscriber-information [events]="detail.events" />
   }
 
   <section class="detail-section">

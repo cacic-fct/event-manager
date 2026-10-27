@@ -26,8 +26,9 @@ export class AuditLogResolver {
     @Args('input', { type: () => AuditLogEntityHistoryInput }) input: AuditLogEntityHistoryInput,
     @Context() context: GraphqlContext,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
+    @Args('skip', { type: () => Int, nullable: true }) skip?: number,
   ) {
-    return this.auditLog.listEntityHistory(input.entityType, input.entityId, this.getUser(context), take);
+    return this.auditLog.listEntityHistory(input.entityType, input.entityId, this.getUser(context), take, skip);
   }
 
   @RequireRoles(EventManagerKeycloakRole.SuperAdmin)

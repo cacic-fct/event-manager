@@ -72,6 +72,7 @@ describe('MoreInfo ticket purchase placement integration', () => {
           provide: AttendancesApiService,
           useValue: {
             getCurrentUserCertificatesForTargets: () => of([]),
+            getCertificateParticipation: () => of({ status: 'RULES_UNDER_REVIEW' }),
             getMajorEventDetails: () => of({ subscription, attendances: [] }),
           },
         },

@@ -46,7 +46,15 @@ describe('ticket purchase availability', () => {
 });
 
 describe('ticket purchase stock', () => {
-  function setup(limit: number | null, reserved: number) {
+  function setup(
+    limit: number | null,
+    reserved: number,
+    location: {
+      locationName?: string | null;
+      locationDescription?: string | null;
+      isVirtual?: boolean;
+    } = {},
+  ) {
     const future = new Date(Date.now() + 86_400_000);
     const tx = {
       majorEventSubscription: {
@@ -75,6 +83,7 @@ describe('ticket purchase stock', () => {
               isPubliclyListed: true,
               publicationState: 'PUBLISHED',
               audience: 'PUBLIC',
+              ...location,
             },
           },
         ]),
@@ -106,5 +115,15 @@ describe('ticket purchase stock', () => {
     const { tx, service } = setup(null, 1000);
     await expect(service.listOffers(tx as never, 'person', 'major')).resolves.toHaveLength(1);
     expect(tx.ticketPurchase.count).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { locationName: 'Auditório', locationDescription: null, expected: 'Auditório' },
+    { locationName: 'Auditório', locationDescription: 'Bloco 5', expected: 'Auditório - Bloco 5' },
+    { locationName: null, locationDescription: null, isVirtual: true, expected: 'Evento on-line' },
+  ])('returns the complete purchase location: $expected', async ({ expected, ...location }) => {
+    const { tx, service } = setup(null, 0, location);
+    const offers = await service.listOffers(tx as never, 'person', 'major');
+    expect(offers[0].event.locationDescription).toBe(expected);
   });
 });

@@ -101,6 +101,30 @@ beforeAll(async () => {
 });
 
 describe('ticket purchase transaction boundaries', () => {
+  it.each([
+    { locationName: 'Auditório', locationDescription: null, isVirtual: false, expectedLocation: 'Auditório' },
+    {
+      locationName: 'Auditório',
+      locationDescription: 'Bloco 5',
+      isVirtual: false,
+      expectedLocation: 'Auditório - Bloco 5',
+    },
+    { locationName: null, locationDescription: null, isVirtual: true, expectedLocation: 'Evento on-line' },
+  ])('preserves $expectedLocation in pending ticket receipt locations', async ({ expectedLocation, ...location }) => {
+    const { service, tx, purchase } = setup();
+    tx.ticketPurchase.findMany.mockResolvedValue([
+      {
+        ...purchase,
+        person: { id: 'person', name: 'Ana', email: null, phone: null },
+        event: { ...purchase.event, ...location },
+      },
+    ]);
+
+    const items = await service.pending('major');
+
+    expect(items[0].events[0].locationDescription).toBe(expectedLocation);
+  });
+
   it.each(['approve', 'reject'] as const)('blocks frozen purchase %s before writing', async (operation) => {
     const { service, tx, frozenResources, issuance } = setup();
     frozenResources.assertMajorEventMutable.mockRejectedValue(new Error('Frozen'));

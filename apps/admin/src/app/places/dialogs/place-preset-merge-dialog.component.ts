@@ -13,7 +13,7 @@ export type PlacePresetMergeDialogResult = {
   place: PlacePresetInput;
 };
 
-type PlaceMergeControlName = 'useName' | 'useLatitude' | 'useLongitude' | 'useLocationDescription';
+type PlaceMergeControlName = 'useName' | 'useLatitude' | 'useLongitude' | 'useLocationDescription' | 'useInternalNotes';
 
 type PlaceMergeField = {
   controlName: PlaceMergeControlName;
@@ -27,6 +27,7 @@ type PlacePresetMergeDialogData = {
 };
 
 const FIELD_OPTIONS: PlaceMergeField[] = [
+  { controlName: 'useInternalNotes', label: 'Observações internas', valueAccessor: (place) => place.internalNotes },
   {
     controlName: 'useName',
     label: 'Nome',
@@ -44,7 +45,7 @@ const FIELD_OPTIONS: PlaceMergeField[] = [
   },
   {
     controlName: 'useLocationDescription',
-    label: 'Nome e descrição exibidos aos usuários',
+    label: 'Descrição do local',
     valueAccessor: (place) => place.locationDescription,
   },
 ];
@@ -222,6 +223,7 @@ export class PlacePresetMergeDialogComponent {
     useLatitude: [false],
     useLongitude: [false],
     useLocationDescription: [false],
+    useInternalNotes: [false],
   });
 
   constructor() {
@@ -244,6 +246,9 @@ export class PlacePresetMergeDialogComponent {
       targetId: kept.id,
       sourceId: removed.id,
       place: {
+        internalNotes: this.form.controls.useInternalNotes.value
+          ? (removed.internalNotes ?? null)
+          : (kept.internalNotes ?? null),
         name: this.form.controls.useName.value ? removed.name : kept.name,
         latitude: this.form.controls.useLatitude.value ? (removed.latitude ?? null) : (kept.latitude ?? null),
         longitude: this.form.controls.useLongitude.value ? (removed.longitude ?? null) : (kept.longitude ?? null),

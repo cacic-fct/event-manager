@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { formatEventLocation } from '@cacic-fct/shared-utils';
 import { type MajorEventReceipt, MajorEventSubscriptionFlow, Prisma } from '@prisma/client';
 import { CurrentUserMajorEventSubscriptionService } from '../../current-user/major-events/subscription.service';
 import { type AdminReceiptQueueItem, type CurrentUserReceiptResponse } from '../receipt.types';
@@ -59,6 +60,8 @@ export class ReceiptQueueMapper {
               startDate: true,
               endDate: true,
               locationDescription: true,
+              locationName: true,
+              isVirtual: true,
               slots: true,
               slotsAvailable: true,
               autoSubscribe: true,
@@ -169,7 +172,7 @@ export class ReceiptQueueMapper {
         preferenceOrder: selection.preferenceOrder,
         startDate: selection.event.startDate,
         endDate: selection.event.endDate,
-        locationDescription: selection.event.locationDescription,
+        locationDescription: formatEventLocation(selection.event),
         slots: selection.event.slots,
         slotsAvailable: selection.event.slotsAvailable,
         autoSubscribe: selection.event.autoSubscribe,

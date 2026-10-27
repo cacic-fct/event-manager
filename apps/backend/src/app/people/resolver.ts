@@ -34,7 +34,7 @@ import {
   buildPersonLinkedResourcePage,
   personHasLinkedData,
 } from './people-linked-resources';
-import { personSearchWhere } from './person-search-where';
+import { personPresenceConditions, personSearchWhere } from './person-search-where';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -86,6 +86,12 @@ export class PeopleResolver {
     permissionGrantFilter?: string,
     @Args('hasLecturerProfile', { type: () => Boolean, nullable: true }) hasLecturerProfile?: boolean,
     @Context() context?: GraphqlContext,
+    @Args('hasUser', { type: () => Boolean, nullable: true }) hasUser?: boolean,
+    @Args('hasEmail', { type: () => Boolean, nullable: true }) hasEmail?: boolean,
+    @Args('hasPhone', { type: () => Boolean, nullable: true }) hasPhone?: boolean,
+    @Args('hasIdentityDocument', { type: () => Boolean, nullable: true }) hasIdentityDocument?: boolean,
+    @Args('hasAcademicId', { type: () => Boolean, nullable: true }) hasAcademicId?: boolean,
+    @Args('lecturerSelfEditingBlocked', { type: () => Boolean, nullable: true }) lecturerSelfEditingBlocked?: boolean,
   ) {
     const pagination = resolvePagination(skip, take);
     const where: Prisma.PeopleWhereInput = {
@@ -135,14 +141,33 @@ export class PeopleResolver {
       });
     }
 
-    if (hasLecturerProfile) {
-      where.lecturerProfile = { isNot: null };
+    if (typeof hasLecturerProfile === 'boolean') {
+      where.lecturerProfile = hasLecturerProfile ? { isNot: null } : { is: null };
     }
+    if (typeof lecturerSelfEditingBlocked === 'boolean') {
+      this.addPeopleWhereCondition(where, {
+        lecturerProfile: { is: { selfEditingBlocked: lecturerSelfEditingBlocked } },
+      });
+    }
+    const presenceConditions = personPresenceConditions({
+      hasUser,
+      hasEmail,
+      hasPhone,
+      hasIdentityDocument,
+      hasAcademicId,
+    });
+    for (const condition of presenceConditions) {
+      this.addPeopleWhereCondition(where, condition);
+    }
+    const hasPresenceFilters =
+      typeof hasLecturerProfile === 'boolean' ||
+      typeof lecturerSelfEditingBlocked === 'boolean' ||
+      presenceConditions.length > 0;
 
     const normalizedQuery = query?.trim();
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
-      if (!normalizedPermissionGrantFilter && !hasLecturerProfile && this.typesenseSearch.isEnabled()) {
+      if (!normalizedPermissionGrantFilter && !hasPresenceFilters && this.typesenseSearch.isEnabled()) {
         const searchResult = await this.typesenseSearch.searchPeople(
           normalizedQuery,
           pagination.skip + pagination.take,
@@ -167,9 +192,7 @@ export class PeopleResolver {
         user: true,
         lecturerProfile: true,
       },
-      orderBy: {
-        name: 'asc',
-      },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
       skip: prioritizedIds.length > 0 ? 0 : pagination.skip,
       take: prioritizedIds.length > 0 ? prioritizedIds.length : pagination.take,
     });

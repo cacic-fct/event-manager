@@ -1,3 +1,4 @@
+import { formatEventLocation } from '@cacic-fct/shared-utils';
 import {
   EventAudience,
   EventTicketStatus,
@@ -46,6 +47,8 @@ type EventSummaryRecord = {
   audience: EventAudience;
   deletedAt?: Date | null;
   locationDescription?: string | null;
+  locationName?: string | null;
+  isVirtual?: boolean;
   eventGroup?: {
     audience: EventAudience;
     publicationState?: PublicationState;
@@ -143,7 +146,7 @@ export function mapTicketEventSummary(event: EventSummaryRecord): TicketEventSum
     type: event.type,
     startsAt: event.startDate,
     endsAt: event.endDate,
-    locationDescription: event.locationDescription ?? null,
+    locationDescription: formatEventLocation(event),
     publicUrl,
   };
 }

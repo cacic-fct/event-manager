@@ -305,8 +305,10 @@ export type AdminTicketHistoryEntry = {
     | 'TRANSFER_IGNORED'
     | 'TRANSFER_CANCELED'
     | 'TRANSFERRED'
+    | 'HOLDER_CHANGED'
     | 'CONSUMED'
-    | 'REVOKED';
+    | 'REVOKED'
+    | 'RESTORED';
   previousHolder: TicketPersonSummary | null;
   newHolder: TicketPersonSummary | null;
   actorName: string | null;

@@ -12,6 +12,7 @@ describe('createNoopQueueProviders', () => {
     ]);
 
     const queue = providers[0].useFactory() as NoopQueue;
+    await expect(queue.getJob('event-information')).resolves.toBeUndefined();
     await expect(queue.add('refresh-event-weather')).resolves.toEqual({
       id: 'noop-refresh-event-weather',
       name: 'refresh-event-weather',

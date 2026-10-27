@@ -12,6 +12,7 @@ import {
   WorkspaceMajorEventSubscriptionUpdateInput,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { formatEventLocation } from '@cacic-fct/shared-utils';
 import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -174,6 +175,8 @@ const MAJOR_EVENT_SUBSCRIPTION_EVENT_SELECT = {
   type: true,
   shortDescription: true,
   locationDescription: true,
+  locationName: true,
+  isVirtual: true,
   slots: true,
   queueCount: true,
   lecturers: {
@@ -887,7 +890,7 @@ export class EventSubscriptionsResolver {
       eventShortDescription: event.shortDescription,
       eventStartDate: event.startDate,
       eventEndDate: event.endDate,
-      eventLocationDescription: event.locationDescription,
+      eventLocationDescription: formatEventLocation(event),
       eventSlots: event.slots,
       availableSlots: event.slots == null ? null : Math.max(event.slots - (activeCountByEventId.get(event.id) ?? 0), 0),
       projectedQueuePosition: event.queueCount + 1,

@@ -629,6 +629,8 @@ export function sportsAdminVenueRecord(overrides: Record<string, unknown> = {}):
     tournament: { majorEventId: 'major-event-1' },
     placePreset: {
       id: 'place-1',
+      name: 'Complexo esportivo',
+      internalNotes: null,
       latitude: -22.12,
       longitude: -51.4,
       locationDescription: 'Campus universitário',

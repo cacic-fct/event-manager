@@ -157,7 +157,10 @@ export const PUBLIC_CALENDAR_EVENT_FIELDS = `
   emoji
   type
   shortDescription
-  locationDescription
+  locationDescription: locationLabel
+  locationName
+  locationDetails: locationDescription
+  isVirtual
   majorEvent {
     ${PUBLIC_NAMED_ENTITY_FIELDS}
   }
@@ -181,7 +184,10 @@ export const PUBLIC_MAP_EVENT_FIELDS = `
   emoji
   latitude
   longitude
-  locationDescription
+  locationDescription: locationLabel
+  locationName
+  locationDetails: locationDescription
+  isVirtual
 `;
 
 export const PUBLIC_EVENT_PAGE_FIELDS = `
@@ -198,7 +204,10 @@ export const PUBLIC_EVENT_PAGE_FIELDS = `
   shortDescription
   latitude
   longitude
-  locationDescription
+  locationDescription: locationLabel
+  locationName
+  locationDetails: locationDescription
+  isVirtual
   majorEventId
   eventGroupId
   allowSubscription
@@ -246,7 +255,10 @@ export const PUBLIC_SUBSCRIPTION_EVENT_FIELDS = `
   emoji
   type
   shortDescription
-  locationDescription
+  locationDescription: locationLabel
+  locationName
+  locationDetails: locationDescription
+  isVirtual
   eventGroupId
   autoSubscribe
   eventGroup {
@@ -265,7 +277,10 @@ export const PUBLIC_ATTENDANCE_EVENT_FIELDS = `
   type
   description
   shortDescription
-  locationDescription
+  locationDescription: locationLabel
+  locationName
+  locationDetails: locationDescription
+  isVirtual
   majorEventId
   eventGroupId
   subscriptionStartDate

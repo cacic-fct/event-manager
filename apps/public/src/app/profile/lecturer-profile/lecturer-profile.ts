@@ -81,7 +81,12 @@ export class LecturerProfileComponent {
     return savedProfile === undefined ? currentState.profile : savedProfile;
   });
 
+  readonly selfEditingBlocked = computed(() => this.profilePreview()?.selfEditingBlocked ?? false);
+
   edit(): void {
+    if (this.selfEditingBlocked()) {
+      return;
+    }
     if (!this.form.controls.displayName.value.trim()) {
       this.form.controls.displayName.setValue(this.fallbackName());
     }
@@ -94,6 +99,9 @@ export class LecturerProfileComponent {
   }
 
   save(): void {
+    if (this.selfEditingBlocked()) {
+      return;
+    }
     if (this.form.invalid || this.isSaving()) {
       this.form.markAllAsTouched();
       return;

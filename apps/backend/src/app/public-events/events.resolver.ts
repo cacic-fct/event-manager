@@ -1,3 +1,4 @@
+import { formatEventLocation } from '@cacic-fct/shared-utils';
 import { getTierSelectableEventIds } from '@cacic-fct/shared-event-participation';
 import { IncludePastParticipation } from '../audiences/past-participation.decorator';
 import { Args, Context, Int, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
@@ -223,6 +224,12 @@ function toTypesenseTimestamp(date: Date): number {
 @Public()
 @Resolver(() => PublicEvent)
 export class PublicEventsResolver {
+  @ResolveField(() => String, { nullable: true })
+  @Public()
+  locationLabel(@Parent() event: PublicEvent): string | null {
+    return formatEventLocation(event);
+  }
+
   private static readonly calendarPastLimitMonths = 1;
 
   constructor(
@@ -693,5 +700,14 @@ export class PublicEventsResolver {
   private canUseAudienceUnscopedSearch(): boolean {
     const principal = audienceContext.getStore();
     return principal === undefined || principal.bypass;
+  }
+}
+
+@Resolver(() => PublicMapEvent)
+export class PublicMapEventLocationResolver {
+  @ResolveField(() => String, { nullable: true })
+  @Public()
+  locationLabel(@Parent() event: PublicMapEvent): string | null {
+    return formatEventLocation(event);
   }
 }

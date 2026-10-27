@@ -1,15 +1,118 @@
 import { signal } from '@angular/core';
+import { provideHttpClient } from '@angular/common/http';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, Router } from '@angular/router';
-import type { Notification } from '@novu/js';
+import type { ChannelPreference, Notification, Novu, Preference } from '@novu/js';
 import { Subject, of } from 'rxjs';
 import { NovuInboxComponent } from '@cacic-fct/shared-notifications-angular/inbox';
 import { NovuNotificationsService } from '@cacic-fct/shared-notifications-angular/service';
 
 describe('NovuInboxComponent', () => {
   afterEach(() => vi.restoreAllMocks());
+
+  it('groups and sorts optional workflows while excluding required messages', async () => {
+    const { component, fixture, notifications } = await createFixture();
+    notifications.listPreferences.mockResolvedValue([
+      createPreference('event-form-available'),
+      createPreference('offline-attendance-review-queued'),
+      createPreference('online-attendance-available'),
+      createPreference('audience-invitation'),
+      createPreference(),
+    ]);
+
+    inboxMethods(component).selectIndex(2);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    expect([...root.querySelectorAll('h3')].map((heading) => heading.textContent)).toEqual(['Canais', 'Eventos']);
+    expect([...root.querySelectorAll('h4')].map((heading) => heading.textContent)).toEqual([
+      'Avisos opcionais',
+      'Formulários',
+      'Presença online',
+    ]);
+    expect(root.querySelectorAll('mat-slide-toggle')).toHaveLength(6);
+  });
+
+  it.each([
+    'offline-attendance-review-queued',
+    'audience-invitation',
+    'major-event-subscription-status-changed',
+    'ticket-transfer',
+    'event-subscriber-information',
+  ])('rejects changes to the required %s workflow', async (identifier) => {
+    const { component, notifications } = await createFixture();
+    await inboxMethods(component).updatePreferenceChannel(createPreference(identifier), 'push', false);
+    expect(notifications.updatePreferenceChannels).not.toHaveBeenCalled();
+  });
+
+  it('honors Novu critical metadata for a newly introduced workflow', async () => {
+    const { component, fixture, notifications } = await createFixture();
+    const preference = createPreference('new-critical-workflow', { critical: true, name: 'Aviso essencial' });
+    notifications.listPreferences.mockResolvedValue([preference]);
+    inboxMethods(component).selectIndex(2);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Nenhuma preferência disponível para sua conta.',
+    );
+    expect((fixture.nativeElement as HTMLElement).querySelector('mat-slide-toggle')).toBeNull();
+    await inboxMethods(component).updatePreferenceChannel(preference, 'in_app', false);
+    expect(notifications.updatePreferenceChannels).not.toHaveBeenCalled();
+  });
+
+  it('disables globally paused channels without discarding individual preferences', async () => {
+    const { component, fixture, notifications } = await createFixture();
+    const global = createPreference(undefined, { channels: { in_app: true, push: false } });
+    const certificate = createPreference('certificate-available');
+    notifications.listPreferences.mockResolvedValue([global, certificate]);
+    inboxMethods(component).selectIndex(2);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const toggle = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+      'button[aria-label="Certificados: no navegador"]',
+    );
+    expect(toggle?.disabled).toBe(true);
+    expect(toggle?.getAttribute('aria-checked')).toBe('false');
+    expect(certificate.channels.push).toBe(true);
+    await inboxMethods(component).updatePreferenceChannel(certificate, 'push', false);
+    expect(notifications.updatePreferenceChannels).not.toHaveBeenCalled();
+  });
+
+  it('preserves other channel values and reports a failed save', async () => {
+    const { component, fixture, notifications } = await createFixture();
+    const preference = createPreference('certificate-available', {
+      channels: { in_app: true, push: true, email: false },
+    });
+    notifications.updatePreferenceChannels.mockRejectedValueOnce(new Error('offline'));
+    await inboxMethods(component).updatePreferenceChannel(preference, 'push', false);
+    expect(notifications.updatePreferenceChannels).toHaveBeenCalledWith(preference, {
+      in_app: true,
+      push: false,
+      email: false,
+    });
+    expect(preference.channels.push).toBe(true);
+    expect(inboxSignals(component).error()).toBe('Não foi possível salvar a preferência. Tente novamente.');
+    expect(inboxSignals(component).saving()).toBe(false);
+    fixture.detectChanges();
+  });
+
+  it('keeps unknown optional workflows available and omits unsupported channel controls', async () => {
+    const { component, fixture, notifications } = await createFixture();
+    notifications.listPreferences.mockResolvedValue([
+      createPreference('future-workflow', { name: 'Novo aviso', channels: { in_app: true } }),
+    ]);
+    inboxMethods(component).selectIndex(2);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    expect(root.querySelector('h3')?.textContent).toBe('Outros avisos');
+    expect(root.querySelector('h4')?.textContent).toBe('Novo aviso');
+    expect(root.querySelectorAll('mat-slide-toggle')).toHaveLength(1);
+    expect(root.querySelector('button[role="switch"]')?.getAttribute('aria-describedby')).toBeTruthy();
+  });
 
   it('completes external actions when noopener returns a null window handle', async () => {
     const { component, notifications } = await createFixture();
@@ -162,6 +265,58 @@ describe('NovuInboxComponent', () => {
   });
 });
 
+describe('Novu notification preferences service', () => {
+  beforeEach(() => vi.stubGlobal('localStorage', { getItem: vi.fn(() => null) }));
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  function createService() {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        NovuNotificationsService,
+        { provide: AuthService, useValue: { user: signal(null) } },
+      ],
+    });
+    return TestBed.inject(NovuNotificationsService);
+  }
+
+  it('keeps the SDK default that excludes critical workflows', async () => {
+    const service = createService();
+    const preferences = [createPreference('certificate-available')];
+    const list = vi.fn().mockResolvedValue({ data: preferences });
+    vi.spyOn(service, 'client').mockReturnValue({ preferences: { list } } as unknown as Novu);
+    expect(await service.listPreferences()).toEqual(preferences);
+    expect(list).toHaveBeenCalledWith();
+  });
+
+  it('blocks mandatory preference writes even when the component is bypassed', async () => {
+    const service = createService();
+    const update = vi.fn();
+    const required = Object.assign(createPreference('ticket-transfer'), { update });
+    const serverCritical = Object.assign(createPreference('future-critical', { critical: true }), { update });
+    await expect(service.updatePreferenceChannels(required, { push: false })).rejects.toThrow('Required notification');
+    await expect(service.updatePreferenceChannels(serverCritical, { push: false })).rejects.toThrow(
+      'Required notification',
+    );
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('passes optional preference changes to Novu and propagates save errors', async () => {
+    const service = createService();
+    const update = vi
+      .fn()
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ error: new Error('offline') });
+    const preference = Object.assign(createPreference('certificate-available'), { update });
+    await service.updatePreferenceChannels(preference, { in_app: true, push: false });
+    expect(update).toHaveBeenCalledWith({ channels: { in_app: true, push: false } });
+    await expect(service.updatePreferenceChannels(preference, { push: false })).rejects.toThrow('offline');
+  });
+});
+
 async function createFixture(): Promise<{
   component: NovuInboxComponent;
   fixture: ComponentFixture<NovuInboxComponent>;
@@ -202,6 +357,8 @@ function createNotificationsMock() {
     shouldOfferPushPermission: vi.fn(() => false),
     archiveAllRead: vi.fn(),
     listNotificationPage: vi.fn().mockResolvedValue({ notifications: [], hasMore: false }),
+    listPreferences: vi.fn<() => Promise<Preference[]>>().mockResolvedValue([]),
+    updatePreferenceChannels: vi.fn().mockResolvedValue(undefined),
     completePrimary: vi.fn().mockResolvedValue(undefined),
     completeSecondary: vi.fn().mockResolvedValue(undefined),
   };
@@ -228,6 +385,8 @@ function createNotification(overrides: Partial<Notification>): Notification {
 
 function inboxMethods(component: NovuInboxComponent) {
   return component as unknown as {
+    selectIndex(index: number): void;
+    updatePreferenceChannel(preference: Preference, channel: 'in_app' | 'push', enabled: boolean): Promise<void>;
     activateNotification(event: Event, notification: Notification): void;
     openRedirect(notification: Notification): Promise<'opened' | 'failed' | 'invalid' | 'none'>;
     runPrimaryAction(notification: Notification): Promise<void>;
@@ -240,4 +399,18 @@ function inboxSignals(component: NovuInboxComponent) {
     error: ReturnType<typeof signal<string | null>>;
     saving: ReturnType<typeof signal<boolean>>;
   };
+}
+
+function createPreference(
+  identifier?: string,
+  options: { critical?: boolean; name?: string; channels?: ChannelPreference } = {},
+): Preference {
+  return {
+    level: identifier ? 'template' : 'global',
+    enabled: true,
+    channels: options.channels ?? { in_app: true, push: true },
+    workflow: identifier
+      ? { id: identifier, identifier, name: options.name ?? identifier, critical: options.critical ?? false }
+      : undefined,
+  } as Preference;
 }

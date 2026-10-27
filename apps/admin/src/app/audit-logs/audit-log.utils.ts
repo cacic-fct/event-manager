@@ -19,6 +19,8 @@ export const AUDIT_LOG_ENTITY_TYPE_OPTIONS: readonly SelectOption<AuditLogEntity
   { value: 'EVENT_GROUP', label: 'Grupo de eventos' },
   { value: 'PLACE_PRESET', label: 'Local' },
   { value: 'PERMISSION_GRANT', label: 'Permissão concedida' },
+  { value: 'PERMISSION_ROLE', label: 'Perfil de permissões' },
+  { value: 'PERMISSION_GROUP', label: 'Grupo de permissões' },
   { value: 'EVENT_SUBSCRIPTION', label: 'Inscrição em evento' },
   { value: 'EVENT_GROUP_SUBSCRIPTION', label: 'Inscrição em grupo' },
   { value: 'MAJOR_EVENT_SUBSCRIPTION', label: 'Inscrição em grande evento' },
@@ -36,6 +38,19 @@ export const AUDIT_LOG_ENTITY_TYPE_OPTIONS: readonly SelectOption<AuditLogEntity
   { value: 'TICKET_TRANSFER', label: 'Transferência de bilhete' },
   { value: 'TICKET_PURCHASE', label: 'Compra de bilhete' },
   { value: 'TICKET_CONFIG', label: 'Configuração de bilhete' },
+  { value: 'SPORTS_TOURNAMENT', label: 'Torneio esportivo' },
+  { value: 'SPORTS_CATEGORY', label: 'Categoria esportiva' },
+  { value: 'SPORTS_TEAM', label: 'Equipe esportiva' },
+  { value: 'SPORTS_TEAM_MEMBER', label: 'Integrante de equipe' },
+  { value: 'SPORTS_REGISTRATION', label: 'Inscrição esportiva' },
+  { value: 'SPORTS_TEAM_CHANGE_REQUEST', label: 'Solicitação de alteração de equipe' },
+  { value: 'SPORTS_VENUE', label: 'Local esportivo' },
+  { value: 'SPORTS_MATCH', label: 'Partida esportiva' },
+  { value: 'SPORTS_MATCH_ROSTER', label: 'Escalação de partida' },
+  { value: 'SPORTS_MATCH_ACTION', label: 'Ação de partida' },
+  { value: 'SPORTS_OFFICIAL_ASSIGNMENT', label: 'Designação de arbitragem' },
+  { value: 'SPORTS_PLAYER_APPLICATION', label: 'Inscrição de atleta' },
+  { value: 'SPORTS_TOURNAMENT_SCORE', label: 'Pontuação de torneio' },
   { value: 'SYSTEM', label: 'Sistema' },
 ];
 
@@ -53,6 +68,14 @@ export const AUDIT_LOG_OPERATION_OPTIONS: readonly SelectOption<AuditLogOperatio
   { value: 'UNDO', label: 'Desfazer' },
   { value: 'REVERT', label: 'Reversão' },
   { value: 'USER_CREATE', label: 'Criação pelo usuário' },
+  { value: 'SUBMIT', label: 'Envio' },
+  { value: 'REQUEST_CHANGES', label: 'Solicitação de ajustes' },
+  { value: 'ASSIGN', label: 'Atribuição' },
+  { value: 'START', label: 'Início' },
+  { value: 'PAUSE', label: 'Pausa' },
+  { value: 'RESUME', label: 'Retomada' },
+  { value: 'SCORE', label: 'Pontuação' },
+  { value: 'FINALIZE', label: 'Finalização' },
 ];
 
 export const AUDIT_LOG_REVERTED_STATUS_OPTIONS: readonly SelectOption<AuditLogExplorerRevertedStatus>[] = [
@@ -105,8 +128,23 @@ export function auditLogOperationIcon(operation: AuditLogOperation): string {
     case 'ISSUE':
     case 'REISSUE':
       return 'workspace_premium';
+    case 'SUBMIT':
+      return 'send';
+    case 'REQUEST_CHANGES':
+      return 'rate_review';
+    case 'ASSIGN':
+      return 'assignment_ind';
+    case 'START':
+    case 'RESUME':
+      return 'play_arrow';
+    case 'PAUSE':
+      return 'pause';
     case 'SCAN':
       return 'qr_code_scanner';
+    case 'SCORE':
+      return 'sports_score';
+    case 'FINALIZE':
+      return 'task_alt';
     case 'UNDO':
     case 'REVERT':
       return 'undo';

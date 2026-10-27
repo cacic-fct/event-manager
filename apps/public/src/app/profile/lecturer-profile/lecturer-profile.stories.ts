@@ -25,12 +25,14 @@ type SaveOutcome = 'success' | 'error';
 interface LecturerProfileStoryArgs extends PublicLecturerProfileStoryControls {
   state: LecturerProfileStoryState;
   saveOutcome: SaveOutcome;
+  selfEditingBlocked: boolean;
 }
 
 const defaultArgs: LecturerProfileStoryArgs = {
   ...publicLecturerProfileStoryDefaultControls,
   state: 'profile',
   saveOutcome: 'success',
+  selfEditingBlocked: false,
 };
 
 const navigateRouteError = fn(async () => true);
@@ -90,6 +92,15 @@ const meta: Meta<LecturerProfileStoryArgs> = {
 export default meta;
 
 type Story = StoryObj<LecturerProfileStoryArgs>;
+
+export const EditingBlocked: Story = {
+  args: { selfEditingBlocked: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.findByText(/A edição deste perfil foi bloqueada pela organização/)).resolves.toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Editar perfil' })).not.toBeInTheDocument();
+  },
+};
 
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
@@ -206,6 +217,7 @@ function buildLecturerProfile(args: LecturerProfileStoryArgs): LecturerProfile {
   const profile = createPublicStoryLecturerProfileFromControls(args);
   return {
     id: profile.id,
+    selfEditingBlocked: args.selfEditingBlocked,
     personId: 'person-lecturer-story',
     displayName: profile.displayName,
     biography: profile.biography,

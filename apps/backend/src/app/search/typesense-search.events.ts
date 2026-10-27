@@ -1,3 +1,4 @@
+import { formatEventLocation } from '@cacic-fct/shared-utils';
 import { Prisma } from '@prisma/client';
 import type { EventSearchDocument } from './typesense-search.types';
 import { toOptionalString, toUnixTimestamp } from './typesense-search.shared';
@@ -10,6 +11,8 @@ type EventSearchSource = {
   description?: string | null;
   shortDescription?: string | null;
   locationDescription?: string | null;
+  locationName?: string | null;
+  isVirtual?: boolean;
   majorEventId?: string | null;
   majorEvent?: { name: string; deletedAt: Date | null; publicationState: string } | null;
   majorEventName?: string;
@@ -39,6 +42,8 @@ export const EVENT_SEARCH_SELECT = {
   description: true,
   shortDescription: true,
   locationDescription: true,
+  locationName: true,
+  isVirtual: true,
   majorEventId: true,
   majorEvent: {
     select: {
@@ -71,7 +76,7 @@ export function toEventSearchDocument(event: EventSearchSource): EventSearchDocu
     type: event.type,
     description: toOptionalString(event.description),
     shortDescription: toOptionalString(event.shortDescription),
-    locationDescription: toOptionalString(event.locationDescription),
+    locationDescription: toOptionalString(formatEventLocation(event)),
     majorEventId: toOptionalString(event.majorEventId),
     majorEventName:
       event.majorEventName ?? (event.majorEvent?.deletedAt ? undefined : toOptionalString(event.majorEvent?.name)),

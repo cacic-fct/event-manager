@@ -6,6 +6,8 @@ export type AuditLogEntityType =
   | 'EVENT_GROUP'
   | 'PLACE_PRESET'
   | 'PERMISSION_GRANT'
+  | 'PERMISSION_ROLE'
+  | 'PERMISSION_GROUP'
   | 'EVENT_SUBSCRIPTION'
   | 'EVENT_GROUP_SUBSCRIPTION'
   | 'MAJOR_EVENT_SUBSCRIPTION'
@@ -23,6 +25,19 @@ export type AuditLogEntityType =
   | 'TICKET_TRANSFER'
   | 'TICKET_PURCHASE'
   | 'TICKET_CONFIG'
+  | 'SPORTS_TOURNAMENT'
+  | 'SPORTS_CATEGORY'
+  | 'SPORTS_TEAM'
+  | 'SPORTS_TEAM_MEMBER'
+  | 'SPORTS_REGISTRATION'
+  | 'SPORTS_TEAM_CHANGE_REQUEST'
+  | 'SPORTS_VENUE'
+  | 'SPORTS_MATCH'
+  | 'SPORTS_MATCH_ROSTER'
+  | 'SPORTS_MATCH_ACTION'
+  | 'SPORTS_OFFICIAL_ASSIGNMENT'
+  | 'SPORTS_PLAYER_APPLICATION'
+  | 'SPORTS_TOURNAMENT_SCORE'
   | 'SYSTEM';
 
 export type AuditLogOperation =
@@ -38,7 +53,15 @@ export type AuditLogOperation =
   | 'SCAN'
   | 'UNDO'
   | 'REVERT'
-  | 'USER_CREATE';
+  | 'USER_CREATE'
+  | 'SUBMIT'
+  | 'REQUEST_CHANGES'
+  | 'ASSIGN'
+  | 'START'
+  | 'PAUSE'
+  | 'RESUME'
+  | 'SCORE'
+  | 'FINALIZE';
 
 export type AuditLogActorType = 'USER' | 'SERVICE' | 'SYSTEM';
 export type AuditLogRevertMode = 'ENTRY_ONLY' | 'ENTRY_AND_AFTER';

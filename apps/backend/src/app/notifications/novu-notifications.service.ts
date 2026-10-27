@@ -10,6 +10,7 @@ import {
   mapUserToRecipient,
 } from './novu-notification-recipients';
 import { NovuNotificationTransport } from './novu-notification-transport';
+import { NOVU_WORKFLOW_IDENTIFIERS } from './novu-workflow-identifiers';
 import type {
   CertificateAvailableNotification,
   AudienceInvitationNotification,
@@ -33,32 +34,8 @@ export type {
 export class NovuNotificationsService {
   private readonly logger = new Logger(NovuNotificationsService.name);
   private readonly transport: NovuNotificationTransport;
-  private readonly workflowIdentifier = this.config.get<string>(
-    'NOVU_MAJOR_EVENT_SUBSCRIPTION_WORKFLOW_IDENTIFIER',
-    'major-event-subscription-status-changed',
-  );
-  private readonly offlineAttendanceReviewWorkflowIdentifier = this.config.get<string>(
-    'NOVU_OFFLINE_ATTENDANCE_REVIEW_WORKFLOW_IDENTIFIER',
-    'offline-attendance-review-queued',
-  );
-  private readonly certificateAvailableWorkflowIdentifier = this.config.get<string>(
-    'NOVU_CERTIFICATE_AVAILABLE_WORKFLOW_IDENTIFIER',
-    'certificate-available',
-  );
-  private readonly eventFormAvailableWorkflowIdentifier = this.config.get<string>(
-    'NOVU_EVENT_FORM_AVAILABLE_WORKFLOW_IDENTIFIER',
-    'event-form-available',
-  );
-  private readonly audienceInvitationWorkflowIdentifier = this.config.get<string>(
-    'NOVU_AUDIENCE_INVITATION_WORKFLOW_IDENTIFIER',
-    'audience-invitation',
-  );
-  private readonly ticketTransferWorkflowIdentifier = this.config.get<string>(
-    'NOVU_TICKET_TRANSFER_WORKFLOW_IDENTIFIER',
-    'ticket-transfer',
-  );
 
-  constructor(private readonly config: ConfigService) {
+  constructor(config: ConfigService) {
     this.transport = new NovuNotificationTransport(config, this.logger);
   }
 
@@ -86,7 +63,7 @@ export class NovuNotificationsService {
     const body = this.statusBody(input.majorEventName, input.nextStatus);
 
     await this.transport.trigger(secretKey, {
-      name: this.workflowIdentifier,
+      name: NOVU_WORKFLOW_IDENTIFIERS.majorEventSubscriptionStatusChanged,
       to: input.recipient,
       transactionId: `major-event-subscription:${input.subscriptionId}:${input.nextStatus}`,
       payload: {
@@ -154,7 +131,7 @@ export class NovuNotificationsService {
     const body = `Uma presença off-line de ${input.eventName} foi enviada para revisão administrativa.`;
 
     await this.transport.trigger(secretKey, {
-      name: this.offlineAttendanceReviewWorkflowIdentifier,
+      name: NOVU_WORKFLOW_IDENTIFIERS.offlineAttendanceReviewQueued,
       to: input.recipients,
       transactionId: `offline-attendance-review:${input.submissionId}`,
       payload: {
@@ -202,7 +179,7 @@ export class NovuNotificationsService {
     const body = `Seu certificado de ${targetLabel} está disponível.`;
 
     return this.transport.trigger(secretKey, {
-      name: this.certificateAvailableWorkflowIdentifier,
+      name: NOVU_WORKFLOW_IDENTIFIERS.certificateAvailable,
       to: input.recipient,
       transactionId: `certificate-available:${input.configId}:${input.certificateId}:${input.issuedAt.toISOString()}`,
       payload: {
@@ -250,7 +227,7 @@ export class NovuNotificationsService {
     const { title, body, recipientWorkflow } = this.ticketTransferCopy(input);
     const actionUrl = input.actionUrl;
     return this.transport.trigger(secretKey, {
-      name: this.ticketTransferWorkflowIdentifier,
+      name: NOVU_WORKFLOW_IDENTIFIERS.ticketTransfer,
       to: { subscriberId: input.recipientUserId },
       transactionId: `ticket-transfer:${input.transferId}:${input.notificationType}`,
       payload: {
@@ -355,7 +332,7 @@ export class NovuNotificationsService {
     }
 
     return this.transport.trigger(secretKey, {
-      name: this.eventFormAvailableWorkflowIdentifier,
+      name: NOVU_WORKFLOW_IDENTIFIERS.eventFormAvailable,
       to: input.recipients,
       transactionId: transactionIdParts.join(':'),
       payload: {
@@ -392,6 +369,36 @@ export class NovuNotificationsService {
     });
   }
 
+  async notifyEventSubscriberInformation(input: {
+    eventId: string;
+    eventName: string;
+    revision: string;
+    recipient: NotificationRecipient;
+    targetType?: 'event' | 'event-group' | 'major-event';
+    targetId?: string;
+  }): Promise<boolean> {
+    const secretKey = this.transport.secretKey();
+    if (!secretKey) return false;
+    const detailPath = `/profile/attendances/${input.targetType ?? 'event'}/${input.targetId ?? input.eventId}`;
+    const actionUrl = `${detailPath}?informationRevision=${encodeURIComponent(input.revision)}`;
+    const title = 'Informações do evento disponíveis';
+    return this.transport.trigger(secretKey, {
+      name: NOVU_WORKFLOW_IDENTIFIERS.eventSubscriberInformation,
+      to: input.recipient,
+      transactionId: `event-information:${input.eventId}:${input.revision}:${input.recipient.subscriberId}`,
+      payload: {
+        title,
+        subject: title,
+        body: `Confira as orientações de participação em ${input.eventName}.`,
+        eventId: input.eventId,
+        actionLabel: 'Ver informações',
+        actionUrl,
+        redirectUrl: actionUrl,
+      },
+      overrides: { fcm: { data: { url: actionUrl } }, webPush: { data: { url: actionUrl } } },
+    });
+  }
+
   async notifyOnlineAttendanceAvailable(input: OnlineAttendanceAvailableNotification): Promise<boolean> {
     const secretKey = this.transport.secretKey();
     if (!secretKey || input.recipients.length === 0) {
@@ -409,7 +416,7 @@ export class NovuNotificationsService {
     const body = `Você pode registrar sua presença em ${input.eventName} até ${endTime}.`;
 
     return this.transport.trigger(secretKey, {
-      name: this.config.get<string>('NOVU_ONLINE_ATTENDANCE_WORKFLOW_IDENTIFIER', 'online-attendance-available'),
+      name: NOVU_WORKFLOW_IDENTIFIERS.onlineAttendanceAvailable,
       to: input.recipients,
       transactionId: `online-attendance-available:${input.eventId}:${input.endsAt.toISOString()}`,
       payload: {
@@ -442,7 +449,7 @@ export class NovuNotificationsService {
       input.invitationCreatedAt?.toISOString() ?? 'legacy'
     }`;
     return this.transport.trigger(secretKey, {
-      name: this.audienceInvitationWorkflowIdentifier,
+      name: NOVU_WORKFLOW_IDENTIFIERS.audienceInvitation,
       to: input.recipient,
       transactionId,
       payload: {
@@ -487,7 +494,7 @@ export class NovuNotificationsService {
       ? `Seu nome foi sorteado em “${input.spinDescription}”.`
       : 'Seu nome foi sorteado.';
     return this.transport.trigger(secretKey, {
-      name: this.config.get<string>('NOVU_PRIZE_DRAW_WINNER_WORKFLOW_IDENTIFIER', 'prize-draw-winner'),
+      name: NOVU_WORKFLOW_IDENTIFIERS.prizeDrawWinner,
       to: input.recipient,
       transactionId: input.transactionId,
       payload: {
@@ -518,7 +525,7 @@ export class NovuNotificationsService {
     const title = `Sorteio desfeito: ${input.drawTitle}`;
     const body = 'O último resultado foi invalidado pela organização e não vale mais.';
     return this.transport.trigger(secretKey, {
-      name: this.config.get<string>('NOVU_PRIZE_DRAW_UNDONE_WORKFLOW_IDENTIFIER', 'prize-draw-undone'),
+      name: NOVU_WORKFLOW_IDENTIFIERS.prizeDrawUndone,
       to: input.recipient,
       transactionId: input.transactionId,
       payload: {

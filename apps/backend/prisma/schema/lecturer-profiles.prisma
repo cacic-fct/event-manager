@@ -2,6 +2,7 @@ model LecturerProfile {
   id                       String  @id @default(uuid(7))
   person                   People  @relation(fields: [personId], references: [id])
   personId                 String  @unique
+  selfEditingBlocked       Boolean @default(false)
   displayName              String
   biography                String?
   publishGoogleUserPicture Boolean @default(false)

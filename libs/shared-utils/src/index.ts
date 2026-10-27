@@ -15,3 +15,4 @@ export * from './lib/unesp-role-formatters';
 export * from './lib/turnstile';
 export * from './lib/time-aware-greeting';
 export * from './lib/admin-route-links';
+export * from './lib/event-location';

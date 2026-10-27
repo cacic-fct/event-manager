@@ -62,6 +62,7 @@ describe('EventDraftsService', () => {
     }> = {},
   ) {
     const tx = {
+      $executeRaw: jest.fn(),
       eventDraft: {
         create: jest.fn().mockResolvedValue(draftRecord),
         delete: jest.fn(),
@@ -253,6 +254,32 @@ describe('EventDraftsService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(tx.eventDraft.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects saving a draft that removes a location name while retaining its description', async () => {
+    const { service, prisma, tx } = buildService();
+    prisma.event.findFirst.mockResolvedValue({
+      ...sourceEvent,
+      locationName: 'Auditório',
+      locationDescription: 'Bloco 5',
+    });
+
+    await expect(
+      service.saveEventDraft({ sourceEventId: sourceEvent.id, input: { locationName: null } }, user as never),
+    ).rejects.toThrow('Informe o nome do local');
+
+    expect(tx.eventDraft.create).not.toHaveBeenCalled();
+  });
+
+  it('rechecks a partial draft against the current location before applying it', async () => {
+    const { service, prisma, tx } = buildService();
+    prisma.eventDraft.findUnique.mockResolvedValue({ ...draftRecord, payload: { locationName: null } });
+    tx.event.findFirst.mockResolvedValue({ ...sourceEvent, locationName: 'Auditório', locationDescription: 'Bloco 5' });
+
+    await expect(service.applyEventDraft(draftRecord.id, user as never)).rejects.toThrow('Informe o nome do local');
+
+    expect(tx.event.updateMany).not.toHaveBeenCalled();
+    expect(tx.eventDraft.delete).not.toHaveBeenCalled();
   });
 
   it('applies a draft to the source event, keeps it published, and hard deletes the draft', async () => {

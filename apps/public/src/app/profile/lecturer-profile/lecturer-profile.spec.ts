@@ -9,6 +9,7 @@ import { LecturerProfileComponent } from './lecturer-profile';
 
 const profile: LecturerProfile = {
   id: 'lecturer-profile-1',
+  selfEditingBlocked: false,
   personId: 'person-1',
   displayName: 'Grace Hopper',
   biography: 'Pesquisadora e educadora.',
@@ -32,8 +33,11 @@ describe('LecturerProfileComponent', () => {
   let fixture: ComponentFixture<LecturerProfileComponent>;
   let component: LecturerProfileComponent;
   const upsertCurrentUserLecturerProfile = vi.fn();
+  const getCurrentUserLecturerProfile = vi.fn();
 
   beforeEach(async () => {
+    vi.clearAllMocks();
+    getCurrentUserLecturerProfile.mockReturnValue(of(profile));
     upsertCurrentUserLecturerProfile.mockReturnValue(of(updatedProfile));
 
     await TestBed.configureTestingModule({
@@ -56,7 +60,7 @@ describe('LecturerProfileComponent', () => {
         {
           provide: AttendancesApiService,
           useValue: {
-            getCurrentUserLecturerProfile: () => of(profile),
+            getCurrentUserLecturerProfile,
             upsertCurrentUserLecturerProfile,
           },
         },
@@ -85,6 +89,25 @@ describe('LecturerProfileComponent', () => {
     const element = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('mat-checkbox[formcontrolname="publishGoogleUserPicture"]')).not.toBeNull();
     expect(element.querySelector('mat-slide-toggle[formcontrolname="publishGoogleUserPicture"]')).toBeNull();
+  });
+
+  it('keeps blocked profiles visible and prevents editing and saving', async () => {
+    fixture.destroy();
+    getCurrentUserLecturerProfile.mockReturnValue(of({ ...profile, selfEditingBlocked: true }));
+    fixture = TestBed.createComponent(LecturerProfileComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    component.edit();
+    component.save();
+
+    const element = fixture.nativeElement as HTMLElement;
+    expect(component.isEditing()).toBe(false);
+    expect(element.querySelector('button[aria-label="Editar perfil"]')).toBeNull();
+    expect(element.textContent).toContain('A edição deste perfil foi bloqueada pela organização');
+    expect(element.textContent).toContain(profile.displayName);
+    expect(upsertCurrentUserLecturerProfile).not.toHaveBeenCalled();
   });
 
   it('normalizes WhatsApp before saving', () => {

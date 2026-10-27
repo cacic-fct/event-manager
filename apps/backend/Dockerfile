@@ -25,11 +25,10 @@ RUN bun x playwright install --only-shell chromium
 FROM deps AS prisma-deps
 COPY apps/backend/prisma.config.ts ./apps/backend/prisma.config.ts
 COPY apps/backend/prisma ./apps/backend/prisma
-
-WORKDIR /workspace/apps/backend
+COPY tools/generate-audience-relations.mjs ./tools/generate-audience-relations.mjs
 
 RUN DATABASE_URL="postgresql://user:password@localhost:5432/db?schema=public" \
-    bun x prisma generate --schema prisma/schema
+    bun x prisma generate --schema apps/backend/prisma/schema
 
 FROM prisma-deps AS builder
 WORKDIR /workspace
@@ -41,6 +40,7 @@ COPY nx.json tsconfig.base.json ./
 COPY eslint.config.mjs jest.config.ts jest.preset.mjs ./
 
 COPY apps/backend ./apps/backend
+COPY --from=prisma-deps /workspace/apps/backend/src/app/audiences/audience-relations.generated.ts ./apps/backend/src/app/audiences/audience-relations.generated.ts
 COPY libs ./libs
 COPY certificate-templates ./certificate-templates
 

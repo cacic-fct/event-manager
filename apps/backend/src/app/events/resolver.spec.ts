@@ -7,6 +7,46 @@ import { EventsResolver } from './resolver';
 const { jest } = import.meta;
 
 describe('EventsResolver', () => {
+  it('rejects creating a physical location with a description but no name', async () => {
+    const prisma = { $transaction: jest.fn() };
+    const resolver = new EventsResolver(
+      prisma as never,
+      {} as never,
+      {} as never,
+      { assertEventCreateTargetsMutable: jest.fn() } as never,
+      { assertPermissions: jest.fn() } as never,
+    );
+
+    await expect(resolver.createEvent({ locationDescription: 'Bloco 5' } as never, {} as never)).rejects.toThrow(
+      'Informe o nome do local',
+    );
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('rejects a partial update that removes the name while leaving a saved description', async () => {
+    const tx = {
+      $executeRaw: jest.fn(),
+      event: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({ id: 'event-1', locationName: 'Auditório', locationDescription: 'Bloco 5' }),
+        updateMany: jest.fn(),
+      },
+    };
+    const resolver = new EventsResolver(
+      { event: tx.event, $transaction: jest.fn((operation) => operation(tx)) } as never,
+      {} as never,
+      {} as never,
+      { assertEventUpdateMutable: jest.fn() } as never,
+      {} as never,
+    );
+
+    await expect(resolver.updateEvent('event-1', { locationName: null } as never, {} as never)).rejects.toThrow(
+      'Informe o nome do local',
+    );
+    expect(tx.event.updateMany).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['youtubeCode', 'https://example.com/video'],
     ['twitchChannel', 'https://twitch.tv/videos/123'],

@@ -13,6 +13,9 @@ export class PlacePresetCreateInput {
 
   @Field(() => String, { nullable: true })
   locationDescription?: string | null;
+
+  @Field(() => String, { nullable: true })
+  internalNotes?: string | null;
 }
 
 @InputType()
@@ -28,4 +31,7 @@ export class PlacePresetUpdateInput {
 
   @Field(() => String, { nullable: true })
   locationDescription?: string | null;
+
+  @Field(() => String, { nullable: true })
+  internalNotes?: string | null;
 }

@@ -26,6 +26,7 @@ const PLACE_PRESET_SELECT = {
   latitude: true,
   longitude: true,
   locationDescription: true,
+  internalNotes: true,
   deletedAt: true,
   createdAt: true,
   createdById: true,
@@ -305,6 +306,7 @@ export class PlacePresetsResolver {
           after: updatedTarget,
           scope: { permission: Permission.PlacePreset.Merge },
           summary: `Local unificado com ${source.name}.`,
+          force: true,
         },
         tx,
       );
@@ -341,10 +343,21 @@ export class PlacePresetsResolver {
   private normalizePlaceInput(input: PlacePresetCreateInput): Prisma.PlacePresetCreateInput;
   private normalizePlaceInput(input: PlacePresetUpdateInput): Prisma.PlacePresetUpdateInput;
   private normalizePlaceInput(input: PlacePresetCreateInput | PlacePresetUpdateInput) {
+    for (const [value, limit] of [
+      [input.name, 250],
+      [input.locationDescription, 2000],
+      [input.internalNotes, 10000],
+    ] as const) {
+      if (value != null && (typeof value !== 'string' || value.length > limit)) {
+        throw new BadRequestException('Nome, descrição ou observações do local inválidos.');
+      }
+    }
+    if (input.name != null && !input.name.trim()) throw new BadRequestException('Informe o nome do local.');
     return {
       ...('name' in input && input.name != null ? { name: input.name.trim() } : {}),
       ...('latitude' in input ? { latitude: input.latitude ?? null } : {}),
       ...('longitude' in input ? { longitude: input.longitude ?? null } : {}),
+      ...('internalNotes' in input ? { internalNotes: input.internalNotes?.trim() || null } : {}),
       ...('locationDescription' in input ? { locationDescription: input.locationDescription?.trim() || null } : {}),
     };
   }

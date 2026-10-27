@@ -36,6 +36,8 @@ export class SportsBackingResourceLifecycleService {
             latitude: true,
             longitude: true,
             locationDescription: true,
+            locationName: true,
+            isVirtual: true,
             isPubliclyListed: true,
             allowSubscription: true,
             requiresImageLicenseAgreement: true,
@@ -74,6 +76,8 @@ export class SportsBackingResourceLifecycleService {
       this.changed(input.latitude, event.latitude) ||
       this.changed(input.longitude, event.longitude) ||
       this.changed(input.locationDescription, event.locationDescription) ||
+      this.changed(input.locationName, event.locationName) ||
+      this.changed(input.isVirtual, event.isVirtual) ||
       this.changed(input.isPubliclyListed, event.isPubliclyListed) ||
       this.changed(input.allowSubscription, event.allowSubscription) ||
       this.changed(input.requiresImageLicenseAgreement, event.requiresImageLicenseAgreement) ||

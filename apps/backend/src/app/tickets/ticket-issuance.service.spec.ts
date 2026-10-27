@@ -1,4 +1,4 @@
-import { EventTicketIssueSource, EventTicketStatus } from '@prisma/client';
+import { EventTicketIssueSource, EventTicketStatus, TicketHistoryOperation } from '@prisma/client';
 import { TicketIssuanceService } from './ticket-issuance.service';
 const { jest } = import.meta;
 
@@ -56,7 +56,11 @@ function setup() {
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
     ticketTransfer: { findMany: jest.fn().mockResolvedValue([]) },
-    eventTicketHistory: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn() },
+    eventTicketHistory: {
+      count: jest.fn().mockResolvedValue(0),
+      findFirst: jest.fn().mockResolvedValue(null),
+      create: jest.fn(),
+    },
     auditLogEntry: { create: jest.fn() },
     priceTier: { findMany: jest.fn().mockResolvedValue([]) },
   };
@@ -280,7 +284,7 @@ describe('ticket issuance and redemption safety', () => {
     expect(tx.eventTicket.updateMany).not.toHaveBeenCalled();
   });
 
-  it('reactivates the same ticket with current expiry after eligible resubscription', async () => {
+  it('reactivates the same ticket after resubscription despite a person-merge holder change', async () => {
     const { service, tx, existing, event } = setup();
     const oldExpiresAt = new Date(Date.now() - 86_400_000);
     const revokedTicket = {
@@ -296,6 +300,11 @@ describe('ticket issuance and redemption safety', () => {
       majorEvent: { isPaymentRequired: false },
     } as never);
     tx.eventTicket.findUnique.mockResolvedValue(revokedTicket as never);
+    const history = [{ id: 'person-merge-holder-change', operation: TicketHistoryOperation.HOLDER_CHANGED }];
+    tx.eventTicketHistory.findFirst.mockImplementation(
+      async ({ where }: { where: { operation: string } }) =>
+        history.find((entry) => entry.operation === where.operation) ?? null,
+    );
 
     await service.syncForPerson(
       tx as never,
@@ -324,6 +333,10 @@ describe('ticket issuance and redemption safety', () => {
         data: expect.objectContaining({ ticketId: existing.id, operation: 'ISSUED' }),
       }),
     );
+    expect(tx.eventTicketHistory.findFirst).toHaveBeenCalledWith({
+      where: { ticketId: existing.id, operation: TicketHistoryOperation.TRANSFERRED },
+      select: { id: true },
+    });
     expect(tx.auditLogEntry.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -339,6 +352,39 @@ describe('ticket issuance and redemption safety', () => {
         }),
       }),
     );
+  });
+
+  it.each([
+    { label: 'the matching archive was restored', revocations: 1, restorations: 1, alignIssuedAt: true },
+    { label: 'an earlier unrelated revocation remains', revocations: 2, restorations: 1, alignIssuedAt: false },
+  ])('keeps attendance eligibility consistent when $label', async ({ revocations, restorations, alignIssuedAt }) => {
+    const { service, tx, existing } = setup();
+    const attendedAt = new Date(Date.now() - 60_000);
+    const issuedAt = new Date(attendedAt.getTime() + 60_000);
+    tx.eventTicket.findUnique.mockResolvedValue({ ...existing, issuedAt } as never);
+    tx.majorEventSubscription.findFirst.mockResolvedValue({ paymentTier: null } as never);
+    tx.eventTicketHistory.count.mockImplementation(({ where }: { where: { operation: string } }) =>
+      Promise.resolve(where.operation === 'REVOKED' ? revocations : restorations),
+    );
+
+    await service.syncForAttendance(tx as never, 'event', 'person', attendedAt);
+
+    expect(tx.eventTicketHistory.count).toHaveBeenCalledWith({
+      where: { ticketId: existing.id, operation: 'REVOKED' },
+    });
+    expect(tx.eventTicketHistory.count).toHaveBeenCalledWith({
+      where: { ticketId: existing.id, operation: 'RESTORED' },
+    });
+    if (alignIssuedAt) {
+      expect(tx.eventTicket.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ id: existing.id, issuedAt }),
+          data: { issuedAt: attendedAt },
+        }),
+      );
+    } else {
+      expect(tx.eventTicket.updateMany).not.toHaveBeenCalled();
+    }
   });
 
   it('materializes expired waived-tier tickets at scan time without receipt validation', async () => {

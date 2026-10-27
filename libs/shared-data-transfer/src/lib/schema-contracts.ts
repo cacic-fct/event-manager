@@ -174,6 +174,9 @@ export type EventTransferOwner = Pick<
   | 'latitude'
   | 'longitude'
   | 'locationDescription'
+  | 'locationName'
+  | 'locationInternalNotes'
+  | 'isVirtual'
   | 'majorEventId'
   | 'eventGroupId'
   | 'audience'
@@ -231,7 +234,7 @@ export type PriceTierTransferOwner = Pick<
 
 export type PlacePresetTransferOwner = Pick<
   AdminPlacePreset,
-  'name' | 'latitude' | 'longitude' | 'locationDescription'
+  'name' | 'latitude' | 'longitude' | 'locationDescription' | 'internalNotes'
 >;
 
 export type EventFormTransferOwner = Pick<

@@ -1,3 +1,5 @@
+import { of } from 'rxjs';
+import { GraphqlHttpService } from '../graphql/graphql-http.service';
 import { computed, inject, signal, type Provider } from '@angular/core';
 import { FormBuilder, Validators, type AbstractControl, type ValidationErrors } from '@angular/forms';
 import {
@@ -102,6 +104,17 @@ const permissions: PermissionScope[] = [
 
 export function createPageStoryProviders(args: PageStoryArgs): Provider[] {
   return [
+    {
+      provide: GraphqlHttpService,
+      useValue: {
+        request: (query: string) =>
+          of(
+            query.includes('mutation')
+              ? { updateEventSubscriberInformation: { content: '' } }
+              : { eventSubscriberInformation: { content: '' } },
+          ),
+      },
+    },
     {
       provide: PermissionsService,
       useValue: createPermissionsStoryService(args.mode !== 'readonly'),
@@ -496,6 +509,9 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
     latitude: [''],
     longitude: [''],
     locationDescription: [''],
+    locationName: [''],
+    locationInternalNotes: [''],
+    isVirtual: [false],
     locationPresetId: ['PERSONALIZADO'],
     majorEventId: [''],
     eventGroupId: [''],
@@ -545,6 +561,9 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
       latitude: selectedEvent.latitude?.toString() ?? '',
       longitude: selectedEvent.longitude?.toString() ?? '',
       locationDescription: selectedEvent.locationDescription ?? '',
+      locationName: selectedEvent.locationName ?? '',
+      locationInternalNotes: selectedEvent.locationInternalNotes ?? '',
+      isVirtual: selectedEvent.isVirtual ?? false,
       majorEventId: selectedEvent.majorEventId ?? '',
       eventGroupId: selectedEvent.eventGroupId ?? '',
       allowSubscription: selectedEvent.allowSubscription,
@@ -682,7 +701,7 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
     eventGroupNameById: (groupId: string) => eventGroups.find((group) => group.id === groupId)?.name ?? 'Nenhum grupo',
     applyPlacePreset: () => undefined,
     displayPlacePresetSuggestion: (placeId: string) =>
-      placePresets.find((place) => place.id === placeId)?.locationDescription ?? '',
+      placePresets.find((place) => place.id === placeId)?.name ?? placeId,
     normalizeYoutubeCodeInput: () => normalizeInput(eventForm.controls.youtubeCode, normalizeYoutubeCode),
     normalizeTwitchChannelInput: () => normalizeInput(eventForm.controls.twitchChannel, normalizeTwitchChannel),
     randomizeOnlineAttendanceCode: () => undefined,
@@ -897,7 +916,9 @@ function adaptEvent(
     shortDescription: eventItem.shortDescription,
     latitude: eventItem.latitude,
     longitude: eventItem.longitude,
-    locationDescription: eventItem.locationDescription,
+    locationDescription: eventItem.locationDetails ?? null,
+    locationName: eventItem.locationName ?? eventItem.locationDescription,
+    isVirtual: eventItem.isVirtual ?? false,
     majorEventId: majorEvent?.id ?? null,
     majorEvent,
     eventGroupId: eventGroup?.id ?? null,

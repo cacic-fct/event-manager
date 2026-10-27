@@ -22,6 +22,7 @@ import { initializeCacicAccountPrivacyBestEffort } from '@cacic-fct/shared-angul
 import { CacicAccountPrivacyService, provideCacicAccountPrivacy } from '@cacic-fct/account-manager-privacy';
 import { CookieBannerFeatureFlagService } from './feature-flags/cookie-banner-feature-flag.service';
 import { requestActivityInterceptor } from './feedback/request-activity.interceptor';
+import { adminFormFieldDefaultsProvider } from './material-form-field.config';
 
 registerLocaleData(localePt);
 
@@ -51,6 +52,7 @@ const buildIdentifyData = (user: AuthenticatedUser) => ({
 export const appConfig: ApplicationConfig = {
   providers: [
     { provide: LOCALE_ID, useValue: 'pt-BR' },
+    adminFormFieldDefaultsProvider,
     provideClientHydration(),
     provideBrowserGlobalErrorListeners(),
     provideHttpClient(withInterceptors([requestActivityInterceptor, authInterceptor])),

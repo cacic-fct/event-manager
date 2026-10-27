@@ -11,6 +11,8 @@ export const PUBLICATION_EVENT_SELECT = {
   description: true,
   shortDescription: true,
   locationDescription: true,
+  locationName: true,
+  isVirtual: true,
   startDate: true,
   endDate: true,
   majorEventId: true,

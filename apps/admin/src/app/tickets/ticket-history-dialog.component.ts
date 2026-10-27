@@ -157,10 +157,14 @@ export class TicketHistoryDialogComponent {
         return 'Solicitação cancelada';
       case 'TRANSFERRED':
         return 'Titularidade transferida';
+      case 'HOLDER_CHANGED':
+        return 'Titularidade ajustada';
       case 'CONSUMED':
         return 'Bilhete utilizado';
       case 'REVOKED':
         return 'Bilhete revogado';
+      case 'RESTORED':
+        return 'Bilhete restaurado';
     }
   }
 
@@ -178,10 +182,14 @@ export class TicketHistoryDialogComponent {
         return 'cancel';
       case 'TRANSFERRED':
         return 'swap_horiz';
+      case 'HOLDER_CHANGED':
+        return 'swap_horiz';
       case 'CONSUMED':
         return 'task_alt';
       case 'REVOKED':
         return 'block';
+      case 'RESTORED':
+        return 'restore';
     }
   }
 }

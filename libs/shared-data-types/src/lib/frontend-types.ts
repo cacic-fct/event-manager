@@ -191,6 +191,9 @@ export interface Event {
   latitude?: number | null;
   longitude?: number | null;
   locationDescription?: string | null;
+  locationName?: string | null;
+  locationInternalNotes?: string | null;
+  isVirtual?: boolean;
   majorEventId?: string | null;
   majorEvent?: MajorEvent | null;
   eventGroupId?: string | null;

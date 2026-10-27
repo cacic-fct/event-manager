@@ -543,7 +543,7 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
           existingFromSource.holderPersonId === personId &&
           existingFromSource.issuedAt > attendedAt
         ) {
-          if (!(await this.hasRevocationHistory(tx, existingFromSource.id))) {
+          if (!(await this.hasUnrestoredRevocationHistory(tx, existingFromSource.id))) {
             await this.alignTicketIssuedAtForAttendance(
               tx,
               event,
@@ -613,7 +613,7 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
     if (transferred) {
       return;
     }
-    if (ticket.issuedAt > attendance.attendedAt && (await this.hasRevocationHistory(tx, ticket.id))) {
+    if (ticket.issuedAt > attendance.attendedAt && (await this.hasUnrestoredRevocationHistory(tx, ticket.id))) {
       return;
     }
 
@@ -669,13 +669,12 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  private async hasRevocationHistory(tx: Prisma.TransactionClient, ticketId: string): Promise<boolean> {
-    return Boolean(
-      await tx.eventTicketHistory.findFirst({
-        where: { ticketId, operation: TicketHistoryOperation.REVOKED },
-        select: { id: true },
-      }),
-    );
+  private async hasUnrestoredRevocationHistory(tx: Prisma.TransactionClient, ticketId: string): Promise<boolean> {
+    const [revocationCount, restorationCount] = await Promise.all([
+      tx.eventTicketHistory.count({ where: { ticketId, operation: TicketHistoryOperation.REVOKED } }),
+      tx.eventTicketHistory.count({ where: { ticketId, operation: TicketHistoryOperation.RESTORED } }),
+    ]);
+    return revocationCount > restorationCount;
   }
 
   /** Expiration is advisory; redemption still requires an unused ticket owned at attendance time. */

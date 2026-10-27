@@ -1,5 +1,5 @@
 import { ConflictException } from '@nestjs/common';
-import { EventTicketStatus, TicketPurchaseStatus } from '@prisma/client';
+import { EventTicketStatus, TicketHistoryOperation, TicketPurchaseStatus } from '@prisma/client';
 import {
   moveTicketPersonRelations,
   reassignTicketUserRelations,
@@ -40,7 +40,21 @@ describe('ticket relations during People merges', () => {
         data: { holderPersonId: 'target-person' },
       }),
     );
-    expect(tx.eventTicketHistory.create).not.toHaveBeenCalled();
+    expect(tx.eventTicketHistory.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          ticketId: 'ticket-source',
+          operation: TicketHistoryOperation.HOLDER_CHANGED,
+          previousHolderPersonId: 'source-person',
+          newHolderPersonId: 'target-person',
+          actorUserId: 'actor-1',
+          reason: 'Titularidade ajustada durante a unificação de pessoas.',
+        }),
+      }),
+    );
+    expect(tx.eventTicketHistory.create.mock.calls.map(([input]) => input.data.operation)).toEqual([
+      TicketHistoryOperation.HOLDER_CHANGED,
+    ]);
     expect(tx.auditLogEntry.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ entityId: 'ticket-source', eventId: 'event-1' }),
@@ -214,10 +228,30 @@ describe('ticket relations during People merges', () => {
     const snapshot = await moveTicketPersonRelations(tx as never, 'target-person', 'source-person');
     tx.eventTicket.updateMany.mockClear();
 
-    await restoreTicketPersonRelations(tx as never, snapshot);
-    expect(tx.eventTicketHistory.deleteMany).toHaveBeenCalledWith({
-      where: { id: 'archive-history', ticketId: 'ticket-active', operation: 'REVOKED' },
-    });
+    await restoreTicketPersonRelations(tx as never, snapshot, 'actor-1');
+    expect(tx.eventTicketHistory.deleteMany).not.toHaveBeenCalled();
+    expect(tx.eventTicketHistory.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          ticketId: 'ticket-consumed',
+          operation: TicketHistoryOperation.HOLDER_CHANGED,
+          previousHolderPersonId: 'target-person',
+          newHolderPersonId: 'source-person',
+          actorUserId: 'actor-1',
+          reason: 'Titularidade restaurada ao desfazer a unificação de pessoas.',
+        }),
+      }),
+    );
+    expect(tx.eventTicketHistory.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          ticketId: 'ticket-active',
+          operation: TicketHistoryOperation.RESTORED,
+          actorUserId: 'actor-1',
+          reason: 'Bilhete duplicado restaurado ao desfazer a unificação de pessoas.',
+        }),
+      }),
+    );
 
     expect(tx.eventTicket.updateMany).toHaveBeenNthCalledWith(
       1,

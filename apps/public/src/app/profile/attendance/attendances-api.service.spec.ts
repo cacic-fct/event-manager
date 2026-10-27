@@ -21,6 +21,16 @@ describe('AttendancesApiService', () => {
     httpTesting.verify();
   });
 
+  it('loads the certificate explanation for the requested target without supplying another person', async () => {
+    const result = firstValueFrom(service.getCertificateParticipation('EVENT_GROUP', 'group'));
+    const request = httpTesting.expectOne('/api/graphql');
+    expect(request.request.body.variables).toEqual({ scope: 'EVENT_GROUP', targetId: 'group' });
+    request.flush({
+      data: { currentUserCertificateParticipation: { status: 'ATTENDANCE_UNDER_REVIEW', actionTargetId: null } },
+    });
+    await expect(result).resolves.toEqual({ status: 'ATTENDANCE_UNDER_REVIEW', actionTargetId: null });
+  });
+
   it('keeps historical attendance details when the event is no longer available in the public catalog', async () => {
     const result = firstValueFrom(service.getEventDetails('past-event'));
     const event = eventFixture('past-event', 'Participação anterior à formatura');

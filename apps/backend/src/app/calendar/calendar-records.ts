@@ -16,6 +16,8 @@ export const CALENDAR_EVENT_SELECT = {
   latitude: true,
   longitude: true,
   locationDescription: true,
+  locationName: true,
+  isVirtual: true,
   createdAt: true,
   updatedAt: true,
   majorEvent: {

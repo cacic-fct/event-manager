@@ -50,10 +50,11 @@ export class PlacePresetsService {
 
   readonly placeForm = this.formBuilder.nonNullable.group({
     id: [''],
-    name: ['', [Validators.required]],
+    name: ['', [Validators.required, Validators.maxLength(250)]],
     latitude: [''],
     longitude: [''],
-    locationDescription: [''],
+    locationDescription: ['', Validators.maxLength(2000)],
+    internalNotes: ['', Validators.maxLength(10000)],
   });
 
   constructor() {
@@ -133,6 +134,7 @@ export class PlacePresetsService {
       latitude: '',
       longitude: '',
       locationDescription: '',
+      internalNotes: '',
     });
   }
 
@@ -254,6 +256,7 @@ export class PlacePresetsService {
         latitude,
         longitude,
         locationDescription,
+        internalNotes: input.internalNotes?.trim() || null,
       }),
     );
     await this.loadPlacePresets();
@@ -267,6 +270,7 @@ export class PlacePresetsService {
       latitude: place.latitude?.toString() ?? '',
       longitude: place.longitude?.toString() ?? '',
       locationDescription: place.locationDescription ?? '',
+      internalNotes: place.internalNotes ?? '',
     });
   }
 
@@ -277,6 +281,7 @@ export class PlacePresetsService {
       latitude: raw.latitude ? Number(raw.latitude) : null,
       longitude: raw.longitude ? Number(raw.longitude) : null,
       locationDescription: raw.locationDescription.trim() || null,
+      internalNotes: raw.internalNotes.trim() || null,
     };
   }
 

@@ -3,6 +3,7 @@ import { getQueueToken } from '@nestjs/bullmq';
 
 export interface NoopQueue {
   add(name: string, data?: unknown, options?: unknown): Promise<{ id: string; name: string }>;
+  getJob(id: string): Promise<undefined>;
   upsertJobScheduler(id: string, repeatOptions?: unknown, template?: unknown): Promise<{ id: string; name: string }>;
   close(): Promise<void>;
 }
@@ -16,6 +17,9 @@ export function createNoopQueueProviders(queueNames: string[]): Provider[] {
 
 function createNoopQueue(): NoopQueue {
   return {
+    async getJob() {
+      return undefined;
+    },
     async add(name: string) {
       return { id: `noop-${name}`, name };
     },
