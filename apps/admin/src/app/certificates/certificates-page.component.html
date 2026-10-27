@@ -383,14 +383,6 @@
                 {{ workspace.unsavedChanges() ? 'Descartar alterações' : 'Limpar' }}
               </button>
               @if (canEditSelectedTarget()) {
-                <button
-                  mat-stroked-button
-                  type="button"
-                  [disabled]="!workspace.certificateOperationsEnabled()"
-                  (click)="workspace.issueMissedCertificates()">
-                  <mat-icon>auto_awesome</mat-icon>
-                  Lançar correções e Emitir pendentes
-                </button>
                 @if (workspace.selectedCertificateConfig(); as selectedConfig) {
                   @if (canCloneConfig(selectedConfig)) {
                     <button mat-stroked-button type="button" (click)="workspace.cloneCertificateConfig(selectedConfig)">
@@ -584,9 +576,26 @@
             </div>
           </form>
 
+          <app-certificate-issuance-panel
+            class="embedded"
+            [runs]="workspace.issuanceRuns()"
+            [busy]="workspace.issuanceBusy()"
+            [loadError]="workspace.issuanceLoadError()"
+            [enabled]="workspace.certificateOperationsEnabled()"
+            [saved]="!!workspace.selectedCertificateConfig()"
+            [manual]="workspace.isManualCertificateIssue()"
+            [canIssue]="canEditSelectedTarget() && permissions.has(Permission.Certificate.Issue)"
+            [canReissue]="
+              canEditSelectedTarget() &&
+              permissions.hasAll([Permission.Certificate.Issue, Permission.Certificate.Reissue])
+            "
+            (issuanceRequested)="workspace.requestIssuance($event)"
+            (cancelRequested)="workspace.cancelIssuance($event)"
+            (refreshRequested)="workspace.loadIssuanceState()" />
+
           <section class="surface field-group">
             <div class="surface-heading">
-              <h3>Emissão manual</h3>
+              <h3>{{ workspace.isManualCertificateIssue() ? 'Destinatários manuais' : 'Emissão individual' }}</h3>
               <div class="panel-actions">
                 <span>{{ workspace.personSearchResults().length }} resultados</span>
                 @if (workspace.isManualCertificateIssue() && canEditSelectedTarget()) {
@@ -605,7 +614,7 @@
                     [disabled]="workspace.isImportingPeopleCsv() || !workspace.certificateOperationsEnabled()"
                     (click)="peopleCsvInput.click()">
                     <mat-icon>upload_file</mat-icon>
-                    Importar CSV
+                    Importar e emitir CSV
                   </button>
                 }
               </div>
@@ -629,18 +638,47 @@
                       : 'Selecione um modelo de certificado disponível antes de emitir.'
                 "
                 resultActionIcon="workspace_premium"
-                resultActionLabel="Emitir certificado para"
+                [resultActionLabel]="
+                  workspace.isManualCertificateIssue() ? 'Adicionar destinatário' : 'Emitir certificado para'
+                "
                 (queryChange)="workspace.personLookupForm.controls.query.setValue($event)"
                 (searchRequested)="
                   workspace.personLookupForm.controls.query.setValue($event); workspace.searchPeopleForManualIssue()
                 "
-                (personSelected)="workspace.issueCertificateForPerson($event)" />
+                (personSelected)="workspace.selectManualRecipient($event)" />
             </form>
           </section>
 
+          @if (workspace.isManualCertificateIssue() && workspace.manualRecipients().length > 0) {
+            <section class="surface field-group" aria-labelledby="certificate-manual-recipients-title">
+              <h3 id="certificate-manual-recipients-title">Lista de destinatários</h3>
+              <p>
+                Remover uma pessoa revoga o certificado. Adicioná-la novamente restaura a elegibilidade e mantém o ID
+                original. Revogações administrativas exigem liberação explícita.
+              </p>
+              <mat-list>
+                @for (person of workspace.manualRecipients(); track person.id) {
+                  <mat-list-item>
+                    <span matListItemTitle>{{ person.name }}</span>
+                    @if (canRemoveManualRecipient()) {
+                      <button
+                        mat-icon-button
+                        type="button"
+                        [attr.aria-label]="'Remover destinatário ' + person.name"
+                        matTooltip="Remover da lista e revogar o certificado"
+                        (click)="workspace.removeManualRecipient(person)">
+                        <mat-icon>person_remove</mat-icon>
+                      </button>
+                    }
+                  </mat-list-item>
+                }
+              </mat-list>
+            </section>
+          }
+
           <section class="surface field-group">
             <div class="surface-heading">
-              <h3>Certificados emitidos</h3>
+              <h3>Certificados emitidos e revogados</h3>
               <span>{{ workspace.certificates().length }} certificados</span>
             </div>
 
@@ -650,24 +688,38 @@
                   <span matListItemTitle>
                     {{ certificate.person.name }}, certificado: {{ certificate.config.name }}
                   </span>
-                  <span matListItemLine> Emitido em {{ certificate.issuedAt | date: 'short' }} </span>
-                  <button
-                    matIconButton
-                    type="button"
-                    aria-label="Baixar certificado"
-                    matTooltip="Baixar"
-                    (click)="workspace.downloadCertificate(certificate, $event)">
-                    <mat-icon>download</mat-icon>
-                  </button>
-                  @if (canDeleteCertificate(certificate)) {
+                  <span matListItemLine>
+                    @if (certificate.revokedAt) {
+                      Revogado em {{ certificate.revokedAt | date: 'short' }}. Reemissão bloqueada.
+                    } @else {
+                      Emitido em {{ certificate.issuedAt | date: 'short' }}
+                    }
+                  </span>
+                  @if (certificate.revokedAt) {
+                    @if (canEditSelectedTarget() && permissions.has(Permission.Certificate.Reissue)) {
+                      <button mat-button type="button" (click)="workspace.restoreCertificate(certificate)">
+                        Remover revogação e reemitir
+                      </button>
+                    }
+                  } @else {
                     <button
                       matIconButton
                       type="button"
-                      aria-label="Excluir certificado"
-                      matTooltip="Excluir"
-                      (click)="workspace.deleteCertificate(certificate, $event)">
-                      <mat-icon>delete</mat-icon>
+                      aria-label="Baixar certificado"
+                      matTooltip="Baixar"
+                      (click)="workspace.downloadCertificate(certificate, $event)">
+                      <mat-icon>download</mat-icon>
                     </button>
+                    @if (canDeleteCertificate(certificate)) {
+                      <button
+                        matIconButton
+                        type="button"
+                        aria-label="Revogar certificado"
+                        matTooltip="Revogar"
+                        (click)="workspace.deleteCertificate(certificate, $event)">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    }
                   }
                 </mat-list-item>
               } @empty {

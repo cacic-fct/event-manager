@@ -610,6 +610,7 @@ export const CERTIFICATE_CONFIG_FIELDS = `
 `;
 
 export const CERTIFICATE_FIELDS = `
+  revokedAt
   id
   personId
   configId

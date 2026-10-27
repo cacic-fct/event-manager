@@ -113,6 +113,8 @@ model CertificateConfig {
   attendeeEligibility AttendanceEligibility?
 
   certificates Certificate[]
+  issuanceRuns CertificateIssuanceRun[]
+  manualRecipients CertificateManualRecipient[]
 
   // Additional variable fields, depending on each template's needs
   certificateFields Json?
@@ -158,6 +160,10 @@ model Certificate {
   updatedAt DateTime @updatedAt
 
   deletedAt             DateTime?
+  // Explicit admin decision. Automatic eligibility changes only set deletedAt.
+  revokedAt             DateTime?
+  revokedById           String?
+  revocationReason      CertificateRevocationReason?
   lgpdDeletionRequestId String?
 
   @@unique([personId, configId])
@@ -165,6 +171,44 @@ model Certificate {
   @@index([configId])
   @@index([lgpdDeletionRequestId])
   @@map("certificates")
+}
+
+enum CertificateRevocationReason {
+  ADMIN
+  MANUAL_RECIPIENT_REMOVED
+}
+
+enum CertificateIssuanceRunStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model CertificateIssuanceRun {
+  id String @id @default(uuid(7))
+  configId String
+  config CertificateConfig @relation(fields: [configId], references: [id])
+  status CertificateIssuanceRunStatus @default(PENDING)
+  scheduledAt DateTime @default(now())
+  reissue Boolean @default(false)
+  notifyRecipients Boolean @default(true)
+  automatic Boolean @default(false)
+  requestedById String?
+  // Editing a queued configuration requires a fresh request under its current scope.
+  configUpdatedAt DateTime
+  startedAt DateTime?
+  completedAt DateTime?
+  certificateCount Int @default(0)
+  error String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([configId], map: "certificate_issuance_runs_active_config_key", where: raw("\"status\" IN ('PENDING', 'PROCESSING')"))
+  @@index([status, scheduledAt])
+  @@index([configId, createdAt])
+  @@map("certificate_issuance_runs")
 }
 
 enum CertificateNotificationOutboxStatus {
@@ -192,4 +236,19 @@ model CertificateNotificationOutbox {
   @@unique([certificateId, issuedAt], map: "certificate_notification_outbox_certificate_issued_key")
   @@index([status, nextAttemptAt], map: "certificate_notification_outbox_pending_idx")
   @@map("certificate_notification_outbox")
+}
+
+// Saved recipients can exist before first publication or before a later reissue.
+model CertificateManualRecipient {
+  configId String
+  config CertificateConfig @relation(fields: [configId], references: [id])
+  personId String
+  person People @relation(fields: [personId], references: [id])
+  createdAt DateTime @default(now())
+  createdById String?
+  removedAt DateTime?
+
+  @@id([configId, personId])
+  @@index([personId])
+  @@map("certificate_manual_recipients")
 }

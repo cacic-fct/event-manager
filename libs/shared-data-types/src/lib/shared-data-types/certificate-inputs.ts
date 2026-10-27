@@ -190,3 +190,21 @@ export class CertificateFolderUpdateInput {
   @Field(() => Boolean, { nullable: true })
   reissueCertificates?: boolean;
 }
+
+@InputType()
+export class CertificateIssuanceInput {
+  @Field(() => String)
+  configId!: string;
+
+  @Field(() => Date, {
+    nullable: true,
+    description: 'Omit to issue immediately. Scheduled dates must be in the future.',
+  })
+  scheduledAt?: Date | null;
+
+  @Field(() => Boolean, { defaultValue: false })
+  reissue?: boolean;
+
+  @Field(() => Boolean, { defaultValue: true })
+  notifyRecipients?: boolean;
+}

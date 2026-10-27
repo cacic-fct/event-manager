@@ -17,6 +17,7 @@ import {
 } from './lib/legacy-sql.mts';
 import type { ParsedSqlRow, ParsedSqlTables } from './lib/legacy-sql.mts';
 import { isMain } from './lib/common.mts';
+import { transferLocationData } from './lib/location.mts';
 import { writeTransferResources } from './lib/transfer.mts';
 import type { TransferResource } from './lib/transfer.mts';
 
@@ -671,7 +672,7 @@ export function buildEventRows(
         shortDescription: seed.shortDescription,
         latitude: null,
         longitude: null,
-        locationDescription: seed.locationDescription,
+        ...transferLocationData(seed.locationDescription),
         majorEventId: seed.majorEventId,
         eventGroupId: eventGroupIdByMajorEventAndType.get(`${seed.majorEventId}:${seed.type}`) ?? null,
         audience: 'PUBLIC',

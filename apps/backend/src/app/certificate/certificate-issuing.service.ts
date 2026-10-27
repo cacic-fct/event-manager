@@ -5,7 +5,15 @@ import {
   CertificateScope,
   DeletionResult,
 } from '@cacic-fct/shared-data-types';
-import { BadRequestException, forwardRef, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { AuditLogOperation, Prisma } from '@prisma/client';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { type AuditActor, type AuditPrismaClient } from '../audit-log/audit-log.types';
@@ -21,13 +29,15 @@ import {
   mapCertificate,
 } from './certificate.constants';
 import { CertificateEligibilityService, type EligibleCertificateRecipient } from './certificate-eligibility.service';
+import { CertificateAdministrationAudit } from './certificate-administration-audit';
 import { CertificateIssuanceAudit } from './certificate-issuance-audit';
 import { notifyCertificateAvailable } from './certificate-issuance-notifications';
 import { CertificateNotificationJobsService } from './certificate-notification-jobs.service';
-import { CertificateIssuanceRefresh } from './certificate-issuance-refresh';
+import { CertificateIssuanceRefresh, type CertificateIssuanceOptions } from './certificate-issuance-refresh';
 import { CertificateIssuanceRecipients } from './certificate-issuance-recipients';
 import { isManualCertificateIssuedTo } from './certificate-sports-roles';
 import { buildCertificateRenderedData, hasSameJson } from './certificate-rendered-data';
+import { lockCertificateRecipient } from './certificate-recipient-lock';
 import { CertificateValidationService } from './certificate-validation.service';
 
 type CertificateWriteClient = AuditPrismaClient;
@@ -38,6 +48,7 @@ export class CertificateIssuingService {
   private static readonly CERTIFICATE_ISSUING_BATCH_SIZE = 10;
   private readonly logger = new Logger(CertificateIssuingService.name);
   private readonly audit: CertificateIssuanceAudit;
+  private readonly administrationAudit: CertificateAdministrationAudit;
   private readonly refresh: CertificateIssuanceRefresh;
   private readonly recipients: CertificateIssuanceRecipients;
 
@@ -52,6 +63,7 @@ export class CertificateIssuingService {
     private readonly notificationJobs?: CertificateNotificationJobsService,
   ) {
     this.audit = new CertificateIssuanceAudit(auditLog);
+    this.administrationAudit = new CertificateAdministrationAudit(auditLog);
     this.recipients = new CertificateIssuanceRecipients(prisma, eligibilityService);
     this.refresh = new CertificateIssuanceRefresh(
       prisma,
@@ -72,6 +84,7 @@ export class CertificateIssuingService {
     configId?: string,
     skip?: number,
     take?: number,
+    includeRevoked = false,
   ): Promise<Certificate[]> {
     this.validation.assertSupportedScope(scope);
     const normalizedTargetId = this.validation.normalizeRequiredId('targetId', targetId);
@@ -79,7 +92,8 @@ export class CertificateIssuingService {
 
     const certificates = await this.prisma.certificate.findMany({
       where: {
-        deletedAt: null,
+        ...(includeRevoked ? { OR: [{ deletedAt: null }, { revokedAt: { not: null } }] } : { deletedAt: null }),
+        person: { deletedAt: null },
         config: {
           deletedAt: null,
           ...buildConfigTargetWhere(scope, normalizedTargetId),
@@ -187,10 +201,14 @@ export class CertificateIssuingService {
     };
   }
 
-  async issueMissedCertificates(configId: string, issuedById?: string): Promise<Certificate[]> {
+  async issueMissedCertificates(
+    configId: string,
+    issuedById?: string,
+    options: CertificateIssuanceOptions = {},
+  ): Promise<Certificate[]> {
     const normalizedConfigId = this.validation.normalizeRequiredId('configId', configId);
     const config = await this.eligibilityService.getConfigById(normalizedConfigId);
-    return (await this.refresh.issueForConfig(config, issuedById)).map(mapCertificate);
+    return (await this.refresh.issueForConfig(config, issuedById, options)).map(mapCertificate);
   }
 
   async issueForExistingConfigRecipients(
@@ -417,9 +435,15 @@ export class CertificateIssuingService {
       if (!certificate) {
         throw new NotFoundException(`Certificate ${normalizedCertificateId} not found.`);
       }
+      await lockCertificateRecipient(tx, certificate.configId, certificate.personId);
       const deleted = await tx.certificate.update({
-        where: { id: normalizedCertificateId },
-        data: { deletedAt: new Date() },
+        where: { id: normalizedCertificateId, deletedAt: null },
+        data: {
+          deletedAt: new Date(),
+          revokedAt: new Date(),
+          revokedById: deletedById ?? null,
+          revocationReason: 'ADMIN',
+        },
         select: CERTIFICATE_SELECT,
       });
       await this.notificationJobs?.supersedeCertificateNotifications(normalizedCertificateId, tx);
@@ -430,6 +454,24 @@ export class CertificateIssuingService {
       deleted: true,
       id: normalizedCertificateId,
     };
+  }
+
+  async restoreCertificate(certificateId: string, issuedById?: string): Promise<Certificate> {
+    const certificate = await this.prisma.certificate.findUnique({
+      where: { id: certificateId },
+      select: CERTIFICATE_SELECT,
+    });
+    if (!certificate?.revokedAt) {
+      throw new BadRequestException('Este certificado não está revogado.');
+    }
+    const { config, recipient } = await this.resolvePersonRecipient(certificate.configId, certificate.personId);
+    if (!config.isActive) throw new BadRequestException('Ative a configuração antes de reemitir.');
+    return mapCertificate(
+      await this.upsertCertificateForRecipient(config, recipient, issuedById, {
+        restoreRevoked: true,
+        force: true,
+      }),
+    );
   }
 
   private async resolvePersonRecipient(
@@ -452,7 +494,7 @@ export class CertificateIssuingService {
     config: CertificateConfigRecord,
     recipient: EligibleCertificateRecipient,
     issuedById?: string,
-    options: { auditActor?: AuditActor; notify?: boolean; prisma?: CertificateWriteClient } = {},
+    options: Omit<CertificateIssuanceOptions, 'client'> & { prisma?: CertificateWriteClient } = {},
   ) {
     const result = await this.upsertCertificateForRecipientResult(config, recipient, issuedById, options);
     return result.certificate;
@@ -462,7 +504,7 @@ export class CertificateIssuingService {
     config: CertificateConfigRecord,
     recipient: EligibleCertificateRecipient,
     issuedById?: string,
-    options: { auditActor?: AuditActor; notify?: boolean; prisma?: CertificateWriteClient } = {},
+    options: Omit<CertificateIssuanceOptions, 'client'> & { prisma?: CertificateWriteClient } = {},
   ): Promise<{ certificate: CertificateRecord; shouldNotify: boolean }> {
     const shouldNotifyNow =
       (options.notify ?? true) && (options.prisma === undefined || options.prisma === this.prisma);
@@ -476,11 +518,15 @@ export class CertificateIssuingService {
       },
       select: CERTIFICATE_SELECT,
     });
+    if (existingCertificate?.revokedAt && !options.restoreRevoked) {
+      throw new ConflictException('Este certificado foi revogado. Remova a revogação antes de emitir novamente.');
+    }
     const now = new Date();
     const currentRenderedData = existingCertificate
       ? this.buildRenderedData(config, recipient, existingCertificate.issuedAt)
       : null;
     const hasChanges =
+      options.force === true ||
       !existingCertificate ||
       existingCertificate.deletedAt !== null ||
       existingCertificate.certificateTemplateId !== config.certificateTemplateId ||
@@ -495,6 +541,7 @@ export class CertificateIssuingService {
 
     if (!existingCertificate) {
       const createCertificate = async (client: CertificateWriteClient) => {
+        await this.prepareRecipientWrite(client, config, recipient.person.id, issuedById);
         const certificate = await client.certificate.create({
           data: {
             personId: recipient.person.id,
@@ -514,7 +561,9 @@ export class CertificateIssuingService {
           client,
           options.auditActor,
         );
-        await this.notificationJobs?.createPendingOutbox(certificate, client);
+        if (options.createNotifications !== false) {
+          await this.notificationJobs?.createPendingOutbox(certificate, client);
+        }
         return certificate;
       };
       const certificate =
@@ -528,9 +577,11 @@ export class CertificateIssuingService {
     }
 
     const updateCertificate = async (client: CertificateWriteClient) => {
+      await this.prepareRecipientWrite(client, config, recipient.person.id, issuedById);
       const certificate = await client.certificate.update({
         where: {
           id: existingCertificate.id,
+          revokedAt: options.restoreRevoked ? existingCertificate.revokedAt : null,
         },
         data: {
           personId: recipient.person.id,
@@ -540,6 +591,7 @@ export class CertificateIssuingService {
           issuedById: issuedById ?? null,
           issuedAt,
           deletedAt: null,
+          ...(options.restoreRevoked ? { revokedAt: null, revokedById: null, revocationReason: null } : {}),
         },
         select: CERTIFICATE_SELECT,
       });
@@ -551,7 +603,9 @@ export class CertificateIssuingService {
         client,
         options.auditActor,
       );
-      await this.notificationJobs?.createPendingOutbox(certificate, client);
+      if (options.createNotifications !== false) {
+        await this.notificationJobs?.createPendingOutbox(certificate, client);
+      }
       return certificate;
     };
     const certificate =
@@ -562,6 +616,38 @@ export class CertificateIssuingService {
       await this.notifyCertificateAvailableBestEffort(certificate);
     }
     return { certificate, shouldNotify: true };
+  }
+
+  private async prepareRecipientWrite(
+    client: CertificateWriteClient,
+    config: CertificateConfigRecord,
+    personId: string,
+    actorId?: string,
+  ) {
+    await lockCertificateRecipient(client, config.id, personId);
+    if (isManualCertificateIssuedTo(config.issuedTo as CertificateIssuedTo)) {
+      const membership = await client.certificateManualRecipient.findUnique({
+        where: { configId_personId: { configId: config.id, personId } },
+      });
+      if (membership?.removedAt) throw new ConflictException('Adicione a pessoa novamente à lista antes de emitir.');
+      // Preserve compatibility with individual issuance and CSV imports.
+      await client.certificateManualRecipient.upsert({
+        where: { configId_personId: { configId: config.id, personId } },
+        create: { configId: config.id, personId, createdById: actorId },
+        update: {},
+      });
+      if (!membership) {
+        await this.administrationAudit.record(
+          client,
+          config.id,
+          actorId,
+          AuditLogOperation.ASSIGN,
+          'Destinatário adicionado à lista manual durante a emissão.',
+          { resourceType: 'CERTIFICATE_MANUAL_RECIPIENT', personId, included: true },
+          config,
+        );
+      }
+    }
   }
 
   private async recordCertificateAudit(

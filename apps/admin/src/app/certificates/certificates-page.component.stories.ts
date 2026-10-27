@@ -12,6 +12,7 @@ import { applicationConfig } from '@storybook/angular';
 import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import type { CertificateFolder, CertificateTemplate } from '@cacic-fct/event-manager-admin-contracts';
 import { filter, map, of, startWith } from 'rxjs';
+import { createAdminCertificateConfig, createAdminPerson } from '../testing/admin-entity-fixtures';
 import { CertificatesService } from './certificates.service';
 import { CertificateApiService } from '../graphql/certificate-api.service';
 import type { Meta, StoryObj } from '@storybook/angular';
@@ -365,5 +366,118 @@ export const AttendeeCertificateEligibility: Story = {
         'As regras do alvo continuam valendo; a coleta de presença é independente do certificado.',
       ),
     ).toBeVisible();
+  },
+};
+
+export const IssuanceWorkspace: Story = {
+  args: { latencyMs: 0 },
+  render: (args) => {
+    activeArgs = { ...defaultArgs, ...args };
+    return { props: {}, template: '<main><h1>Certificados</h1><app-workspace-certificates-tab /></main>' };
+  },
+  decorators: [
+    applicationConfig({
+      providers: [
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            paramMap: of(convertToParamMap({ targetType: 'event', targetId: 'event-1', configId: 'config-1' })),
+          },
+        },
+        {
+          provide: PermissionsService,
+          useValue: { has: () => true, hasAny: () => true, hasAll: () => true, canDelete: () => true },
+        },
+        provideAppInitializer(async () => {
+          const workspace = inject(CertificatesService);
+          await workspace.loadCertificateTemplates();
+          workspace.certificateTemplates.set([
+            { ...standaloneCertificateTemplate, id: 'template-1', name: 'Certificado padrão' },
+          ]);
+        }),
+      ],
+    }),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'Emissão e publicação' })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Emitir e publicar agora' })).toBeVisible();
+  },
+};
+
+const manualEligibilityConfig = createAdminCertificateConfig(
+  {
+    id: 'manual-eligibility-story',
+    name: 'Participação na organização',
+    scope: 'OTHER',
+    issuedTo: 'OTHER',
+    eventId: null,
+    event: null,
+    folderId: standaloneCertificateFolder.id,
+    folder: standaloneCertificateFolder,
+    certificateTypeLabel: 'Organização',
+  },
+  standaloneCertificateTemplate,
+);
+const manualEligibilityPeople = [
+  createAdminPerson({ id: 'person-story-1', name: 'Ana Souza' }),
+  createAdminPerson({ id: 'person-story-2', name: 'Bruno Lima' }),
+  createAdminPerson({ id: 'person-story-3', name: 'Carla Santos' }),
+];
+const manualEligibilityCertificateApi = {
+  ...standaloneFolderCertificateApi,
+  listCertificateConfigs: () => of([manualEligibilityConfig]),
+  getCertificateConfig: () => of(manualEligibilityConfig),
+  listCertificateIssuanceRuns: () => of([]),
+  listCertificateManualRecipients: () => of(manualEligibilityPeople.slice(0, 2)),
+  listCertificates: () =>
+    of(
+      [manualEligibilityPeople[0], manualEligibilityPeople[2]].map((person, index) => ({
+        id: `manual-certificate-${index + 1}`,
+        personId: person.id,
+        person,
+        configId: manualEligibilityConfig.id,
+        config: manualEligibilityConfig,
+        renderedDataJson: '{}',
+        issuedAt: folderStoryTimestamp,
+        certificateTemplateId: standaloneCertificateTemplate.id,
+        certificateTemplate: standaloneCertificateTemplate,
+        createdAt: folderStoryTimestamp,
+        updatedAt: folderStoryTimestamp,
+        revokedAt: index === 1 ? folderStoryTimestamp : null,
+      })),
+    ),
+} satisfies Partial<CertificateApiService>;
+
+export const ManualEligibilityWorkspace: Story = {
+  render: () => ({ props: {}, template: '<main><app-workspace-certificates-tab /></main>' }),
+  decorators: [
+    applicationConfig({
+      providers: [
+        { provide: CertificateApiService, useValue: manualEligibilityCertificateApi },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            paramMap: of(
+              convertToParamMap({
+                targetType: 'folder',
+                targetId: standaloneCertificateFolder.id,
+                configId: manualEligibilityConfig.id,
+              }),
+            ),
+          },
+        },
+        {
+          provide: PermissionsService,
+          useValue: { has: () => true, hasAny: () => true, hasAll: () => true, canDelete: () => true },
+        },
+        provideAppInitializer(() => inject(CertificatesService).loadCertificateTemplates()),
+      ],
+    }),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'Lista de destinatários' })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Remover revogação e reemitir' })).toBeVisible();
   },
 };

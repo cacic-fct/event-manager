@@ -1,12 +1,7 @@
 import { Value } from '@sinclair/typebox/value';
 import type { TransferIssue } from './models';
-import {
-  CurrentTransferDocumentSchema,
-  LegacyTransferDocumentSchema,
-  type TransferDocument,
-  type TransferFileResource,
-} from './schema';
-import { TRANSFER_MAX_BYTES, TRANSFER_MAX_DEPTH, TRANSFER_SCHEMA_ID, TRANSFER_VERSION } from './schema-helpers';
+import { TransferDocumentSchema, type TransferDocument } from './schema';
+import { TRANSFER_MAX_BYTES, TRANSFER_MAX_DEPTH } from './schema-helpers';
 
 const unsafeKeys = new Set(['__proto__', 'prototype', 'constructor']);
 
@@ -65,13 +60,9 @@ export function parseTransferDocument(input: unknown): TransferDocument {
   if (new TextEncoder().encode(JSON.stringify(input)).byteLength > TRANSFER_MAX_BYTES) {
     throw new TransferValidationError([{ message: 'O arquivo excede o limite de 5 MiB.' }]);
   }
-  const schema =
-    input !== null && typeof input === 'object' && 'version' in input && input.version === 1
-      ? LegacyTransferDocumentSchema
-      : CurrentTransferDocumentSchema;
-  if (!Value.Check(schema, input)) {
+  if (!Value.Check(TransferDocumentSchema, input)) {
     const issues: TransferIssue[] = [];
-    for (const error of Value.Errors(schema, input)) {
+    for (const error of Value.Errors(TransferDocumentSchema, input)) {
       issues.push({
         path: error.path,
         message: `Estrutura incompatível em ${error.path || '/'}. Baixe o schema da versão atual.`,
@@ -80,23 +71,7 @@ export function parseTransferDocument(input: unknown): TransferDocument {
     }
     throw new TransferValidationError(issues);
   }
-  const document: TransferDocument =
-    input.version === 1
-      ? {
-          ...input,
-          $schema: TRANSFER_SCHEMA_ID,
-          version: TRANSFER_VERSION,
-          resources: input.resources.map(upgradeLegacyEventLocation),
-        }
-      : input;
-  // Splitting legacy text can expose a name longer than the structured field's limit.
-  if (!Value.Check(CurrentTransferDocumentSchema, document)) {
-    throw new TransferValidationError([
-      {
-        message: 'O local do arquivo antigo excede os limites atuais. Ajuste o nome e a descrição do local.',
-      },
-    ]);
-  }
+  const document = input;
   const identities = new Set<string>();
   const keys = new Set<string>();
   for (const record of document.resources) {
@@ -119,37 +94,6 @@ export function parseTransferDocument(input: unknown): TransferDocument {
     }
   }
   return document;
-}
-
-/** Version 1 stored the public place name and details together in locationDescription. */
-function upgradeLegacyEventLocation(resource: TransferFileResource): TransferFileResource {
-  if (resource.kind !== 'event') return resource;
-  const data = resource.data;
-  if (!('locationDescription' in data) || 'locationName' in data || 'isVirtual' in data) return resource;
-  const description = data.locationDescription?.trim() || null;
-  if (description === 'Evento on-line') {
-    return {
-      ...resource,
-      data: {
-        ...data,
-        isVirtual: true,
-        locationName: null,
-        locationDescription: null,
-        latitude: null,
-        longitude: null,
-      },
-    };
-  }
-  const separator = description?.indexOf(' - ') ?? -1;
-  return {
-    ...resource,
-    data: {
-      ...data,
-      isVirtual: false,
-      locationName: (separator < 0 ? description : description?.slice(0, separator))?.trim() || null,
-      locationDescription: separator < 0 ? null : description?.slice(separator + 3).trim() || null,
-    },
-  };
 }
 
 export function parseTransferJson(text: string): TransferDocument {

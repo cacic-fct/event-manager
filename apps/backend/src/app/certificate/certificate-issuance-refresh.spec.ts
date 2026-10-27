@@ -3,6 +3,32 @@ import { CertificateIssuanceRefresh } from './certificate-issuance-refresh';
 const { jest } = import.meta;
 
 describe('CertificateIssuanceRefresh', () => {
+  it('keeps queued recipient writes sequential when the server uses a single-recipient batch', async () => {
+    let concurrentWrites = 0;
+    let peakWrites = 0;
+    const upsert = jest.fn(async () => {
+      concurrentWrites += 1;
+      peakWrites = Math.max(peakWrites, concurrentWrites);
+      await Promise.resolve();
+      concurrentWrites -= 1;
+      return { certificate: { id: 'certificate' }, shouldNotify: true };
+    });
+    const refresh = new CertificateIssuanceRefresh(
+      { certificate: { findMany: jest.fn().mockResolvedValue([]) } } as never,
+      {} as never,
+      {
+        resolveEligibleRecipients: jest
+          .fn()
+          .mockResolvedValue([{ person: { id: 'first' } }, { person: { id: 'second' } }, { person: { id: 'third' } }]),
+      } as never,
+      upsert as never,
+      { resolveActor: jest.fn() } as never,
+    );
+    await refresh.issueForConfig({ id: 'config', issuedTo: 'ATTENDEE' } as never, undefined, { batchSize: 1 });
+    expect(peakWrites).toBe(1);
+    expect(upsert).toHaveBeenCalledTimes(3);
+  });
+
   it('refreshes each person configuration once while preserving its first-seen order', async () => {
     const prisma = transactionPrisma([{ configId: 'config-1' }, { configId: 'config-2' }, { configId: 'config-1' }]);
     const eligibility = {

@@ -51,6 +51,7 @@ model People {
   mergeOperationsAsSource PeopleMergeOperation[] @relation("MergeSourceOperations")
 
   certificates Certificate[]
+  manualCertificateRecipients CertificateManualRecipient[]
   heldTickets EventTicket[] @relation("EventTicketHolder")
   originatedTickets EventTicket[] @relation("EventTicketOriginalHolder")
   ticketPurchases TicketPurchase[]

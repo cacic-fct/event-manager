@@ -168,6 +168,20 @@ export const AUDIENCE_RELATIONS = {
       isRequired: true,
       ownsRelation: false,
     },
+    {
+      name: 'issuanceRuns',
+      type: 'CertificateIssuanceRun',
+      isList: true,
+      isRequired: true,
+      ownsRelation: false,
+    },
+    {
+      name: 'manualRecipients',
+      type: 'CertificateManualRecipient',
+      isList: true,
+      isRequired: true,
+      ownsRelation: false,
+    },
   ],
   Certificate: [
     {
@@ -199,10 +213,35 @@ export const AUDIENCE_RELATIONS = {
       ownsRelation: false,
     },
   ],
+  CertificateIssuanceRun: [
+    {
+      name: 'config',
+      type: 'CertificateConfig',
+      isList: false,
+      isRequired: true,
+      ownsRelation: true,
+    },
+  ],
   CertificateNotificationOutbox: [
     {
       name: 'certificate',
       type: 'Certificate',
+      isList: false,
+      isRequired: true,
+      ownsRelation: true,
+    },
+  ],
+  CertificateManualRecipient: [
+    {
+      name: 'config',
+      type: 'CertificateConfig',
+      isList: false,
+      isRequired: true,
+      ownsRelation: true,
+    },
+    {
+      name: 'person',
+      type: 'People',
       isList: false,
       isRequired: true,
       ownsRelation: true,
@@ -1152,6 +1191,13 @@ export const AUDIENCE_RELATIONS = {
     {
       name: 'certificates',
       type: 'Certificate',
+      isList: true,
+      isRequired: true,
+      ownsRelation: false,
+    },
+    {
+      name: 'manualCertificateRecipients',
+      type: 'CertificateManualRecipient',
       isList: true,
       isRequired: true,
       ownsRelation: false,

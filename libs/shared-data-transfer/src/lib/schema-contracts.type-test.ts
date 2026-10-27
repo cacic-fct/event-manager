@@ -3,7 +3,12 @@ import { Type } from '@sinclair/typebox';
 // eslint-disable-next-line @nx/enforce-module-boundaries
 import type { parseFormElementsJson } from '@cacic-fct/event-manager-admin-contracts';
 import type { SportsPreset } from '@cacic-fct/shared-data-types';
-import { TRANSFER_RESOURCE_SCHEMAS, type TransferResource } from './schema';
+import {
+  TRANSFER_RESOURCE_SCHEMAS,
+  type ResolvedTransferDocument,
+  type TransferDocument,
+  type TransferResource,
+} from './schema';
 import { DateTime, Name } from './schema-helpers';
 import {
   AssertContract,
@@ -17,6 +22,16 @@ import { enumeration } from './schema-helpers';
 
 type _TwentyKindsMatchOwners = AssertContract<
   EqualContract<keyof typeof TRANSFER_RESOURCE_SCHEMAS, ResourceContractKind>
+>;
+
+type _ResolvedDocumentRemainsImportable = AssertContract<
+  ResolvedTransferDocument extends TransferDocument ? true : false
+>;
+type _ResolvedDocumentKeepsVersionedSchemaId = AssertContract<
+  EqualContract<
+    Extract<ResolvedTransferDocument, { version: 1 }>['$schema'],
+    Extract<TransferDocument, { version: 1 }>['$schema']
+  >
 >;
 
 type EventData = Extract<TransferResource, { kind: 'event' }>['data'];
@@ -69,6 +84,8 @@ void unsupportedCertificateScope;
 
 export type SchemaContractTypeTests =
   | _TwentyKindsMatchOwners
+  | _ResolvedDocumentRemainsImportable
+  | _ResolvedDocumentKeepsVersionedSchemaId
   | _EventStartIsSerializedOwnerDate
   | _FormElementsUseOwnerConversionOutput
   | _CategorySportUsesOwningEnum

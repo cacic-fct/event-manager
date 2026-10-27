@@ -1,0 +1,22 @@
+:host {
+  display: block;
+}
+
+:host(.embedded) {
+  border-block-start: 1px solid var(--mat-sys-outline-variant);
+  padding-block-start: 1rem;
+}
+
+.field-group > p,
+.notice p {
+  margin: 0;
+  max-inline-size: 72ch;
+}
+
+.notice p + p {
+  margin-block-start: 0.5rem;
+}
+
+.actions {
+  margin-block-start: 0.25rem;
+}

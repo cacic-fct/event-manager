@@ -690,6 +690,8 @@ function contextPage(variables: Record<string, unknown>) {
   };
 }
 
+const certificateIssuanceRuns = new Map<string, Record<string, unknown>[]>();
+
 function graphqlData(query: string, variables: Record<string, unknown>) {
   if (query.includes('AdminEventContextPage')) {
     return { adminEventContextPage: contextPage(variables) };
@@ -969,6 +971,57 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
 
   if (query.includes('ListCertificateTemplates')) {
     return { certificateTemplates: [certificateTemplate] };
+  }
+
+  if (query.includes('query CertificateConfig(')) {
+    return { certificateConfig };
+  }
+
+  if (query.includes('query CertificateIssuanceRuns')) {
+    const runs = certificateIssuanceRuns.get(String(variables['configId'])) ?? [];
+    return { certificateIssuanceRuns: runs };
+  }
+
+  if (query.includes('RequestCertificateIssuance')) {
+    const input = (variables['input'] ?? {}) as Record<string, unknown>;
+    const configId = String(input['configId'] ?? certificateConfig.id);
+    const run = {
+      id: `issuance-${Date.now()}`,
+      configId,
+      status: 'PENDING',
+      scheduledAt: input['scheduledAt'] ?? new Date().toISOString(),
+      reissue: input['reissue'] === true,
+      notifyRecipients: input['notifyRecipients'] !== false,
+      automatic: false,
+      certificateCount: 0,
+      createdAt: new Date().toISOString(),
+    };
+    certificateIssuanceRuns.set(configId, [run]);
+    return { requestCertificateIssuance: run };
+  }
+
+  if (query.includes('CancelCertificateIssuance')) {
+    const configId = String(variables['configId']);
+    const run = certificateIssuanceRuns.get(configId)?.[0];
+    const cancelled = { ...run, status: 'CANCELLED', completedAt: new Date().toISOString() };
+    certificateIssuanceRuns.set(configId, [cancelled]);
+    return { cancelCertificateIssuance: cancelled };
+  }
+
+  if (query.includes('CertificateManualRecipients')) {
+    return { certificateManualRecipients: people.slice(0, 4) };
+  }
+
+  if (query.includes('AddCertificateManualRecipient')) {
+    return { addCertificateManualRecipient: people.find((person) => person.id === variables['personId']) ?? people[0] };
+  }
+
+  if (query.includes('RemoveCertificateManualRecipient')) {
+    return { removeCertificateManualRecipient: deletionResult(String(variables['personId'])) };
+  }
+
+  if (query.includes('RestoreCertificate')) {
+    return { restoreCertificate: { ...certificates[0], revokedAt: null } };
   }
 
   if (query.includes('ListCertificateConfigs')) {

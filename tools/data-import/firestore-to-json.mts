@@ -5,6 +5,7 @@ import process from 'node:process';
 import { isMain, normalizeWgs84Coordinates } from './lib/common.mts';
 import { createUuidV5 } from './lib/ids.mts';
 import { writeTransferResources, type TransferResource } from './lib/transfer.mts';
+import { transferLocationData } from './lib/location.mts';
 
 export const DEFAULT_UNKNOWN_EMOJI = '❔';
 
@@ -1393,6 +1394,10 @@ export function buildTransferResources(payload: ImportPayload): {
           return [field, value instanceof Date ? value.toISOString() : value];
         }),
       );
+      if (kind === 'event') {
+        const location = source['locationDescription'];
+        Object.assign(data, transferLocationData(typeof location === 'string' ? location : null));
+      }
       resources.push({ kind, id: row.id, data });
     }
   }

@@ -6,6 +6,9 @@ import {
   CertificateCsvImportResolution,
   CertificateCsvImportResult,
   CertificateConfig,
+  CertificateIssuanceInput,
+  CertificateIssuanceRun,
+  Person,
   CertificateConfigCloneInput,
   CertificateConfigInput,
   CertificateDownload,
@@ -195,6 +198,7 @@ export class CertificateApiService {
     targetId: string,
     filters?: {
       configId?: string;
+      includeRevoked?: boolean;
       skip?: number;
       take?: number;
     },
@@ -204,6 +208,7 @@ export class CertificateApiService {
         `query ListCertificates(
           $scope: CertificateScope!
           $targetId: String!
+          $includeRevoked: Boolean
           $configId: String
           $skip: Int
           $take: Int
@@ -211,6 +216,7 @@ export class CertificateApiService {
           certificates(
             scope: $scope
             targetId: $targetId
+            includeRevoked: $includeRevoked
             configId: $configId
             skip: $skip
             take: $take
@@ -222,6 +228,7 @@ export class CertificateApiService {
           scope,
           targetId,
           configId: filters?.configId,
+          includeRevoked: filters?.includeRevoked,
           skip: filters?.skip,
           take: filters?.take,
         },
@@ -376,6 +383,83 @@ export class CertificateApiService {
       .pipe(map((data) => data.issueManualCertificatesFromCsv));
   }
 
+  listCertificateIssuanceRuns(configId: string) {
+    return this.graphqlHttp
+      .request<{ certificateIssuanceRuns: CertificateIssuanceRun[] }>(
+        `query CertificateIssuanceRuns($configId: String!) {
+        certificateIssuanceRuns(configId: $configId) { ${CERTIFICATE_ISSUANCE_RUN_FIELDS} }
+      }`,
+        { configId },
+      )
+      .pipe(map((data) => data.certificateIssuanceRuns));
+  }
+
+  requestCertificateIssuance(input: CertificateIssuanceInput) {
+    return this.graphqlHttp
+      .request<{ requestCertificateIssuance: CertificateIssuanceRun }>(
+        `mutation RequestCertificateIssuance($input: CertificateIssuanceInput!) {
+        requestCertificateIssuance(input: $input) { ${CERTIFICATE_ISSUANCE_RUN_FIELDS} }
+      }`,
+        { input },
+      )
+      .pipe(map((data) => data.requestCertificateIssuance));
+  }
+
+  cancelCertificateIssuance(configId: string, runId: string) {
+    return this.graphqlHttp
+      .request<{ cancelCertificateIssuance: CertificateIssuanceRun }>(
+        `mutation CancelCertificateIssuance($configId: String!, $runId: String!) {
+        cancelCertificateIssuance(configId: $configId, runId: $runId) { ${CERTIFICATE_ISSUANCE_RUN_FIELDS} }
+      }`,
+        { configId, runId },
+      )
+      .pipe(map((data) => data.cancelCertificateIssuance));
+  }
+
+  listCertificateManualRecipients(configId: string) {
+    return this.graphqlHttp
+      .request<{ certificateManualRecipients: Person[] }>(
+        `query CertificateManualRecipients($configId: String!) {
+        certificateManualRecipients(configId: $configId) { id name }
+      }`,
+        { configId },
+      )
+      .pipe(map((data) => data.certificateManualRecipients));
+  }
+
+  addCertificateManualRecipient(configId: string, personId: string) {
+    return this.graphqlHttp
+      .request<{ addCertificateManualRecipient: Person }>(
+        `mutation AddCertificateManualRecipient($configId: String!, $personId: String!) {
+        addCertificateManualRecipient(configId: $configId, personId: $personId) { id name }
+      }`,
+        { configId, personId },
+      )
+      .pipe(map((data) => data.addCertificateManualRecipient));
+  }
+
+  removeCertificateManualRecipient(configId: string, personId: string) {
+    return this.graphqlHttp
+      .request<{ removeCertificateManualRecipient: DeletionResult }>(
+        `mutation RemoveCertificateManualRecipient($configId: String!, $personId: String!) {
+        removeCertificateManualRecipient(configId: $configId, personId: $personId) { id deleted }
+      }`,
+        { configId, personId },
+      )
+      .pipe(map((data) => data.removeCertificateManualRecipient));
+  }
+
+  restoreCertificate(id: string) {
+    return this.graphqlHttp
+      .request<{ restoreCertificate: Certificate }>(
+        `mutation RestoreCertificate($id: String!) {
+        restoreCertificate(id: $id) { ${CERTIFICATE_FIELDS} }
+      }`,
+        { id },
+      )
+      .pipe(map((data) => data.restoreCertificate));
+  }
+
   issueMissedCertificates(configId: string) {
     return this.graphqlHttp
       .request<{ issueMissedCertificates: Certificate[] }>(
@@ -429,3 +513,8 @@ export class CertificateApiService {
       .pipe(map((data) => data.downloadCertificate));
   }
 }
+
+const CERTIFICATE_ISSUANCE_RUN_FIELDS = `
+  id configId status scheduledAt reissue notifyRecipients automatic
+  startedAt completedAt certificateCount error createdAt
+`;
