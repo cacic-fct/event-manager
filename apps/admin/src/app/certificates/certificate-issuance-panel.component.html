@@ -1,0 +1,97 @@
+<section class="field-group" aria-labelledby="certificate-issuance-title" [attr.aria-busy]="busy()">
+  <div class="surface-heading">
+    <h3 id="certificate-issuance-title">Emissão e publicação</h3>
+    <button mat-button type="button" [disabled]="busy() || !saved()" (click)="refreshRequested.emit()">
+      <mat-icon>refresh</mat-icon>Atualizar status
+    </button>
+  </div>
+  <p>Emita agora ou agende a publicação dos certificados.</p>
+  @if (manual()) {
+    <p>Usa as pessoas da lista de destinatários abaixo.</p>
+  } @else {
+    <p>Usa o público e os critérios de elegibilidade salvos nesta configuração.</p>
+  }
+  @if (loadError()) {
+    <p class="risk-summary" role="alert">{{ loadError() }}</p>
+  }
+  @if (activeRun(); as run) {
+    <div class="notice" role="status" aria-live="polite">
+      <mat-icon>{{ run.status === 'PROCESSING' ? 'hourglass_top' : 'schedule' }}</mat-icon>
+      <div>
+        <strong>{{ run.status === 'PROCESSING' ? 'Emissão em andamento' : 'Emissão agendada ou na fila' }}</strong>
+        <p>Data e hora: {{ run.scheduledAt | date: 'short' }}</p>
+        <p>
+          {{
+            run.notifyRecipients
+              ? 'Os destinatários serão notificados ao concluir.'
+              : 'Emissão sem notificar os destinatários.'
+          }}
+        </p>
+      </div>
+      @if (run.status === 'PENDING' && canIssue()) {
+        <button mat-button type="button" (click)="cancelRequested.emit(run.id)">Cancelar emissão</button>
+      }
+    </div>
+  } @else {
+    @if (model().timing === 'SCHEDULE') {
+      <p>Se editar a configuração depois de agendar, cancele e agende novamente.</p>
+    }
+    <div class="field-grid">
+      <mat-form-field>
+        <mat-label>Quando emitir</mat-label>
+        <mat-select [formField]="issuanceForm.timing">
+          <mat-option value="NOW">Agora</mat-option>
+          <mat-option value="SCHEDULE">Agendar</mat-option>
+        </mat-select>
+      </mat-form-field>
+      @if (model().timing === 'SCHEDULE') {
+        <mat-form-field>
+          <mat-label>Data e hora</mat-label>
+          <input
+            #scheduleInput
+            matInput
+            type="datetime-local"
+            [attr.aria-invalid]="error() ? 'true' : null"
+            [attr.aria-describedby]="error() ? 'certificate-schedule-error' : null"
+            [formField]="issuanceForm.scheduledAt" />
+          <mat-hint>A emissão começa a partir desse horário.</mat-hint>
+        </mat-form-field>
+      }
+    </div>
+    <mat-checkbox [formField]="issuanceForm.notifyRecipients">
+      Notificar somente os destinatários ao concluir
+    </mat-checkbox>
+    <p>Após a publicação, o sistema revisa a elegibilidade periodicamente. Revogações são preservadas.</p>
+    @if (error()) {
+      <p id="certificate-schedule-error" class="risk-summary" role="alert">{{ error() }}</p>
+    }
+    <div class="actions">
+      @if (canIssue()) {
+        <button mat-flat-button type="button" [disabled]="busy() || !enabled()" (click)="request(false)">
+          <mat-icon>{{ model().timing === 'SCHEDULE' ? 'schedule_send' : 'publish' }}</mat-icon>
+          {{ model().timing === 'SCHEDULE' ? 'Agendar emissão' : 'Emitir e publicar agora' }}
+        </button>
+      }
+      @if (canReissue()) {
+        <button mat-stroked-button type="button" [disabled]="busy() || !enabled() || !saved()" (click)="request(true)">
+          <mat-icon>refresh</mat-icon>
+          {{ model().timing === 'SCHEDULE' ? 'Agendar reemissão' : 'Reemitir agora' }}
+        </button>
+      }
+    </div>
+  }
+  @if (latestRun(); as run) {
+    <p role="status" aria-live="polite">
+      {{ statusLabel(run) }}
+      @if (run.status === 'COMPLETED') {
+        {{ run.certificateCount }} certificado(s) emitido(s) ou atualizado(s).
+      }
+      @if (run.completedAt) {
+        {{ run.completedAt | date: 'short' }}
+      }
+    </p>
+    @if (run.status === 'FAILED') {
+      <p class="risk-summary" role="alert">{{ run.error }} Confira os dados e solicite uma nova emissão.</p>
+    }
+  }
+</section>

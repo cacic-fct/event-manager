@@ -46,6 +46,7 @@ describe('CertificateIssuingService', () => {
       deletedAt: null,
     };
     const prisma = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       certificate: {
         findUnique: jest.fn().mockResolvedValue(existingCertificate),
         create: jest.fn(),
@@ -154,6 +155,7 @@ describe('CertificateIssuingService', () => {
       deletedAt: null,
     };
     const prisma = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       certificate: {
         findUnique: jest.fn().mockResolvedValue(existingCertificate),
         create: jest.fn(),
@@ -190,6 +192,7 @@ describe('CertificateIssuingService', () => {
 
   it('lists certificates by target with normalized ids and optional config filtering', async () => {
     const prisma = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       certificate: {
         findMany: jest.fn().mockResolvedValue([mappedCertificateRecord]),
       },
@@ -259,6 +262,7 @@ describe('CertificateIssuingService', () => {
 
   it('issues a certificate for one eligible person', async () => {
     const prisma = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       people: {
         findFirst: jest.fn().mockResolvedValue({ id: 'person-valid' }),
       },
@@ -336,6 +340,7 @@ describe('CertificateIssuingService', () => {
 
   it('copies existing issued recipients in batches without failing the whole copy on one ineligible person', async () => {
     const prisma = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       $transaction: jest.fn(async (callback: (tx: unknown) => Promise<unknown>) => callback({})),
       certificate: {
         findMany: jest
@@ -396,6 +401,7 @@ describe('CertificateIssuingService', () => {
   it('queues cloned certificate notifications only after its transaction commits', async () => {
     const notificationJobs = { enqueue: jest.fn().mockResolvedValue(undefined) };
     const prisma = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       $transaction: jest.fn(async (callback: (tx: unknown) => Promise<unknown>) => {
         const result = await callback({});
         expect(notificationJobs.enqueue).not.toHaveBeenCalled();
@@ -447,6 +453,7 @@ describe('CertificateIssuingService', () => {
 
   it('propagates unexpected failures before writing cloned recipient certificates', async () => {
     const prisma = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       $transaction: jest.fn(),
       certificate: {
         findMany: jest.fn().mockResolvedValue([{ personId: 'person-1' }, { personId: 'person-2' }]),
@@ -489,6 +496,7 @@ describe('CertificateIssuingService', () => {
       notifyCertificateAvailable: jest.fn().mockResolvedValue(undefined),
     };
     const tx = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       user: {
         findUnique: jest.fn().mockResolvedValue({ name: 'Admin', email: 'admin@example.com' }),
       },
@@ -497,6 +505,7 @@ describe('CertificateIssuingService', () => {
       },
     };
     const prisma = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       $transaction: jest.fn(),
       user: {
         findUnique: jest.fn().mockResolvedValue({ name: 'Admin', email: 'admin@example.com' }),
@@ -565,6 +574,8 @@ describe('CertificateIssuingService', () => {
       },
     };
     const prisma = {
+      certificateManualRecipient: { findUnique: jest.fn().mockResolvedValue(null), upsert: jest.fn() },
+      $executeRaw: jest.fn().mockResolvedValue(1),
       $transaction: jest.fn(),
       certificate: {
         findUnique: jest.fn().mockResolvedValue(null),
@@ -601,6 +612,7 @@ describe('CertificateIssuingService', () => {
       notifyCertificateAvailable: jest.fn().mockResolvedValue(undefined),
     };
     const transactionClient = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       user: {
         findUnique: jest.fn().mockResolvedValue({ name: 'Admin', email: 'admin@example.com' }),
       },
@@ -642,6 +654,7 @@ describe('CertificateIssuingService', () => {
       notifyCertificateAvailable: jest.fn().mockResolvedValue(undefined),
     };
     const transactionClient = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       user: {
         findUnique: jest.fn().mockResolvedValue({ name: 'Admin', email: 'admin@example.com' }),
       },
@@ -686,6 +699,7 @@ describe('CertificateIssuingService', () => {
       notifyCertificateAvailable: jest.fn().mockResolvedValue(undefined),
     };
     const prisma = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       $transaction: jest.fn(),
       certificate: {
         findUnique: jest.fn().mockResolvedValue({
@@ -711,7 +725,7 @@ describe('CertificateIssuingService', () => {
 
     expect(prisma.certificate.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'certificate-1' },
+        where: { id: 'certificate-1', revokedAt: null },
         data: expect.objectContaining({
           certificateTemplateId: 'template-1',
           deletedAt: null,
@@ -733,6 +747,7 @@ describe('CertificateIssuingService', () => {
       notifyCertificateAvailable: jest.fn().mockResolvedValue(undefined),
     };
     const prisma = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       $transaction: jest.fn(),
       certificate: {
         findUnique: jest.fn().mockResolvedValue({
@@ -758,7 +773,7 @@ describe('CertificateIssuingService', () => {
 
     expect(prisma.certificate.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'certificate-1' },
+        where: { id: 'certificate-1', revokedAt: null },
         data: expect.objectContaining({
           certificateTemplateId: 'template-1',
           deletedAt: null,
@@ -801,6 +816,7 @@ describe('CertificateIssuingService', () => {
       normalizeRequiredId: jest.fn((_field: string, value: string) => value.trim()),
     };
     const prisma = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       $transaction: jest.fn(async (operation: (tx: unknown) => Promise<unknown>) => operation(prisma)),
       certificate: {
         findFirst: jest.fn().mockResolvedValueOnce(mappedCertificateRecord).mockResolvedValueOnce(null),
@@ -823,6 +839,7 @@ describe('CertificateIssuingService', () => {
       normalizeRequiredId: jest.fn((_field: string, value: string) => value.trim()),
     };
     const prisma = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       $transaction: jest.fn(async (operation: (tx: unknown) => Promise<unknown>) => operation(prisma)),
       certificate: {
         findFirst: jest.fn().mockResolvedValue(mappedCertificateRecord),
@@ -927,6 +944,7 @@ describe('CertificateIssuingService', () => {
 
   it('soft-deletes invalid certificates during issueMissedCertificates', async () => {
     const prisma = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       $transaction: jest.fn((callback) => callback(prisma)),
       user: {
         findUnique: jest.fn(),
@@ -976,6 +994,7 @@ describe('CertificateIssuingService', () => {
 
   it('soft-deletes all existing certificates when no recipients are eligible', async () => {
     const prisma = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       $transaction: jest.fn((callback) => callback(prisma)),
       user: {
         findUnique: jest.fn(),
@@ -1020,6 +1039,8 @@ describe('CertificateIssuingService', () => {
 
   it('keeps and refreshes existing standalone manual certificates when issuing missed certificates', async () => {
     const prisma = {
+      certificateManualRecipient: { findMany: jest.fn().mockResolvedValue([]) },
+      $executeRaw: jest.fn().mockResolvedValue(1),
       certificate: {
         findMany: jest.fn().mockResolvedValue([{ personId: 'person-a' }, { personId: 'person-b' }]),
         updateMany: jest.fn(),
@@ -1057,6 +1078,7 @@ describe('CertificateIssuingService', () => {
 
   it('reissues certificates for every active config and counts only certificates that changed', async () => {
     const prisma = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       user: {
         findUnique: jest.fn().mockResolvedValue({ name: 'Admin', email: 'admin@example.com' }),
       },
@@ -1106,6 +1128,7 @@ describe('CertificateIssuingService', () => {
 
   it('reissues certificates only for configs in a standalone certificate folder', async () => {
     const prisma = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       user: {
         findUnique: jest.fn().mockResolvedValue({ name: 'Admin', email: 'admin@example.com' }),
       },
@@ -1148,6 +1171,7 @@ describe('CertificateIssuingService', () => {
 
   it('refreshes only existing active certificates for a person without deleting ineligible ones', async () => {
     const tx = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       user: {
         findUnique: jest.fn().mockResolvedValue({ name: 'User', email: 'user@example.com' }),
       },
@@ -1160,6 +1184,7 @@ describe('CertificateIssuingService', () => {
       },
     };
     const prisma = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       $transaction: jest.fn((callback) => callback(tx)),
       certificate: tx.certificate,
     };
@@ -1217,6 +1242,7 @@ describe('CertificateIssuingService', () => {
 
   it('refreshes target certificates from source and target configs after people merge', async () => {
     const prisma = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       $transaction: jest.fn((callback) => callback(prisma)),
       user: {
         findUnique: jest.fn().mockResolvedValue({ name: 'Admin', email: 'admin@example.com' }),

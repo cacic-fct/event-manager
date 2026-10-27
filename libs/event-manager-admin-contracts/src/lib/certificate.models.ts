@@ -71,6 +71,7 @@ export interface CertificateConfig {
 }
 
 export interface Certificate {
+  revokedAt?: string | null;
   id: string;
   personId: string;
   person: Person;
@@ -162,4 +163,26 @@ export interface CertificateCsvImportResult {
   failedValues: string[];
   inferredMatchType: AttendanceImportMatchType;
   ambiguousValues: CertificateCsvImportAmbiguousValue[];
+}
+
+export interface CertificateIssuanceInput {
+  configId: string;
+  scheduledAt?: string | null;
+  reissue?: boolean;
+  notifyRecipients?: boolean;
+}
+
+export interface CertificateIssuanceRun {
+  id: string;
+  configId: string;
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+  scheduledAt: string;
+  reissue: boolean;
+  notifyRecipients: boolean;
+  automatic: boolean;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  certificateCount: number;
+  error?: string | null;
+  createdAt: string;
 }

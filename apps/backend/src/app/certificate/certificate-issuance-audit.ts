@@ -33,11 +33,17 @@ export class CertificateIssuanceAudit {
         force: operation !== AuditLogOperation.REISSUE || renderedDataChanged,
         ...(operation === AuditLogOperation.REISSUE ? { metadata: { renderedDataChanged } } : {}),
         summary:
-          operation === AuditLogOperation.ISSUE
-            ? 'Certificado emitido.'
-            : operation === AuditLogOperation.DELETE
-              ? 'Certificado removido.'
-              : 'Certificado reemitido.',
+          operation === AuditLogOperation.UPDATE
+            ? 'Revogação por remoção da lista retirada. Aguardando emissão.'
+            : operation === AuditLogOperation.ISSUE
+              ? 'Certificado emitido.'
+              : operation === AuditLogOperation.DELETE
+                ? after.revokedAt
+                  ? 'Certificado revogado. Reemissão bloqueada.'
+                  : 'Certificado invalidado por alteração de elegibilidade.'
+                : before?.revokedAt && !after.revokedAt
+                  ? 'Revogação removida e certificado reemitido.'
+                  : 'Certificado reemitido.',
         scope: this.scopeForConfig(config),
       },
       prisma,

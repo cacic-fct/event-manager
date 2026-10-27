@@ -34,6 +34,9 @@ export function toCertificateAuditSnapshot(certificate: CertificateRecord): Reco
     certificateTemplateId: certificate.certificateTemplateId,
     issuedAt: certificate.issuedAt,
     issuedById: certificate.issuedById,
+    revocationReason: certificate.revocationReason,
+    revokedAt: certificate.revokedAt,
+    revokedById: certificate.revokedById,
     deletedAt: certificate.deletedAt,
   };
 }

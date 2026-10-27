@@ -201,6 +201,9 @@ export const CERTIFICATE_CONFIG_SELECT = {
 } satisfies Prisma.CertificateConfigSelect;
 
 export const CERTIFICATE_SELECT = {
+  revocationReason: true,
+  revokedAt: true,
+  revokedById: true,
   id: true,
   personId: true,
   person: {

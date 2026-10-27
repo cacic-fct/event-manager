@@ -76,6 +76,12 @@ import { CertificateDownloadService } from './certificate/certificate-download.s
 import { CertificateTemplateRegistryService } from './certificate/certificate-template-registry.service';
 import { CertificateEligibilityService } from './certificate/certificate-eligibility.service';
 import { CertificateSportsEligibility } from './certificate/certificate-sports-eligibility';
+import { CertificateManualRecipientsService } from './certificate/certificate-manual-recipients.service';
+import { CertificateIssuanceJobsProcessor } from './certificate/certificate-issuance-jobs.processor';
+import {
+  CertificateIssuanceJobsService,
+  CERTIFICATE_ISSUANCE_QUEUE,
+} from './certificate/certificate-issuance-jobs.service';
 import { CertificateIssuingService } from './certificate/certificate-issuing.service';
 import { CertificateNotificationJobsProcessor } from './certificate/certificate-notification-jobs.processor';
 import {
@@ -302,6 +308,7 @@ const backendQueueNames = [
   CALENDAR_FEED_MAINTENANCE_QUEUE,
   PUBLICATION_QUEUE,
   CERTIFICATE_NOTIFICATION_QUEUE,
+  CERTIFICATE_ISSUANCE_QUEUE,
   ONLINE_ATTENDANCE_NOTIFICATION_QUEUE,
   LGPD_STORAGE_CLEANUP_QUEUE,
   PRIZE_DRAW_NOTIFICATION_QUEUE,
@@ -332,6 +339,7 @@ const queueImports = useInMemoryTestInfra
       BullModule.registerQueue({
         name: PUBLICATION_QUEUE,
       }),
+      BullModule.registerQueue({ name: CERTIFICATE_ISSUANCE_QUEUE }),
       BullModule.registerQueue({
         name: CERTIFICATE_NOTIFICATION_QUEUE,
       }),
@@ -354,6 +362,7 @@ const queueProcessorProviders = useInMemoryTestInfra
       MajorEventReceiptsProcessor,
       WeatherProcessor,
       CertificateNotificationJobsProcessor,
+      CertificateIssuanceJobsProcessor,
       OnlineAttendanceNotificationJobsProcessor,
       EventInformationProcessor,
       LgpdStorageCleanupProcessor,
@@ -655,6 +664,8 @@ const schedulerProviders = useInMemoryTestInfra
     CertificateEligibilityService,
     CertificateSportsEligibility,
     CertificateIssuingService,
+    CertificateIssuanceJobsService,
+    CertificateManualRecipientsService,
     CertificateNotificationJobsService,
     LegacyRepeatableJobsMigrationService,
     PublicCertificateValidationService,

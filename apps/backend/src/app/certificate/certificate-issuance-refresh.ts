@@ -15,13 +15,23 @@ import { CertificateValidationService } from './certificate-validation.service';
 
 type CertificateWriteClient = AuditPrismaClient;
 type CertificateReissueClient = AuditPrismaClient;
+export interface CertificateIssuanceOptions {
+  auditActor?: AuditActor;
+  notify?: boolean;
+  createNotifications?: boolean;
+  batchSize?: number;
+  force?: boolean;
+  restoreRevoked?: boolean;
+  client?: CertificateWriteClient;
+}
+
 type CertificateUpsertResult = { certificate: CertificateRecord; shouldNotify: boolean };
 
 type UpsertCertificate = (
   config: CertificateConfigRecord,
   recipient: EligibleCertificateRecipient,
   issuedById?: string,
-  options?: { auditActor?: AuditActor; notify?: boolean; prisma?: CertificateWriteClient },
+  options?: Omit<CertificateIssuanceOptions, 'client'> & { prisma?: CertificateWriteClient },
 ) => Promise<CertificateUpsertResult>;
 
 export class CertificateIssuanceRefresh {
@@ -158,7 +168,7 @@ export class CertificateIssuanceRefresh {
   private async reissueConfigs(
     configs: CertificateConfigRecord[],
     issuedById?: string,
-    options: { auditActor?: AuditActor; client?: CertificateReissueClient; notify?: boolean } = {},
+    options: CertificateIssuanceOptions = {},
   ): Promise<CertificateReissueResult> {
     let certificateCount = 0;
     for (const config of configs) {
@@ -172,7 +182,7 @@ export class CertificateIssuanceRefresh {
   async issueForConfig(
     config: CertificateConfigRecord,
     issuedById?: string,
-    options: { auditActor?: AuditActor; client?: CertificateWriteClient; notify?: boolean } = {},
+    options: CertificateIssuanceOptions = {},
   ): Promise<CertificateRecord[]> {
     return (await this.issueForConfigResults(config, issuedById, options)).map(({ certificate }) => certificate);
   }
@@ -180,28 +190,38 @@ export class CertificateIssuanceRefresh {
   private async issueForConfigResults(
     config: CertificateConfigRecord,
     issuedById?: string,
-    options: { auditActor?: AuditActor; client?: CertificateWriteClient; notify?: boolean } = {},
+    options: CertificateIssuanceOptions = {},
   ): Promise<CertificateUpsertResult[]> {
     const client = options.client ?? this.prisma;
     const auditActor = options.auditActor ?? (await this.audit.resolveActor(issuedById, client));
-    const existingCertificates = await client.certificate.findMany({
-      where: { configId: config.id, deletedAt: null },
-      select: { personId: true },
+    const storedCertificates = await client.certificate.findMany({
+      where: { configId: config.id },
+      select: { personId: true, deletedAt: true, revokedAt: true },
     });
+    const revokedPersonIds = new Set(
+      storedCertificates.filter((certificate) => certificate.revokedAt).map((certificate) => certificate.personId),
+    );
+    const existingCertificates = storedCertificates.filter(
+      (certificate) => !certificate.deletedAt && !certificate.revokedAt,
+    );
 
     if (isManualCertificateIssuedTo(config.issuedTo as CertificateIssuedTo)) {
-      return this.refreshManualConfig(
-        config,
-        existingCertificates.map((certificate) => certificate.personId),
-        issuedById,
-        {
-          ...options,
-          auditActor,
-        },
-      );
+      const savedRecipients = await client.certificateManualRecipient.findMany({
+        where: { configId: config.id, removedAt: null, person: { deletedAt: null } },
+        select: { personId: true },
+      });
+      const personIds = [
+        ...new Set([
+          ...existingCertificates.map((certificate) => certificate.personId),
+          ...savedRecipients.map((recipient) => recipient.personId),
+        ]),
+      ].filter((personId) => !revokedPersonIds.has(personId));
+      return this.refreshManualConfig(config, personIds, issuedById, { ...options, auditActor });
     }
 
-    const recipients = await this.eligibility.resolveEligibleRecipients(config);
+    const recipients = (await this.eligibility.resolveEligibleRecipients(config)).filter(
+      (recipient) => !revokedPersonIds.has(recipient.person.id),
+    );
     const eligiblePersonIds = new Set(recipients.map((recipient) => recipient.person.id));
     const invalidPersonIds = existingCertificates
       .map((certificate) => certificate.personId)
@@ -217,10 +237,10 @@ export class CertificateIssuanceRefresh {
     config: CertificateConfigRecord,
     personIds: string[],
     issuedById?: string,
-    options: { auditActor?: AuditActor; client?: CertificateWriteClient; notify?: boolean } = {},
+    options: CertificateIssuanceOptions = {},
   ): Promise<CertificateUpsertResult[]> {
     const certificates: CertificateUpsertResult[] = [];
-    for (const batch of batches(personIds)) {
+    for (const batch of batches(personIds, options.batchSize)) {
       const refreshed = await Promise.all(
         batch.map(async (personId) => {
           const recipients = await this.eligibility.resolveEligibleRecipients(config, personId);
@@ -230,6 +250,8 @@ export class CertificateIssuanceRefresh {
               auditActor: options.auditActor,
               prisma: options.client,
               notify: options.notify,
+              createNotifications: options.createNotifications,
+              force: options.force,
             });
           }
           await this.invalidateCertificates(
@@ -281,10 +303,10 @@ export class CertificateIssuanceRefresh {
     config: CertificateConfigRecord,
     recipients: EligibleCertificateRecipient[],
     issuedById?: string,
-    options: { auditActor?: AuditActor; client?: CertificateWriteClient; notify?: boolean } = {},
+    options: CertificateIssuanceOptions = {},
   ): Promise<CertificateUpsertResult[]> {
     const certificates: CertificateUpsertResult[] = [];
-    for (const batch of batches(recipients)) {
+    for (const batch of batches(recipients, options.batchSize)) {
       certificates.push(
         ...(await Promise.all(
           batch.map((recipient) =>
@@ -292,6 +314,8 @@ export class CertificateIssuanceRefresh {
               auditActor: options.auditActor,
               prisma: options.client,
               notify: options.notify,
+              createNotifications: options.createNotifications,
+              force: options.force,
             }),
           ),
         )),

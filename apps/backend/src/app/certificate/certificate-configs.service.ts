@@ -99,7 +99,7 @@ export class CertificateConfigsService {
     return mapCertificateFolder(folder);
   }
 
-  async createFolder(input: CertificateFolderCreateInput): Promise<CertificateFolder> {
+  async createFolder(input: CertificateFolderCreateInput, actor?: AuthenticatedUser): Promise<CertificateFolder> {
     const name = this.normalizeFolderName(input.name);
     const emoji = this.normalizeFolderEmoji(input.emoji);
     await this.ensureNoDuplicateFolderName(name);
@@ -113,7 +113,7 @@ export class CertificateConfigsService {
           }),
         name,
       );
-      await this.recordFolderAudit(null, created, AuditLogOperation.CREATE, tx);
+      await this.recordFolderAudit(null, created, AuditLogOperation.CREATE, tx, undefined, actor);
       return created;
     });
 
@@ -124,9 +124,10 @@ export class CertificateConfigsService {
     folderId: string,
     input: CertificateFolderUpdateInput,
     client?: CertificateFolderWriteClient,
+    actor?: AuthenticatedUser,
   ): Promise<CertificateFolder> {
     if (!client || client === this.prisma) {
-      return this.prisma.$transaction((tx) => this.updateFolder(folderId, input, tx));
+      return this.prisma.$transaction((tx) => this.updateFolder(folderId, input, tx, actor));
     }
 
     const normalizedFolderId = this.validation.normalizeRequiredId('folderId', folderId);
@@ -161,12 +162,12 @@ export class CertificateConfigsService {
         }),
       name,
     );
-    await this.recordFolderAudit(existingFolder, updatedFolder, AuditLogOperation.UPDATE, client);
+    await this.recordFolderAudit(existingFolder, updatedFolder, AuditLogOperation.UPDATE, client, undefined, actor);
 
     return mapCertificateFolder(updatedFolder);
   }
 
-  async deleteFolder(folderId: string): Promise<DeletionResult> {
+  async deleteFolder(folderId: string, actor?: AuthenticatedUser): Promise<DeletionResult> {
     const normalizedFolderId = this.validation.normalizeRequiredId('folderId', folderId);
     const deletedAt = new Date();
     await this.prisma.$transaction(async (tx) => {
@@ -221,9 +222,16 @@ export class CertificateConfigsService {
         });
         await this.notificationJobs?.supersedeCertificateNotificationsForConfigs(configIds, tx);
       }
-      await this.recordFolderAudit(folder, deletedFolder, AuditLogOperation.DELETE, tx, {
-        deletedConfigCount: configIds.length,
-      });
+      await this.recordFolderAudit(
+        folder,
+        deletedFolder,
+        AuditLogOperation.DELETE,
+        tx,
+        {
+          deletedConfigCount: configIds.length,
+        },
+        actor,
+      );
     });
 
     return {
@@ -339,7 +347,7 @@ export class CertificateConfigsService {
     return mapCertificateConfig(config);
   }
 
-  async createConfig(input: CertificateConfigCreateInput): Promise<CertificateConfig> {
+  async createConfig(input: CertificateConfigCreateInput, actor?: AuthenticatedUser): Promise<CertificateConfig> {
     const scope = input.scope;
     const majorEventId = this.validation.normalizeOptionalId(input.majorEventId);
     const eventGroupId = this.validation.normalizeOptionalId(input.eventGroupId);
@@ -409,14 +417,18 @@ export class CertificateConfigsService {
         },
         select: CERTIFICATE_CONFIG_SELECT,
       });
-      await this.recordConfigAudit(null, config, AuditLogOperation.CREATE, tx);
+      await this.recordConfigAudit(null, config, AuditLogOperation.CREATE, tx, undefined, actor);
       return config;
     });
 
     return mapCertificateConfig(createdConfig);
   }
 
-  async updateConfig(configId: string, input: CertificateConfigUpdateInput): Promise<CertificateConfig> {
+  async updateConfig(
+    configId: string,
+    input: CertificateConfigUpdateInput,
+    actor?: AuthenticatedUser,
+  ): Promise<CertificateConfig> {
     const normalizedConfigId = this.validation.normalizeRequiredId('configId', configId);
     const existingConfig = await this.prisma.certificateConfig.findFirst({
       where: {
@@ -606,7 +618,7 @@ export class CertificateConfigsService {
       if (input.isActive === false) {
         await this.notificationJobs?.supersedeCertificateNotificationsForConfigs([normalizedConfigId], tx);
       }
-      await this.recordConfigAudit(currentConfig, config, AuditLogOperation.UPDATE, tx);
+      await this.recordConfigAudit(currentConfig, config, AuditLogOperation.UPDATE, tx, undefined, actor);
       return config;
     });
 
@@ -759,7 +771,7 @@ export class CertificateConfigsService {
     return mapCertificateConfig(createdConfig);
   }
 
-  async deleteConfig(configId: string): Promise<DeletionResult> {
+  async deleteConfig(configId: string, actor?: AuthenticatedUser): Promise<DeletionResult> {
     const normalizedConfigId = this.validation.normalizeRequiredId('configId', configId);
     await this.prisma.$transaction(async (tx) => {
       const existing = await tx.certificateConfig.findFirst({
@@ -779,7 +791,7 @@ export class CertificateConfigsService {
         data: { deletedAt: new Date() },
       });
       await this.notificationJobs?.supersedeCertificateNotificationsForConfigs([normalizedConfigId], tx);
-      await this.recordConfigAudit(existing, deleted, AuditLogOperation.DELETE, tx);
+      await this.recordConfigAudit(existing, deleted, AuditLogOperation.DELETE, tx, undefined, actor);
     });
 
     return {
@@ -828,6 +840,7 @@ export class CertificateConfigsService {
     operation: AuditLogOperation,
     prisma: CertificateFolderWriteClient,
     metadata?: Record<string, unknown>,
+    actor?: AuthenticatedUser,
   ): Promise<void> {
     await this.auditLog.record(
       {
@@ -845,6 +858,7 @@ export class CertificateConfigsService {
               ? 'Pasta de certificados removida.'
               : 'Pasta de certificados atualizada.',
         metadata: { resourceType: 'CERTIFICATE_FOLDER', ...metadata },
+        actor,
       },
       prisma,
     );

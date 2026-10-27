@@ -18,6 +18,8 @@ import {
   CertificateConfig,
   CertificateConfigCloneInput,
   CertificateConfigInput,
+  CertificateIssuanceInput,
+  CertificateIssuanceRun,
   CertificateFolder,
   CertificateFolderInput,
   CertificateIssuedTo,
@@ -162,12 +164,22 @@ export class CertificatesService {
   readonly certificatesPagination = createWorkspaceListPagination();
   readonly personSearchResults = signal<Person[]>([]);
   readonly isImportingPeopleCsv = signal(false);
+  readonly issuanceRuns = signal<CertificateIssuanceRun[]>([]);
+  readonly manualRecipients = signal<Person[]>([]);
+  readonly issuanceBusy = signal(false);
+  readonly issuanceLoadError = signal<string | null>(null);
+  readonly activeIssuanceRun = computed(() =>
+    this.issuanceRuns().find((run) => ['PENDING', 'PROCESSING'].includes(run.status)),
+  );
+
   readonly certificateFieldDefinitions = signal<CertificateFieldDefinition[]>([]);
   readonly shouldShowSecondPageText = computed(() => !this.certificateConfigModel().shouldAutofillSecondPage);
   readonly shouldShowCertificateTypeLabel = computed(() =>
     this.requiresCustomCertificateTypeLabel(this.certificateConfigModel().issuedTo),
   );
-  readonly isManualCertificateIssue = computed(() => this.certificateConfigModel().issuedTo === 'OTHER');
+  readonly isManualCertificateIssue = computed(() =>
+    ['OTHER', 'SPORTS_ORGANIZER'].includes(this.certificateConfigModel().issuedTo),
+  );
   readonly certificateOperationsEnabled = computed(
     () =>
       this.certificateTemplatesLoadState() === 'ready' &&
@@ -957,6 +969,129 @@ export class CertificatesService {
     }
   }
 
+  resetIssuanceState(): void {
+    this.issuanceRuns.set([]);
+    this.manualRecipients.set([]);
+    this.issuanceLoadError.set(null);
+  }
+
+  async loadIssuanceState(configId = this.selectedCertificateConfig()?.id): Promise<void> {
+    if (!configId) return;
+    try {
+      const [runs, recipients] = await Promise.all([
+        firstValueFrom(this.api.listCertificateIssuanceRuns(configId)),
+        this.isManualCertificateIssue() && this.permissions.has(Permission.Certificate.Read)
+          ? firstValueFrom(this.api.listCertificateManualRecipients(configId))
+          : Promise.resolve([]),
+      ]);
+      if (this.selectedCertificateConfig()?.id !== configId) return;
+      const previous = this.activeIssuanceRun();
+      this.issuanceRuns.set(runs);
+      this.manualRecipients.set(recipients);
+      this.issuanceLoadError.set(null);
+      if (previous && runs.some((run) => run.id === previous.id && run.status === 'COMPLETED')) {
+        await this.loadCertificates();
+      }
+    } catch {
+      if (this.selectedCertificateConfig()?.id === configId) {
+        this.issuanceLoadError.set('Não foi possível carregar o status da emissão. Tente atualizar o status.');
+      }
+    }
+  }
+
+  async requestIssuance(options: Omit<CertificateIssuanceInput, 'configId'>): Promise<void> {
+    if (this.issuanceBusy()) return;
+    this.issuanceBusy.set(true);
+    try {
+      const config =
+        this.unsavedChanges() || !this.selectedCertificateConfig()
+          ? await this.persistCertificateConfig({ showSnackbar: false })
+          : this.selectedCertificateConfig();
+      if (!config) return;
+      const run = await firstValueFrom(this.api.requestCertificateIssuance({ ...options, configId: config.id }));
+      if (this.selectedCertificateConfig()?.id === config.id) {
+        this.issuanceRuns.update((runs) => [run, ...runs.filter((item) => item.id !== run.id)]);
+      }
+      this.snackbar.open(options.scheduledAt ? 'Emissão agendada.' : 'Emissão enviada para processamento.', 'Fechar', {
+        duration: 3000,
+      });
+    } catch (error) {
+      this.feedback.error(error, 'Não foi possível solicitar a emissão.');
+    } finally {
+      this.issuanceBusy.set(false);
+    }
+  }
+
+  async cancelIssuance(runId: string): Promise<void> {
+    const config = this.selectedCertificateConfig();
+    if (!config || this.issuanceBusy()) return;
+    this.issuanceBusy.set(true);
+    try {
+      await firstValueFrom(this.api.cancelCertificateIssuance(config.id, runId));
+      await this.loadIssuanceState(config.id);
+      this.snackbar.open('Emissão cancelada.', 'Fechar', { duration: 2500 });
+    } catch (error) {
+      this.feedback.error(error, 'Não foi possível cancelar a emissão.');
+    } finally {
+      this.issuanceBusy.set(false);
+    }
+  }
+
+  async selectManualRecipient(person: Person): Promise<void> {
+    if (!this.isManualCertificateIssue()) return this.issueCertificateForPerson(person);
+    try {
+      const config =
+        this.unsavedChanges() || !this.selectedCertificateConfig()
+          ? await this.persistCertificateConfig({ showSnackbar: false })
+          : this.selectedCertificateConfig();
+      if (!config) return;
+      await firstValueFrom(this.api.addCertificateManualRecipient(config.id, person.id));
+      await this.loadIssuanceState(config.id);
+      this.snackbar.open(
+        'Destinatário salvo. Emita agora ou aguarde a revisão automática se esta configuração já foi publicada.',
+        'Fechar',
+        { duration: 5000 },
+      );
+    } catch (error) {
+      this.feedback.error(error, 'Não foi possível adicionar o destinatário.');
+    }
+  }
+
+  async removeManualRecipient(person: Person): Promise<void> {
+    const config = this.selectedCertificateConfig();
+    if (!config) return;
+    if (
+      !(await this.confirm({
+        title: 'Remover destinatário e revogar certificado',
+        message: `Remover ${person.name} da lista? O certificado será revogado e não participará das próximas emissões. Adicionar a pessoa novamente restaura a elegibilidade e mantém o ID original.`,
+        confirmLabel: 'Remover e revogar',
+      }))
+    )
+      return;
+    try {
+      await firstValueFrom(this.api.removeCertificateManualRecipient(config.id, person.id));
+      await Promise.all([this.loadIssuanceState(config.id), this.loadCertificates()]);
+    } catch (error) {
+      this.feedback.error(error, 'Não foi possível remover o destinatário.');
+    }
+  }
+
+  async restoreCertificate(certificate: Certificate): Promise<void> {
+    const confirmed = await this.confirm({
+      title: 'Remover revogação e reemitir',
+      message: `Permitir a emissão novamente para ${certificate.person.name}? A elegibilidade será verificada antes da reemissão.`,
+      confirmLabel: 'Permitir e reemitir',
+    });
+    if (!confirmed) return;
+    try {
+      await firstValueFrom(this.api.restoreCertificate(certificate.id));
+      await this.loadCertificates();
+      this.snackbar.open('Revogação removida e certificado reemitido.', 'Fechar', { duration: 3000 });
+    } catch (error) {
+      this.feedback.error(error, 'Não foi possível remover a revogação.');
+    }
+  }
+
   async issueMissedCertificates(): Promise<void> {
     const selectedConfig = await this.persistCertificateConfig({
       showSnackbar: false,
@@ -1005,9 +1140,9 @@ export class CertificatesService {
     event?.stopPropagation();
 
     const confirmed = await this.confirm({
-      title: 'Excluir certificado',
-      message: `Excluir o certificado de ${certificate.person.name}? Ele poderá ser reativado mantendo o mesmo ID se for emitido novamente.`,
-      confirmLabel: 'Excluir',
+      title: 'Revogar certificado',
+      message: `Revogar o certificado de ${certificate.person.name}? Ele deixará de ser válido e não será emitido novamente, mesmo após revisões automáticas. Somente a remoção explícita da revogação permite reemitir.`,
+      confirmLabel: 'Revogar',
     });
     if (!confirmed) {
       return;
@@ -1015,10 +1150,10 @@ export class CertificatesService {
 
     try {
       await firstValueFrom(this.api.deleteCertificate(certificate.id));
-      this.snackbar.open('Certificado excluído.', 'Fechar', { duration: 2500 });
+      this.snackbar.open('Certificado revogado.', 'Fechar', { duration: 2500 });
       await this.loadCertificates();
     } catch (error) {
-      this.feedback.error(error, 'Não foi possível excluir o certificado.');
+      this.feedback.error(error, 'Não foi possível revogar o certificado.');
     }
   }
 
@@ -1128,6 +1263,7 @@ export class CertificatesService {
     const certificates = await firstValueFrom(
       this.api.listCertificates(scope, selectedTarget.id, {
         configId,
+        includeRevoked: true,
         ...pageVariables(pageIndex),
       }),
     );

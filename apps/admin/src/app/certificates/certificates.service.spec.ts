@@ -54,6 +54,11 @@ describe('CertificatesService', () => {
     listCertificateIssuableEvents: ReturnType<typeof vi.fn>;
     listCertificateIssuableMajorEvents: ReturnType<typeof vi.fn>;
     listCertificateTemplates: ReturnType<typeof vi.fn>;
+    listCertificateIssuanceRuns: ReturnType<typeof vi.fn>;
+    listCertificateManualRecipients: ReturnType<typeof vi.fn>;
+    requestCertificateIssuance: ReturnType<typeof vi.fn>;
+    addCertificateManualRecipient: ReturnType<typeof vi.fn>;
+    removeCertificateManualRecipient: ReturnType<typeof vi.fn>;
     listCertificates: ReturnType<typeof vi.fn>;
     updateCertificateConfig: ReturnType<typeof vi.fn>;
     updateCertificateFolder: ReturnType<typeof vi.fn>;
@@ -117,6 +122,23 @@ describe('CertificatesService', () => {
       listCertificateIssuableEvents: vi.fn(() => of([])),
       listCertificateIssuableMajorEvents: vi.fn(() => of([])),
       listCertificateTemplates: vi.fn(() => of([certificateTemplate])),
+      listCertificateIssuanceRuns: vi.fn(() => of([])),
+      listCertificateManualRecipients: vi.fn(() => of([])),
+      requestCertificateIssuance: vi.fn(() =>
+        of({
+          id: 'run',
+          configId: 'config-1',
+          status: 'PENDING',
+          scheduledAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          reissue: false,
+          notifyRecipients: false,
+          automatic: false,
+          certificateCount: 0,
+        }),
+      ),
+      addCertificateManualRecipient: vi.fn(() => of(createAdminPerson())),
+      removeCertificateManualRecipient: vi.fn(() => of({ id: 'person-1', deleted: true })),
       listCertificates: vi.fn(() => of([])),
       updateCertificateConfig: vi.fn((id: string, payload: CertificateConfigInput) => {
         lastPayload = payload;
@@ -171,6 +193,48 @@ describe('CertificatesService', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('requests an immediate muted issuance without rewriting an unchanged configuration', async () => {
+    const config = createAdminCertificateConfig({}, certificateTemplate);
+    service.selectCertificateConfig(config);
+    await service.requestIssuance({ reissue: false, notifyRecipients: false });
+    expect(api.requestCertificateIssuance).toHaveBeenCalledWith({
+      configId: config.id,
+      reissue: false,
+      notifyRecipients: false,
+    });
+    expect(api.updateCertificateConfig).not.toHaveBeenCalled();
+    expect(service.issuanceRuns()[0].id).toBe('run');
+    expect(service.issuanceBusy()).toBe(false);
+  });
+
+  it('saves a manual recipient without requesting immediate issuance', async () => {
+    const person = createAdminPerson();
+    permissions.has.mockReturnValue(true);
+    api.listCertificateManualRecipients.mockReturnValueOnce(of([person]));
+    service.selectCertificateConfig(
+      createAdminCertificateConfig({ scope: 'OTHER', issuedTo: 'OTHER' }, certificateTemplate),
+    );
+    await service.selectManualRecipient(person);
+    expect(api.addCertificateManualRecipient).toHaveBeenCalledWith('config-1', person.id);
+    expect(api.requestCertificateIssuance).not.toHaveBeenCalled();
+    expect(service.manualRecipients()).toEqual([person]);
+  });
+
+  it('requires confirmation before removing a recipient and refreshes the revoked-certificate list afterward', async () => {
+    const person = createAdminPerson();
+    service.selectCertificateConfig(
+      createAdminCertificateConfig({ scope: 'OTHER', issuedTo: 'OTHER' }, certificateTemplate),
+    );
+    dialog.open.mockReturnValueOnce({ afterClosed: () => of(false) });
+    await service.removeManualRecipient(person);
+    expect(api.removeCertificateManualRecipient).not.toHaveBeenCalled();
+    dialog.open.mockReturnValueOnce({ afterClosed: () => of(true) });
+    const loadsBeforeRemoval = api.listCertificates.mock.calls.length;
+    await service.removeManualRecipient(person);
+    expect(api.removeCertificateManualRecipient).toHaveBeenCalledWith('config-1', person.id);
+    expect(api.listCertificates.mock.calls.length).toBeGreaterThan(loadsBeforeRemoval);
   });
 
   it('opens an event certificate workspace when parent-event read is forbidden', async () => {

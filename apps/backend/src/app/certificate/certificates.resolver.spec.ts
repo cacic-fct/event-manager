@@ -7,6 +7,57 @@ import { CertificatesResolver } from './certificates.resolver';
 const { jest } = import.meta;
 
 describe('CertificatesResolver authorization', () => {
+  it('checks the selected configuration scope, reissuance permission, and frozen protection before scheduling', async () => {
+    const { resolver, configsService, authorizationPolicy, frozenResources, issuanceJobs } = createResolver();
+    const user = { sub: 'admin' };
+    const context = { req: { user } } as never;
+    configsService.getConfigById.mockResolvedValue({ id: 'config', scope: CertificateScope.EVENT, eventId: 'event' });
+    await resolver.requestCertificateIssuance({ configId: 'config', reissue: true, notifyRecipients: false }, context);
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(user, [Permission.Certificate.Issue], {
+      scope: CertificateScope.EVENT,
+      targetId: 'event',
+      certificateConfigId: 'config',
+    });
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      user,
+      [Permission.Certificate.Reissue],
+      expect.objectContaining({ targetId: 'event' }),
+    );
+    expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config', user, 'edit');
+    expect(issuanceJobs.requestIssuance).toHaveBeenCalledWith(
+      { configId: 'config', reissue: true, notifyRecipients: false },
+      'admin',
+    );
+  });
+
+  it('never queues a job when scoped authorization fails', async () => {
+    const { resolver, configsService, authorizationPolicy, issuanceJobs } = createResolver();
+    configsService.getConfigById.mockResolvedValue({
+      id: 'config',
+      scope: CertificateScope.EVENT,
+      eventId: 'outside-scope',
+    });
+    authorizationPolicy.assertPermissions.mockRejectedValue(new ForbiddenException());
+    await expect(resolver.requestCertificateIssuance({ configId: 'config' }, {})).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    expect(issuanceJobs.requestIssuance).not.toHaveBeenCalled();
+  });
+
+  it('requires revocation permission for removing manual recipients and records the acting user', async () => {
+    const { resolver, configsService, authorizationPolicy, frozenResources, manualRecipients } = createResolver();
+    const user = { sub: 'admin' };
+    configsService.getConfigById.mockResolvedValue({ id: 'config', scope: CertificateScope.OTHER, folderId: 'folder' });
+    await resolver.removeCertificateManualRecipient('config', 'person', { req: { user } } as never);
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      user,
+      [Permission.Certificate.Delete],
+      expect.objectContaining({ targetId: 'folder' }),
+    );
+    expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config', user, 'delete');
+    expect(manualRecipients.remove).toHaveBeenCalledWith('config', 'person', 'admin');
+  });
+
   it('filters issuable target pickers to certificate config grant targets', async () => {
     const { authorizationPolicy, resolver, targetsService } = createResolver();
     const accessibleTargets = {
@@ -80,6 +131,7 @@ describe('CertificatesResolver authorization', () => {
       'config-1',
       0,
       50,
+      undefined,
     );
     expect(downloadService.downloadCertificate).toHaveBeenCalledWith('certificate-1');
   });
@@ -125,7 +177,7 @@ describe('CertificatesResolver authorization', () => {
       user,
       'edit',
     );
-    expect(configsService.createConfig).toHaveBeenCalledWith(input);
+    expect(configsService.createConfig).toHaveBeenCalledWith(input, user);
   });
 
   it('supports standalone certificate config creation without a folder target', async () => {
@@ -154,7 +206,7 @@ describe('CertificatesResolver authorization', () => {
     configsService.createFolder.mockReturnValue({ id: 'folder-1', ...input });
 
     expect(resolver.createCertificateFolder(input)).toEqual({ id: 'folder-1', ...input });
-    expect(configsService.createFolder).toHaveBeenCalledWith(input);
+    expect(configsService.createFolder).toHaveBeenCalledWith(input, undefined);
   });
 
   it('requires update permission on replacement certificate config targets', async () => {
@@ -212,7 +264,7 @@ describe('CertificatesResolver authorization', () => {
     expect(configsService.getConfigById).not.toHaveBeenCalled();
     expect(frozenResources.assertCertificateTargetMutable).not.toHaveBeenCalled();
     expect(authorizationPolicy.assertPermissions).not.toHaveBeenCalled();
-    expect(configsService.updateConfig).toHaveBeenCalledWith('config-1', { isActive: false });
+    expect(configsService.updateConfig).toHaveBeenCalledWith('config-1', { isActive: false }, user);
   });
 
   it('skips replacement target authorization when an update clears the target id', async () => {
@@ -436,7 +488,7 @@ describe('CertificatesResolver authorization', () => {
     });
 
     expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-1', user, 'delete');
-    expect(configsService.deleteConfig).toHaveBeenCalledWith('config-1');
+    expect(configsService.deleteConfig).toHaveBeenCalledWith('config-1', user);
   });
 
   it('issues a certificate for one person after frozen config validation', async () => {
@@ -654,7 +706,7 @@ describe('CertificatesResolver authorization', () => {
     });
     expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-1', user, 'delete');
     expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-2', user, 'delete');
-    expect(configsService.deleteFolder).toHaveBeenCalledWith('folder-1');
+    expect(configsService.deleteFolder).toHaveBeenCalledWith('folder-1', user);
   });
 
   it('checks active standalone configs for frozen edit before updating a folder', async () => {
@@ -694,6 +746,7 @@ describe('CertificatesResolver authorization', () => {
         reissueCertificates: true,
       },
       prisma,
+      user,
     );
     expect(issuingService.reissueCertificatesForFolder).toHaveBeenCalledWith('folder-1', 'user-1', prisma, {
       notify: false,
@@ -784,6 +837,8 @@ function createResolver() {
   const prisma = {
     $transaction: jest.fn((callback) => callback(prisma)),
   };
+  const issuanceJobs = { requestIssuance: jest.fn(), listRuns: jest.fn(), cancel: jest.fn() };
+  const manualRecipients = { list: jest.fn(), add: jest.fn(), remove: jest.fn() };
   const resolver = new CertificatesResolver(
     targetsService as never,
     configsService as never,
@@ -794,9 +849,13 @@ function createResolver() {
     frozenResources as never,
     authorizationPolicy as never,
     prisma as never,
+    issuanceJobs as never,
+    manualRecipients as never,
   );
 
   return {
+    issuanceJobs,
+    manualRecipients,
     authorizationPolicy,
     configsService,
     frozenResources,

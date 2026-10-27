@@ -158,6 +158,9 @@ export class CertificateConfig {
 
 @ObjectType()
 export class Certificate {
+  @Field(() => Date, { nullable: true })
+  revokedAt?: Date | null;
+
   @Field(() => String)
   id!: string;
 
@@ -408,4 +411,43 @@ export class PublicCertificateValidation {
     description: 'Total credited workload for the certificate in minutes.',
   })
   totalCreditMinutes!: number;
+}
+
+@ObjectType()
+export class CertificateIssuanceRun {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  configId!: string;
+
+  @Field(() => String)
+  status!: string;
+
+  @Field(() => Date)
+  scheduledAt!: Date;
+
+  @Field(() => Boolean)
+  reissue!: boolean;
+
+  @Field(() => Boolean)
+  notifyRecipients!: boolean;
+
+  @Field(() => Boolean)
+  automatic!: boolean;
+
+  @Field(() => Date, { nullable: true })
+  startedAt?: Date | null;
+
+  @Field(() => Date, { nullable: true })
+  completedAt?: Date | null;
+
+  @Field(() => Int)
+  certificateCount!: number;
+
+  @Field(() => String, { nullable: true })
+  error?: string | null;
+
+  @Field(() => Date)
+  createdAt!: Date;
 }

@@ -4,6 +4,8 @@ import {
   CertificateDownload,
   CertificateConfig,
   CertificateConfigCloneInput,
+  CertificateIssuanceInput,
+  CertificateIssuanceRun,
   CertificateConfigCreateInput,
   CertificateConfigUpdateInput,
   CertificateFolder,
@@ -17,6 +19,7 @@ import {
   EventGroup,
   MajorEvent,
   PublicCertificateValidation,
+  Person,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
@@ -35,6 +38,8 @@ import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
 import { CertificateConfigsService } from './certificate-configs.service';
 import { CertificateDownloadService } from './certificate-download.service';
+import { CertificateManualRecipientsService } from './certificate-manual-recipients.service';
+import { CertificateIssuanceJobsService } from './certificate-issuance-jobs.service';
 import { CertificateIssuingService } from './certificate-issuing.service';
 import { CertificateTargetsService } from './certificate-targets.service';
 import { PublicCertificateValidationService } from './public-certificate-validation.service';
@@ -62,6 +67,8 @@ export class CertificatesResolver {
     private readonly frozenResources: FrozenResourceService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
     private readonly prisma: PrismaService,
+    private readonly issuanceJobs: CertificateIssuanceJobsService,
+    private readonly manualRecipients: CertificateManualRecipientsService,
   ) {}
 
   @Query(() => [Event], { name: 'certificateIssuableEvents' })
@@ -202,9 +209,17 @@ export class CertificatesResolver {
     @Args('configId', { type: () => String, nullable: true }) configId?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
+    @Args('includeRevoked', { type: () => Boolean, nullable: true }) includeRevoked?: boolean,
   ) {
     const pagination = resolvePagination(skip, take);
-    return this.issuingService.listCertificatesByTarget(scope, targetId, configId, pagination.skip, pagination.take);
+    return this.issuingService.listCertificatesByTarget(
+      scope,
+      targetId,
+      configId,
+      pagination.skip,
+      pagination.take,
+      includeRevoked,
+    );
   }
 
   @Query(() => CertificateDownload, { name: 'downloadCertificate' })
@@ -279,7 +294,7 @@ export class CertificatesResolver {
       this.getUser(context),
       'edit',
     );
-    return this.configsService.createConfig(input);
+    return this.configsService.createConfig(input, this.getUser(context));
   }
 
   @Mutation(() => CertificateFolder, { name: 'createCertificateFolder' })
@@ -287,8 +302,9 @@ export class CertificatesResolver {
   createCertificateFolder(
     @Args('input', { type: () => CertificateFolderCreateInput })
     input: CertificateFolderCreateInput,
+    @Context() context: GraphqlContext = {},
   ) {
-    return this.configsService.createFolder(input);
+    return this.configsService.createFolder(input, this.getUser(context));
   }
 
   @Mutation(() => CertificateFolder, { name: 'updateCertificateFolder' })
@@ -313,11 +329,11 @@ export class CertificatesResolver {
     }
 
     if (!nameChanged) {
-      return this.configsService.updateFolder(id, input);
+      return this.configsService.updateFolder(id, input, undefined, this.getUser(context));
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const updatedFolder = await this.configsService.updateFolder(id, input, tx);
+      const updatedFolder = await this.configsService.updateFolder(id, input, tx, this.getUser(context));
       await this.issuingService.reissueCertificatesForFolder(id, this.getIssuedById(context), tx, {
         notify: false,
       });
@@ -333,7 +349,7 @@ export class CertificatesResolver {
       await this.frozenResources.assertCertificateConfigMutable(config.id, this.getUser(context), 'delete');
     }
 
-    return this.configsService.deleteFolder(id);
+    return this.configsService.deleteFolder(id, this.getUser(context));
   }
 
   @Mutation(() => CertificateConfig, { name: 'updateCertificateConfig' })
@@ -346,7 +362,7 @@ export class CertificatesResolver {
   ) {
     await this.frozenResources.assertCertificateConfigMutable(id, this.getUser(context), 'edit');
     await this.assertReplacementCertificateConfigTarget(id, input, context);
-    return this.configsService.updateConfig(id, input);
+    return this.configsService.updateConfig(id, input, this.getUser(context));
   }
 
   @Mutation(() => CertificateConfig, { name: 'cloneCertificateConfig' })
@@ -424,7 +440,88 @@ export class CertificatesResolver {
   @RequirePermissions(Permission.CertificateConfig.Delete)
   async deleteCertificateConfig(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
     await this.frozenResources.assertCertificateConfigMutable(id, this.getUser(context), 'delete');
-    return this.configsService.deleteConfig(id);
+    return this.configsService.deleteConfig(id, this.getUser(context));
+  }
+
+  @Query(() => [Person], { name: 'certificateManualRecipients' })
+  async certificateManualRecipients(
+    @Args('configId', { type: () => String }) configId: string,
+    @Context() context: GraphqlContext,
+  ) {
+    await this.assertIssuancePermission(configId, Permission.Certificate.Read, context);
+    return this.manualRecipients.list(configId);
+  }
+
+  @Mutation(() => Person, { name: 'addCertificateManualRecipient' })
+  async addCertificateManualRecipient(
+    @Args('configId', { type: () => String }) configId: string,
+    @Args('personId', { type: () => String }) personId: string,
+    @Context() context: GraphqlContext,
+  ) {
+    await this.assertIssuancePermission(configId, Permission.Certificate.Issue, context);
+    await this.frozenResources.assertCertificateConfigMutable(configId, this.getUser(context), 'edit');
+    return this.manualRecipients.add(configId, personId, this.getIssuedById(context));
+  }
+
+  @Mutation(() => DeletionResult, { name: 'removeCertificateManualRecipient' })
+  async removeCertificateManualRecipient(
+    @Args('configId', { type: () => String }) configId: string,
+    @Args('personId', { type: () => String }) personId: string,
+    @Context() context: GraphqlContext,
+  ) {
+    await this.assertIssuancePermission(configId, Permission.Certificate.Issue, context);
+    await this.assertIssuancePermission(configId, Permission.Certificate.Delete, context);
+    await this.frozenResources.assertCertificateConfigMutable(configId, this.getUser(context), 'delete');
+    return this.manualRecipients.remove(configId, personId, this.getIssuedById(context));
+  }
+
+  @Mutation(() => Certificate, { name: 'restoreCertificate' })
+  @RequirePermissions(Permission.Certificate.Reissue)
+  async restoreCertificate(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
+    await this.frozenResources.assertCertificateMutable(id, this.getUser(context), 'edit');
+    return this.issuingService.restoreCertificate(id, this.getIssuedById(context));
+  }
+
+  @Query(() => [CertificateIssuanceRun], { name: 'certificateIssuanceRuns' })
+  async certificateIssuanceRuns(
+    @Args('configId', { type: () => String }) configId: string,
+    @Context() context: GraphqlContext,
+  ) {
+    await this.assertIssuancePermission(configId, Permission.CertificateConfig.Read, context);
+    return this.issuanceJobs.listRuns(configId);
+  }
+
+  @Mutation(() => CertificateIssuanceRun, { name: 'requestCertificateIssuance' })
+  async requestCertificateIssuance(
+    @Args('input', { type: () => CertificateIssuanceInput }) input: CertificateIssuanceInput,
+    @Context() context: GraphqlContext,
+  ) {
+    await this.assertIssuancePermission(input.configId, Permission.Certificate.Issue, context);
+    if (input.reissue) {
+      await this.assertIssuancePermission(input.configId, Permission.Certificate.Reissue, context);
+    }
+    await this.frozenResources.assertCertificateConfigMutable(input.configId, this.getUser(context), 'edit');
+    return this.issuanceJobs.requestIssuance(input, this.getIssuedById(context));
+  }
+
+  @Mutation(() => CertificateIssuanceRun, { name: 'cancelCertificateIssuance' })
+  async cancelCertificateIssuance(
+    @Args('configId', { type: () => String }) configId: string,
+    @Args('runId', { type: () => String }) runId: string,
+    @Context() context: GraphqlContext,
+  ) {
+    await this.assertIssuancePermission(configId, Permission.Certificate.Issue, context);
+    await this.frozenResources.assertCertificateConfigMutable(configId, this.getUser(context), 'edit');
+    return this.issuanceJobs.cancel(configId, runId, this.getIssuedById(context));
+  }
+
+  private async assertIssuancePermission(configId: string, permission: Permission, context: GraphqlContext) {
+    const config = await this.configsService.getConfigById(configId);
+    await this.authorizationPolicy.assertPermissions(this.getUser(context), [permission], {
+      scope: config.scope,
+      targetId: this.getCertificateTargetId(config.scope, config),
+      certificateConfigId: configId,
+    });
   }
 
   @Mutation(() => Certificate, { name: 'issueCertificateForPerson' })

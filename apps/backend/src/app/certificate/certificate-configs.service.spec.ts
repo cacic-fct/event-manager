@@ -1,11 +1,55 @@
 import { AttendanceEligibility, CertificateIssuedTo, CertificateScope } from '@cacic-fct/shared-data-types';
 import { ConflictException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { AuditLogOperation, Prisma } from '@prisma/client';
 import { CertificateConfigsService } from './certificate-configs.service';
 import { CertificateValidationService } from './certificate-validation.service';
 const { jest } = import.meta;
 
 describe('CertificateConfigsService', () => {
+  it('attributes configuration creation, edits, and deletion to the acting admin', async () => {
+    const config = createConfigRecord();
+    const actor = { sub: 'acting-admin' } as never;
+    const audit = { record: jest.fn().mockResolvedValue(undefined) };
+    const prisma = createPrisma({
+      certificateTemplate: { findFirst: jest.fn().mockResolvedValue(createTemplate()) },
+      certificateFolder: { findFirst: jest.fn().mockResolvedValue(createFolder()) },
+      certificateConfig: {
+        findFirst: jest.fn(({ where }: { where: { id?: string } }) =>
+          Promise.resolve(typeof where.id === 'string' ? config : null),
+        ),
+        create: jest.fn().mockResolvedValue(config),
+        update: jest.fn().mockResolvedValue(config),
+      },
+    });
+    const service = new CertificateConfigsService(
+      prisma as never,
+      new CertificateValidationService(),
+      {
+        assertIssuableTarget: jest.fn(),
+      } as never,
+      undefined,
+      audit as never,
+    );
+    await service.createConfig(
+      {
+        name: config.name,
+        scope: CertificateScope.OTHER,
+        folderId: 'folder-1',
+        certificateTemplateId: 'template-1',
+        issuedTo: CertificateIssuedTo.OTHER,
+      },
+      actor,
+    );
+    await service.updateConfig(config.id, { certificateText: 'Texto atualizado' }, actor);
+    await service.deleteConfig(config.id, actor);
+    expect(audit.record.mock.calls.map(([entry]) => entry.operation)).toEqual([
+      AuditLogOperation.CREATE,
+      AuditLogOperation.UPDATE,
+      AuditLogOperation.DELETE,
+    ]);
+    for (const [entry] of audit.record.mock.calls) expect(entry.actor).toBe(actor);
+  });
+
   describe('payment tier settings', () => {
     function setup() {
       const prisma = createPrisma({

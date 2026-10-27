@@ -1,6 +1,6 @@
 import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
-import { DatePipe } from '@angular/common';
-import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { DatePipe, isPlatformBrowser } from '@angular/common';
+import { Component, DestroyRef, PLATFORM_ID, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { FormField } from '@angular/forms/signals';
@@ -23,6 +23,7 @@ import {
   isFrozenFromDates,
   isFrozenMajorEvent,
 } from '../resource-state/frozen-resource';
+import { CertificateIssuancePanelComponent } from './certificate-issuance-panel.component';
 import { CertificatesService } from './certificates.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { PersonSearchComponent } from '../people/person-search/person-search.component';
@@ -34,6 +35,7 @@ import { WorkspacePendingChangesService } from '../app-shell/workspace-pending-c
   selector: 'app-workspace-certificates-tab',
   imports: [
     DatePipe,
+    CertificateIssuancePanelComponent,
     FormField,
     ReactiveFormsModule,
     MatButtonModule,
@@ -64,6 +66,7 @@ export class CertificatesPageComponent {
   private readonly pendingChanges = inject(WorkspacePendingChangesService);
   private readonly pendingRegistration = this.pendingChanges.register();
   private readonly destroyRef = inject(DestroyRef);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly route = inject(ActivatedRoute);
   protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
@@ -76,6 +79,20 @@ export class CertificatesPageComponent {
   protected readonly showGenericTargetPicker = computed(() => !this.inWorkspaceShell && !this.isStandalonePage());
 
   constructor() {
+    effect((onCleanup) => {
+      const configId = this.workspace.selectedCertificateConfig()?.id;
+      untracked(() => this.workspace.resetIssuanceState());
+      if (!configId) return;
+      untracked(() => {
+        void this.workspace.loadIssuanceState(configId);
+      });
+      if (this.isBrowser) {
+        const polling = setInterval(() => {
+          if (this.workspace.activeIssuanceRun()) void this.workspace.loadIssuanceState(configId);
+        }, 5000);
+        onCleanup(() => clearInterval(polling));
+      }
+    });
     effect(() => this.pendingRegistration.set(this.workspace.unsavedChanges()));
     this.destroyRef.onDestroy(() => this.pendingRegistration.destroy());
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
@@ -116,6 +133,14 @@ export class CertificatesPageComponent {
         Permission.CertificateConfig.Update,
       ]) &&
       (!this.selectedTargetFrozen() || this.permissions.has(Permission.Frozen.Update))
+    );
+  }
+
+  protected canRemoveManualRecipient(): boolean {
+    return (
+      this.permissions.has(Permission.Certificate.Issue) &&
+      this.permissions.canDelete(Permission.Certificate.Delete) &&
+      (!this.selectedTargetFrozen() || this.permissions.has(Permission.Frozen.Delete))
     );
   }
 
