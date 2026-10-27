@@ -6,6 +6,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
+import { IncludePastParticipation } from '../audiences/past-participation.decorator';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { CurrentUserContextService } from '../current-user/context.service';
 import { type GraphqlContext } from '../current-user/selects';
@@ -35,7 +36,7 @@ export class EventPreparationResolver {
 
   @Query(() => EventPreparation)
   @RequirePermissions(Permission.Event.Read)
-  async eventPreparation(@Args('eventId') eventId: string, @Context() context: GraphqlContext) {
+  async eventPreparation(@Args('eventId', { type: () => String }) eventId: string, @Context() context: GraphqlContext) {
     await this.requireAdmin(eventId, Permission.Event.Read, context);
     const event = await this.requireEvent(eventId);
     return {
@@ -46,14 +47,21 @@ export class EventPreparationResolver {
   }
 
   @Query(() => EventMaterials)
-  async editableEventMaterials(@Args('eventId') eventId: string, @Context() context: GraphqlContext) {
+  async editableEventMaterials(
+    @Args('eventId', { type: () => String }) eventId: string,
+    @Context() context: GraphqlContext,
+  ) {
     await this.requireMaterialAccess(eventId, context, false);
     const event = await this.requireEvent(eventId);
     return { links: parseEventMaterials(event.materials), updatedAt: event.materialsUpdatedAt };
   }
 
   @Query(() => EventMaterials, { nullable: true })
-  async currentUserEventMaterials(@Args('eventId') eventId: string, @Context() context: GraphqlContext) {
+  @IncludePastParticipation()
+  async currentUserEventMaterials(
+    @Args('eventId', { type: () => String }) eventId: string,
+    @Context() context: GraphqlContext,
+  ) {
     const person = await this.currentUser.requireCurrentPerson(context);
     const event = await this.prisma.event.findFirst({
       where: { id: eventId, AND: [PUBLIC_EVENT_WHERE, eventSubscriberWhere(person.id)] },
@@ -70,7 +78,10 @@ export class EventPreparationResolver {
   }
 
   @Query(() => String, { nullable: true })
-  async eventCollectorInformation(@Args('eventId') eventId: string, @Context() context: GraphqlContext) {
+  async eventCollectorInformation(
+    @Args('eventId', { type: () => String }) eventId: string,
+    @Context() context: GraphqlContext,
+  ) {
     const user = this.currentUser.getAuthenticatedUser(context);
     try {
       await this.authorization.assertPermissions(user, [Permission.EventAttendance.Read], { eventId });
@@ -88,7 +99,7 @@ export class EventPreparationResolver {
   @Mutation(() => EventPreparation)
   @RequirePermissions(Permission.Event.Update)
   async updateEventPreparation(
-    @Args('eventId') eventId: string,
+    @Args('eventId', { type: () => String }) eventId: string,
     @Args('lecturerInformation', { type: () => String, nullable: true }) lecturerInformation: string | null,
     @Args('collectorInformation', { type: () => String, nullable: true }) collectorInformation: string | null,
     @Args('expectedUpdatedAt', { type: () => Date, nullable: true }) expectedUpdatedAt: Date | null,
@@ -139,7 +150,7 @@ export class EventPreparationResolver {
 
   @Mutation(() => EventMaterials)
   async updateEventMaterials(
-    @Args('eventId') eventId: string,
+    @Args('eventId', { type: () => String }) eventId: string,
     @Args('links', { type: () => [EventMaterialInput] }) links: EventMaterialInput[],
     @Args('expectedUpdatedAt', { type: () => Date, nullable: true }) expectedUpdatedAt: Date | null,
     @Context() context: GraphqlContext,

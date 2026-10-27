@@ -92,6 +92,49 @@ describe('shared event materials editor', () => {
     expect(component.changed()).toBe(true);
     expect(component.error()).toContain('Recarregue');
   });
+  it('keeps subscriber links and focus during scheduled refreshes, including a transient failure', async () => {
+    const links = [{ title: 'Slides', url: 'https://example.org/slides' }];
+    const release = new Date(Date.now() + 120000).toISOString();
+    api.getMaterials.mockResolvedValueOnce({ links, updatedAt: null, nextReleaseAt: release });
+    vi.useFakeTimers();
+    const fixture = TestBed.createComponent(EventMaterialsComponent);
+    try {
+      fixture.componentRef.setInput('eventId', 'event');
+      fixture.detectChanges();
+      await Promise.resolve();
+      fixture.detectChanges();
+      const link: HTMLAnchorElement = fixture.nativeElement.querySelector('a');
+      link.focus();
+      let resolveRefresh!: (value: { links: typeof links; updatedAt: null; nextReleaseAt: string }) => void;
+      api.getMaterials.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveRefresh = resolve;
+        }),
+      );
+      await vi.advanceTimersByTimeAsync(60000);
+      fixture.detectChanges();
+      expect(fixture.componentInstance.loading()).toBe(false);
+      expect(fixture.componentInstance.original()).toEqual(links);
+      expect(fixture.nativeElement.querySelector('section').getAttribute('aria-busy')).toBe('false');
+      expect(fixture.nativeElement.querySelector('a')).toBe(link);
+      expect(document.activeElement).toBe(link);
+      resolveRefresh({ links, updatedAt: null, nextReleaseAt: release });
+      await Promise.resolve();
+      api.getMaterials.mockRejectedValueOnce(new Error('Offline'));
+      await vi.advanceTimersByTimeAsync(60000);
+      fixture.detectChanges();
+      expect(fixture.componentInstance.loadError()).toBe(false);
+      expect(fixture.componentInstance.original()).toEqual(links);
+      expect(fixture.nativeElement.querySelector('a')).toBe(link);
+      await vi.advanceTimersByTimeAsync(60000);
+      fixture.detectChanges();
+      expect(api.getMaterials).toHaveBeenCalledTimes(4);
+      expect(fixture.componentInstance.original()).toEqual([]);
+    } finally {
+      fixture.destroy();
+      vi.useRealTimers();
+    }
+  });
   it('uses subscriber authorization for participants and administrative authorization for read-only admins', async () => {
     const fixture = await create(false);
     expect(api.getMaterials).toHaveBeenLastCalledWith('event', false);

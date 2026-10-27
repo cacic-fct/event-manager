@@ -2,6 +2,8 @@ import { jest } from '@jest/globals';
 import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { EventPreparationResolver } from './event-preparation.resolver';
+import { PAST_PARTICIPATION_ACCESS } from '../audiences/past-participation.decorator';
+import { eventSubscriberWhere } from './event-subscriber-information';
 
 function setup() {
   const previous = {
@@ -128,6 +130,12 @@ describe('event preparation access and writes', () => {
   });
 
   it('filters subscriber materials by publication and actual event subscription on the server', async () => {
+    expect(
+      Reflect.getMetadata(PAST_PARTICIPATION_ACCESS, EventPreparationResolver.prototype.currentUserEventMaterials),
+    ).toBe(true);
+    expect(
+      Reflect.getMetadata(PAST_PARTICIPATION_ACCESS, EventPreparationResolver.prototype.updateEventMaterials),
+    ).toBeUndefined();
     const { resolver, prisma } = setup();
     prisma.event.findFirst.mockResolvedValueOnce(null);
     await expect(resolver.currentUserEventMaterials('event', {})).resolves.toBeNull();
@@ -135,7 +143,7 @@ describe('event preparation access and writes', () => {
       expect.objectContaining({
         where: expect.objectContaining({
           id: 'event',
-          AND: expect.arrayContaining([expect.objectContaining({ OR: expect.any(Array) })]),
+          AND: expect.arrayContaining([eventSubscriberWhere('speaker')]),
         }),
         select: { materials: true, materialsUpdatedAt: true, endDate: true },
       }),

@@ -53,6 +53,9 @@ export function parseEventMaterials(value: unknown): EventMaterial[] {
       throw new Error('Use links HTTPS sem credenciais.');
     }
     const canonical = parsed.href;
+    if (canonical.length > MAX_EVENT_MATERIAL_URL_LENGTH) {
+      throw new Error('Use um título de até 200 caracteres e um link de até 2.048 caracteres.');
+    }
     if (urls.has(canonical)) throw new Error('Cada link deve aparecer apenas uma vez.');
     urls.add(canonical);
     return { title, url: canonical, ...(releaseAfterEvent ? { releaseAfterEvent: true } : {}) };
