@@ -1,21 +1,22 @@
 import { EventMaterialsComponent } from '@cacic-fct/shared-angular/event-preparation';
 import { SubscriberInformation } from './subscriber-information';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
 import type {
   EventFormTargetType,
   EventTargetType,
   PublicEventForm,
   PublicPrizeDrawAvailability,
 } from '@cacic-fct/event-manager-public-contracts';
-import { Component, DestroyRef, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, PLATFORM_ID, computed, effect, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService, MarkdownComponent } from '@cacic-fct/shared-angular';
 import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import { OfflineAttendanceDetail, PublicDataAccessService } from '@cacic-fct/public-indexed-db';
@@ -40,6 +41,7 @@ import {
   startWith,
   switchMap,
   timer,
+  throwError,
 } from 'rxjs';
 import { NetworkStatusService } from '../../../shared/network-status.service';
 import { AttendancesApiService } from '../attendances-api.service';
@@ -50,6 +52,7 @@ import { PublicEventFormApiService } from '../../../forms/event-form-api.service
 import { PublicPrizeDrawApiService } from '../../../prize-draws/prize-draw-api.service';
 import { TicketPurchaseOptionsSectionComponent } from '../../../major-events/payment/ticket-purchase-options-section.component';
 import { privateResourceErrorStatus } from '../../../shared/route-error-handling';
+import { EventDetailHeading } from '../../../shared/event-detail-heading';
 import { certificateStatusCopy, type CertificateStatusCopy } from './certificate-status';
 
 type DetailFormLink = {
@@ -62,7 +65,7 @@ type DetailFormLink = {
 };
 
 type DetailState =
-  | { status: 'loading' }
+  | { status: 'loading' | 'empty' | 'error' }
   | { status: 'ready'; detail: DetailViewModel; formLinks: DetailFormLink[]; hasPrizeDraws: boolean };
 type ReadyDetailState = Extract<DetailState, { status: 'ready' }>;
 
@@ -75,6 +78,9 @@ const PRIZE_DRAW_RECONNECT_MAX_DELAY_MS = 30_000;
 @Component({
   selector: 'app-more-info',
   imports: [
+    EventDetailHeading,
+    NgTemplateOutlet,
+    MatExpansionModule,
     MatButtonModule,
     MatDialogModule,
     MatIconModule,
@@ -91,6 +97,19 @@ const PRIZE_DRAW_RECONNECT_MAX_DELAY_MS = 30_000;
   styleUrl: './more-info.css',
 })
 export class MoreInfo {
+  readonly embedded = input(false);
+  readonly flatSections = input(false);
+  readonly showEvents = input(true);
+  readonly detailLoaded = output<DetailViewModel | null>();
+  readonly informationRequested = toSignal(
+    inject(ActivatedRoute).queryParamMap?.pipe(map((params) => params.has('informationRevision'))) ?? of(false),
+    { initialValue: false },
+  );
+  readonly participationChange = output<boolean>();
+  readonly targetType = input<EventTargetType | null>(null);
+  readonly targetId = input<string | null>(null);
+  readonly refreshKey = input(0);
+  private readonly detailRefresh = signal(0);
   private readonly destroyRef = inject(DestroyRef);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly route = inject(ActivatedRoute);
@@ -106,12 +125,30 @@ export class MoreInfo {
   readonly emoji = inject(EmojiService);
 
   private readonly detailStateSnapshot = toSignal(
-    this.route.paramMap.pipe(
-      switchMap((params) => this.loadDetailState(params)),
+    combineLatest([
+      this.route.paramMap,
+      toObservable(this.targetType),
+      toObservable(this.targetId),
+      toObservable(this.refreshKey),
+      toObservable(this.detailRefresh),
+    ]).pipe(
+      switchMap(([params, targetType, targetId]) =>
+        this.loadDetailState(
+          targetType ?? parseEventTargetType(params.get('eventType')),
+          targetId ?? params.get('eventId'),
+        ),
+      ),
       startWith({ status: 'loading' } satisfies DetailState),
     ),
     { initialValue: { status: 'loading' } satisfies DetailState },
   );
+  private readonly participationWatcher = effect(() => {
+    const state = this.detailStateSnapshot();
+    if (state.status === 'ready' || state.status === 'empty') {
+      this.participationChange.emit(state.status === 'ready');
+      this.detailLoaded.emit(state.status === 'ready' ? state.detail : null);
+    }
+  });
   private readonly prizeDrawAvailability = signal<{ snapshot: ReadyDetailState; value: boolean } | null>(null);
   readonly detailState = computed(() => {
     const state = this.detailStateSnapshot();
@@ -289,6 +326,10 @@ export class MoreInfo {
     });
   }
 
+  retryParticipation(): void {
+    this.detailRefresh.update((revision) => revision + 1);
+  }
+
   eventRoute(eventId: string): string[] {
     return ['/event', eventId];
   }
@@ -361,9 +402,8 @@ export class MoreInfo {
     return detail.isSubscribed ? 'Eventos inscritos' : 'Eventos com participação';
   }
 
-  private loadDetailState(params: ParamMap): Observable<DetailState> {
-    const eventType = parseEventTargetType(params.get('eventType'));
-    const eventId = params.get('eventId')?.trim();
+  private loadDetailState(eventType: EventTargetType | null, targetId: string | null): Observable<DetailState> {
+    const eventId = targetId?.trim();
 
     if (!eventType || !eventId) {
       void this.routeErrors.navigate(404);
@@ -373,6 +413,9 @@ export class MoreInfo {
     return this.loadDetail(eventType, eventId).pipe(
       switchMap((detail) => {
         if (!detail) {
+          if (this.embedded()) {
+            return of({ status: 'empty' } satisfies DetailState);
+          }
           void this.routeErrors.navigate(404);
           return of({ status: 'loading' } satisfies DetailState);
         }
@@ -405,6 +448,9 @@ export class MoreInfo {
       }),
       startWith({ status: 'loading' } satisfies DetailState),
       catchError((error: unknown) => {
+        if (this.embedded()) {
+          return of({ status: 'error' } satisfies DetailState);
+        }
         void this.routeErrors.navigate(privateResourceErrorStatus(error));
         return of({ status: 'loading' } satisfies DetailState);
       }),
@@ -448,28 +494,43 @@ export class MoreInfo {
         return this.api.getEventDetails(eventId).pipe(
           switchMap((details) =>
             from(this.offlineData.replaceAttendanceDetail(userId, eventId, { eventType, details })).pipe(
+              catchError(() => of(undefined)),
               map(() => buildDetailViewModel({ eventType, details })),
             ),
           ),
-          catchError(() => from(this.loadOfflineDetail(eventType, eventId))),
+          catchError((error: unknown) =>
+            from(this.loadOfflineDetail(eventType, eventId)).pipe(
+              switchMap((saved) => (saved ? of(saved) : throwError(() => error))),
+            ),
+          ),
         );
       case 'event-group':
         return this.api.getEventGroupDetails(eventId).pipe(
           switchMap((details) =>
             from(this.offlineData.replaceAttendanceDetail(userId, eventId, { eventType, details })).pipe(
+              catchError(() => of(undefined)),
               map(() => buildDetailViewModel({ eventType, details })),
             ),
           ),
-          catchError(() => from(this.loadOfflineDetail(eventType, eventId))),
+          catchError((error: unknown) =>
+            from(this.loadOfflineDetail(eventType, eventId)).pipe(
+              switchMap((saved) => (saved ? of(saved) : throwError(() => error))),
+            ),
+          ),
         );
       case 'major-event':
         return this.api.getMajorEventDetails(eventId).pipe(
           switchMap((details) =>
             from(this.offlineData.replaceAttendanceDetail(userId, eventId, { eventType, details })).pipe(
+              catchError(() => of(undefined)),
               map(() => buildDetailViewModel({ eventType, details })),
             ),
           ),
-          catchError(() => from(this.loadOfflineDetail(eventType, eventId))),
+          catchError((error: unknown) =>
+            from(this.loadOfflineDetail(eventType, eventId)).pipe(
+              switchMap((saved) => (saved ? of(saved) : throwError(() => error))),
+            ),
+          ),
         );
     }
   }

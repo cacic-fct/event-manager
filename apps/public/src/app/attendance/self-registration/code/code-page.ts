@@ -276,7 +276,7 @@ export class OnlineAttendanceCodeComponent {
     const item = items.find(({ eventId }) => eventId === this.eventId());
     if (!item) {
       if (this.openedFromNotification() && this.eventId()) {
-        void this.router.navigate(['/profile', 'attendances', 'event', this.eventId()]);
+        void this.router.navigate(['/event', this.eventId()]);
       }
       return {
         status: 'error',

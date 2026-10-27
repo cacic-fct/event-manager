@@ -114,8 +114,8 @@ describe('Attendances', () => {
       throw new Error('Expected attendance fixtures');
     }
 
-    expect(majorEvent.route).toEqual(['/profile/attendances', 'major-event', 'major-1']);
-    expect(event.route).toEqual(['/profile/attendances', 'event', 'event-1']);
+    expect(majorEvent.route).toEqual(['/major-event', 'major-1']);
+    expect(event.route).toEqual(['/event', 'event-1']);
   });
 
   it('keeps mixed major-event participation on the regular detail when regular events are selected', async () => {
@@ -140,8 +140,7 @@ describe('Attendances', () => {
     });
 
     expect(component.visibleParticipations().find((item) => item.title === 'SECOMPP')?.route).toEqual([
-      '/profile/attendances',
-      'major-event',
+      '/major-event',
       majorEvent.majorEvent.id,
     ]);
   });
@@ -155,7 +154,7 @@ describe('Attendances', () => {
       throw new Error('Expected a tournament fixture.');
     }
 
-    expect(tournamentOnlyItem.route).toEqual(['/profile/attendances', 'major-event', 'sports-major']);
+    expect(tournamentOnlyItem.route).toEqual(['/major-event', 'sports-major']);
   });
 
   it('falls back to the last offline feed when the network request fails', async () => {
@@ -304,7 +303,7 @@ describe('Attendances', () => {
     expect(fixture.nativeElement.textContent).toContain('Torneio com gestão esportiva');
     expect(fixture.nativeElement.textContent).not.toContain('Grande evento sem gestão esportiva');
     expect(fixture.nativeElement.textContent).not.toContain('1 de 2 participações');
-    expect(sportsManagerItem.route).toEqual(['/profile/attendances', 'major-event', 'sports-major']);
+    expect(sportsManagerItem.route).toEqual(['/major-event', 'sports-major']);
   });
 
   it('merges standalone event-group children into one event-group item', async () => {
@@ -317,7 +316,7 @@ describe('Attendances', () => {
         title: 'Grupo de atividades',
         type: 'eventGroup',
         typeLabel: 'Grupo de eventos',
-        route: ['/profile/attendances', 'event-group', 'standalone-group'],
+        route: ['/event-group', 'standalone-group'],
         statuses: ['subscribed', 'certificate'],
       }),
     ]);

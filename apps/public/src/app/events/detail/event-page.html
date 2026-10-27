@@ -46,36 +46,53 @@
   </section>
   }
 
-  <header class="event-header">
-    <button class="emoji-frame" type="button" aria-label="Copiar identificador do evento" (click)="copyId(event.id)">
-      <img class="twemoji" [src]="emoji.getTwemojiUrl(event.emoji)" [alt]="event.emoji" />
-    </button>
-    <div class="header-copy">
-      <p class="eyebrow">{{ eventTypeLabel(event) }}</p>
-      <h1>{{ event.name }}</h1>
-      @if (event.shortDescription) {
-      <p class="subtitle">{{ event.shortDescription }}</p>
-      }
-    </div>
-  </header>
+  <app-event-detail-heading
+    class="event-header"
+    [title]="event.name"
+    [emoji]="event.emoji"
+    [subtitle]="event.shortDescription"
+    [copyable]="true"
+    (identityClicked)="copyId(event.id)">
+    <p class="event-kind">{{ eventTypeLabel(event) }}</p>
+    <p class="date-line">{{ dateLine(event) }}</p>
+  </app-event-detail-heading>
 
-  <mat-chip-set role="group" aria-label="Resumo do evento">
-    @if (event.majorEvent) {
-    <mat-chip>{{ event.majorEvent.name }}</mat-chip>
+  @let parentMajorEventId = event.majorEvent?.id || event.majorEventId || event.eventGroup?.majorEventId; @if
+  (parentMajorEventId || (event.eventGroup && !parentMajorEventId) || data.currentUserSubscription ||
+  data.currentUserAttendance) {
+  <ul class="event-context" aria-label="Resumo do evento">
+    @if (parentMajorEventId) {
+    <li class="parent-event-context">
+      <mat-icon aria-hidden="true">event</mat-icon>
+      <div>
+        <span>Faz parte de</span>
+        <a
+          class="parent-event-link"
+          [routerLink]="['/major-event', parentMajorEventId]"
+          [queryParams]="{ returnUrl: '/event/' + event.id }">
+          {{ event.majorEvent?.name || 'Ver evento principal' }}
+        </a>
+      </div>
+    </li>
+    } @if (event.eventGroup && !parentMajorEventId) {
+    <li>
+      <a
+        mat-button
+        [routerLink]="['/event-group', event.eventGroup.id]"
+        [queryParams]="{ returnUrl: '/event/' + event.id }">
+        <mat-icon aria-hidden="true">event_note</mat-icon>
+        Ver grupo: {{ event.eventGroup.name }}
+      </a>
+    </li>
     } @if (data.currentUserSubscription) {
-    <mat-chip>
-      <mat-icon matChipAvatar>check</mat-icon>
-      Inscrito
-    </mat-chip>
+    <li class="participation-context"><mat-icon aria-hidden="true">event_available</mat-icon><span>Inscrito</span></li>
     } @if (data.currentUserAttendance) {
-    <mat-chip>
-      <mat-icon matChipAvatar>how_to_reg</mat-icon>
-      Presença confirmada
-    </mat-chip>
+    <li class="participation-context">
+      <mat-icon aria-hidden="true">how_to_reg</mat-icon><span>Presença confirmada</span>
+    </li>
     }
-  </mat-chip-set>
-
-  @if (!data.preview && !isEventFinished() && !data.currentUserSubscription) {
+  </ul>
+  } @if (!data.preview && !isEventFinished() && !data.currentUserSubscription) {
   <section class="interest-actions" aria-label="Interesse no evento">
     <app-interest-toggle
       targetType="EVENT"
@@ -99,213 +116,266 @@
       [subscribed]="!!data.currentUserSubscription?.eventGroupSubscriptionId"
       (changed)="refreshInterestForms()" />
   </section>
-  }
+  } @let hasSubscription = isAuthenticated() && !!data.currentUserSubscription && !data.preview;
 
-  <section class="actions" aria-label="Ações do evento">
-    @if (event.buttonLink) {
-    <a mat-stroked-button [href]="event.buttonLink" target="_blank" rel="noopener noreferrer">
-      <mat-icon>open_in_new</mat-icon>
-      {{ event.buttonText || 'Acompanhar evento' }}
-    </a>
-    } @if (!isEventFinished()) { @if (hasStandaloneSubscription(event) && !isAuthenticated() &&
-    !data.currentUserSubscription) {
-    <button mat-flat-button type="button" [disabled]="!isOnline()" (click)="login()">
-      <mat-icon>login</mat-icon>
-      Entrar para inscrever-se
-    </button>
-    } @else if (hasStandaloneSubscription(event) && data.currentUserSubscription) { @if (needsImageLicenseAgreement()) {
-    <button
-      mat-flat-button
-      type="button"
-      [disabled]="!canAcceptImageLicenseAgreement(data) || isSubscribing() || standaloneSubscriptionCooldownSeconds() > 0"
-      (click)="subscribe(data)">
-      <mat-icon>verified_user</mat-icon>
-      Aceitar contrato
-    </button>
-    } @else {
-    <button
-      mat-stroked-button
-      type="button"
-      [disabled]="!canUnsubscribe(data) || isUnsubscribing() || standaloneSubscriptionCooldownSeconds() > 0"
-      (click)="unsubscribe(data)">
-      <mat-icon>event_busy</mat-icon>
-      Cancelar inscrição
-    </button>
-    } } @else if (hasStandaloneSubscription(event)) { @if (standaloneSubscriptionCooldownSeconds() > 0) {
-    <p class="rate-limit-message">
-      Aguarde {{ standaloneSubscriptionCooldownSeconds() }}s para alterar sua inscrição novamente.
-    </p>
-    }
-    <button
-      mat-flat-button
-      type="button"
-      [disabled]="
+  <ng-template #participationActions>
+    @if ((hasStandaloneSubscription(event) && !data.currentUserSubscription) || unavailableInSelectedTier() ||
+    event.buttonLink || canConfirmAttendance(event) || hasPrizeDraws() || needsImageLicenseAgreement()) {
+    <section
+      class="participation-overview"
+      [attr.aria-labelledby]="hasSubscription ? null : 'event-participation-heading'">
+      @if (!hasSubscription) {
+      <h2 id="event-participation-heading">
+        {{ data.currentUserAttendance ? 'Inscrição e presença' : 'Participe do evento' }}
+      </h2>
+      }
+      <section class="actions" aria-label="Ações do evento">
+        @if (event.buttonLink) {
+        <a mat-stroked-button [href]="event.buttonLink" target="_blank" rel="noopener noreferrer">
+          <mat-icon>open_in_new</mat-icon>
+          {{ event.buttonText || 'Acompanhar evento' }}
+        </a>
+        } @if (!isEventFinished()) { @if (hasStandaloneSubscription(event) && !isAuthenticated() &&
+        !data.currentUserSubscription) {
+        <button mat-flat-button type="button" [disabled]="!isOnline()" (click)="login()">
+          <mat-icon>login</mat-icon>
+          Entrar para inscrever-se
+        </button>
+        } @else if (hasStandaloneSubscription(event) && data.currentUserSubscription) { @if
+        (needsImageLicenseAgreement()) {
+        <button
+          mat-flat-button
+          type="button"
+          [disabled]="!canAcceptImageLicenseAgreement(data) || isSubscribing() || standaloneSubscriptionCooldownSeconds() > 0"
+          (click)="subscribe(data)">
+          <mat-icon>verified_user</mat-icon>
+          Aceitar contrato
+        </button>
+        } } @else if (hasStandaloneSubscription(event)) { @if (standaloneSubscriptionCooldownSeconds() > 0) {
+        <p class="rate-limit-message">
+          Aguarde {{ standaloneSubscriptionCooldownSeconds() }}s para alterar sua inscrição novamente.
+        </p>
+        }
+        <button
+          mat-flat-button
+          type="button"
+          [disabled]="
         !isOnline() ||
         !canSubscribe(data) ||
         isSubscribing() ||
         standaloneSubscriptionCooldownSeconds() > 0
       "
-      (click)="subscribe(data)">
-      <mat-icon>event_available</mat-icon>
-      Inscrever-se
-    </button>
-    } } @if (canConfirmAttendance(event)) {
-    <button
-      mat-stroked-button
-      type="button"
-      [disabled]="!!data.currentUserAttendance || isConfirmingAttendance()"
-      (click)="confirmAttendance(data)">
-      <mat-icon>how_to_reg</mat-icon>
-      {{ data.currentUserAttendance ? 'Presença confirmada' : 'Confirmar presença' }}
-    </button>
-    } @if (hasPrizeDraws()) {
-    <a mat-stroked-button [routerLink]="['/draws', 'event', event.id]">
-      <mat-icon>rewarded_ads</mat-icon>
-      Sorteios
-    </a>
-    }
-  </section>
+          (click)="subscribe(data)">
+          <mat-icon>event_available</mat-icon>
+          Inscrever-se
+        </button>
+        } } @if (canConfirmAttendance(event)) {
+        <button
+          mat-stroked-button
+          type="button"
+          [disabled]="!!data.currentUserAttendance || isConfirmingAttendance()"
+          (click)="confirmAttendance(data)">
+          <mat-icon>how_to_reg</mat-icon>
+          {{ data.currentUserAttendance ? 'Presença confirmada' : 'Confirmar presença' }}
+        </button>
+        } @if (hasPrizeDraws()) {
+        <a mat-stroked-button [routerLink]="['/draws', 'event', event.id]">
+          <mat-icon>rewarded_ads</mat-icon>
+          Sorteios
+        </a>
+        }
+      </section>
 
-  @if (event.allowSubscription || unavailableInSelectedTier()) {
-  <p class="status-line">{{ subscriptionStatusLine(data) }}</p>
-  } @if (availableFormLinks().length > 0) {
-  <section class="form-actions" aria-label="Formulários disponíveis">
-    <h2>Formulários</h2>
-    <div class="actions">
-      @for (formLink of availableFormLinks(); track formLink.formId + formLink.targetType + formLink.targetId +
-      formLink.linkId) {
-      <a mat-stroked-button [routerLink]="formRoute(formLink)" [queryParams]="formQueryParams(formLink)">
-        <mat-icon>{{ formLink.mode === 'results' ? 'bar_chart' : 'list_alt' }}</mat-icon>
-        {{ formLink.mode === 'results' ? 'Resultados: ' + formLink.name : formLink.name }}
-      </a>
+      @if (!data.currentUserSubscription && (event.allowSubscription || unavailableInSelectedTier())) {
+      <p class="status-line">{{ subscriptionStatusLine(data) }}</p>
       }
-    </div>
-  </section>
-  }
+    </section>
 
-  <section class="detail-grid">
-    <div class="detail-section">
-      <h2>Informações</h2>
-      <mat-list>
-        <mat-list-item>
-          <mat-icon matListItemIcon>event</mat-icon>
-          <div matListItemTitle>Início</div>
-          <div matListItemLine>{{ event.startDate | date: 'fullDate' }}</div>
-          <div matListItemLine>{{ event.startDate | date: 'HH:mm' }}</div>
-        </mat-list-item>
-        <mat-list-item>
-          <mat-icon matListItemIcon></mat-icon>
-          <div matListItemTitle>Encerramento</div>
-          <div matListItemLine>{{ event.endDate | date: 'fullDate' }}</div>
-          <div matListItemLine>{{ event.endDate | date: 'HH:mm' }}</div>
-        </mat-list-item>
-        @if (creditLine(event); as credit) {
-        <mat-list-item>
-          <mat-icon matListItemIcon>schedule</mat-icon>
-          <div matListItemTitle>Carga-horária</div>
-          <div matListItemLine>{{ credit }}</div>
-        </mat-list-item>
+    } @if (!isEventFinished() && hasStandaloneSubscription(event) && data.currentUserSubscription &&
+    !needsImageLicenseAgreement()) {
+    <div class="subscription-management">
+      <p class="status-line">{{ subscriptionStatusLine(data) }}</p>
+      <button
+        mat-button
+        type="button"
+        [disabled]="!canUnsubscribe(data) || isUnsubscribing() || standaloneSubscriptionCooldownSeconds() > 0"
+        (click)="unsubscribe(data)">
+        <mat-icon>event_busy</mat-icon>
+        Cancelar inscrição
+      </button>
+    </div>
+    } @if (availableFormLinks().length > 0) {
+    <section class="form-actions" aria-label="Formulários disponíveis">
+      <h2>Formulários</h2>
+      <div class="actions">
+        @for (formLink of availableFormLinks(); track formLink.formId + formLink.targetType + formLink.targetId +
+        formLink.linkId) {
+        <a mat-stroked-button [routerLink]="formRoute(formLink)" [queryParams]="formQueryParams(formLink)">
+          <mat-icon>{{ formLink.mode === 'results' ? 'bar_chart' : 'list_alt' }}</mat-icon>
+          {{ formLink.mode === 'results' ? 'Resultados: ' + formLink.name : formLink.name }}
+        </a>
         }
-      </mat-list>
-    </div>
-
-    @if (data.weather; as weather) {
-    <div class="detail-section weather-section">
-      <h2>Clima</h2>
-      <div class="weather-summary">
-        <mat-icon aria-hidden="true">{{ weather.materialIcon }}</mat-icon>
-        <div>
-          <p class="weather-temperature">{{ weather.temperature }} °C</p>
-          <p class="weather-text">{{ weather.summary }}</p>
-        </div>
       </div>
-      <p class="weather-attribution">{{ weather.attribution }}</p>
-    </div>
+    </section>
     }
-  </section>
+  </ng-template>
 
-  @if (event.description) {
-  <section class="detail-section">
-    <h2>Sobre</h2>
-    <lib-markdown class="description" [content]="event.description" />
-  </section>
-  } @if (event.lecturers?.length) {
-  <section class="detail-section">
-    <h2>Ministrantes</h2>
-    <div class="lecturer-grid">
-      @for (lecturer of event.lecturers; track lecturer.id) {
-      <article class="lecturer-card">
-        @if (lecturer.publishGoogleUserPicture && lecturer.googleUserPicture) {
-        <img class="lecturer-avatar" [src]="googlePictureUrl(lecturer.googleUserPicture)" alt="" />
-        } @else {
-        <div class="lecturer-avatar lecturer-avatar-placeholder">
-          <mat-icon aria-hidden="true">person</mat-icon>
-        </div>
-        }
-        <div class="lecturer-copy">
-          <h3>{{ lecturer.displayName }}</h3>
-          @if (lecturer.biography) {
-          <p>{{ lecturer.biography }}</p>
+  <ng-template #subscriptionContent>
+    @if (isAuthenticated() && !data.preview && isStandaloneEvent(event)) {
+    <app-more-info
+      [embedded]="true"
+      [flatSections]="hasSubscription"
+      targetType="event"
+      [targetId]="event.id"
+      [refreshKey]="participationRevision()">
+      <div participationActions>
+        <ng-container [ngTemplateOutlet]="participationActions" />
+      </div>
+    </app-more-info>
+    } @else { @if (hasSubscription) {
+    <h2>Sua participação</h2>
+    }
+    <ng-container [ngTemplateOutlet]="participationActions" />
+    }
+  </ng-template>
+
+  <ng-template #generalContent>
+    @if (!hasSubscription) {
+    <ng-container [ngTemplateOutlet]="subscriptionContent" />
+    } @if (event.description) {
+    <section class="detail-section">
+      <h2>Sobre</h2>
+      <lib-markdown class="description" [content]="event.description" />
+    </section>
+    } @if (event.lecturers?.length) {
+    <section class="detail-section">
+      <h2>Ministrantes</h2>
+      <div class="lecturer-grid">
+        @for (lecturer of event.lecturers; track lecturer.id) {
+        <article class="lecturer-card">
+          @if (lecturer.publishGoogleUserPicture && lecturer.googleUserPicture) {
+          <img class="lecturer-avatar" [src]="googlePictureUrl(lecturer.googleUserPicture)" alt="" />
+          } @else {
+          <div class="lecturer-avatar lecturer-avatar-placeholder">
+            <mat-icon aria-hidden="true">person</mat-icon>
+          </div>
           }
-          <div class="lecturer-actions">
-            @if (lecturer.email) {
-            <a mat-stroked-button [href]="lecturerMailto(lecturer.email)">
-              <mat-icon>mail</mat-icon>
-              {{ lecturer.email }}
-            </a>
-            } @if (lecturerWhatsappUrl(lecturer); as whatsappUrl) {
-            <a mat-stroked-button [href]="whatsappUrl" target="_blank" rel="noopener noreferrer">
-              <mat-icon>chat</mat-icon>
-              WhatsApp
-            </a>
-            } @if (lecturerLinkedinUrl(lecturer); as linkedinUrl) {
-            <a
-              class="linkedin-action"
-              mat-stroked-button
-              [href]="linkedinUrl"
-              target="_blank"
-              rel="noopener noreferrer">
-              <mat-icon>link</mat-icon>
-              <span class="linkedin-link-label">{{ linkedinUrl }}</span>
-            </a>
+          <div class="lecturer-copy">
+            <h3>{{ lecturer.displayName }}</h3>
+            @if (lecturer.biography) {
+            <p>{{ lecturer.biography }}</p>
             }
+            <div class="lecturer-actions">
+              @if (lecturer.email) {
+              <a mat-stroked-button [href]="lecturerMailto(lecturer.email)">
+                <mat-icon>mail</mat-icon>
+                {{ lecturer.email }}
+              </a>
+              } @if (lecturerWhatsappUrl(lecturer); as whatsappUrl) {
+              <a mat-stroked-button [href]="whatsappUrl" target="_blank" rel="noopener noreferrer">
+                <mat-icon>chat</mat-icon>
+                WhatsApp
+              </a>
+              } @if (lecturerLinkedinUrl(lecturer); as linkedinUrl) {
+              <a
+                class="linkedin-action"
+                mat-stroked-button
+                [href]="linkedinUrl"
+                target="_blank"
+                rel="noopener noreferrer">
+                <mat-icon>link</mat-icon>
+                <span class="linkedin-link-label">{{ linkedinUrl }}</span>
+              </a>
+              }
+            </div>
+          </div>
+        </article>
+        }
+      </div>
+    </section>
+    } @if (event.twitchChannel || event.youtubeCode) {
+    <section class="detail-section">
+      <h2>Transmissão</h2>
+      @if (event.twitchChannel) {
+      <lib-livestream-embed provider="TWITCH" [value]="event.twitchChannel" title="Transmissão do evento na Twitch" />
+      } @if (event.youtubeCode) {
+      <lib-livestream-embed provider="YOUTUBE" [value]="event.youtubeCode" title="Transmissão do evento no YouTube" />
+      }
+    </section>
+    } @let hasCoordinates = (event.latitude ?? null) !== null && (event.longitude ?? null) !== null; @let hasLocation =
+    !!event.locationDescription || hasCoordinates; @if (hasLocation || data.weather) {
+    <div class="location-weather-grid" [class.two-columns]="hasLocation && !!data.weather">
+      @if (hasLocation) {
+      <section class="detail-section">
+        <h2>Localização</h2>
+        @if (event.locationDescription) {
+        <p class="location-line">
+          <mat-icon aria-hidden="true">place</mat-icon>
+          {{ event.isVirtual ? 'Evento on-line' : (event.locationName || event.locationDescription) }} @if
+          (!event.isVirtual && event.locationName && event.locationDetails && event.locationDetails !==
+          event.locationName) {
+          <span>{{ event.locationDetails }}</span>
+          }
+        </p>
+        } @if (hasCoordinates) { @defer (on viewport) {
+        <app-event-location-map
+          [latitude]="event.latitude ?? null"
+          [longitude]="event.longitude ?? null"
+          [title]="event.name" />
+        } @placeholder {
+        <div>
+          <mat-icon aria-hidden="true">place</mat-icon>
+          Carregando mapa...
+        </div>
+        } }
+      </section>
+      } @if (data.weather; as weather) {
+      <div class="detail-section weather-section">
+        <h2>Clima</h2>
+        <div class="weather-summary">
+          <mat-icon aria-hidden="true">{{ weather.materialIcon }}</mat-icon>
+          <div>
+            <p class="weather-temperature">{{ weather.temperature }} °C</p>
+            <p class="weather-text">{{ weather.summary }}</p>
           </div>
         </div>
-      </article>
+        <p class="weather-attribution">{{ weather.attribution }}</p>
+      </div>
       }
     </div>
-  </section>
-  } @if (event.twitchChannel || event.youtubeCode) {
-  <section class="detail-section">
-    <h2>Transmissão</h2>
-    @if (event.twitchChannel) {
-    <lib-livestream-embed provider="TWITCH" [value]="event.twitchChannel" title="Transmissão do evento na Twitch" />
-    } @if (event.youtubeCode) {
-    <lib-livestream-embed provider="YOUTUBE" [value]="event.youtubeCode" title="Transmissão do evento no YouTube" />
     }
-  </section>
-  } @if (event.locationDescription || (event.latitude !== null && event.longitude !== null)) {
-  <section class="detail-section">
-    <h2>Localização</h2>
-    @if (event.locationDescription) {
-    <p class="location-line">
-      <mat-icon aria-hidden="true">place</mat-icon>
-      {{ event.isVirtual ? 'Evento on-line' : (event.locationName || event.locationDescription) }} @if (!event.isVirtual
-      && event.locationName && event.locationDetails && event.locationDetails !== event.locationName) {
-      <span>{{ event.locationDetails }}</span>
-      }
-    </p>
-    } @if (event.latitude !== null && event.longitude !== null) { @defer (on viewport) {
-    <app-event-location-map
-      [latitude]="event.latitude || null"
-      [longitude]="event.longitude || null"
-      [title]="event.name" />
-    } @placeholder {
-    <div>
-      <mat-icon aria-hidden="true">place</mat-icon>
-      Carregando mapa...
-    </div>
-    } }
-  </section>
-  } } }
+    <section class="reference-information">
+      <div class="detail-section">
+        <h2>Informações</h2>
+        <mat-list>
+          <mat-list-item>
+            <mat-icon matListItemIcon>event</mat-icon>
+            <div matListItemTitle>Início</div>
+            <div matListItemLine>{{ event.startDate | date: 'fullDate' }}</div>
+            <div matListItemLine>{{ event.startDate | date: 'HH:mm' }}</div>
+          </mat-list-item>
+          <mat-list-item>
+            <mat-icon matListItemIcon></mat-icon>
+            <div matListItemTitle>Encerramento</div>
+            <div matListItemLine>{{ event.endDate | date: 'fullDate' }}</div>
+            <div matListItemLine>{{ event.endDate | date: 'HH:mm' }}</div>
+          </mat-list-item>
+          @if (creditLine(event); as credit) {
+          <mat-list-item>
+            <mat-icon matListItemIcon>schedule</mat-icon>
+            <div matListItemTitle>Carga horária</div>
+            <div matListItemLine>{{ credit }}</div>
+          </mat-list-item>
+          }
+        </mat-list>
+      </div>
+    </section>
+  </ng-template>
+
+  <app-event-detail-tabs
+    [contextKey]="event.id"
+    [hasSubscription]="hasSubscription"
+    [subscriptionContent]="subscriptionContent"
+    [generalContent]="generalContent" />
+  } }
 </main>

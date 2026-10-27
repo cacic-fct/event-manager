@@ -9,6 +9,8 @@ import { BehaviorSubject, of, throwError } from 'rxjs';
 import { MajorEventSubscriptionApiService } from '../registration/subscription-api.service';
 import { MajorEventInfoApiService } from './major-event-info-api.service';
 import { MajorEventInfoPage } from './major-event-info-page';
+import { MoreInfo } from '../../profile/attendance/more-info/more-info';
+import { ParticipationWorkspaceStub } from '../../testing/participation-workspace.stub';
 
 const majorEvent = createPublicMajorEvent({ hasEvents: true, regularSubscriptionOpen: true });
 
@@ -19,7 +21,9 @@ describe('MajorEventInfoPage', () => {
   const navigate = vi.fn();
   const getMajorEvent = vi.fn(() => of(majorEvent));
   const getProgram = vi.fn(() => of([createPublicEvent()]));
-  const getCurrentUserSubscription = vi.fn(() => of(null));
+  const getCurrentUserSubscription = vi.fn<MajorEventSubscriptionApiService['getCurrentUserSubscription']>(() =>
+    of(null),
+  );
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -27,12 +31,17 @@ describe('MajorEventInfoPage', () => {
     params.next(convertToParamMap({ majorEventId: majorEvent.id }));
     getMajorEvent.mockReturnValue(of(majorEvent));
     getProgram.mockReturnValue(of([createPublicEvent()]));
+    getCurrentUserSubscription.mockReturnValue(of(null));
+    TestBed.overrideComponent(MajorEventInfoPage, {
+      remove: { imports: [MoreInfo] },
+      add: { imports: [ParticipationWorkspaceStub] },
+    });
     TestBed.configureTestingModule({
       imports: [MajorEventInfoPage],
       providers: [
         provideRouter([]),
         provideHttpClient(),
-        { provide: ActivatedRoute, useValue: { paramMap: params } },
+        { provide: ActivatedRoute, useValue: { paramMap: params, queryParamMap: of(convertToParamMap({})) } },
         { provide: AuthService, useValue: { isAuthenticated: authenticated, login } },
         { provide: RouteErrorService, useValue: { navigate } },
         { provide: MajorEventInfoApiService, useValue: { getMajorEvent, getProgram } },
@@ -70,6 +79,42 @@ describe('MajorEventInfoPage', () => {
     expect(getProgram).toHaveBeenLastCalledWith(majorEvent.id, 100);
     expect(page.programError()).toBe(false);
     expect(page.programHasMore()).toBe(false);
+  });
+
+  it.each([
+    ['CONFIRMED', true],
+    ['WAITING_RECEIPT_UPLOAD', true],
+    ['RECEIPT_UNDER_REVIEW', true],
+    ['REJECTED_INVALID_RECEIPT', true],
+    ['CANCELED', false],
+  ])('uses the actual subscription status %s for subscription-tab visibility', async (status, visible) => {
+    authenticated.set(true);
+    getCurrentUserSubscription.mockReturnValue(
+      of({
+        id: 'subscription',
+        majorEventId: majorEvent.id,
+        majorEvent,
+        subscriptionStatus: status as string,
+        selectedEvents: [],
+        notSubscribedEvents: [],
+      }),
+    );
+    const fixture = TestBed.createComponent(MajorEventInfoPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.hasSubscription()).toBe(visible);
+    expect((fixture.nativeElement as HTMLElement).querySelectorAll('mat-tab-group')).toHaveLength(visible ? 1 : 0);
+  });
+
+  it('shows one general view to a signed-in person without a subscription', async () => {
+    authenticated.set(true);
+    const fixture = TestBed.createComponent(MajorEventInfoPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.hasSubscription()).toBe(false);
+    expect((fixture.nativeElement as HTMLElement).querySelector('mat-tab-group')).toBeNull();
   });
 
   it('loads subscription state when authentication arrives after the public page', () => {

@@ -97,6 +97,11 @@ export const appRoutes: Route[] = [
     title: 'Pré-Visualização',
   },
   {
+    path: 'event-group/:eventGroupId',
+    loadComponent: () => import('./events/group/event-group-info-page').then((m) => m.EventGroupInfoPage),
+    title: 'Grupo de eventos',
+  },
+  {
     path: 'event/:eventId',
     loadComponent: () => import('./events/detail/event-page').then((m) => m.Event),
     title: 'Evento',

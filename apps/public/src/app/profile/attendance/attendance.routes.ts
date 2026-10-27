@@ -12,8 +12,4 @@ export const routes: Route[] = [
     canDeactivate: [(component: { canDeactivate(): Promise<boolean> }) => component.canDeactivate()],
     loadComponent: () => import('./organizer-info/organizer-info').then((m) => m.OrganizerInfoComponent),
   },
-  {
-    path: ':eventType/:eventId',
-    loadComponent: () => import('./more-info/more-info').then((m) => m.MoreInfo),
-  },
 ];

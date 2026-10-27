@@ -25,8 +25,10 @@ describe('EventApiService uncovered operations', () => {
     const events = [createPublicEvent({ id: 'event-1', name: 'Atividade' })];
 
     expect(request.request.body.query).toContain('query PublicEventGroupEvents');
-    expect(request.request.body.query).toContain('publicEvents(eventGroupId: $eventGroupId, take: 100)');
-    expect(request.request.body.variables).toEqual({ eventGroupId: 'group / 1' });
+    expect(request.request.body.query).toContain(
+      'publicEvents(eventGroupId: $eventGroupId, skip: $skip, take: 100, oldestFirst: true)',
+    );
+    expect(request.request.body.variables).toEqual({ eventGroupId: 'group / 1', skip: 0 });
     request.flush({ data: { publicEvents: events } });
 
     await expect(result).resolves.toEqual(events);

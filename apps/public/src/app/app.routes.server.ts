@@ -63,6 +63,10 @@ const routes: ServerRoute[] = [
     renderMode: RenderMode.Client,
   },
   {
+    path: 'event-group/:eventGroupId',
+    renderMode: RenderMode.Client,
+  },
+  {
     path: 'event/:eventId',
     renderMode: RenderMode.Server,
   },
@@ -108,10 +112,6 @@ const routes: ServerRoute[] = [
   },
   {
     path: 'profile/attendances/:eventType/:eventId/organizer',
-    renderMode: RenderMode.Client,
-  },
-  {
-    path: 'profile/attendances/:eventType/:eventId',
     renderMode: RenderMode.Client,
   },
   {

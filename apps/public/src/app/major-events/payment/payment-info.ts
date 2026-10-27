@@ -290,7 +290,7 @@ export class PaymentInfo {
   }
 
   backRoute(): string[] {
-    return ['/profile/attendances/major-event', this.majorEventId];
+    return ['/major-event', this.majorEventId];
   }
 
   canUpload(): boolean {

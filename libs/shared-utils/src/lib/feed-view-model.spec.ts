@@ -69,7 +69,7 @@ describe('feed view model', () => {
 
     expect(getSubscribedItemEmoji(item)).toBe('📌');
     expect(getSubscribedItemTitle(item)).toBe('Evento event-1');
-    expect(getSubscribedItemDateLine(item)).toBe('26/06/2026, 09:00-10:00');
+    expect(getSubscribedItemDateLine(item)).toBe('26/06/2026, das 09:00 às 10:00');
     expect(getSubscribedItemStatusLine(item, [{ eventId: 'event-1', attendedAt: '2026-06-26T09:30:00' }])).toBe(
       'Presença registrada',
     );
@@ -92,7 +92,7 @@ describe('feed view model', () => {
 
     expect(getSubscribedItemEmoji(item)).toBe('📁');
     expect(getSubscribedItemTitle(item)).toBe('Grupo');
-    expect(getSubscribedItemDateLine(item)).toBe('26/06/2026, 09:00 - 27/06/2026, 15:00');
+    expect(getSubscribedItemDateLine(item)).toBe('De 26/06/2026 às 09:00 a 27/06/2026 às 15:00');
     expect(getSubscribedItemStatusLine(item, [{ eventId: 'first', attendedAt: '2026-06-26T09:30:00' }])).toBe(
       'Presença registrada em 1 de 2 eventos, Palestrante',
     );
@@ -113,7 +113,7 @@ describe('feed view model', () => {
       },
     };
 
-    expect(getSubscribedItemDateLine(item)).toBe('26/06/2026, 09:00');
+    expect(getSubscribedItemDateLine(item)).toBe('26/06/2026 às 09:00');
     expect(getSubscribedItemStatusLine(item, [])).toBe('Certificado emitido');
   });
 

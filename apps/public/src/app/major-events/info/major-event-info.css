@@ -18,21 +18,6 @@
   gap: 24px;
 }
 
-.event-heading {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-}
-
-.event-identity {
-  --twemoji-size: 48px;
-  margin-top: 4px;
-}
-
-.heading-copy {
-  min-width: 0;
-}
-
 h1,
 h2,
 h3,
@@ -72,7 +57,7 @@ h2 {
   margin-top: 8px;
 }
 
-.participation mat-card-content {
+.registration-content {
   padding: 20px;
 }
 
@@ -264,14 +249,6 @@ h2 {
 }
 
 @media (max-width: 599px) {
-  .event-heading {
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .event-identity {
-    margin-top: 0;
-  }
 }
 
 @media (min-width: 800px) {
@@ -292,5 +269,65 @@ h2 {
 
   .description {
     grid-column: 1;
+  }
+}
+
+.event-heading {
+  display: block;
+}
+.description {
+  margin-top: 28px;
+}
+.participation {
+  min-width: 0;
+}
+.overview {
+  margin-bottom: 28px;
+}
+@media (min-width: 800px) {
+  .participation {
+    grid-row: 1;
+  }
+}
+
+.participant-content {
+  min-width: 0;
+}
+.participant-content:empty {
+  display: none;
+}
+@media (min-width: 800px) {
+  .event-heading {
+    grid-column: 1 / -1;
+  }
+  .participant-content {
+    grid-column: 1 / -1;
+  }
+  .participation {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+}
+
+.registration-copy,
+.registration-controls {
+  min-width: 0;
+}
+@media (min-width: 800px) {
+  .registration-content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 16px 32px;
+    align-items: start;
+  }
+  .registration-controls .participation-actions {
+    margin-top: 0;
+  }
+  .related-links {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 0;
   }
 }

@@ -1,52 +1,63 @@
 <main class="info-page">
   <nav class="back-navigation" aria-label="Navegação do evento">
-    <a mat-button routerLink="/major-event">
+    <a mat-button [routerLink]="backUrl()">
       <mat-icon aria-hidden="true">arrow_back</mat-icon>
-      Grandes eventos
+      {{ backUrl() === '/profile/attendances' ? 'Minhas participações' : 'Grandes eventos' }}
     </a>
   </nav>
 
   @let event = majorEvent(); @let participation = registration();
   <div class="overview">
-    <header class="event-heading">
-      <lib-twemoji class="event-identity" [emoji]="event.emoji" aria-hidden="true" />
-      <div class="heading-copy">
-        <h1>{{ event.name }}</h1>
-        <p class="event-date">
-          <mat-icon aria-hidden="true">calendar_month</mat-icon>
-          <span>{{ dateLabel() }}</span>
-        </p>
-        @if (paymentLabel(); as label) {
-        <p class="event-price">
-          <mat-icon aria-hidden="true">{{ event.isPaymentRequired ? 'payments' : 'volunteer_activism' }}</mat-icon>
-          <span>{{ label }}</span>
-        </p>
-        }
-      </div>
-    </header>
+    <app-event-detail-heading class="event-heading" [title]="event.name" [emoji]="event.emoji">
+      <p class="event-date">
+        <mat-icon aria-hidden="true">calendar_month</mat-icon>
+        <span>{{ dateLabel() }}</span>
+      </p>
+      @if (paymentLabel(); as label) {
+      <p class="event-price">
+        <mat-icon aria-hidden="true">{{ event.isPaymentRequired ? 'payments' : 'volunteer_activism' }}</mat-icon>
+        <span>{{ label }}</span>
+      </p>
+      }
+    </app-event-detail-heading>
+  </div>
 
-    <aside class="participation" aria-labelledby="participation-heading">
-      <mat-card appearance="outlined">
-        <mat-card-content>
-          <h2 id="participation-heading">{{ participation.title }}</h2>
-          @if (participation.description) {
-          <p class="participation-description">{{ participation.description }}</p>
-          } @if (subscriptionPeriod(); as period) {
-          <dl class="participation-facts">
-            <dt>Período de inscrições</dt>
-            <dd>{{ period }}</dd>
-          </dl>
-          } @if (participation.action; as action) {
-          <div class="participation-actions">
-            @if (action.login) {
-            <button mat-flat-button type="button" (click)="loginRequested.emit()">{{ action.label }}</button>
-            } @else if (action.route) {
-            <a mat-flat-button [routerLink]="action.route">{{ action.label }}</a>
+  <ng-template #subscriptionContent>
+    <ng-content select="[participationWorkspace]" />
+  </ng-template>
+
+  <ng-template #generalContent>
+    @if (!hasSubscription()) {
+    <ng-container [ngTemplateOutlet]="subscriptionContent" />
+    }
+    <aside class="participation">
+      <ng-template #registrationDetails>
+        <div class="registration-content">
+          <div class="registration-copy">
+            <h2 id="participation-heading">{{ hasSubscription() ? 'Inscrição e contato' : participation.title }}</h2>
+            @if (participation.description) {
+            <p class="participation-description">{{ participation.description }}</p>
+            } @if (subscriptionPeriod(); as period) {
+            <dl class="participation-facts">
+              <dt>Período de inscrições</dt>
+              <dd>{{ period }}</dd>
+            </dl>
             }
           </div>
-          } @if (participation.secondaryAction; as action) {
-          <a class="secondary-action" mat-stroked-button [routerLink]="action.route">{{ action.label }}</a>
-          } @if (links().length) {
+          <div class="registration-controls">
+            @if (participation.action; as action) {
+            <div class="participation-actions">
+              @if (action.login) {
+              <button mat-flat-button type="button" (click)="loginRequested.emit()">{{ action.label }}</button>
+              } @else if (action.route) {
+              <a [matButton]="hasParticipation() ? 'text' : 'filled'" [routerLink]="action.route">{{ action.label }}</a>
+              }
+            </div>
+            } @if (participation.secondaryAction; as action) {
+            <a class="secondary-action" mat-stroked-button [routerLink]="action.route">{{ action.label }}</a>
+            }
+          </div>
+          @if (links().length) {
           <ul class="related-links" aria-label="Outras informações">
             @for (link of links(); track $index) {
             <li>
@@ -72,8 +83,15 @@
             <dd>{{ contact }}</dd>
           </dl>
           }
-        </mat-card-content>
+        </div>
+      </ng-template>
+      @if (hasSubscription()) {
+      <ng-container [ngTemplateOutlet]="registrationDetails" />
+      } @else {
+      <mat-card appearance="outlined">
+        <ng-container [ngTemplateOutlet]="registrationDetails" />
       </mat-card>
+      }
     </aside>
 
     @if (event.description?.trim()) {
@@ -82,89 +100,94 @@
       <lib-markdown [content]="event.description" />
     </section>
     }
-  </div>
+    <section class="program" aria-labelledby="program-heading" [attr.aria-busy]="programLoading()">
+      <div class="program-heading">
+        <h2 id="program-heading">Programação</h2>
+        <p>Conheça as atividades e veja os detalhes de cada uma.</p>
+      </div>
 
-  <section class="program" aria-labelledby="program-heading" [attr.aria-busy]="programLoading()">
-    <div class="program-heading">
-      <h2 id="program-heading">Programação</h2>
-      <p>Conheça as atividades e veja os detalhes de cada uma.</p>
-    </div>
-
-    @if (programDays().length) {
-    <div class="day-navigation" #dayNavigation>
-      <mat-button-toggle-group
-        class="day-options"
-        aria-label="Dia da programação"
-        [hideSingleSelectionIndicator]="true"
-        [value]="selectedDay()"
-        (change)="selectedDay.set($event.value)">
-        <mat-button-toggle value="" aria-label="Todos os dias">
-          <span class="day-option-label all-days">
-            <mat-icon aria-hidden="true">date_range</mat-icon>
-            <strong>Todos os dias</strong>
-          </span>
-        </mat-button-toggle>
-        @for (day of programDays(); track day.id) {
-        <mat-button-toggle [value]="day.id" [aria-label]="day.weekday + ' ' + day.shortDate">
-          <span class="day-option-label">
-            <span>{{ day.weekday }}</span>
-            <strong>{{ day.shortDate }}</strong>
-          </span>
-        </mat-button-toggle>
+      @if (programDays().length) {
+      <div class="day-navigation" #dayNavigation>
+        <mat-button-toggle-group
+          class="day-options"
+          aria-label="Dia da programação"
+          [hideSingleSelectionIndicator]="true"
+          [value]="selectedDay()"
+          (change)="selectedDay.set($event.value)">
+          <mat-button-toggle value="" aria-label="Todos os dias">
+            <span class="day-option-label all-days">
+              <mat-icon aria-hidden="true">date_range</mat-icon>
+              <strong>Todos os dias</strong>
+            </span>
+          </mat-button-toggle>
+          @for (day of programDays(); track day.id) {
+          <mat-button-toggle [value]="day.id" [aria-label]="day.weekday + ' ' + day.shortDate">
+            <span class="day-option-label">
+              <span>{{ day.weekday }}</span>
+              <strong>{{ day.shortDate }}</strong>
+            </span>
+          </mat-button-toggle>
+          }
+        </mat-button-toggle-group>
+      </div>
+      } @for (day of visibleDays(); track day.id) {
+      <section
+        class="program-day"
+        [attr.aria-labelledby]="selectedDay() ? null : 'day-' + day.id"
+        [attr.aria-label]="selectedDay() ? day.label : null">
+        @if (!selectedDay()) {
+        <app-sticky-date-header
+          [id]="'day-' + day.id"
+          [label]="day.label"
+          [headingLevel]="3"
+          [topOffset]="dayNavigationHeight()" />
         }
-      </mat-button-toggle-group>
-    </div>
-    } @for (day of visibleDays(); track day.id) {
-    <section
-      class="program-day"
-      [attr.aria-labelledby]="selectedDay() ? null : 'day-' + day.id"
-      [attr.aria-label]="selectedDay() ? day.label : null">
-      @if (!selectedDay()) {
-      <app-sticky-date-header
-        [id]="'day-' + day.id"
-        [label]="day.label"
-        [headingLevel]="3"
-        [topOffset]="dayNavigationHeight()" />
+        <ul class="activity-list">
+          @for (activity of day.events; track activity.id) {
+          <li>
+            <app-calendar-event-list-item
+              [event]="activity"
+              [showMajorEventContext]="false"
+              iconPosition="top"
+              [returnUrl]="'/major-event/' + event.id" />
+          </li>
+          }
+        </ul>
+      </section>
+      } @if (programLoading()) {
+      <div class="program-feedback" role="status">
+        <mat-progress-bar mode="indeterminate" aria-label="Carregando programação" />
+        <p>Carregando atividades...</p>
+      </div>
+      } @else if (programError()) {
+      <div class="program-feedback" role="status">
+        <p>Não foi possível carregar {{ events().length ? 'todas as atividades' : 'a programação' }}.</p>
+        <button mat-stroked-button type="button" (click)="retryProgram.emit()">Tentar novamente</button>
+      </div>
+      } @else if (!events().length) {
+      <div class="program-empty">
+        <mat-icon aria-hidden="true">calendar_month</mat-icon>
+        <p>Nenhuma atividade publicada por aqui.</p>
+        @if (event.sportsTournament) {
+        <p>Consulte os jogos e as equipes na página do torneio.</p>
+        } @else {
+        <p>Volte depois para conferir a programação.</p>
+        }
+      </div>
+      } @if (programHasMore() && !programError()) {
+      <div class="load-more">
+        <p>Há mais atividades na programação. Carregue para consultar outros horários e dias.</p>
+        <button mat-stroked-button type="button" [disabled]="programLoading()" (click)="loadMoreProgram.emit()">
+          Carregar mais atividades
+        </button>
+      </div>
       }
-      <ul class="activity-list">
-        @for (activity of day.events; track activity.id) {
-        <li>
-          <app-calendar-event-list-item
-            [event]="activity"
-            [showMajorEventContext]="false"
-            iconPosition="top"
-            [returnUrl]="'/major-event/' + event.id" />
-        </li>
-        }
-      </ul>
     </section>
-    } @if (programLoading()) {
-    <div class="program-feedback" role="status">
-      <mat-progress-bar mode="indeterminate" aria-label="Carregando programação" />
-      <p>Carregando atividades...</p>
-    </div>
-    } @else if (programError()) {
-    <div class="program-feedback" role="status">
-      <p>Não foi possível carregar {{ events().length ? 'todas as atividades' : 'a programação' }}.</p>
-      <button mat-stroked-button type="button" (click)="retryProgram.emit()">Tentar novamente</button>
-    </div>
-    } @else if (!events().length) {
-    <div class="program-empty">
-      <mat-icon aria-hidden="true">calendar_month</mat-icon>
-      <p>Nenhuma atividade publicada por aqui.</p>
-      @if (event.sportsTournament) {
-      <p>Consulte os jogos e as equipes na página do torneio.</p>
-      } @else {
-      <p>Volte depois para conferir a programação.</p>
-      }
-    </div>
-    } @if (programHasMore() && !programError()) {
-    <div class="load-more">
-      <p>Há mais atividades na programação. Carregue para consultar outros horários e dias.</p>
-      <button mat-stroked-button type="button" [disabled]="programLoading()" (click)="loadMoreProgram.emit()">
-        Carregar mais atividades
-      </button>
-    </div>
-    }
-  </section>
+  </ng-template>
+
+  <app-event-detail-tabs
+    [contextKey]="event.id"
+    [hasSubscription]="hasSubscription()"
+    [subscriptionContent]="subscriptionContent"
+    [generalContent]="generalContent" />
 </main>

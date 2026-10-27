@@ -424,7 +424,7 @@ describe('NovuNotificationsService', () => {
       isPositive: true,
       isNegative: false,
       actionLabel: 'Ver inscrição',
-      actionUrl: '/profile/attendances/major-event/major-event-1',
+      actionUrl: '/major-event/major-event-1',
     },
     {
       nextStatus: SubscriptionStatus.CANCELED,
@@ -432,7 +432,7 @@ describe('NovuNotificationsService', () => {
       isPositive: false,
       isNegative: true,
       actionLabel: 'Ver inscrição',
-      actionUrl: '/profile/attendances/major-event/major-event-1',
+      actionUrl: '/major-event/major-event-1',
     },
     {
       nextStatus: SubscriptionStatus.REJECTED_INVALID_RECEIPT,
@@ -464,7 +464,7 @@ describe('NovuNotificationsService', () => {
       isPositive: false,
       isNegative: true,
       actionLabel: 'Ver inscrição',
-      actionUrl: '/profile/attendances/major-event/major-event-1',
+      actionUrl: '/major-event/major-event-1',
     },
   ])('sends the expected status metadata for $nextStatus', async (testCase) => {
     const { nextStatus, statusLabel, isPositive, isNegative, actionLabel, actionUrl } = testCase;
@@ -777,9 +777,7 @@ describe('NovuNotificationsService', () => {
     const request = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(request.name).toBe('event-subscriber-information');
     expect(request.transactionId).toBe(`event-information:event-1:${revision}:user-1`);
-    expect(request.payload.actionUrl).toBe(
-      `/profile/attendances/event/event-1?informationRevision=${encodeURIComponent(revision)}`,
-    );
+    expect(request.payload.actionUrl).toBe(`/event/event-1?informationRevision=${encodeURIComponent(revision)}`);
     expect(request.payload).not.toHaveProperty('content');
   });
 });

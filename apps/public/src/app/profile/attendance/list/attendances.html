@@ -157,12 +157,16 @@
           [emojiUrl]="emoji.getTwemojiUrl(item.emoji)"
           [typeLabel]="item.typeLabel"
           [warnings]="item.warnings"
-          [certificates]="certificatesFor(item.route[1], item.route[2])"
+          [certificates]="certificatesFor(item.targetType, item.targetId)"
           [selectedIds]="selectedCertificateIds()"
           [disabled]="isDownloadingCertificates()"
           (selectionChange)="changeCertificateSelection($event)" />
         } } @else {
-        <a class="participation-item" role="link" [routerLink]="item.route">
+        <a
+          class="participation-item"
+          role="link"
+          [routerLink]="item.route"
+          [queryParams]="{ returnUrl: '/profile/attendances' }">
           <div class="emoji-frame">
             <img class="twemoji" [src]="emoji.getTwemojiUrl(item.emoji)" alt="" />
           </div>

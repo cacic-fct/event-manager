@@ -1,0 +1,78 @@
+<main class="group-page">
+  <nav class="back-navigation" aria-label="Navegação do grupo de eventos">
+    <a mat-button [routerLink]="backUrl()">
+      <mat-icon aria-hidden="true">arrow_back</mat-icon>
+      {{ backUrl() === '/profile/attendances' ? 'Minhas participações' : 'Calendário' }}
+    </a>
+  </nav>
+
+  <app-event-detail-heading [title]="group().name" [emoji]="group().emoji">
+    <p class="type-label">Grupo de eventos</p>
+    @if (dateLabel(); as dates) {
+    <p class="metadata"><mat-icon aria-hidden="true">calendar_month</mat-icon><span>{{ dates }}</span></p>
+    } @if (workloadLabel(); as workload) {
+    <p class="metadata">
+      <mat-icon aria-hidden="true">schedule</mat-icon><span>Carga horária total: {{ workload }}</span>
+    </p>
+    }
+  </app-event-detail-heading>
+
+  <div class="participation-workspace">
+    <ng-content select="[participationWorkspace]" />
+  </div>
+
+  @if (!hasParticipation()) {
+  <section class="registration" aria-labelledby="group-registration-heading">
+    <div>
+      <h2 id="group-registration-heading">Participe do grupo</h2>
+      <p>Consulte os eventos para conhecer os horários, os locais e as opções de inscrição.</p>
+      @if (!isAuthenticated()) {
+      <p>Entre na sua conta durante a inscrição para acompanhar sua participação.</p>
+      }
+    </div>
+    @if (registrationRoute(); as route) {
+    <a mat-flat-button [routerLink]="route" [queryParams]="{ returnUrl: returnUrl() }"> Ver opções de inscrição </a>
+    }
+  </section>
+  }
+
+  <section class="program" aria-labelledby="group-program-heading" [attr.aria-busy]="loading()">
+    <h2 id="group-program-heading">Eventos do grupo</h2>
+    @if (loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Carregando eventos do grupo" />
+    } @for (day of programDays(); track day.id) {
+    <section class="program-day" [attr.aria-labelledby]="'group-day-' + day.id">
+      <app-sticky-date-header [id]="'group-day-' + day.id" [label]="day.label" [headingLevel]="3" [topOffset]="0" />
+      <ul class="activity-list">
+        @for (event of day.events; track event.id) {
+        <li>
+          <app-calendar-event-list-item
+            [event]="event"
+            [returnUrl]="returnUrl()"
+            [showEventGroupContext]="false"
+            [participationStatus]="participationStatuses()[event.id] ?? null" />
+        </li>
+        }
+      </ul>
+    </section>
+    } @if (error()) {
+    <div class="feedback" role="status">
+      <p>Não foi possível carregar os eventos do grupo.</p>
+      <button mat-stroked-button type="button" (click)="retry.emit()">Tentar novamente</button>
+    </div>
+    } @else if (!loading() && !events().length) {
+    <p class="feedback">Nenhum evento publicado neste grupo.</p>
+    }
+  </section>
+
+  @if (certificateRules().length) {
+  <section class="certificate-rules" aria-labelledby="group-certificates-heading">
+    <h2 id="group-certificates-heading">Certificados</h2>
+    <ul>
+      @for (rule of certificateRules(); track rule) {
+      <li>{{ rule }}</li>
+      }
+    </ul>
+  </section>
+  }
+</main>

@@ -21,13 +21,13 @@ import { CurrentUserInterestState, InterestApiService } from './interest-api.ser
         mat-stroked-button
         type="button"
         [attr.aria-pressed]="interested()"
-        [attr.aria-label]="'Quero ir: ' + targetName()"
+        [attr.aria-label]="actionLabel() + ': ' + targetName()"
         [attr.aria-busy]="loading() || saving()"
         [attr.aria-disabled]="saving()"
         [disabled]="blocked()"
         (click)="toggle()">
         <mat-icon aria-hidden="true">{{ interested() ? 'check' : 'favorite_border' }}</mat-icon>
-        {{ loading() ? 'Carregando interesse...' : saving() ? 'Salvando...' : 'Quero ir' }}
+        {{ actionLabel() }}
       </button>
       @if (!isOnline()) {
         <p class="interest-hint">Conecte-se à internet para alterar seu interesse.</p>
@@ -76,6 +76,9 @@ export class InterestToggle {
   readonly loading = signal(false);
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
+  readonly actionLabel = computed(() =>
+    this.loading() ? 'Carregando interesse...' : this.saving() ? 'Salvando...' : 'Quero ir',
+  );
   readonly loadFailed = signal(false);
   private readonly serverSubscribed = signal(false);
   private readonly serverEndsAt = signal<string | null>(null);

@@ -16,10 +16,18 @@ export function formatDateRange(startDate: string, endDate: string): string {
   const end = parseISO(endDate);
 
   if (isSameDay(start, end)) {
-    return `${formatDay(startDate)}, ${formatTime(startDate)}-${formatTime(endDate)}`;
+    return `${formatDay(startDate)}, das ${formatTime(startDate)} às ${formatTime(endDate)}`;
   }
 
-  return `${formatDateTime(startDate)} - ${formatDateTime(endDate)}`;
+  return `De ${formatDateTime(startDate)} a ${formatDateTime(endDate)}`;
+}
+
+export function formatTimeRange(startDate: string, endDate: string): string {
+  if (isSameDay(parseISO(startDate), parseISO(endDate))) {
+    return `Das ${formatTime(startDate)} às ${formatTime(endDate)}`;
+  }
+
+  return `De ${formatDateTime(startDate)} a ${formatDateTime(endDate)}`;
 }
 
 export function formatEventsDateRange(events: PublicEvent[]): string {
@@ -34,7 +42,7 @@ export function formatEventsDateRange(events: PublicEvent[]): string {
 }
 
 export function formatDateTime(date: string): string {
-  return format(parseISO(date), 'dd/MM/yyyy, HH:mm', { locale: ptBR });
+  return format(parseISO(date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
 }
 
 export function formatDay(date: string): string {
@@ -167,7 +175,7 @@ export function getAttendanceByEventId(
 }
 
 export function getEventAttendanceStatusLabel(attendance: CurrentUserEventAttendance | null | undefined): string {
-  return attendance ? `Presença registrada às ${formatDateTime(attendance.attendedAt)}` : 'Sem presença registrada';
+  return attendance ? `Presença registrada em ${formatDateTime(attendance.attendedAt)}` : 'Sem presença registrada';
 }
 
 export function formatStatusLine(labels: Array<string | undefined>): string {

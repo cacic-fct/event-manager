@@ -1,4 +1,5 @@
-import { isPlatformBrowser } from '@angular/common';
+import { EventDetailTabs } from '../../shared/event-detail-tabs';
+import { isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
 import {
   afterRenderEffect,
   Component,
@@ -18,12 +19,13 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MarkdownComponent, TwemojiComponent } from '@cacic-fct/shared-angular';
+import { MarkdownComponent } from '@cacic-fct/shared-angular';
 import type { PublicEvent, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
-import { compareIsoDateAsc, formatDateRange, formatDateTime } from '@cacic-fct/shared-utils';
-import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale/pt-BR';
+import { formatDateRange, formatDateTime } from '@cacic-fct/shared-utils';
+import { format } from 'date-fns';
+import { eventProgramDays } from '../../shared/event-program-days';
 import { CalendarEventListItem } from '../../calendar/event-list/event-list-item';
+import { EventDetailHeading } from '../../shared/event-detail-heading';
 import { StickyDateHeader } from '../../shared/sticky-date-header';
 
 export interface MajorEventInfoRegistration {
@@ -40,25 +42,19 @@ export interface MajorEventInfoLink {
   href?: string;
 }
 
-interface ProgramDay {
-  id: string;
-  label: string;
-  weekday: string;
-  shortDate: string;
-  events: PublicEvent[];
-}
-
 @Component({
   selector: 'app-major-event-info',
   imports: [
     RouterLink,
+    NgTemplateOutlet,
+    EventDetailTabs,
     MatButtonModule,
     MatButtonToggleModule,
     MatCardModule,
     MatIconModule,
     MatProgressBarModule,
     MarkdownComponent,
-    TwemojiComponent,
+    EventDetailHeading,
     CalendarEventListItem,
     StickyDateHeader,
   ],
@@ -68,6 +64,9 @@ interface ProgramDay {
 export class MajorEventInfo {
   readonly majorEvent = input.required<PublicMajorEvent>();
   readonly events = input<PublicEvent[]>([]);
+  readonly hasParticipation = input(false);
+  readonly hasSubscription = input(false);
+  readonly backUrl = input('/major-event');
   readonly registration = input.required<MajorEventInfoRegistration>();
   readonly links = input<MajorEventInfoLink[]>([]);
   readonly programLoading = input(false);
@@ -132,27 +131,7 @@ export class MajorEventInfo {
     return hasContactLink ? null : this.majorEvent().contactInfo?.trim() || null;
   });
 
-  protected readonly programDays = computed(() => {
-    const days = new Map<string, ProgramDay>();
-    const events = [...this.events()].sort((left, right) => compareIsoDateAsc(left.startDate, right.startDate));
-    for (const event of events) {
-      const start = parseISO(event.startDate);
-      const id = format(start, 'yyyy-MM-dd');
-      let day = days.get(id);
-      if (!day) {
-        day = {
-          id,
-          label: format(start, "EEEE, d 'de' MMMM", { locale: ptBR }),
-          weekday: format(start, 'EEE', { locale: ptBR }).replace('.', ''),
-          shortDate: format(start, 'dd/MM'),
-          events: [],
-        };
-        days.set(id, day);
-      }
-      day.events.push(event);
-    }
-    return [...days.values()];
-  });
+  protected readonly programDays = computed(() => eventProgramDays(this.events()));
 
   private readonly daySelectionSource = computed(() => ({
     days: this.programDays(),

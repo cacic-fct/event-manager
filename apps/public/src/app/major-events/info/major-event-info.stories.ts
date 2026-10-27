@@ -248,7 +248,7 @@ export const LongContent: Story = {
       ...event,
       name: `${event.name}: experiências compartilhadas por estudantes, pesquisadores e comunidade`,
       locationDescription:
-        'Centro de estudos e atividades interdisciplinares — sala de apresentações do bloco principal',
+        'Centro de estudos e atividades interdisciplinares, sala de apresentações do bloco principal',
     })),
   },
 };

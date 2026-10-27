@@ -31,7 +31,7 @@
         <span class="metadata-item">{{ line }}</span>
         } @if (entry.expiresAt) {
         <span class="metadata-item">
-          {{ entry.expiresLabel ?? 'Válido até' }} {{ entry.expiresAt | date: 'dd/MM/yyyy HH:mm' }}
+          {{ entry.expiresLabel ?? 'Válido até' }} {{ entry.expiresAt | date: "dd/MM/yyyy 'às' HH:mm" }}
         </span>
         }
       </div>
@@ -39,7 +39,7 @@
       <div class="time-range">
         <span class="time-content">
           <mat-icon aria-hidden="true">schedule</mat-icon>
-          <span>{{ entry.startDate | date: 'HH:mm' }} – {{ entry.endDate | date: endTimeFormat() }}</span>
+          <span>{{ timeRangeLabel() }}</span>
         </span>
       </div>
       @if (entry.locationDescription) {
@@ -75,7 +75,7 @@
         <span class="metadata-item">{{ line }}</span>
         } @if (entry.expiresAt) {
         <span class="metadata-item">
-          {{ entry.expiresLabel ?? 'Válido até' }} {{ entry.expiresAt | date: 'dd/MM/yyyy HH:mm' }}
+          {{ entry.expiresLabel ?? 'Válido até' }} {{ entry.expiresAt | date: "dd/MM/yyyy 'às' HH:mm" }}
         </span>
         }
       </div>
@@ -83,7 +83,7 @@
       <div class="time-range">
         <span class="time-content">
           <mat-icon aria-hidden="true">schedule</mat-icon>
-          <span>{{ entry.startDate | date: 'HH:mm' }} – {{ entry.endDate | date: endTimeFormat() }}</span>
+          <span>{{ timeRangeLabel() }}</span>
         </span>
       </div>
       @if (entry.locationDescription) {

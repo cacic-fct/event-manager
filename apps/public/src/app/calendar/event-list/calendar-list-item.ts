@@ -3,9 +3,8 @@ import { Component, computed, inject, input } from '@angular/core';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
-import { getEventTypeLabel } from '@cacic-fct/shared-utils';
+import { formatTimeRange, getEventTypeLabel } from '@cacic-fct/shared-utils';
 import { EmojiService } from '../../shared/emoji.service';
-import { isSameDay } from 'date-fns';
 
 export interface CalendarListItemData {
   id: string;
@@ -48,9 +47,11 @@ export class CalendarListItem {
     return candidates.filter((line, index) => line && line !== item.name && candidates.indexOf(line) === index);
   });
 
-  readonly endTimeFormat = computed(() => {
+  readonly timeRangeLabel = computed(() => {
     const item = this.item();
-    return isSameDay(new Date(item.startDate), new Date(item.endDate)) ? 'HH:mm' : 'dd/MM, HH:mm';
+    const start = item.startDate instanceof Date ? item.startDate.toISOString() : item.startDate;
+    const end = item.endDate instanceof Date ? item.endDate.toISOString() : item.endDate;
+    return formatTimeRange(start, end);
   });
   readonly hasSubtitle = computed(() => {
     const item = this.item();

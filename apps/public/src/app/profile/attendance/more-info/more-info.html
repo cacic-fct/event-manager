@@ -1,139 +1,188 @@
 @let currentState = detailState();
+<ng-template #projectedActions>
+  <ng-content select="[participationActions]" />
+</ng-template>
 
+@if (!embedded()) {
 <mat-toolbar role="navigation" aria-label="Navegação dos detalhes">
   <a matIconButton routerLink="/profile/attendances" aria-label="Voltar para inscrições">
     <mat-icon>arrow_back</mat-icon>
   </a>
   <span>Detalhes</span>
 </mat-toolbar>
+}
 
-<main class="detail-page">
+<div class="detail-page" [class.embedded]="embedded()" [class.flat-sections]="flatSections()">
   @if (currentState.status === 'loading') {
   <mat-progress-bar mode="indeterminate" aria-label="Carregando detalhes da participação"></mat-progress-bar>
-  } @else { @let detail = currentState.detail;
+  <ng-container [ngTemplateOutlet]="projectedActions" />
+  } @else if (currentState.status === 'empty') {
+  <ng-container [ngTemplateOutlet]="projectedActions" />
+  } @else if (currentState.status === 'error') {
+  <section role="alert" aria-label="Participação indisponível">
+    <p>Não foi possível consultar sua participação agora.</p>
+    <button mat-button type="button" (click)="retryParticipation()">Tentar novamente</button>
+  </section>
+  <ng-container [ngTemplateOutlet]="projectedActions" />
+  } @else if (currentState.status === 'ready') { @let detail = currentState.detail; @if (!embedded()) {
+  <app-event-detail-heading class="detail-header" [title]="detail.title" [emoji]="detail.emoji">
+    <p class="date-line">{{ detail.dateLine }}</p>
+    <p class="type-label">{{ detail.typeLabel }}</p>
+  </app-event-detail-heading>
+  }
 
-  <header class="detail-header">
-    <div class="emoji-frame">
-      <img class="twemoji" [src]="emoji.getTwemojiUrl(detail.emoji)" [alt]="detail.emoji" />
-    </div>
-    <div class="header-copy">
-      <p class="eyebrow">{{ detail.typeLabel }}</p>
-      <h1>{{ detail.title }}</h1>
-      <p class="date-line">{{ detail.dateLine }}</p>
-    </div>
-  </header>
+  <section class="participation-workspace" aria-labelledby="workspace-heading">
+    <div class="workspace-heading">
+      <h2 id="workspace-heading">Sua participação</h2>
 
-  @if (detail.statusLabel && detail.statusLabel !== 'Certificado emitido') {
-  <p class="status-summary participation-status">
-    <mat-icon aria-hidden="true">{{ statusIcon(detail) }}</mat-icon>
-    <span>{{ detail.statusLabel }}</span>
-  </p>
-  } @let certificate = certificateSummary();
-  <section class="certificate-summary" aria-labelledby="certificate-heading" aria-live="polite" aria-atomic="true">
-    <h2 id="certificate-heading">Meu certificado</h2>
-    <div class="certificate-copy">
-      <mat-icon aria-hidden="true">{{ certificate.icon }}</mat-icon>
-      <div>
-        <h3>{{ certificate.title }}</h3>
-        @if (certificate.description) {
-        <p>{{ certificate.description }}</p>
-        }
+      @if (detail.statusLabel && detail.statusLabel !== 'Certificado emitido') {
+      <p class="status-summary participation-status">
+        <mat-icon aria-hidden="true">{{ statusIcon(detail) }}</mat-icon>
+        <span>{{ detail.statusLabel }}</span>
+      </p>
+      }
+    </div>
+
+    <ng-container [ngTemplateOutlet]="projectedActions" />
+
+    <div class="actions">
+      @if (detail.sportsTournamentId) {
+      <a mat-flat-button [routerLink]="sportsPanelRoute(detail)">
+        <mat-icon>sports</mat-icon>
+        Abrir painel esportivo
+      </a>
+      } @for (team of detail.sportsRepresentativeTeams; track team.id) {
+      <a mat-stroked-button [routerLink]="representativeTeamRoute(team.id)">
+        <mat-icon>groups</mat-icon>
+        Área de representantes e escalação: {{ team.name }}
+      </a>
+      } @if (detail.isSubscribed && detail.targetType === 'major-event') {
+      <a mat-flat-button [routerLink]="paymentRoute(detail)">
+        <mat-icon>payments</mat-icon>
+        Informações de pagamento
+      </a>
+      } @if (canUploadMajorEventReceipt(detail)) {
+      <a mat-stroked-button [routerLink]="paymentRoute(detail)">
+        <mat-icon>upload_file</mat-icon>
+        Enviar comprovante
+      </a>
+      } @if (detail.canViewOrganizerInfo) {
+      <a mat-flat-button [routerLink]="organizerInfoRoute(detail)">
+        <mat-icon>record_voice_over</mat-icon>
+        Área do palestrante
+      </a>
+      } @if (currentState.hasPrizeDraws && !(embedded() && detail.targetType === 'event')) {
+      <a mat-stroked-button [routerLink]="prizeDrawRoute(detail)">
+        <mat-icon>rewarded_ads</mat-icon>
+        Sorteios
+      </a>
+      } @if (detail.isSubscribed && detail.events.length === 1 && detail.events[0].canRegisterAttendance && !(embedded()
+      && detail.targetType === 'event')) {
+      <a
+        mat-stroked-button
+        [routerLink]="['/attendance/register', detail.events[0].event.id]"
+        [queryParams]="eventRouteQueryParams()">
+        <mat-icon>how_to_reg</mat-icon>
+        Registrar presença
+      </a>
+      } @if (detail.isSubscribed && detail.buttonLink && !(embedded() && detail.targetType === 'event')) {
+      <a mat-stroked-button [href]="detail.buttonLink" target="_blank" rel="noopener noreferrer">
+        <mat-icon>open_in_new</mat-icon>
+        {{ detail.buttonText || 'Abrir link' }}
+      </a>
+      }
+    </div>
+
+    @let certificate = certificateSummary();
+    <section class="certificate-summary" aria-labelledby="certificate-heading" aria-live="polite" aria-atomic="true">
+      <h2 id="certificate-heading">Meu certificado</h2>
+      <div class="certificate-copy">
+        <mat-icon aria-hidden="true">{{ certificate.icon }}</mat-icon>
+        <div>
+          <h3>{{ certificate.title }}</h3>
+          @if (certificate.description) {
+          <p>{{ certificate.description }}</p>
+          }
+        </div>
       </div>
+      @if (issuedCertificates().length > 0) {
+      <button matButton="filled" type="button" (click)="openCertificates(detail)">
+        <mat-icon>download</mat-icon>
+        {{ issuedCertificates().length === 1 ? 'Baixar certificado' : 'Ver certificados' }}
+      </button>
+      } @else if (certificate.action; as action) {
+      <a matButton="filled" [routerLink]="action.route">{{ action.label }}</a>
+      } @else if (certificateNeedsRetry()) {
+      <button matButton="outlined" type="button" (click)="retryCertificates()">Tentar novamente</button>
+      }
+    </section>
+
+    @if (currentState.formLinks.length > 0 && !(embedded() && detail.targetType === 'event')) {
+    <div class="actions form-actions" aria-label="Formulários vinculados">
+      @for (formLink of currentState.formLinks; track formLink.formId + formLink.targetType + formLink.targetId) {
+      <a mat-stroked-button [routerLink]="formRoute(formLink)" [queryParams]="formQueryParams(formLink)">
+        <mat-icon>{{ formLink.mode === 'results' ? 'bar_chart' : 'list_alt' }}</mat-icon>
+        {{ formLink.mode === 'results' ? 'Resultados: ' + formLink.name : formLink.name }}
+      </a>
+      }
     </div>
-    @if (issuedCertificates().length > 0) {
-    <button matButton="filled" type="button" (click)="openCertificates(detail)">
-      <mat-icon>download</mat-icon>
-      {{ issuedCertificates().length === 1 ? 'Baixar certificado' : 'Ver certificados' }}
-    </button>
-    } @else if (certificate.action; as action) {
-    <a matButton="filled" [routerLink]="action.route">{{ action.label }}</a>
-    } @else if (certificateNeedsRetry()) {
-    <button matButton="outlined" type="button" (click)="retryCertificates()">Tentar novamente</button>
+    } @if (detail.targetType === 'major-event' && detail.subscriptionStatus === 'CONFIRMED') {
+    <app-ticket-purchase-options-section
+      [majorEventId]="detail.targetId"
+      [subscriptionStatus]="detail.subscriptionStatus" />
     }
   </section>
 
-  @if (detail.isSubscribed) {
-  <section class="detail-section" aria-label="Materiais para inscritos">
+  @if (!embedded() && detail.description) {
+  <section class="detail-section">
+    <h2>Sobre</h2>
+    <lib-markdown class="description" [content]="detail.description" />
+  </section>
+  } @if (detail.targetType !== 'major-event') {
+  <ng-template #materials>
     @if (detail.targetType === 'event') {
     <lib-event-materials [eventId]="detail.targetId" />
     } @else { @for (item of detail.events; track item.event.id) {
     <lib-event-materials [eventId]="item.event.id" [eventName]="item.event.name" />
     } }
-  </section>
-  }
-  <div class="actions">
-    @if (detail.sportsTournamentId) {
-    <a mat-flat-button [routerLink]="sportsPanelRoute(detail)">
-      <mat-icon>sports</mat-icon>
-      Abrir painel esportivo
-    </a>
-    } @for (team of detail.sportsRepresentativeTeams; track team.id) {
-    <a mat-stroked-button [routerLink]="representativeTeamRoute(team.id)">
-      <mat-icon>groups</mat-icon>
-      Área de representantes e escalação — {{ team.name }}
-    </a>
-    } @if (detail.isSubscribed && detail.targetType === 'major-event') {
-    <a mat-flat-button [routerLink]="paymentRoute(detail)">
-      <mat-icon>payments</mat-icon>
-      Informações de pagamento
-    </a>
-    } @if (canUploadMajorEventReceipt(detail)) {
-    <a mat-stroked-button [routerLink]="paymentRoute(detail)">
-      <mat-icon>upload_file</mat-icon>
-      Enviar comprovante
-    </a>
-    } @if (detail.canViewOrganizerInfo) {
-    <a mat-flat-button [routerLink]="organizerInfoRoute(detail)">
-      <mat-icon>record_voice_over</mat-icon>
-      Área do palestrante
-    </a>
-    } @if (currentState.hasPrizeDraws) {
-    <a mat-stroked-button [routerLink]="prizeDrawRoute(detail)">
-      <mat-icon>rewarded_ads</mat-icon>
-      Sorteios
-    </a>
-    } @if (detail.isSubscribed && detail.events.length === 1 && detail.events[0].canRegisterAttendance) {
-    <a
-      mat-stroked-button
-      [routerLink]="['/attendance/register', detail.events[0].event.id]"
-      [queryParams]="eventRouteQueryParams()">
-      <mat-icon>how_to_reg</mat-icon>
-      Registrar presença
-    </a>
-    } @if (detail.isSubscribed && detail.buttonLink) {
-    <a mat-stroked-button [href]="detail.buttonLink" target="_blank" rel="noopener noreferrer">
-      <mat-icon>open_in_new</mat-icon>
-      {{ detail.buttonText || 'Abrir link' }}
-    </a>
-    }
-  </div>
+  </ng-template>
 
-  @if (currentState.formLinks.length > 0) {
-  <div class="actions form-actions" aria-label="Formulários vinculados">
-    @for (formLink of currentState.formLinks; track formLink.formId + formLink.targetType + formLink.targetId) {
-    <a mat-stroked-button [routerLink]="formRoute(formLink)" [queryParams]="formQueryParams(formLink)">
-      <mat-icon>{{ formLink.mode === 'results' ? 'bar_chart' : 'list_alt' }}</mat-icon>
-      {{ formLink.mode === 'results' ? 'Resultados: ' + formLink.name : formLink.name }}
-    </a>
+  <ng-template #guidance>
+    @if (detail.targetType === 'event') {
+    <app-subscriber-information [eventId]="detail.targetId" />
+    } @else {
+    <app-subscriber-information [events]="detail.events" />
     }
-  </div>
-  } @if (detail.targetType === 'major-event' && detail.subscriptionStatus === 'CONFIRMED') {
-  <app-ticket-purchase-options-section
-    [majorEventId]="detail.targetId"
-    [subscriptionStatus]="detail.subscriptionStatus" />
-  } @if (detail.description) {
-  <section class="detail-section">
-    <h2>Sobre</h2>
-    <lib-markdown class="description" [content]="detail.description" />
-  </section>
-  } @if (detail.targetType === 'event') {
-  <app-subscriber-information [eventId]="detail.targetId" />
+  </ng-template>
+
+  @if (embedded()) { @if (detail.isSubscribed) {
+  <mat-expansion-panel class="secondary-section">
+    <mat-expansion-panel-header>
+      <mat-panel-title>Materiais</mat-panel-title>
+    </mat-expansion-panel-header>
+    <ng-template matExpansionPanelContent>
+      <ng-container [ngTemplateOutlet]="materials" />
+    </ng-template>
+  </mat-expansion-panel>
+  }
+  <mat-expansion-panel class="secondary-section" [expanded]="informationRequested()">
+    <mat-expansion-panel-header>
+      <mat-panel-title>Orientações</mat-panel-title>
+    </mat-expansion-panel-header>
+    <ng-template matExpansionPanelContent>
+      <ng-container [ngTemplateOutlet]="guidance" />
+    </ng-template>
+  </mat-expansion-panel>
   } @else {
-  <app-subscriber-information [events]="detail.events" />
-  }
+  <section class="detail-section" aria-label="Materiais e orientações">
+    @if (detail.isSubscribed) {
+    <ng-container [ngTemplateOutlet]="materials" />
+    }
+    <ng-container [ngTemplateOutlet]="guidance" />
+  </section>
+  } }
 
-  <section class="detail-section">
-    <h2>Informações</h2>
+  <ng-template #participationFacts>
     <mat-list>
       @for (row of detail.infoRows; track row.label) {
       <mat-list-item>
@@ -142,60 +191,87 @@
       </mat-list-item>
       }
     </mat-list>
-  </section>
+  </ng-template>
 
-  @if (detail.targetType !== 'event') {
-  <section class="detail-section">
-    @switch (detail.targetType) { @case ('major-event') {
-    <h2>{{ majorEventEventsHeading(detail) }}</h2>
-    } @case ('event-group') {
-    <h2>Eventos do grupo</h2>
-    } } @if (detail.events.length === 0) {
-    <p class="empty-text">Nenhum evento selecionado.</p>
-    } @else {
-    <mat-action-list>
-      @for (item of detail.events; track item.event.id) {
-      <a
-        mat-list-item
-        [routerLink]="eventRoute(item.event.id)"
-        [queryParams]="eventRouteQueryParams()"
-        [attr.aria-label]="'Abrir evento ' + item.event.name">
-        <div matListItemIcon class="small-emoji-frame">
-          <img class="small-twemoji" [src]="emoji.getTwemojiUrl(item.event.emoji)" [alt]="item.event.emoji" />
-        </div>
-        <div matListItemTitle>{{ item.event.name }}</div>
-        <div matListItemLine>{{ item.dateLine }}</div>
-        <div matListItemLine>{{ item.statusLine }}</div>
-      </a>
-      }
-    </mat-action-list>
-    }
+  @if (embedded() && !flatSections() && detail.targetType === 'major-event') {
+  <mat-expansion-panel class="secondary-section">
+    <mat-expansion-panel-header>
+      <mat-panel-title>Detalhes da participação</mat-panel-title>
+    </mat-expansion-panel-header>
+    <ng-template matExpansionPanelContent>
+      <ng-container [ngTemplateOutlet]="participationFacts" />
+    </ng-template>
+  </mat-expansion-panel>
+  } @else if (!embedded() || (flatSections() && detail.targetType === 'major-event')) {
+  <section class="detail-section reference-information">
+    <h2>{{ embedded() ? 'Detalhes da participação' : 'Informações' }}</h2>
+    <ng-container [ngTemplateOutlet]="participationFacts" />
   </section>
-  @if (detail.targetType === 'major-event') {
-  <section class="detail-section">
-    <h2>Não inscritos</h2>
-    @if (detail.notSubscribedEvents.length === 0) {
-    <p class="empty-text">Nenhum evento não inscrito.</p>
-    } @else {
-    <mat-action-list>
-      @for (item of detail.notSubscribedEvents; track item.event.id) {
-      <a
-        mat-list-item
-        [routerLink]="eventRoute(item.event.id)"
-        [queryParams]="eventRouteQueryParams()"
-        [attr.aria-label]="'Abrir evento ' + item.event.name">
-        <div matListItemIcon class="small-emoji-frame">
-          <img class="small-twemoji" [src]="emoji.getTwemojiUrl(item.event.emoji)" [alt]="item.event.emoji" />
-        </div>
-        <div matListItemTitle>{{ item.event.name }}</div>
-        <div matListItemLine>{{ item.dateLine }}</div>
-        @if (item.statusLine !== "Sem presença registrada, Não inscrito") {
-        <div matListItemLine>{{ item.statusLine }}</div>
+  } @if (showEvents() && detail.targetType !== 'event') {
+  <ng-template #participationEvents>
+    <section class="detail-section">
+      @switch (detail.targetType) { @case ('major-event') {
+      <h2>{{ majorEventEventsHeading(detail) }}</h2>
+      } @case ('event-group') {
+      <h2>Eventos do grupo</h2>
+      } } @if (detail.events.length === 0) {
+      <p class="empty-text">Nenhum evento selecionado.</p>
+      } @else {
+      <mat-action-list>
+        @for (item of detail.events; track item.event.id) {
+        <a mat-list-item [routerLink]="eventRoute(item.event.id)" [queryParams]="eventRouteQueryParams()">
+          <div matListItemTitle class="participation-event-title">
+            <span class="small-emoji-frame" aria-hidden="true">
+              <img class="small-twemoji" [src]="emoji.getTwemojiUrl(item.event.emoji)" alt="" />
+            </span>
+            {{ item.event.name }}
+          </div>
+          <div matListItemLine>{{ item.dateLine }}</div>
+          <div matListItemLine>{{ item.statusLine }}</div>
+        </a>
         }
-      </a>
+      </mat-action-list>
       }
-    </mat-action-list>
+    </section>
+    @if (detail.targetType === 'major-event') {
+    <section class="detail-section">
+      <h2>Outros eventos</h2>
+      @if (detail.notSubscribedEvents.length === 0) {
+      <p class="empty-text">Nenhum outro evento disponível.</p>
+      } @else {
+      <mat-action-list>
+        @for (item of detail.notSubscribedEvents; track item.event.id) {
+        <a mat-list-item [routerLink]="eventRoute(item.event.id)" [queryParams]="eventRouteQueryParams()">
+          <div matListItemTitle class="participation-event-title">
+            <span class="small-emoji-frame" aria-hidden="true">
+              <img class="small-twemoji" [src]="emoji.getTwemojiUrl(item.event.emoji)" alt="" />
+            </span>
+            {{ item.event.name }}
+          </div>
+          <div matListItemLine>{{ item.dateLine }}</div>
+          @if (item.statusLine !== "Sem presença registrada, Não inscrito") {
+          <div matListItemLine>{{ item.statusLine }}</div>
+          }
+        </a>
+        }
+      </mat-action-list>
+      }
+    </section>
     }
-  </section>
+  </ng-template>
+  @if (embedded() && !flatSections()) {
+  <mat-expansion-panel class="secondary-section">
+    <mat-expansion-panel-header>
+      <mat-panel-title
+        >{{ detail.targetType === 'major-event' ? majorEventEventsHeading(detail) : 'Eventos do grupo'
+        }}</mat-panel-title
+      >
+    </mat-expansion-panel-header>
+    <ng-template matExpansionPanelContent>
+      <ng-container [ngTemplateOutlet]="participationEvents" />
+    </ng-template>
+  </mat-expansion-panel>
+  } @else {
+  <ng-container [ngTemplateOutlet]="participationEvents" />
   } } }
-</main>
+</div>

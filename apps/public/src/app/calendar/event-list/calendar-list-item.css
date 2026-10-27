@@ -86,13 +86,13 @@
 
 .twemoji {
   display: block;
-  height: 32px;
-  width: 32px;
+  height: 28px;
+  width: 28px;
 }
 
 .top-emoji {
   display: block;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .calendar-row .time-range {

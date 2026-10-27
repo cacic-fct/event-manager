@@ -6,7 +6,7 @@ import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import type { PublicEvent, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
-import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
+import type { CurrentUserMajorEventSubscription, DetailViewModel } from '@cacic-fct/shared-utils';
 import {
   EMPTY,
   Subject,
@@ -20,6 +20,9 @@ import {
   takeUntil,
   timer,
 } from 'rxjs';
+import { MoreInfo } from '../../profile/attendance/more-info/more-info';
+import { EventInformationFallbackService } from '../../shared/event-information-fallback.service';
+import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
 import { routePageErrorStatus } from '../../shared/route-error-handling';
 import { MajorEventSubscriptionApiService } from '../registration/subscription-api.service';
 import { MajorEventInfo, type MajorEventInfoRegistration } from './major-event-info';
@@ -32,7 +35,7 @@ type SubscriptionState =
 
 @Component({
   selector: 'app-major-event-info-page',
-  imports: [MajorEventInfo, MatProgressBarModule],
+  imports: [MajorEventInfo, MoreInfo, MatProgressBarModule],
   template: `
     @if (majorEvent(); as event) {
       <app-major-event-info
@@ -44,9 +47,23 @@ type SubscriptionState =
         [programError]="programError()"
         [programHasMore]="programHasMore()"
         [now]="currentTime()"
+        [backUrl]="backUrl()"
+        [hasParticipation]="hasParticipation()"
+        [hasSubscription]="hasSubscription()"
         (loginRequested)="login()"
         (retryProgram)="loadProgram()"
-        (loadMoreProgram)="loadProgram()" />
+        (loadMoreProgram)="loadProgram()">
+        @if (isAuthenticated()) {
+          <app-more-info
+            participationWorkspace
+            [embedded]="true"
+            [flatSections]="hasSubscription()"
+            targetType="major-event"
+            [targetId]="event.id"
+            (participationChange)="hasParticipation.set($event)"
+            (detailLoaded)="participationDetail.set($event)" />
+        }
+      </app-major-event-info>
     } @else {
       <mat-progress-bar mode="indeterminate" aria-label="Carregando informações do evento" />
       <p role="status">Carregando informações do evento...</p>
@@ -55,6 +72,7 @@ type SubscriptionState =
 })
 export class MajorEventInfoPage {
   private readonly api = inject(MajorEventInfoApiService);
+  private readonly informationFallback = inject(EventInformationFallbackService);
   private readonly subscriptionsApi = inject(MajorEventSubscriptionApiService);
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
@@ -66,6 +84,22 @@ export class MajorEventInfoPage {
     { initialValue: Date.now() },
   );
   private readonly subscriptionState = signal<SubscriptionState>({ status: 'loading' });
+  readonly isAuthenticated = this.auth.isAuthenticated;
+  readonly hasParticipation = signal(false);
+  readonly participationDetail = signal<DetailViewModel | null>(null);
+  readonly hasSubscription = computed(() => {
+    if (!this.isAuthenticated()) return false;
+    const state = this.subscriptionState();
+    if (state.status === 'ready') {
+      return Boolean(state.subscription && state.subscription.subscriptionStatus !== 'CANCELED');
+    }
+    const detail = this.participationDetail();
+    return Boolean(detail?.isSubscribed && detail.subscriptionStatus !== 'CANCELED');
+  });
+  readonly backUrl = toSignal(
+    this.route.queryParamMap.pipe(map((params) => resolveInternalReturnUrl(params.get('returnUrl'), '/major-event'))),
+    { initialValue: '/major-event' },
+  );
   private readonly programRequests = new Subject<void>();
   private readonly programReset = new Subject<void>();
   private programOffset = 0;
@@ -147,6 +181,8 @@ export class MajorEventInfoPage {
           this.programLoading.set(false);
           this.programError.set(false);
           this.majorEvent.set(null);
+          this.hasParticipation.set(false);
+          this.participationDetail.set(null);
           this.events.set([]);
           this.programOffset = 0;
           this.programHasMore.set(false);
@@ -156,6 +192,14 @@ export class MajorEventInfoPage {
             return EMPTY;
           }
           return this.api.getMajorEvent(id).pipe(
+            catchError((error: unknown) =>
+              this.informationFallback.majorEvent(id, error).pipe(
+                map(({ event, details }) => {
+                  this.events.set(details.subscription?.selectedEvents ?? details.events ?? []);
+                  return event;
+                }),
+              ),
+            ),
             catchError((error: unknown) => {
               void this.routeErrors.navigate(routePageErrorStatus(error));
               return EMPTY;

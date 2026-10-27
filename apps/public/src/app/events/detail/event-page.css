@@ -1,49 +1,13 @@
 .event-page {
   box-sizing: border-box;
   margin: 0 auto;
-  max-width: 920px;
+  max-width: 1120px;
   min-height: 100%;
   padding: 20px 16px 44px;
 }
 
 .toolbar-spacer {
   flex: 1;
-}
-
-.event-header {
-  align-items: center;
-  display: grid;
-  gap: 16px;
-  grid-template-columns: auto 1fr;
-  margin-bottom: 16px;
-}
-
-.emoji-frame {
-  appearance: none;
-  align-items: center;
-  background: transparent;
-  border: 0;
-  color: inherit;
-  display: inline-flex;
-  height: 72px;
-  justify-content: center;
-  padding: 0;
-  width: 72px;
-}
-
-.emoji-frame:focus-visible {
-  outline: 2px solid var(--mat-sys-primary);
-  outline-offset: 2px;
-}
-
-.twemoji {
-  display: block;
-  height: 52px;
-  width: 52px;
-}
-
-.header-copy {
-  min-width: 0;
 }
 
 .date-line,
@@ -112,15 +76,21 @@ h3 {
   margin-top: 8px;
 }
 
-.detail-grid {
+.location-weather-grid {
   display: grid;
   gap: 24px;
-  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
-  margin-top: 24px;
+  margin-top: 28px;
 }
 
-.weather-section {
-  margin-bottom: 2rem;
+.location-weather-grid > .detail-section,
+.location-weather-grid > .detail-section + .detail-section {
+  margin: 0;
+}
+
+@media (min-width: 761px) {
+  .location-weather-grid.two-columns {
+    grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
+  }
 }
 
 .detail-section + .detail-section {
@@ -288,28 +258,7 @@ mat-toolbar {
   margin: 0;
 }
 
-@media (max-width: 760px) {
-  .detail-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 599px) {
-  .event-header {
-    align-items: start;
-    grid-template-columns: 56px 1fr;
-  }
-
-  .emoji-frame {
-    height: 56px;
-    width: 56px;
-  }
-
-  .twemoji {
-    height: 40px;
-    width: 40px;
-  }
-
   h1 {
     font: var(--mat-sys-headline-small);
   }
@@ -320,4 +269,132 @@ mat-toolbar {
 }
 :host .interest-actions {
   margin-block: 1rem;
+}
+
+/* One identity and participation workspace precede the event's reference details. */
+.event-header {
+  display: block;
+  margin-bottom: 20px;
+}
+.event-header .date-line {
+  margin-top: 12px;
+}
+.participation-overview {
+  margin-block: 24px;
+}
+.participation-overview > h2 {
+  margin-bottom: 12px;
+}
+.participation-overview .status-line {
+  margin-bottom: 0;
+}
+.actions > a,
+.actions > button,
+.lecturer-actions > a {
+  max-width: 100%;
+  min-height: 44px;
+  height: auto;
+  padding-block: 10px;
+}
+.reference-information {
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  padding-top: 28px;
+  margin-top: 32px;
+}
+.detail-section {
+  min-width: 0;
+}
+.description {
+  display: block;
+  max-width: 72ch;
+  overflow-wrap: anywhere;
+}
+.location-line {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.location-line mat-icon {
+  flex-shrink: 0;
+}
+@media (min-width: 800px) {
+  .event-page {
+    padding: 32px 32px 64px;
+  }
+}
+
+.event-kind {
+  margin: 8px 0 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-large);
+}
+
+.event-context {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px;
+}
+
+.event-context a {
+  justify-content: flex-start;
+  height: auto;
+  min-height: 44px;
+  max-width: 100%;
+  padding-block: 8px;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+
+.participation-context {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-title-small);
+}
+
+.participation-context mat-icon {
+  color: var(--mat-sys-primary);
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+}
+
+.parent-event-context {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.parent-event-context > mat-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+}
+
+.parent-event-context > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.event-context .parent-event-link {
+  box-sizing: border-box;
+  display: block;
+  min-height: 44px;
+  padding: 0;
+  color: var(--mat-sys-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+
+.parent-event-link:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 3px;
 }

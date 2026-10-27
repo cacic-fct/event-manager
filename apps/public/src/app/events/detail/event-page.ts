@@ -1,4 +1,5 @@
-import { DatePipe, isPlatformBrowser } from '@angular/common';
+import { EventDetailTabs } from '../../shared/event-detail-tabs';
+import { DatePipe, isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
 import { PLATFORM_ID, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -21,7 +22,6 @@ import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import { DocumentSeoService } from '@cacic-fct/shared-seo-angular';
 import { formatDateRange, getEventTypeLabel, isOnlineAttendanceRegistrationOpen } from '@cacic-fct/shared-utils';
 import { MatButtonModule } from '@angular/material/button';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
@@ -76,6 +76,9 @@ import {
 import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
 import { PublicPrizeDrawApiService } from '../../prize-draws/prize-draw-api.service';
 import { RealtimeInvalidationService } from '../../shared/realtime-invalidation.service';
+import { MoreInfo } from '../../profile/attendance/more-info/more-info';
+import { EventDetailHeading } from '../../shared/event-detail-heading';
+import { EventInformationFallbackService } from '../../shared/event-information-fallback.service';
 import { InterestToggle } from '../../interests/interest-toggle';
 
 type EventPageState = { status: 'loading' } | { status: 'ready'; data: EventPageData };
@@ -135,10 +138,13 @@ type EventStructuredData = {
 @Component({
   selector: 'app-event',
   imports: [
+    MoreInfo,
+    EventDetailTabs,
+    NgTemplateOutlet,
+    EventDetailHeading,
     DatePipe,
     EventLocationMap,
     MatButtonModule,
-    MatChipsModule,
     MatDialogModule,
     MatIconModule,
     MatListModule,
@@ -157,6 +163,7 @@ type EventStructuredData = {
 })
 export class Event {
   private readonly api = inject(EventApiService);
+  private readonly informationFallback = inject(EventInformationFallbackService);
   private readonly authService = inject(AuthService);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
@@ -194,6 +201,7 @@ export class Event {
   readonly standaloneSubscriptionCooldownSeconds = this.standaloneSubscriptionCooldown.seconds;
 
   private readonly reloadCounter = signal(0);
+  readonly participationRevision = computed(() => this.reloadCounter());
   readonly interestRevision = signal(0);
   private readonly realtimeAvailability = signal<{ eventId: string; hasAvailableSlots: boolean } | null>(null);
   private readonly cooldownEventId = signal<string | null>(null);
@@ -848,6 +856,7 @@ export class Event {
         }
 
         return this.api.getEventPageData(eventId, authenticated).pipe(
+          catchError((error: unknown) => this.informationFallback.eventPage(eventId, error)),
           map(
             (data): EventPageState => ({
               status: 'ready',
@@ -1034,6 +1043,10 @@ export class Event {
     }
 
     return data.subscriptionSummary.hasAvailableSlots;
+  }
+
+  isStandaloneEvent(event: PublicEvent): boolean {
+    return !event.majorEventId && !event.majorEvent && !event.eventGroupId && !event.eventGroup;
   }
 
   hasStandaloneSubscription(event: PublicEvent): boolean {

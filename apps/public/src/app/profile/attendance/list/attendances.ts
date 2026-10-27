@@ -21,6 +21,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
 import {
   compareIsoDateDesc,
+  eventInformationRoute,
   CurrentUserMajorEventFeedItem,
   SubscribedItem,
   SubscriptionsFeed,
@@ -97,6 +98,8 @@ interface ParticipationFeedItem {
   type: ParticipationTypeFilter;
   typeLabel: string;
   route: string[];
+  targetType: string;
+  targetId: string;
   statusLine: string;
   statuses: AttendanceStatusFilter[];
   warnings: AttendanceWarning[];
@@ -171,7 +174,7 @@ export class Attendances {
   readonly selectionTrigger = viewChild('selectionTrigger', { read: ElementRef<HTMLButtonElement> });
   readonly selectionCancel = viewChild('selectionCancel', { read: ElementRef<HTMLButtonElement> });
   readonly additionalCertificateGroups = computed(() => {
-    const knownTargets = new Set(this.allParticipations().map((item) => `${item.route[1]}:${item.route[2]}`));
+    const knownTargets = new Set(this.allParticipations().map((item) => `${item.targetType}:${item.targetId}`));
     const state = this.feedState();
     if (state.status === 'ready') {
       for (const folder of state.data.standaloneCertificateFolders) {
@@ -184,7 +187,7 @@ export class Attendances {
     ...new Set(this.certificateCatalog().flatMap((group) => group.certificates.map(({ id }) => id))),
   ]);
   readonly visibleCertificateIds = computed(() => {
-    const visibleTargets = new Set(this.visibleParticipations().map((item) => `${item.route[1]}:${item.route[2]}`));
+    const visibleTargets = new Set(this.visibleParticipations().map((item) => `${item.targetType}:${item.targetId}`));
     const state = this.feedState();
     if (state.status === 'ready') {
       for (const folder of state.data.standaloneCertificateFolders) {
@@ -629,7 +632,9 @@ export class Attendances {
       startDate: item.majorEvent.startDate,
       type: 'majorEvent',
       typeLabel: item.majorEvent.sportsTournament ? 'Grande evento com torneio' : 'Grande evento',
-      route: ['/profile/attendances', 'major-event', item.majorEvent.id],
+      route: eventInformationRoute('major-event', item.majorEvent.id),
+      targetType: 'major-event',
+      targetId: item.majorEvent.id,
       statusLine,
       statuses: this.participationStatuses(item.participation, isPresent),
       warnings: this.majorEventWarnings(item.subscriptionStatus),
@@ -654,8 +659,10 @@ export class Attendances {
       type: isSingleEvent ? 'event' : 'eventGroup',
       typeLabel: isSingleEvent ? getEventTypeLabel(item.event.type) : 'Grupo de eventos',
       route: isSingleEvent
-        ? ['/profile/attendances', 'event', item.event.id]
-        : ['/profile/attendances', 'event-group', item.eventGroup.id],
+        ? eventInformationRoute('event', item.event.id)
+        : eventInformationRoute('event-group', item.eventGroup.id),
+      targetType: isSingleEvent ? 'event' : 'event-group',
+      targetId: isSingleEvent ? item.event.id : item.eventGroup.id,
       statusLine,
       statuses: this.participationStatuses(item.participation, isPresent),
       warnings: [],

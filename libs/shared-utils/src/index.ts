@@ -16,3 +16,4 @@ export * from './lib/turnstile';
 export * from './lib/time-aware-greeting';
 export * from './lib/admin-route-links';
 export * from './lib/event-location';
+export * from './lib/event-information-links';

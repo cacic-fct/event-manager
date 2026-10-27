@@ -43,7 +43,7 @@ const meta: Meta<OnlineAttendanceStoryControls> = {
           [
             { path: 'attendance/register', component: AttendanceStoryDestination },
             { path: 'attendance/register/:eventId', component: AttendanceStoryDestination },
-            { path: 'profile/attendances/event/:eventId', component: AttendanceStoryDestination },
+            { path: 'event/:eventId', component: AttendanceStoryDestination },
           ],
           withHashLocation(),
           withDisabledInitialNavigation(),

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { NovuSubscriberSession } from '@cacic-fct/shared-data-types';
-import { publicPrizeDrawPath } from '@cacic-fct/shared-utils';
+import { eventInformationPath, publicPrizeDrawPath } from '@cacic-fct/shared-utils';
 import { SubscriptionStatus } from '@prisma/client';
 import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import {
@@ -379,7 +379,7 @@ export class NovuNotificationsService {
   }): Promise<boolean> {
     const secretKey = this.transport.secretKey();
     if (!secretKey) return false;
-    const detailPath = `/profile/attendances/${input.targetType ?? 'event'}/${input.targetId ?? input.eventId}`;
+    const detailPath = eventInformationPath(input.targetType ?? 'event', input.targetId ?? input.eventId);
     const actionUrl = `${detailPath}?informationRevision=${encodeURIComponent(input.revision)}`;
     const title = 'Informações do evento disponíveis';
     return this.transport.trigger(secretKey, {
@@ -653,7 +653,7 @@ export class NovuNotificationsService {
       default:
         return {
           label: 'Ver inscrição',
-          url: `/profile/attendances/major-event/${encodedMajorEventId}`,
+          url: eventInformationPath('major-event', majorEventId),
         };
     }
   }

@@ -12,9 +12,11 @@ import { CalendarListItem } from './calendar-list-item';
 export class CalendarEventListItem {
   readonly event = input.required<PublicEvent>();
   readonly isSubscribed = input(false);
+  readonly participationStatus = input<string | null>(null);
   readonly returnUrl = input('/calendar');
   readonly showMajorEventContext = input(true);
-  readonly iconPosition = input<'leading' | 'top'>('leading');
+  readonly showEventGroupContext = input(true);
+  readonly iconPosition = input<'leading' | 'top'>('top');
   readonly eventTypeLabel = computed(() => getEventTypeLabel(this.event().type));
   readonly detailRoute = computed(() => {
     const sportsMatchId = this.event().sportsMatch?.id;
@@ -25,9 +27,14 @@ export class CalendarEventListItem {
     const event = this.event();
     return [
       this.showMajorEventContext() ? event.majorEvent?.name : null,
-      event.eventGroup?.name,
+      this.showEventGroupContext() ? event.eventGroup?.name : null,
       event.shortDescription,
     ].filter((line): line is string => Boolean(line));
+  });
+
+  readonly secondaryLines = computed(() => {
+    const status = this.participationStatus();
+    return status ? [status] : this.isSubscribed() ? ['Inscrito'] : [];
   });
 
   readonly listItem = computed(() => ({
@@ -39,7 +46,7 @@ export class CalendarEventListItem {
     contextLine: this.contextLines()[0] ?? '',
     contextLines: this.contextLines(),
     eventType: this.event().type,
-    secondaryLines: this.isSubscribed() ? ['Inscrito'] : [],
+    secondaryLines: this.secondaryLines(),
     locationDescription: this.event().isVirtual
       ? 'Online'
       : this.event().locationName?.trim() || this.event().locationDescription?.trim(),

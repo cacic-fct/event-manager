@@ -89,6 +89,8 @@ describe('MoreInfo ticket purchase placement integration', () => {
   it('places confirmed ticket offers after participation actions and before event details', async () => {
     const fixture = await setup('CONFIRMED');
     fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
     const optionsRequest = http.expectOne(
       (request) => request.url === '/api/graphql' && request.body.query.includes('myTicketPurchaseOptions'),
     );

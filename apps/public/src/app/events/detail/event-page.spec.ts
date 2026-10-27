@@ -3,6 +3,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Event } from './event-page';
+import { MoreInfo } from '../../profile/attendance/more-info/more-info';
+import { ParticipationWorkspaceStub } from '../../testing/participation-workspace.stub';
 import { createPublicEventGroup } from '@cacic-fct/event-manager-public-testing';
 import { ActivatedRoute, convertToParamMap, Router, Params } from '@angular/router';
 import { signal } from '@angular/core';
@@ -46,6 +48,7 @@ async function createEventComponentFixture(
     })),
     ...options.dialog,
   };
+  TestBed.overrideComponent(Event, { remove: { imports: [MoreInfo] }, add: { imports: [ParticipationWorkspaceStub] } });
   TestBed.configureTestingModule({
     imports: [Event],
     providers: [
@@ -64,6 +67,7 @@ async function createEventComponentFixture(
         provide: AuthService,
         useValue: {
           isAuthenticated: signal(options.authenticated ?? false),
+          user: () => null,
           login: vi.fn(),
         },
       },
@@ -473,7 +477,7 @@ describe('Event', () => {
     expect(host.querySelector('mat-toolbar > span:not(.toolbar-spacer)')?.textContent?.trim()).toBe('Evento');
     expect(host.querySelector('mat-toolbar h1')).toBeNull();
     expect(host.querySelector('.event-header h1')?.textContent?.trim()).toBe('Evento teste');
-    expect(host.querySelector('.emoji-frame')?.hasAttribute('mattooltip')).toBe(false);
+    expect(host.querySelector('[aria-label="Copiar identificador do evento"]')?.hasAttribute('mattooltip')).toBe(false);
   });
 
   it('renders formatted descriptions without creating unsafe HTML', async () => {

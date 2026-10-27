@@ -3,6 +3,9 @@ import {
   formatCurrency,
   formatCreditMinutes,
   formatDateRange,
+  formatDateTime,
+  formatDay,
+  formatTimeRange,
   formatEventsDateRange,
   formatStatusLine,
   getAttendanceByEventId,
@@ -19,9 +22,24 @@ import { formatCPF, isValidCPF, unformatCPF } from './cpf';
 import { formatUnespRole } from './unesp-role-formatters';
 
 describe('attendance formatters', () => {
-  it('formats same-day and multi-day date ranges for the Portuguese UI', () => {
-    expect(formatDateRange('2026-06-26T09:00:00', '2026-06-26T11:30:00')).toBe('26/06/2026, 09:00-11:30');
-    expect(formatDateRange('2026-06-26T22:00:00', '2026-06-27T01:30:00')).toBe('26/06/2026, 22:00 - 27/06/2026, 01:30');
+  it('formats same-day and overnight ranges with natural Portuguese connectors', () => {
+    const start = new Date();
+    start.setDate(start.getDate() + 1);
+    start.setHours(9, 0, 0, 0);
+    const end = new Date(start);
+    end.setHours(11, 30);
+    const dateLabel = new Intl.DateTimeFormat('pt-BR').format(start);
+    expect(formatDateRange(start.toISOString(), end.toISOString())).toBe(`${dateLabel}, das 09:00 às 11:30`);
+    expect(formatTimeRange(start.toISOString(), end.toISOString())).toBe('Das 09:00 às 11:30');
+    expect(formatDateTime(start.toISOString())).toBe(`${dateLabel} às 09:00`);
+    start.setHours(22);
+    end.setDate(end.getDate() + 1);
+    end.setHours(1, 30);
+    const endLabel = new Intl.DateTimeFormat('pt-BR').format(end);
+    const range = `De ${dateLabel} às 22:00 a ${endLabel} às 01:30`;
+    expect(formatDateRange(start.toISOString(), end.toISOString())).toBe(range);
+    expect(formatTimeRange(start.toISOString(), end.toISOString())).toBe(range);
+    expect(formatDay(start.toISOString())).toBe(dateLabel);
   });
 
   it('falls back when an event collection has no dates and otherwise spans first to last event', () => {
@@ -31,7 +49,7 @@ describe('attendance formatters', () => {
         event('first', '2026-06-26T09:00:00', { endDate: '2026-06-26T10:00:00' }),
         event('last', '2026-06-27T11:00:00', { endDate: '2026-06-27T12:00:00' }),
       ]),
-    ).toBe('26/06/2026, 09:00 - 27/06/2026, 12:00');
+    ).toBe('De 26/06/2026 às 09:00 a 27/06/2026 às 12:00');
   });
 
   it('opens online attendance only inside the configured collection window', () => {
@@ -100,7 +118,7 @@ describe('attendance formatters', () => {
     ] as never;
 
     expect(getAttendanceByEventId(attendances).get('event-1')).toEqual(attendances[0]);
-    expect(getEventAttendanceStatusLabel(attendances[0])).toBe('Presença registrada às 26/06/2026, 09:15');
+    expect(getEventAttendanceStatusLabel(attendances[0])).toBe('Presença registrada em 26/06/2026 às 09:15');
     expect(getEventAttendanceStatusLabel(null)).toBe('Sem presença registrada');
   });
 });
