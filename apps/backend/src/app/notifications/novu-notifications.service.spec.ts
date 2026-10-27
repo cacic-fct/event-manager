@@ -5,6 +5,29 @@ import { NovuNotificationsService } from './novu-notifications.service';
 const { jest } = import.meta;
 
 describe('NovuNotificationsService', () => {
+  it('reuses a recipient-specific idempotency key after a lost manual notification response', async () => {
+    const input = {
+      audience: 'LECTURERS' as const,
+      eventId: 'event-1',
+      eventName: 'Evento',
+      message: 'Confira a sala.',
+      requestId: 'request-1',
+      actionUrl: '/profile/attendances/event/event-1/organizer',
+      recipient: { subscriberId: 'user-1' },
+    };
+    fetchMock.mockRejectedValueOnce(new Error('Response lost'));
+    await expect(service.notifyEventParticipant(input)).resolves.toBe(false);
+    await expect(service.notifyEventParticipant(input)).resolves.toBe(true);
+    await service.notifyEventParticipant({ ...input, recipient: { subscriberId: 'user-2' } });
+    const requests = fetchMock.mock.calls.map(([, options]) => options);
+    expect(requests.map((options) => options.headers['Idempotency-Key'])).toEqual([
+      'event-manual:request-1:user-1',
+      'event-manual:request-1:user-1',
+      'event-manual:request-1:user-2',
+    ]);
+    expect(requests[0].body).toBe(requests[1].body);
+    expect(JSON.parse(requests[1].body).transactionId).toBe(requests[1].headers['Idempotency-Key']);
+  });
   it.each(['disabled', 'missing-key'])('completes ticket notifications when Novu is %s', async (mode) => {
     config.get.mockImplementation((key: string) =>
       key === 'NOVU_SECURE_MODE_ENABLED' ? (mode === 'disabled' ? 'false' : 'true') : undefined,

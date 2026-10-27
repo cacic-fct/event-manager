@@ -29,10 +29,10 @@ export class EventManualNotificationResolver {
   @Mutation(() => Boolean)
   @RequirePermissions(Permission.Event.Update)
   async notifyEventParticipants(
-    @Args('eventId') eventId: string,
-    @Args('audience') audience: string,
-    @Args('message') message: string,
-    @Args('requestId') requestId: string,
+    @Args('eventId', { type: () => String }) eventId: string,
+    @Args('audience', { type: () => String }) audience: string,
+    @Args('message', { type: () => String }) message: string,
+    @Args('requestId', { type: () => String }) requestId: string,
     @Context() context: GraphqlContext,
   ): Promise<boolean> {
     const user = this.currentUser.getAuthenticatedUser(context);

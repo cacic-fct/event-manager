@@ -75,17 +75,19 @@ export class EventMaterialsComponent {
     });
   }
 
-  async load(): Promise<void> {
+  async load({ background = false }: { background?: boolean } = {}): Promise<void> {
     const request = ++this.request;
     clearTimeout(this.releaseTimer);
     const eventId = this.eventId();
-    this.loading.set(true);
-    this.saving.set(false);
-    this.loadError.set(false);
-    this.error.set('');
-    this.message.set('');
-    this.original.set([]);
-    this.model.set({ links: [] });
+    if (!background) {
+      this.loading.set(true);
+      this.saving.set(false);
+      this.loadError.set(false);
+      this.error.set('');
+      this.message.set('');
+      this.original.set([]);
+      this.model.set({ links: [] });
+    }
     try {
       const result = await this.api.getMaterials(eventId, this.editable() || this.management());
       if (request !== this.request) return;
@@ -96,11 +98,20 @@ export class EventMaterialsComponent {
       if (!this.editable() && !this.management() && result?.nextReleaseAt && isPlatformBrowser(this.platformId)) {
         const delay = new Date(result.nextReleaseAt).getTime() - Date.now() + 250;
         if (Number.isFinite(delay)) {
-          this.releaseTimer = setTimeout(() => void this.load(), Math.min(Math.max(delay, 1000), 60000));
+          this.releaseTimer = setTimeout(
+            () => void this.load({ background: true }),
+            Math.min(Math.max(delay, 1000), 60000),
+          );
         }
       }
     } catch {
-      if (request === this.request) this.loadError.set(true);
+      if (request === this.request) {
+        if (background) {
+          this.releaseTimer = setTimeout(() => void this.load({ background: true }), 60000);
+        } else {
+          this.loadError.set(true);
+        }
+      }
     } finally {
       if (request === this.request) this.loading.set(false);
     }

@@ -411,21 +411,26 @@ export class NovuNotificationsService {
     const secretKey = this.transport.secretKey();
     if (!secretKey) return false;
     const title = `Aviso da organização: ${input.eventName}`;
-    return this.transport.trigger(secretKey, {
-      name: NOVU_WORKFLOW_IDENTIFIERS.eventManualNotification,
-      to: input.recipient,
-      transactionId: `event-manual:${input.requestId}:${input.recipient.subscriberId}`,
-      payload: {
-        title,
-        subject: title,
-        body: input.message,
-        eventId: input.eventId,
-        actionLabel: 'Ver evento',
-        actionUrl: input.actionUrl,
-        redirectUrl: input.actionUrl,
+    const transactionId = `event-manual:${input.requestId}:${input.recipient.subscriberId}`;
+    return this.transport.trigger(
+      secretKey,
+      {
+        name: NOVU_WORKFLOW_IDENTIFIERS.eventManualNotification,
+        to: input.recipient,
+        transactionId,
+        payload: {
+          title,
+          subject: title,
+          body: input.message,
+          eventId: input.eventId,
+          actionLabel: 'Ver evento',
+          actionUrl: input.actionUrl,
+          redirectUrl: input.actionUrl,
+        },
+        overrides: { fcm: { data: { url: input.actionUrl } }, webPush: { data: { url: input.actionUrl } } },
       },
-      overrides: { fcm: { data: { url: input.actionUrl } }, webPush: { data: { url: input.actionUrl } } },
-    });
+      transactionId,
+    );
   }
 
   async notifyOnlineAttendanceAvailable(input: OnlineAttendanceAvailableNotification): Promise<boolean> {

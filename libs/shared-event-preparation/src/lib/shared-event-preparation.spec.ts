@@ -1,7 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { parseEventMaterials } from './shared-event-preparation';
+import { MAX_EVENT_MATERIAL_URL_LENGTH, parseEventMaterials } from './shared-event-preparation';
 
 describe('event material links', () => {
+  it('checks the canonical URL length and accepts normalized links on subsequent reads', () => {
+    const prefix = 'https://example.org/';
+    const oversized = `${prefix}${'é'.repeat(400)}`;
+    expect(oversized.length).toBeLessThan(MAX_EVENT_MATERIAL_URL_LENGTH);
+    expect(() => parseEventMaterials([{ title: 'Material', url: oversized }])).toThrow('2.048');
+    const url = `${prefix}${'é'.repeat(300)}`;
+    const normalized = parseEventMaterials([{ title: 'Material', url }]);
+    expect(parseEventMaterials(normalized)).toEqual(normalized);
+    const boundary = `${prefix}${'x'.repeat(MAX_EVENT_MATERIAL_URL_LENGTH - prefix.length)}`;
+    expect(parseEventMaterials([{ title: 'Material', url: boundary }])[0].url).toHaveLength(
+      MAX_EVENT_MATERIAL_URL_LENGTH,
+    );
+    expect(() => parseEventMaterials([{ title: 'Material', url: `${boundary}x` }])).toThrow('2.048');
+  });
   it('normalizes names and HTTPS URLs without mutating the caller', () => {
     const links = [{ title: ' Slides ', url: 'https://EXAMPLE.org' }];
     expect(parseEventMaterials(links)).toEqual([{ title: 'Slides', url: 'https://example.org/' }]);
