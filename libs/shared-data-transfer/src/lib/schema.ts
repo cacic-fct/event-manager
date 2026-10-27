@@ -21,16 +21,7 @@ import {
   TournamentResourceSchema,
   VenueResourceSchema,
 } from './sports-schema';
-import {
-  LEGACY_TRANSFER_SCHEMA_ID,
-  nullable,
-  resource,
-  Text,
-  TRANSFER_FORMAT,
-  TRANSFER_MAX_RESOURCES,
-  TRANSFER_SCHEMA_ID,
-  TRANSFER_VERSION,
-} from './schema-helpers';
+import { TRANSFER_FORMAT, TRANSFER_MAX_RESOURCES, TRANSFER_SCHEMA_ID, TRANSFER_VERSION } from './schema-helpers';
 import {
   AttendanceResourceSchema,
   EventSubscriptionResourceSchema,
@@ -95,45 +86,22 @@ export const TransferResourceSchema = Type.Union([
   EventTicketResourceSchema,
 ]);
 
-export const CurrentTransferDocumentSchema = Type.Object(
+export const TransferDocumentSchema = Type.Object(
   {
     $schema: Type.Optional(Type.Literal(TRANSFER_SCHEMA_ID)),
     format: Type.Literal(TRANSFER_FORMAT),
     version: Type.Literal(TRANSFER_VERSION),
     resources: Type.Array(TransferResourceSchema, { minItems: 1, maxItems: TRANSFER_MAX_RESOURCES }),
   },
-  { additionalProperties: false },
-);
-
-const LegacyEventResourceSchema = resource('event', {
-  ...EventResourceSchema.properties.data.properties,
-  locationDescription: nullable(Text),
-});
-
-export const LegacyTransferDocumentSchema = Type.Object(
   {
-    ...CurrentTransferDocumentSchema.properties,
-    $schema: Type.Optional(Type.Literal(LEGACY_TRANSFER_SCHEMA_ID)),
-    version: Type.Literal(1),
-    resources: Type.Array(
-      Type.Union(
-        TransferResourceSchema.anyOf.map((schema) =>
-          schema.properties.kind.const === 'event' ? LegacyEventResourceSchema : schema,
-        ),
-      ),
-      { minItems: 1, maxItems: TRANSFER_MAX_RESOURCES },
-    ),
+    additionalProperties: false,
+    $id: TRANSFER_SCHEMA_ID,
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+    title: 'CACiC — configuração de eventos e esportes',
+    description:
+      'IDs são estáveis. Campos omitidos preservam valores. Registros ausentes nunca são excluídos. A autorização é verificada no servidor.',
   },
-  { additionalProperties: false },
 );
-
-export const TransferDocumentSchema = Type.Union([CurrentTransferDocumentSchema, LegacyTransferDocumentSchema], {
-  $id: TRANSFER_SCHEMA_ID,
-  $schema: 'https://json-schema.org/draft/2020-12/schema',
-  title: 'CACiC — configuração de eventos e esportes',
-  description:
-    'IDs são estáveis. Campos omitidos preservam valores. Registros ausentes nunca são excluídos. A autorização é verificada no servidor.',
-});
 
 export type TransferDocument = Static<typeof TransferDocumentSchema>;
 export type TransferFileResource = Static<typeof TransferResourceSchema>;

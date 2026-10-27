@@ -679,6 +679,7 @@ function createTransaction() {
       findFirst: jest.fn(),
       update: jest.fn(),
     },
+    certificateManualRecipient: { findMany: jest.fn().mockResolvedValue([]) },
     eventAttendance: {
       findMany: jest.fn().mockResolvedValue([]),
       createMany: jest.fn(),

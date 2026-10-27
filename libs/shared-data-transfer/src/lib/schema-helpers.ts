@@ -10,9 +10,8 @@ FormatRegistry.Set(
 FormatRegistry.Set('email', (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value));
 
 export const TRANSFER_FORMAT = 'cacic-event-data';
-export const TRANSFER_VERSION = 2;
-export const TRANSFER_SCHEMA_ID = 'urn:cacic:event-data:v2';
-export const LEGACY_TRANSFER_SCHEMA_ID = 'urn:cacic:event-data:v1';
+export const TRANSFER_VERSION = 1;
+export const TRANSFER_SCHEMA_ID = 'urn:cacic:event-data:v1';
 export const TRANSFER_MAX_BYTES = 5 * 1024 * 1024;
 export const TRANSFER_MAX_RESOURCES = 500;
 export const TRANSFER_MAX_DEPTH = 32;

@@ -15,7 +15,7 @@ import { TransferKeyAllocations } from './transfer-key-allocations';
 const { jest } = import.meta;
 
 describe('EventTreeTransferAdapter normalization and mutations', () => {
-  it.each(['create', 'update'] as const)('imports a legacy version 1 location on %s', async (action) => {
+  it.each(['create', 'update'] as const)('imports a structured version 1 location on %s', async (action) => {
     const event = eventRecord({ locationName: 'Local atual', locationDescription: 'Descrição atual' });
     const tx = {
       event: {
@@ -34,7 +34,9 @@ describe('EventTreeTransferAdapter normalization and mutations', () => {
             name: 'Evento importado',
             startDate: relativeDate(7),
             endDate: relativeDate(7, 1),
-            locationDescription: 'Auditório - Bloco 5',
+            locationName: 'Auditório',
+            locationDescription: 'Bloco 5',
+            isVirtual: false,
           },
         },
       ],

@@ -1,6 +1,7 @@
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { of } from 'rxjs';
+import { getByRole } from '@testing-library/dom';
 import { Permission } from '@cacic-fct/shared-permissions';
 import type { AdminTicketEligibility } from '@cacic-fct/shared-ticketing';
 import { createAdminPerson } from '../testing/admin-entity-fixtures';
@@ -79,7 +80,7 @@ async function selectMarina(fixture: ComponentFixture<TicketAdminPersonActionDia
   await settle(fixture);
   button(fixture, 'Buscar')?.click();
   await settle(fixture);
-  button(fixture, 'Selecionar Marina da Silva')?.click();
+  getByRole(fixture.nativeElement, 'button', { name: /Selecionar.*Marina da Silva/ }).click();
   await settle(fixture);
 }
 

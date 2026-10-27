@@ -20,7 +20,6 @@ import { buildBullMqJobId } from '../queues/bullmq-job-id';
 import { CERTIFICATE_SELECT } from './certificate.constants';
 import { CertificateEligibilityService } from './certificate-eligibility.service';
 import { CertificateIssuingService } from './certificate-issuing.service';
-import { CertificateNotificationJobsService } from './certificate-notification-jobs.service';
 
 export const CERTIFICATE_ISSUANCE_QUEUE = 'certificate-issuance';
 export const ISSUE_CERTIFICATES_JOB = 'issue-certificates';
@@ -46,7 +45,6 @@ export class CertificateIssuanceJobsService implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly eligibility: CertificateEligibilityService,
     private readonly issuing: CertificateIssuingService,
-    private readonly notifications: CertificateNotificationJobsService,
     @InjectQueue(CERTIFICATE_ISSUANCE_QUEUE) private readonly queue: Queue<CertificateIssuanceJobData>,
     @Inject(forwardRef(() => AuditLogService)) audit: DeferredInjection<AuditLogService>,
   ) {
@@ -230,7 +228,7 @@ export class CertificateIssuanceJobsService implements OnModuleInit {
         }
         await this.issuing.issueMissedCertificates(run.configId, run.requestedById ?? undefined, {
           notify: false,
-          createNotifications: false,
+          createNotifications: run.notifyRecipients,
           force: run.reissue,
           batchSize: 1,
         });
@@ -240,9 +238,6 @@ export class CertificateIssuanceJobsService implements OnModuleInit {
               where: { configId: run.configId, deletedAt: null, revokedAt: null, issuedAt: { gte: startedAt } },
               select: CERTIFICATE_SELECT,
             });
-            if (run.notifyRecipients) {
-              for (const certificate of certificates) await this.notifications.createPendingOutbox(certificate, tx);
-            }
             const completed = {
               ...run,
               status: 'COMPLETED' as const,
@@ -263,7 +258,8 @@ export class CertificateIssuanceJobsService implements OnModuleInit {
           },
           { timeout: 60_000 },
         );
-        // The existing notification outbox scheduler delivers only after commit.
+        // Each certificate write commits its notification intent atomically.
+        // The outbox scheduler also delivers certificates from partially failed runs.
       } catch (error: unknown) {
         const failed = {
           ...run,

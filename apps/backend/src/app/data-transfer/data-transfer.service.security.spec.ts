@@ -29,7 +29,7 @@ describe('DataTransferService security gates', () => {
     const service = createService({ authorization });
 
     await expect(service.getSchema(user())).resolves.toEqual(
-      expect.objectContaining({ $id: 'urn:cacic:event-data:v2' }),
+      expect.objectContaining({ $id: 'urn:cacic:event-data:v1' }),
     );
   });
 

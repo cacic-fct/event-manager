@@ -15,6 +15,7 @@ import {
 import { toAttendanceCreateData, toAttendanceSnapshot } from './attendance';
 import { moveSportsPersonRelations } from './sports-representatives';
 import { moveEventInterests } from './interests';
+import { moveManualRecipients } from './certificate-manual-recipients';
 import { moveAudienceInvitations } from './audience-invitations';
 import { moveTicketPersonRelations } from '../../../tickets/ticket-merge-relations';
 
@@ -24,6 +25,7 @@ export async function moveRelations(
   sourcePersonId: string,
   revokedRepresentativeById: string | null = null,
 ): Promise<MovedRelationsSnapshot> {
+  const manualRecipients = await moveManualRecipients(tx, sourcePersonId, targetPersonId);
   const ticketRelations = await moveTicketPersonRelations(
     tx,
     targetPersonId,
@@ -468,6 +470,7 @@ export async function moveRelations(
     roleAssignmentSnapshots,
     roleAssignmentScopeSnapshots,
     permissionGroupMembershipSnapshots,
+    ...(manualRecipients.movedConfigIds.length || manualRecipients.reactivated.length ? { manualRecipients } : {}),
     ticketRelations,
     ...sportsRelations,
   };

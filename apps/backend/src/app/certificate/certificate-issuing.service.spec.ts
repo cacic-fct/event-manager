@@ -942,6 +942,54 @@ describe('CertificateIssuingService', () => {
     deletedAt: null,
   };
 
+  it('commits a notification intent before a later recipient fails and keeps it on an unchanged retry', async () => {
+    const recipient = { person: mappedCertificateRecord.person, events: [] };
+    const failure = new Error('second recipient failed');
+    const certificate = { ...mappedCertificateRecord, issuedAt: new Date(), deletedAt: null, revokedAt: null };
+    const tx = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
+      certificate: { create: jest.fn().mockResolvedValue(certificate) },
+    };
+    const prisma = {
+      certificate: {
+        findMany: jest.fn().mockResolvedValue([]),
+        findUnique: jest.fn().mockResolvedValue(null),
+      },
+      $transaction: jest.fn(async (callback: (client: unknown) => Promise<unknown>) => callback(tx)),
+    };
+    const eligibility = {
+      getConfigById: jest.fn().mockResolvedValue(certificate.config),
+      resolveEligibleRecipients: jest
+        .fn()
+        .mockResolvedValue([recipient, { ...recipient, person: { ...recipient.person, id: 'second' } }]),
+    };
+    const notificationJobs = {
+      createPendingOutbox: jest.fn().mockResolvedValue(undefined),
+      enqueue: jest.fn(),
+    };
+    const service = new CertificateIssuingService(
+      prisma as never,
+      { normalizeRequiredId: (value: string, id: string) => id } as never,
+      eligibility as never,
+      undefined,
+      { record: jest.fn().mockResolvedValue(undefined) } as never,
+      notificationJobs as never,
+    );
+    jest.spyOn(service as never, 'buildRenderedData').mockReturnValue(certificate.renderedData as never);
+    prisma.certificate.findUnique.mockResolvedValueOnce(null).mockRejectedValueOnce(failure);
+    const options = { notify: false, createNotifications: true, batchSize: 1 };
+    await expect(service.issueMissedCertificates('config-1', undefined, options)).rejects.toBe(failure);
+    expect(tx.certificate.create).toHaveBeenCalledTimes(1);
+    expect(notificationJobs.createPendingOutbox).toHaveBeenCalledWith(certificate, tx);
+    expect(notificationJobs.enqueue).not.toHaveBeenCalled();
+
+    eligibility.resolveEligibleRecipients.mockResolvedValue([recipient]);
+    prisma.certificate.findUnique.mockResolvedValue(certificate as never);
+    await service.issueMissedCertificates('config-1', undefined, options);
+    expect(notificationJobs.createPendingOutbox).toHaveBeenCalledTimes(1);
+    expect(tx.certificate.create).toHaveBeenCalledTimes(1);
+  });
+
   it('soft-deletes invalid certificates during issueMissedCertificates', async () => {
     const prisma = {
       $executeRaw: jest.fn().mockResolvedValue(1),

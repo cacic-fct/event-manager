@@ -49,7 +49,7 @@ export class EventSubscriberInformationResolver {
   @Query(() => EventSubscriberInformation, { nullable: true })
   @RequirePermissions(Permission.Event.Read)
   async eventSubscriberInformation(
-    @Args('eventId') eventId: string,
+    @Args('eventId', { type: () => String }) eventId: string,
     @Context() context: GraphqlContext,
   ): Promise<EventSubscriberInformation> {
     await this.authorization.assertPermissions(
@@ -67,7 +67,7 @@ export class EventSubscriberInformationResolver {
 
   @Query(() => EventSubscriberInformation, { nullable: true })
   async currentUserEventSubscriberInformation(
-    @Args('eventId') eventId: string,
+    @Args('eventId', { type: () => String }) eventId: string,
     @Context() context: GraphqlContext,
   ): Promise<EventSubscriberInformation | null> {
     const person = await this.currentUser.requireCurrentPerson(context);
@@ -104,9 +104,9 @@ export class EventSubscriberInformationResolver {
   @Mutation(() => EventSubscriberInformation)
   @RequirePermissions(Permission.Event.Update)
   async updateEventSubscriberInformation(
-    @Args('eventId') eventId: string,
+    @Args('eventId', { type: () => String }) eventId: string,
     @Args('content', { type: () => String, nullable: true }) content: string | null,
-    @Args('notifySubscribers', { defaultValue: false }) notifySubscribers: boolean,
+    @Args('notifySubscribers', { type: () => Boolean, defaultValue: false }) notifySubscribers: boolean,
     @Context() context: GraphqlContext,
   ): Promise<EventSubscriberInformation> {
     const user = this.currentUser.getAuthenticatedUser(context);

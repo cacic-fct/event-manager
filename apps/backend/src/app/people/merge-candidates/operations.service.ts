@@ -19,6 +19,7 @@ import { buildTargetMigrationData, normalizeMigrateFields } from './operations/m
 import { toAttendanceCreateData } from './operations/attendance';
 import { moveRelations } from './operations/relations';
 import { restoreAudienceInvitations } from './operations/audience-invitations';
+import { restoreManualRecipients } from './operations/certificate-manual-recipients';
 import { restoreTicketPersonRelations } from '../../tickets/ticket-merge-relations';
 import { parseMovedRelations, parsePersonSnapshot, toPersonSnapshot, toPersonUpdateData } from './operations/snapshots';
 import { type CandidateMatch } from './operations/types';
@@ -603,6 +604,9 @@ export class MergeCandidateOperationsService {
           }
         }
 
+        if (movedRelations.manualRecipients) {
+          await restoreManualRecipients(tx, sourcePerson.id, targetPerson.id, movedRelations.manualRecipients);
+        }
         if (movedRelations.ticketRelations) {
           await restoreTicketPersonRelations(tx, movedRelations.ticketRelations, actorId);
         }
