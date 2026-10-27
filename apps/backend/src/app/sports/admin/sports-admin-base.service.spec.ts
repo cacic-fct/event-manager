@@ -78,6 +78,7 @@ describe('SportsAdminBaseService', () => {
         name: ' Final universitária ',
         startDate: sportsTestDate(3 * 60 * 60_000),
         endDate: sportsTestDate(4 * 60 * 60_000),
+        shouldIssueCertificate: true,
         venue,
       });
 
@@ -88,10 +89,14 @@ describe('SportsAdminBaseService', () => {
           startDate: expect.any(Date),
           endDate: expect.any(Date),
           shouldCollectAttendance: true,
+          shouldIssueCertificate: true,
           allowSubscription: false,
           latitude: -22.12,
           longitude: -51.4,
+          isVirtual: false,
+          locationName: 'Complexo esportivo',
           locationDescription: 'Campus universitário, Ginásio Universitário, Quadra principal',
+          locationInternalNotes: null,
           updatedById: 'admin-1',
         },
       });

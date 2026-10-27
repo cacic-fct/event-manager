@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { transferLocationData } from '../data-import/lib/location.mts';
 import { assertConfig, toAmountInCents, toSourceBoolean } from './core.mjs';
 import { loadTransferContract } from './transfer-validation.mjs';
 import { createAfterTicketResources, prepareSecompp26Snapshot } from './secompp26-rules.mjs';
@@ -126,7 +127,7 @@ export function exportTransferDocuments(snapshot, options = {}) {
           type: 'OTHER',
           creditMinutes: nullableCount(activity.durationInMinutes, `EvComp activity ${sourceId} duration`),
           description: nullableText(activity.description, `EvComp activity ${sourceId} description`),
-          locationDescription: nullableText(activity.location, `EvComp activity ${sourceId} location`),
+          ...transferLocationData(nullableText(activity.location, `EvComp activity ${sourceId} location`)),
           majorEventId,
           allowSubscription: true,
           subscriptionStartDate: nullableDateTime(

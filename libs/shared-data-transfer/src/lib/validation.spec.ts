@@ -15,7 +15,7 @@ import { createTransferTemplate } from './template';
 describe('portable event data contract', () => {
   it('round-trips a complete stable-ID tree and all new-root templates', () => {
     const document = createTransferTreeFixture();
-    expect(document).toMatchObject({ $schema: 'urn:cacic:event-data:v2', version: 2 });
+    expect(document).toMatchObject({ $schema: 'urn:cacic:event-data:v1', version: 1 });
     expect(parseTransferJson(JSON.stringify(document))).toEqual(document);
     for (const kind of ['event', 'group', 'major-event'] as const) {
       expect(Value.Check(TransferDocumentSchema, createTransferTemplate(kind))).toBe(true);
@@ -58,7 +58,7 @@ describe('portable event data contract', () => {
 
   it('rejects schema drift and read-only/security-sensitive fields before writing', () => {
     const document = createTransferTreeFixture();
-    expect(() => parseTransferDocument({ ...document, version: 3 })).toThrow(TransferValidationError);
+    expect(() => parseTransferDocument({ ...document, version: 2 })).toThrow(TransferValidationError);
     expect(() => parseTransferDocument({ ...document, $schema: 'https://attacker.invalid/schema.json' })).toThrow(
       TransferValidationError,
     );
@@ -82,105 +82,54 @@ describe('portable event data contract', () => {
   });
 
   it.each([
-    { description: ' Auditório - Bloco 5 - Piso térreo ', name: 'Auditório', details: 'Bloco 5 - Piso térreo' },
-    { description: 'Auditório', name: 'Auditório', details: null },
-    { description: null, name: null, details: null },
-  ])('upgrades a version 1 combined location: $description', ({ description, name, details }) => {
-    const input = {
-      $schema: 'urn:cacic:event-data:v1',
-      format: 'cacic-event-data',
-      version: 1,
-      resources: [{ kind: 'event', id: 'event-1', data: { locationDescription: description } }],
-    };
-    const document = parseTransferDocument(input);
-
-    expect(document).toMatchObject({ $schema: 'urn:cacic:event-data:v2', version: 2 });
-    expect(document.resources[0].data).toEqual({
-      locationName: name,
-      locationDescription: details,
+    {
+      locationName: 'Auditório',
+      locationDescription: 'Bloco 5 - Piso térreo',
+      locationInternalNotes: 'Retirar a chave na secretaria',
       isVirtual: false,
-    });
-    expect(input.resources[0].data).toEqual({ locationDescription: description });
-    expect(parseTransferDocument(document)).toEqual(document);
-  });
-
-  it.each([
-    [
-      'Cadastro interno',
-      'Auditório - Bloco 5 - Térreo',
-      'Auditório',
-      'Bloco 5 - Térreo',
-      'Nome anterior do cadastro: Cadastro interno',
-    ],
-    ['Auditório', 'Auditório', 'Auditório', null, undefined],
-    ['Auditório - Bloco 5', '  ', 'Auditório', 'Bloco 5', undefined],
-    ['Auditório', null, 'Auditório', null, undefined],
-  ])('upgrades legacy place preset %s with description %s', (name, description, publicName, details, notes) => {
-    const input = {
-      $schema: 'urn:cacic:event-data:v1',
-      format: 'cacic-event-data',
-      version: 1,
-      resources: [{ kind: 'place-preset', id: 'place-1', data: { name, locationDescription: description } }],
+      latitude: -22,
+      longitude: -51,
+    },
+    { locationName: null, locationDescription: null, isVirtual: true },
+    { locationDescription: 'Bloco 6 - Sala 2' },
+    { name: 'Evento' },
+  ])('preserves structured event locations and omitted fields: %j', (data) => {
+    const document = {
+      ...createTransferTreeFixture(),
+      resources: [{ kind: 'event', id: 'event-1', data }],
     };
-    const document = parseTransferDocument(input);
-    expect(document.resources[0].data).toEqual({
-      name: publicName,
-      locationDescription: details,
-      ...(notes ? { internalNotes: notes } : {}),
-    });
-    expect(input.resources[0].data).toEqual({ name, locationDescription: description });
     expect(parseTransferDocument(document)).toEqual(document);
+    expect(parseTransferJson(JSON.stringify(document))).toEqual(document);
   });
 
-  it('upgrades a legacy online location and clears its physical coordinates', () => {
-    const document = parseTransferDocument({
-      format: 'cacic-event-data',
-      version: 1,
+  it('preserves place names, descriptions and internal notes independently', () => {
+    const document = {
+      ...createTransferTreeFixture(),
       resources: [
         {
-          kind: 'event',
-          id: 'event-1',
+          kind: 'place-preset',
+          id: 'place-1',
           data: {
-            locationDescription: ' Evento on-line ',
-            latitude: -22,
-            longitude: -51,
+            name: 'Auditório',
+            locationDescription: 'Bloco 5 - Térreo',
+            internalNotes: 'Retirar a chave na secretaria',
           },
         },
       ],
-    });
-    expect(document.resources[0].data).toEqual({
-      isVirtual: true,
-      locationName: null,
-      locationDescription: null,
-      latitude: null,
-      longitude: null,
-    });
+    };
+    expect(parseTransferDocument(document)).toEqual(document);
   });
 
-  it('checks legacy location limits after splitting the combined text', () => {
-    const legacyDocument = (locationDescription: string) => ({
-      format: 'cacic-event-data',
-      version: 1,
-      resources: [{ kind: 'event', id: 'event-1', data: { locationDescription } }],
-    });
-    const details = 'D'.repeat(2000);
-    expect(parseTransferDocument(legacyDocument(`Auditório - ${details}`)).resources[0].data).toMatchObject({
-      locationName: 'Auditório',
-      locationDescription: details,
-    });
-    expect(() => parseTransferDocument(legacyDocument('A'.repeat(251)))).toThrow('excede os limites atuais');
-  });
-
-  it('preserves omitted location fields and version 2 description-only updates', () => {
-    const legacy = parseTransferDocument({
-      format: 'cacic-event-data',
-      version: 1,
-      resources: [{ kind: 'event', id: 'event-1', data: { name: 'Evento' } }],
-    });
-    expect(legacy.resources[0].data).toEqual({ name: 'Evento' });
-    const current = createTransferTreeFixture();
-    const resources = [{ kind: 'event', id: 'event-1', data: { locationDescription: 'Bloco 6 - Sala 2' } }];
-    expect(parseTransferDocument({ ...current, resources }).resources).toEqual(resources);
+  it('checks the structured location name and description limits', () => {
+    const document = createTransferTreeFixture();
+    for (const data of [{ locationName: 'A'.repeat(251) }, { locationDescription: 'D'.repeat(2001) }]) {
+      expect(() =>
+        parseTransferDocument({
+          ...document,
+          resources: [{ kind: 'event', id: 'event-1', data }],
+        }),
+      ).toThrow(TransferValidationError);
+    }
   });
 
   it('round-trips publication snapshots and invitation lists without delivery metadata', () => {

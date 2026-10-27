@@ -353,6 +353,26 @@ test('stops when After cannot be represented without guessing its parent, price 
   assert.throws(() => exportTransferDocuments(secomppSnapshot(), { eventMappings: [] }), /automatic catalog export/);
 });
 
+test('exports structured locations directly in version 1 documents', () => {
+  const source = snapshot();
+  source.activities[0].location = 'Auditório - Bloco 5 - Térreo';
+  source.activities[1].location = 'Evento on-line';
+  const result = exportTransferDocuments(source);
+  for (const { document } of result.documents) {
+    assert.equal(document.version, 1);
+    assert.equal(document.$schema, 'urn:cacic:event-data:v1');
+  }
+  const events = allResources(result).filter((row) => row.kind === 'event');
+  const physicalEvent = events.find((row) => row.data.name === source.activities[0].name);
+  const onlineEvent = events.find((row) => row.data.name === source.activities[1].name);
+  assert.equal(physicalEvent.data.locationName, 'Auditório');
+  assert.equal(physicalEvent.data.locationDescription, 'Bloco 5 - Térreo');
+  assert.equal(physicalEvent.data.isVirtual, false);
+  assert.equal(onlineEvent.data.locationName, null);
+  assert.equal(onlineEvent.data.locationDescription, null);
+  assert.equal(onlineEvent.data.isVirtual, true);
+});
+
 test('exports catalog, modality tiers, active registrations, activity selections, and attendance', () => {
   const source = snapshot();
   const result = exportTransferDocuments(source, { sourceNamespace: 'evcomp-test' });
