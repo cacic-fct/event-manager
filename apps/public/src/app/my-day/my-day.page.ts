@@ -113,9 +113,11 @@ export class MyDayPage {
   }
 
   eventActions(event: MyDayEvent): MyDayAction[] {
-    const actions = [event.attendanceAction, ...event.sportsActions].filter(
-      (action): action is MyDayAction => action != null,
-    );
+    const actions = [
+      event.attendanceAction,
+      ...event.sportsActions,
+      ...(event.roles.some((role) => role.kind === 'LECTURER') ? [event.infoAction] : []),
+    ].filter((action): action is MyDayAction => action != null);
     return this.store.state().offline ? actions.filter((action) => action.offlineCapable) : actions;
   }
 

@@ -1,0 +1,9 @@
+lib-event-instructions .markdown-body a {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+lib-event-instructions .markdown-body a:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}

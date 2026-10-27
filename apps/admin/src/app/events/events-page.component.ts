@@ -1,3 +1,4 @@
+import { EventPreparationComponent } from './event-preparation.component';
 import { EventSubscriberInformationComponent } from './event-subscriber-information.component';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { combineLatest, of } from 'rxjs';
@@ -68,6 +69,7 @@ import { WorkspacePendingChangesService } from '../app-shell/workspace-pending-c
     PersonSearchComponent,
     AudienceEditorComponent,
     EventSubscriberInformationComponent,
+    EventPreparationComponent,
   ],
   templateUrl: './events-page.component.html',
   styleUrls: [

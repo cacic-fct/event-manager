@@ -18,6 +18,7 @@ export type AttendanceCategory = 'NON_REGULAR' | 'REGULAR' | 'UNKNOWN';
 export type EventAttendanceStatus = 'PRESENT' | 'ABSENT';
 
 export interface AttendanceCollectionEvent {
+  collectorInformation?: string | null;
   eventId: string;
   event: PublicEvent;
   offlineCollectorCredential?: string | null;
@@ -120,6 +121,7 @@ export class AttendanceCollectionApiService {
         query CurrentUserAttendanceCollectionEvents {
           currentUserAttendanceCollectionEvents {
             eventId
+            collectorInformation
             offlineCollectorCredential
             event {
               ${PUBLIC_EVENT_FIELDS}

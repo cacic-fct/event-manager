@@ -6,6 +6,7 @@ export const NOVU_WORKFLOW_IDENTIFIERS = {
   eventFormAvailable: 'event-form-available',
   audienceInvitation: 'audience-invitation',
   ticketTransfer: 'ticket-transfer',
+  eventManualNotification: 'event-manual-notification',
   eventSubscriberInformation: 'event-subscriber-information',
   onlineAttendanceAvailable: 'online-attendance-available',
   prizeDrawWinner: 'prize-draw-winner',

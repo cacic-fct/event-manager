@@ -140,7 +140,10 @@ export type TransferFileResource = Static<typeof TransferResourceSchema>;
 /** Only the backend's key resolver supplies IDs for key-only file records. */
 type WithResolvedId<R> = R extends { kind: string } ? Omit<R, 'id'> & { id: string } : never;
 export type TransferResource = WithResolvedId<TransferFileResource>;
-export type ResolvedTransferDocument = Omit<TransferDocument, 'resources'> & { resources: TransferResource[] };
+type ResolveDocument<Document> = Document extends TransferDocument
+  ? Omit<Document, 'resources'> & { resources: TransferResource[] }
+  : never;
+export type ResolvedTransferDocument = ResolveDocument<TransferDocument>;
 export type TransferResourceKind = TransferResource['kind'];
 export type ResourceOfKind<K extends TransferResourceKind> = Extract<TransferResource, { kind: K }>;
 

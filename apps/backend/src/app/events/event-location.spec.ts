@@ -86,5 +86,8 @@ describe('event location snapshots', () => {
     expect(formatEventLocation({})).toBeNull();
     expect(PUBLIC_EVENT_SELECT).not.toHaveProperty('locationInternalNotes');
     expect(PUBLIC_EVENT_SELECT).not.toHaveProperty('subscriberInformation');
+    for (const field of ['lecturerInformation', 'collectorInformation', 'materials']) {
+      expect(PUBLIC_EVENT_SELECT).not.toHaveProperty(field);
+    }
   });
 });

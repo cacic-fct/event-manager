@@ -117,3 +117,23 @@ describe('updateAuditEntityRecord', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 });
+
+describe('event preparation audit reverts', () => {
+  it('invalidates content editor revisions when restoring instructions or materials', async () => {
+    const prisma = createPrismaMock();
+    await updateAuditEntityRecord(prisma as unknown as Prisma.TransactionClient, AuditLogEntityType.EVENT, 'event', {
+      lecturerInformation: 'Previous instructions',
+      materials: [],
+    });
+    expect(prisma.event.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          lecturerInformation: 'Previous instructions',
+          materials: [],
+          preparationUpdatedAt: expect.any(Date),
+          materialsUpdatedAt: expect.any(Date),
+        },
+      }),
+    );
+  });
+});

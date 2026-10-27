@@ -9,6 +9,7 @@ export const routes: Route[] = [
   {
     path: ':eventType/:eventId/organizer',
     canActivate: [authGuard],
+    canDeactivate: [(component: { canDeactivate(): Promise<boolean> }) => component.canDeactivate()],
     loadComponent: () => import('./organizer-info/organizer-info').then((m) => m.OrganizerInfoComponent),
   },
   {

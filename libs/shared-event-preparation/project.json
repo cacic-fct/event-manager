@@ -1,0 +1,9 @@
+{
+  "name": "shared-event-preparation",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/shared-event-preparation/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:util"],
+  "// targets": "to see all targets run: nx show project shared-event-preparation --web",
+  "targets": {}
+}

@@ -11,6 +11,8 @@ const RELATED_CONTENT_FIELDS = new Set([
   'audienceInvitations',
   'createdAt',
   'updatedAt',
+  'preparationUpdatedAt',
+  'materialsUpdatedAt',
   'createdById',
   'updatedById',
 ]);

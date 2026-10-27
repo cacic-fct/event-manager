@@ -1,6 +1,12 @@
 import type { EventRecord } from '../selects';
 import { currentUserAssociatedEventWhere } from '../events/map-event-ids';
-import { buildConflictAlerts, dayBounds, formatSaoPauloDate, resolveMyDayTimeline } from './service';
+import {
+  CurrentUserMyDayService,
+  buildConflictAlerts,
+  dayBounds,
+  formatSaoPauloDate,
+  resolveMyDayTimeline,
+} from './service';
 
 describe('CurrentUserMyDayService helpers', () => {
   it('includes an interested-only event in My Day without requiring a subscription', () => {
@@ -21,6 +27,29 @@ describe('CurrentUserMyDayService helpers', () => {
     expect(association.OR).toContainEqual({
       eventGroup: { interests: { some: { personId: 'person-1', deletedAt: null } } },
     });
+  });
+
+  it('opens existing lecturer preparation for lectures and retains ordinary event information for other roles', () => {
+    const service = Object.create(CurrentUserMyDayService.prototype) as CurrentUserMyDayService;
+    const mapEvent = Reflect.get(service, 'mapEvent').bind(service);
+    const record = {
+      ...event('lecture', 'Minha palestra', new Date().toISOString(), new Date(Date.now() + 3600000).toISOString()),
+      majorEventId: 'major',
+    };
+    const roles = {
+      lecturerEventIds: new Set(['lecture']),
+      collectorEventIds: new Set(),
+      managerGrants: [],
+      sportsMatches: [],
+    };
+    const lecture = mapEvent(record, roles, new Set(), new Set(), null);
+    expect(lecture.infoAction).toMatchObject({
+      label: 'Preparar minha participação',
+      route: '/profile/attendances/major-event/major/organizer',
+      offlineCapable: false,
+    });
+    const participant = mapEvent(record, { ...roles, lecturerEventIds: new Set() }, new Set(), new Set(), null);
+    expect(participant.infoAction).toMatchObject({ label: 'Informações', route: '/event/lecture' });
   });
 
   it('uses stable São Paulo calendar-day bounds', () => {

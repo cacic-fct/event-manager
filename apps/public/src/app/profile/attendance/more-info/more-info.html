@@ -52,6 +52,15 @@
     }
   </section>
 
+  @if (detail.isSubscribed) {
+  <section class="detail-section" aria-label="Materiais para inscritos">
+    @if (detail.targetType === 'event') {
+    <lib-event-materials [eventId]="detail.targetId" />
+    } @else { @for (item of detail.events; track item.event.id) {
+    <lib-event-materials [eventId]="item.event.id" [eventName]="item.event.name" />
+    } }
+  </section>
+  }
   <div class="actions">
     @if (detail.sportsTournamentId) {
     <a mat-flat-button [routerLink]="sportsPanelRoute(detail)">
@@ -75,8 +84,8 @@
     </a>
     } @if (detail.canViewOrganizerInfo) {
     <a mat-flat-button [routerLink]="organizerInfoRoute(detail)">
-      <mat-icon>admin_panel_settings</mat-icon>
-      Informações do organizador
+      <mat-icon>record_voice_over</mat-icon>
+      Área do palestrante
     </a>
     } @if (currentState.hasPrizeDraws) {
     <a mat-stroked-button [routerLink]="prizeDrawRoute(detail)">

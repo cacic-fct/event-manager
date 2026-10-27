@@ -1,3 +1,4 @@
+import { EventInstructionsComponent } from '@cacic-fct/shared-angular/event-preparation';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,7 +10,7 @@ import { AttendanceCollectionApiService, AttendanceCollectionEvent } from '../at
 
 @Component({
   selector: 'app-attendance-method',
-  imports: [RouterLink, MatButtonModule, MatIconModule, MatToolbarModule],
+  imports: [EventInstructionsComponent, RouterLink, MatButtonModule, MatIconModule, MatToolbarModule],
   template: `
     <mat-toolbar>
       <a matIconButton routerLink="/attendance/collect" aria-label="Voltar para eventos">
@@ -19,6 +20,7 @@ import { AttendanceCollectionApiService, AttendanceCollectionEvent } from '../at
     </mat-toolbar>
     <main class="method-page">
       @if (event(); as selected) {
+        <lib-event-instructions title="Orientações para coleta" [content]="selected.collectorInformation" />
         <header>
           <span>{{ selected.event.emoji }}</span>
         </header>

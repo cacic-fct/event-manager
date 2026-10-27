@@ -21,6 +21,7 @@ const REQUIRED_WORKFLOWS = new Set([
   'major-event-subscription-status-changed',
   'ticket-transfer',
   'event-subscriber-information',
+  'event-manual-notification',
 ]);
 
 const WORKFLOW_PRESENTATION: Readonly<Record<string, WorkflowPresentation>> = {
