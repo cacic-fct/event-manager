@@ -162,6 +162,12 @@ export const appRoutes: Route[] = [
     canActivate: [authGuard],
   },
   {
+    path: 'major-event/:majorEventId',
+    pathMatch: 'full',
+    loadComponent: () => import('./major-events/info/major-event-info-page').then((m) => m.MajorEventInfoPage),
+    title: 'Informações do evento',
+  },
+  {
     path: 'major-event/:majorEventId/subscription',
     loadComponent: () =>
       import('./major-events/registration/standard/subscription').then((m) => m.MajorEventSubscription),

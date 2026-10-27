@@ -7,57 +7,91 @@
     class="calendar-row"
     [routerLink]="entry.route"
     [queryParams]="queryParams()"
-    [attr.aria-label]="ariaLabel()">
+    [attr.aria-description]="entry.ariaLabel ?? null">
+    @if (iconPosition() === 'leading') {
     <div matListItemIcon class="emoji-frame" aria-hidden="true">
       <img class="twemoji" [src]="emoji.getTwemojiUrl(entry.emoji)" alt="" />
     </div>
-    <div matListItemTitle>{{ entry.name }}</div>
-    @if (hasSupportingText()) {
-    <div matListItemLine class="row-supporting-text">
-      @for (line of contextLines(); track $index) {
-      <span class="metadata-item">{{ line }}</span>
-      } @if (entry.eventType) {
-      <span class="metadata-item">{{ eventTypeLabel(entry.eventType) }}</span>
-      } @for (line of entry.secondaryLines ?? []; track $index) {
-      <span class="metadata-item">{{ line }}</span>
-      } @if (entry.expiresAt) {
-      <span class="metadata-item">
-        {{ entry.expiresLabel ?? 'Válido até' }} {{ entry.expiresAt | date: 'dd/MM/yyyy HH:mm' }}
-      </span>
-      } @if (entry.locationDescription) {
-      <span class="metadata-item">{{ entry.locationDescription }}</span>
-      }
-    </div>
     }
-    <div matListItemMeta class="time-range" aria-label="Horário do evento">
-      <span>{{ entry.startDate | date: 'HH:mm' }}–{{ entry.endDate | date: 'HH:mm' }}</span>
+    <div matListItemTitle>
+      @if (iconPosition() === 'top') {
+      <span class="top-emoji" aria-hidden="true">
+        <img class="twemoji" [src]="emoji.getTwemojiUrl(entry.emoji)" alt="" />
+      </span>
+      } {{ entry.name }}
+    </div>
+    <div matListItemLine class="row-details">
+      @if (hasSubtitle()) {
+      <div class="row-supporting-text">
+        @for (line of contextLines(); track $index) {
+        <span class="metadata-item">{{ line }}</span>
+        } @if (entry.eventType) {
+        <span class="metadata-item">{{ eventTypeLabel(entry.eventType) }}</span>
+        } @for (line of entry.secondaryLines ?? []; track $index) {
+        <span class="metadata-item">{{ line }}</span>
+        } @if (entry.expiresAt) {
+        <span class="metadata-item">
+          {{ entry.expiresLabel ?? 'Válido até' }} {{ entry.expiresAt | date: 'dd/MM/yyyy HH:mm' }}
+        </span>
+        }
+      </div>
+      }
+      <div class="time-range">
+        <span class="time-content">
+          <mat-icon aria-hidden="true">schedule</mat-icon>
+          <span>{{ entry.startDate | date: 'HH:mm' }} – {{ entry.endDate | date: endTimeFormat() }}</span>
+        </span>
+      </div>
+      @if (entry.locationDescription) {
+      <div class="location-content">
+        <mat-icon aria-hidden="true">location_on</mat-icon>
+        <span class="metadata-item">{{ entry.locationDescription }}</span>
+      </div>
+      }
     </div>
   </a>
   } @else {
   <mat-list-item class="calendar-row">
+    @if (iconPosition() === 'leading') {
     <div matListItemIcon class="emoji-frame" aria-hidden="true">
       <img class="twemoji" [src]="emoji.getTwemojiUrl(entry.emoji)" alt="" />
     </div>
-    <div matListItemTitle>{{ entry.name }}</div>
-    @if (hasSupportingText()) {
-    <div matListItemLine class="row-supporting-text">
-      @for (line of contextLines(); track $index) {
-      <span class="metadata-item">{{ line }}</span>
-      } @if (entry.eventType) {
-      <span class="metadata-item">{{ eventTypeLabel(entry.eventType) }}</span>
-      } @for (line of entry.secondaryLines ?? []; track $index) {
-      <span class="metadata-item">{{ line }}</span>
-      } @if (entry.expiresAt) {
-      <span class="metadata-item">
-        {{ entry.expiresLabel ?? 'Válido até' }} {{ entry.expiresAt | date: 'dd/MM/yyyy HH:mm' }}
-      </span>
-      } @if (entry.locationDescription) {
-      <span class="metadata-item">{{ entry.locationDescription }}</span>
-      }
-    </div>
     }
-    <div matListItemMeta class="time-range" aria-label="Horário do evento">
-      <span>{{ entry.startDate | date: 'HH:mm' }}–{{ entry.endDate | date: 'HH:mm' }}</span>
+    <div matListItemTitle>
+      @if (iconPosition() === 'top') {
+      <span class="top-emoji" aria-hidden="true">
+        <img class="twemoji" [src]="emoji.getTwemojiUrl(entry.emoji)" alt="" />
+      </span>
+      } {{ entry.name }}
+    </div>
+    <div matListItemLine class="row-details">
+      @if (hasSubtitle()) {
+      <div class="row-supporting-text">
+        @for (line of contextLines(); track $index) {
+        <span class="metadata-item">{{ line }}</span>
+        } @if (entry.eventType) {
+        <span class="metadata-item">{{ eventTypeLabel(entry.eventType) }}</span>
+        } @for (line of entry.secondaryLines ?? []; track $index) {
+        <span class="metadata-item">{{ line }}</span>
+        } @if (entry.expiresAt) {
+        <span class="metadata-item">
+          {{ entry.expiresLabel ?? 'Válido até' }} {{ entry.expiresAt | date: 'dd/MM/yyyy HH:mm' }}
+        </span>
+        }
+      </div>
+      }
+      <div class="time-range">
+        <span class="time-content">
+          <mat-icon aria-hidden="true">schedule</mat-icon>
+          <span>{{ entry.startDate | date: 'HH:mm' }} – {{ entry.endDate | date: endTimeFormat() }}</span>
+        </span>
+      </div>
+      @if (entry.locationDescription) {
+      <div class="location-content">
+        <mat-icon aria-hidden="true">location_on</mat-icon>
+        <span class="metadata-item">{{ entry.locationDescription }}</span>
+      </div>
+      }
     </div>
   </mat-list-item>
   }

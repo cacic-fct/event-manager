@@ -59,4 +59,52 @@ describe('CalendarEventListItem', () => {
     expect(href).toContain('/sports/match/sports-match-story');
     expect(href).toContain('returnUrl=%2Fcalendar');
   });
+
+  it('hides redundant major-event context while retaining the activity summary and return destination', async () => {
+    const event = {
+      ...createPublicStoryEvent({
+        name: 'Atividade do encontro',
+        context: 'major-event',
+        majorEventName: 'Encontro da comunidade',
+      }),
+      shortDescription: 'Conversa com a comunidade.',
+    };
+    await TestBed.configureTestingModule({
+      imports: [CalendarEventListItem],
+      providers: [provideRouter([])],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(CalendarEventListItem);
+    fixture.componentRef.setInput('event', event);
+    fixture.componentRef.setInput('showMajorEventContext', false);
+    fixture.componentRef.setInput('returnUrl', '/major-event/community');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).not.toContain('Encontro da comunidade');
+    expect(fixture.nativeElement.textContent).toContain('Conversa com a comunidade.');
+    expect(fixture.nativeElement.querySelector('a').getAttribute('href')).toContain(
+      'returnUrl=%2Fmajor-event%2Fcommunity',
+    );
+  });
+
+  it('uses online or the named venue before a location description', async () => {
+    const event = {
+      ...createPublicStoryEvent(),
+      locationName: 'Auditório central',
+      locationDescription: 'Bloco de extensão',
+    };
+    await TestBed.configureTestingModule({
+      imports: [CalendarEventListItem],
+      providers: [provideRouter([])],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(CalendarEventListItem);
+    fixture.componentRef.setInput('event', event);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Auditório central');
+    expect(fixture.nativeElement.textContent).not.toContain('Bloco de extensão');
+
+    fixture.componentRef.setInput('event', { ...event, isVirtual: true });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Online');
+    expect(fixture.nativeElement.textContent).not.toContain('Auditório central');
+  });
 });

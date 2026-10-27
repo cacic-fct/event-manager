@@ -10,13 +10,7 @@ import { RateLimit } from '../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
 import { TypesenseSearchService } from '../search/typesense-search.service';
-import {
-  PUBLIC_MAJOR_EVENT_SELECT,
-  PUBLIC_MAJOR_EVENT_WHERE,
-  PublicMajorEvent,
-  mapPublicMajorEvent,
-  publicMajorEventCardSelect,
-} from './models';
+import { PUBLIC_MAJOR_EVENT_WHERE, PublicMajorEvent, mapPublicMajorEvent, publicMajorEventCardSelect } from './models';
 
 @Public()
 @Resolver(() => PublicMajorEvent)
@@ -149,7 +143,7 @@ export class PublicMajorEventsResolver {
         ...PUBLIC_MAJOR_EVENT_WHERE,
         id,
       },
-      select: PUBLIC_MAJOR_EVENT_SELECT,
+      select: publicMajorEventCardSelect(new Date()),
     });
 
     if (!majorEvent) {

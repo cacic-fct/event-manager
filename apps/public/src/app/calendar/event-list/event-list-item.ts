@@ -13,6 +13,8 @@ export class CalendarEventListItem {
   readonly event = input.required<PublicEvent>();
   readonly isSubscribed = input(false);
   readonly returnUrl = input('/calendar');
+  readonly showMajorEventContext = input(true);
+  readonly iconPosition = input<'leading' | 'top'>('leading');
   readonly eventTypeLabel = computed(() => getEventTypeLabel(this.event().type));
   readonly detailRoute = computed(() => {
     const sportsMatchId = this.event().sportsMatch?.id;
@@ -21,9 +23,11 @@ export class CalendarEventListItem {
 
   readonly contextLines = computed(() => {
     const event = this.event();
-    return [event.majorEvent?.name, event.eventGroup?.name, event.shortDescription].filter((line): line is string =>
-      Boolean(line),
-    );
+    return [
+      this.showMajorEventContext() ? event.majorEvent?.name : null,
+      event.eventGroup?.name,
+      event.shortDescription,
+    ].filter((line): line is string => Boolean(line));
   });
 
   readonly listItem = computed(() => ({
@@ -36,7 +40,9 @@ export class CalendarEventListItem {
     contextLines: this.contextLines(),
     eventType: this.event().type,
     secondaryLines: this.isSubscribed() ? ['Inscrito'] : [],
-    locationDescription: this.event().locationDescription,
+    locationDescription: this.event().isVirtual
+      ? 'Online'
+      : this.event().locationName?.trim() || this.event().locationDescription?.trim(),
     route: this.detailRoute(),
     returnUrl: this.returnUrl(),
     ariaLabel: `Abrir evento ${this.event().name}`,

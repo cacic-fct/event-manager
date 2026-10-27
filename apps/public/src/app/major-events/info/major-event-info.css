@@ -1,0 +1,296 @@
+:host {
+  display: block;
+}
+
+.info-page {
+  box-sizing: border-box;
+  margin-inline: auto;
+  max-width: 1120px;
+  padding: 16px 16px 48px;
+}
+
+.back-navigation {
+  margin: 0 -12px 24px;
+}
+
+.overview {
+  display: grid;
+  gap: 24px;
+}
+
+.event-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.event-identity {
+  --twemoji-size: 48px;
+  margin-top: 4px;
+}
+
+.heading-copy {
+  min-width: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+h1 {
+  font: var(--mat-sys-headline-medium);
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+h2 {
+  font: var(--mat-sys-title-large);
+}
+
+.event-date,
+.event-price {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.event-date mat-icon,
+.event-price mat-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+}
+
+.event-price {
+  margin-top: 8px;
+}
+
+.participation mat-card-content {
+  padding: 20px;
+}
+
+.participation-description {
+  margin-top: 8px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.participation-facts {
+  margin: 16px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.participation-facts dt {
+  font: var(--mat-sys-label-large);
+}
+
+.participation-facts dd {
+  margin: 4px 0 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.participation-actions,
+.secondary-action {
+  margin-top: 16px;
+}
+
+.participation-actions > *,
+.secondary-action {
+  width: 100%;
+  min-height: 48px;
+  height: auto;
+  padding-block: 10px;
+}
+
+.related-links {
+  display: grid;
+  gap: 4px;
+  list-style: none;
+  padding: 12px 0 0;
+  margin: 16px 0 0;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.related-links a {
+  justify-content: flex-start;
+  text-align: start;
+  max-width: 100%;
+  height: auto;
+  min-height: 44px;
+  padding-block: 8px;
+  overflow-wrap: anywhere;
+}
+
+.description {
+  min-width: 0;
+}
+
+.description h2 {
+  margin-bottom: 12px;
+}
+
+.description lib-markdown {
+  display: block;
+  max-width: 72ch;
+  overflow-wrap: anywhere;
+}
+
+.program {
+  margin-top: 40px;
+  padding-top: 28px;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.program-heading {
+  margin-bottom: 16px;
+}
+
+.program-heading p {
+  margin-top: 8px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.day-navigation {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: 0 -4px 20px;
+  padding: 8px 4px 12px;
+  overflow-x: auto;
+  background: var(--mat-sys-surface);
+  scrollbar-width: thin;
+  scrollbar-color: var(--mat-sys-outline-variant) var(--mat-sys-surface);
+}
+
+.day-options {
+  gap: 8px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+}
+
+.day-options mat-button-toggle {
+  flex-shrink: 0;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 16px;
+}
+
+.day-option-label {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  min-width: 48px;
+  min-height: 64px;
+  line-height: 1.2;
+}
+
+.day-option-label > span {
+  font: var(--mat-sys-label-medium);
+  text-transform: capitalize;
+}
+
+.day-option-label strong {
+  font: var(--mat-sys-title-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.all-days mat-icon {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+}
+
+.program-day + .program-day {
+  margin-top: 28px;
+}
+
+.program-day app-sticky-date-header {
+  margin-bottom: 8px;
+}
+
+.activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.activity-list li + li {
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.program-feedback,
+.program-empty {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  padding-block: 16px;
+}
+
+.program-feedback mat-progress-bar {
+  width: 100%;
+}
+
+.program-empty p + p {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.load-more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  text-align: center;
+}
+
+.load-more p {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 599px) {
+  .event-heading {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .event-identity {
+    margin-top: 0;
+  }
+}
+
+@media (min-width: 800px) {
+  .info-page {
+    padding: 24px 32px 64px;
+  }
+
+  .overview {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    column-gap: 40px;
+    align-items: start;
+  }
+
+  .participation {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .description {
+    grid-column: 1;
+  }
+}

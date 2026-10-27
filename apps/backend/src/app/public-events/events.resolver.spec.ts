@@ -1,16 +1,28 @@
 import { PublicEventsResolver } from './events.resolver';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
-import {
-  PUBLIC_EVENT_WHERE,
-  PUBLIC_MAJOR_EVENT_WHERE,
-  PUBLIC_MAP_EVENT_SELECT,
-  PUBLIC_REGULAR_EVENT_WHERE,
-  publicMapEventWhere,
-} from './models';
+import { PUBLIC_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE, PUBLIC_MAP_EVENT_SELECT, publicMapEventWhere } from './models';
 import { createPublicMajorEventRecord } from './testing/public-event-record.fixtures';
 const { jest } = import.meta;
 
 describe('PublicEventsResolver lecturer profiles', () => {
+  it('reuses the public catalog for a chronological major-event program without signup or retention filters', async () => {
+    const events = [{ id: 'past-or-non-subscribable-activity' }];
+    const prisma = { event: { findMany: jest.fn().mockResolvedValue(events) } };
+    const resolver = new PublicEventsResolver(prisma as never, { isEnabled: () => false } as never);
+
+    await expect(
+      resolver.publicEvents(undefined, undefined, undefined, 'major-1', undefined, 100, 100, true),
+    ).resolves.toEqual(events);
+    expect(prisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { AND: [PUBLIC_EVENT_WHERE, { majorEventId: 'major-1' }] },
+        orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
+        skip: 100,
+        take: 100,
+      }),
+    );
+  });
+
   afterEach(() => {
     jest.useRealTimers();
   });

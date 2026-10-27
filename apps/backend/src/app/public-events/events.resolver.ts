@@ -267,7 +267,7 @@ export class PublicEventsResolver {
   @Query(() => [PublicEvent], {
     name: 'publicEvents',
     description:
-      'Lists public, non-deleted events for catalog and search surfaces. Supports optional date, major-event, event-group, text-search, and pagination filters; results are ordered by newest start date unless search relevance is available. Rate limited to 60 requests per minute.',
+      'Lists public, non-deleted events for catalog and search surfaces. Supports optional date, major-event, event-group, text-search, and pagination filters; results are ordered by newest start date unless oldestFirst is requested or search relevance is available. Rate limited to 60 requests per minute.',
   })
   @UseGuards(RateLimitGuard)
   @RateLimit(RATE_LIMIT_POLICIES.publicEvents)
@@ -307,6 +307,13 @@ export class PublicEventsResolver {
       description: 'Maximum number of rows to return. Defaults to 50 and is capped at 100.',
     })
     take?: number,
+    @Args('oldestFirst', {
+      type: () => Boolean,
+      nullable: true,
+      description:
+        'Returns activities in chronological order, with a stable identifier tie-breaker. Defaults to false.',
+    })
+    oldestFirst?: boolean,
   ) {
     const pagination = resolvePublicEventsPagination(skip, take);
     const whereParts: Prisma.EventWhereInput[] = [PUBLIC_EVENT_WHERE];
@@ -363,9 +370,7 @@ export class PublicEventsResolver {
         AND: whereParts,
       },
       select: PUBLIC_EVENT_SELECT,
-      orderBy: {
-        startDate: 'desc',
-      },
+      orderBy: oldestFirst ? [{ startDate: 'asc' }, { id: 'asc' }] : { startDate: 'desc' },
       skip: prioritizedIds.length > 0 ? 0 : pagination.skip,
       take: prioritizedIds.length > 0 ? prioritizedIds.length : pagination.take,
     });

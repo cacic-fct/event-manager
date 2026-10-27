@@ -7,6 +7,7 @@ import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { compareIsoDateAsc } from '@cacic-fct/shared-utils';
 import { isSameDay, isSameMonth, parseISO } from 'date-fns';
 import { CalendarEventListItem } from '../event-list/event-list-item';
+import { StickyDateHeader } from '../../shared/sticky-date-header';
 
 interface CalendarListMonth {
   key: string;
@@ -22,7 +23,7 @@ interface CalendarListDay {
 
 @Component({
   selector: 'app-calendar-list-view',
-  imports: [CalendarEventListItem, MatButtonModule, MatIconModule, MatListModule],
+  imports: [CalendarEventListItem, MatButtonModule, MatIconModule, MatListModule, StickyDateHeader],
   templateUrl: './list-view.html',
   styleUrl: './list-view.css',
 })

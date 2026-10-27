@@ -23,6 +23,7 @@ import {
   PUBLIC_EVENT_SUBSCRIPTION_SUMMARY_FIELDS,
   PUBLIC_EVENT_WEATHER_FIELDS,
   PUBLIC_MAJOR_EVENT_CARD_FIELDS,
+  PUBLIC_MAJOR_EVENT_INFO_FIELDS,
   PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS,
   PUBLIC_MAP_EVENT_FIELDS,
   PUBLIC_SUBSCRIPTION_EVENT_FIELDS,
@@ -66,6 +67,30 @@ export const PUBLIC_MAJOR_EVENTS_QUERY = `
       take: $take
     ) {
       ${PUBLIC_MAJOR_EVENT_CARD_FIELDS}
+    }
+  }
+`;
+
+export interface PublicMajorEventInfoQuery {
+  publicMajorEvent: PublicMajorEvent;
+}
+
+export const PUBLIC_MAJOR_EVENT_INFO_QUERY = `
+  query PublicMajorEventInfo($majorEventId: String!) {
+    publicMajorEvent(id: $majorEventId) {
+      ${PUBLIC_MAJOR_EVENT_INFO_FIELDS}
+    }
+  }
+`;
+
+export interface PublicMajorEventProgramQuery {
+  publicEvents: PublicEvent[];
+}
+
+export const PUBLIC_MAJOR_EVENT_PROGRAM_QUERY = `
+  query PublicMajorEventProgram($majorEventId: String!, $skip: Int, $take: Int) {
+    publicEvents(majorEventId: $majorEventId, skip: $skip, take: $take, oldestFirst: true) {
+      ${PUBLIC_CALENDAR_EVENT_FIELDS}
     }
   }
 `;

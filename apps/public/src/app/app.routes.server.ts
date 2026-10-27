@@ -191,6 +191,10 @@ const routes: ServerRoute[] = [
     renderMode: RenderMode.Client,
   },
   {
+    path: 'major-event/:majorEventId',
+    renderMode: RenderMode.Client,
+  },
+  {
     path: 'major-event/:majorEventId/subscription',
     renderMode: RenderMode.Client,
   },

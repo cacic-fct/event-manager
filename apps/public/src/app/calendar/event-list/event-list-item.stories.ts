@@ -14,6 +14,7 @@ import { createPublicStoryEventGroup } from '../../testing/public-event-story-fi
 type CalendarEventListItemStoryArgs = CalendarStoryEventControls & {
   isSubscribed: boolean;
   returnUrl: string;
+  showMajorEventContext: boolean;
 };
 
 const meta: Meta<CalendarEventListItemStoryArgs> = {
@@ -24,17 +25,20 @@ const meta: Meta<CalendarEventListItemStoryArgs> = {
     ...calendarStoryEventDefaultControls,
     isSubscribed: true,
     returnUrl: '/calendar',
+    showMajorEventContext: true,
   },
   argTypes: {
     ...calendarStoryEventControlArgTypes,
     isSubscribed: { control: 'boolean' },
     returnUrl: { control: 'text' },
+    showMajorEventContext: { control: 'boolean' },
   },
   render: (args) => ({
     props: {
       event: createDemoEvent(args),
       isSubscribed: args.isSubscribed,
       returnUrl: args.returnUrl,
+      showMajorEventContext: args.showMajorEventContext,
     },
   }),
   parameters: {
