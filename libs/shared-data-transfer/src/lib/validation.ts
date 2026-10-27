@@ -86,7 +86,7 @@ export function parseTransferDocument(input: unknown): TransferDocument {
           ...input,
           $schema: TRANSFER_SCHEMA_ID,
           version: TRANSFER_VERSION,
-          resources: input.resources.map(upgradeLegacyEventLocation),
+          resources: input.resources.map(upgradeLegacyLocation),
         }
       : input;
   // Splitting legacy text can expose a name longer than the structured field's limit.
@@ -122,7 +122,26 @@ export function parseTransferDocument(input: unknown): TransferDocument {
 }
 
 /** Version 1 stored the public place name and details together in locationDescription. */
-function upgradeLegacyEventLocation(resource: TransferFileResource): TransferFileResource {
+function upgradeLegacyLocation(resource: TransferFileResource): TransferFileResource {
+  if (resource.kind === 'place-preset') {
+    const data = resource.data;
+    const description = data.locationDescription?.trim() || null;
+    const legacyName = data.name;
+    const combined = description ?? legacyName;
+    if (combined === undefined) return resource;
+    const separator = combined.indexOf(' - ');
+    return {
+      ...resource,
+      data: {
+        ...data,
+        name: (separator < 0 ? combined : combined.slice(0, separator)).trim(),
+        locationDescription: separator < 0 ? null : combined.slice(separator + 3).trim() || null,
+        ...(description && legacyName !== undefined && legacyName.trim() !== description
+          ? { internalNotes: `Nome anterior do cadastro: ${legacyName}` }
+          : {}),
+      },
+    };
+  }
   if (resource.kind !== 'event') return resource;
   const data = resource.data;
   if (!('locationDescription' in data) || 'locationName' in data || 'isVirtual' in data) return resource;

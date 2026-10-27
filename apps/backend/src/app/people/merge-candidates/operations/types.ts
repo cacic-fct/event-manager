@@ -5,6 +5,7 @@ import {
   EventAttendanceStatus,
   SportsOfficialRole,
 } from '@prisma/client';
+import type { ManualRecipientMergeSnapshot } from './certificate-manual-recipients';
 import type { AudienceInvitationSnapshot } from './audience-invitations';
 import type { TicketPersonRelationsSnapshot } from '../../../tickets/ticket-merge-relations';
 
@@ -128,6 +129,7 @@ export type PermissionGroupMembershipSnapshot = {
 };
 
 export type MovedRelationsSnapshot = {
+  manualRecipients?: ManualRecipientMergeSnapshot;
   sourceAttendances: AttendanceSnapshot[];
   sourceLectures: LectureSnapshot[];
   insertedAttendanceEventIds: string[];

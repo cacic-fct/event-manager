@@ -124,6 +124,7 @@ export function parseMovedRelations(value: Prisma.JsonValue): MovedRelationsSnap
   return {
     sourceAttendances,
     sourceLectures,
+    ...(value.manualRecipients === undefined ? {} : { manualRecipients: readManualRecipients(value.manualRecipients) }),
     insertedAttendanceEventIds: readStringArray(value, 'insertedAttendanceEventIds'),
     insertedLectureEventIds: readStringArray(value, 'insertedLectureEventIds'),
     movedEventSubscriptionIds: readStringArray(value, 'movedEventSubscriptionIds'),
@@ -370,4 +371,15 @@ function readBoolean(value: Record<string, Prisma.JsonValue>, fieldName: string)
     throw new ConflictException(`Invalid ${fieldName} payload.`);
   }
   return value[fieldName] as boolean;
+}
+
+function readManualRecipients(value: Prisma.JsonValue) {
+  if (!isRecord(value)) throw new ConflictException('Invalid manualRecipients payload.');
+  return {
+    movedConfigIds: readStringArray(value, 'movedConfigIds'),
+    reactivated: readArrayValue(value.reactivated, 'reactivated manual recipients').map((entry) => ({
+      configId: readRequiredString(entry, 'configId'),
+      removedAt: readRequiredString(entry, 'removedAt'),
+    })),
+  };
 }

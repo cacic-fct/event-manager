@@ -104,6 +104,34 @@ describe('portable event data contract', () => {
     expect(parseTransferDocument(document)).toEqual(document);
   });
 
+  it.each([
+    [
+      'Cadastro interno',
+      'Auditório - Bloco 5 - Térreo',
+      'Auditório',
+      'Bloco 5 - Térreo',
+      'Nome anterior do cadastro: Cadastro interno',
+    ],
+    ['Auditório', 'Auditório', 'Auditório', null, undefined],
+    ['Auditório - Bloco 5', '  ', 'Auditório', 'Bloco 5', undefined],
+    ['Auditório', null, 'Auditório', null, undefined],
+  ])('upgrades legacy place preset %s with description %s', (name, description, publicName, details, notes) => {
+    const input = {
+      $schema: 'urn:cacic:event-data:v1',
+      format: 'cacic-event-data',
+      version: 1,
+      resources: [{ kind: 'place-preset', id: 'place-1', data: { name, locationDescription: description } }],
+    };
+    const document = parseTransferDocument(input);
+    expect(document.resources[0].data).toEqual({
+      name: publicName,
+      locationDescription: details,
+      ...(notes ? { internalNotes: notes } : {}),
+    });
+    expect(input.resources[0].data).toEqual({ name, locationDescription: description });
+    expect(parseTransferDocument(document)).toEqual(document);
+  });
+
   it('upgrades a legacy online location and clears its physical coordinates', () => {
     const document = parseTransferDocument({
       format: 'cacic-event-data',

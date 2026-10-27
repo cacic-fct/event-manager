@@ -53,7 +53,6 @@ function fixture() {
   };
   const eligibility = { getConfigById: jest.fn().mockImplementation(async () => config) };
   const issuing = { issueMissedCertificates: jest.fn().mockResolvedValue([]) };
-  const notifications = { createPendingOutbox: jest.fn().mockResolvedValue(undefined) };
   const audit = { record: jest.fn().mockResolvedValue(undefined) };
   const queue = {
     getJob: jest.fn().mockResolvedValue(undefined),
@@ -64,11 +63,10 @@ function fixture() {
     prisma as never,
     eligibility as never,
     issuing as never,
-    notifications as never,
     queue as never,
     audit as never,
   );
-  return { now, config, run, audit, prisma, eligibility, issuing, notifications, queue, service };
+  return { now, config, run, audit, prisma, eligibility, issuing, queue, service };
 }
 
 describe('CertificateIssuanceJobsService', () => {
@@ -193,20 +191,18 @@ describe('CertificateIssuanceJobsService', () => {
     expect(audit.record.mock.calls[3][0].actor.id).toBe('cancelling-admin');
   });
 
-  it('creates scoped notifications in the completion transaction only after the entire batch succeeds', async () => {
-    const { service, prisma, notifications, issuing } = fixture();
+  it('persists notification intents through individual certificate transactions', async () => {
+    const { service, prisma, issuing } = fixture();
     issuing.issueMissedCertificates.mockImplementationOnce(async () => {
-      expect(notifications.createPendingOutbox).not.toHaveBeenCalled();
       expect(audienceContext.getStore()?.bypass).toBe(true);
     });
     await service.process('run', true);
     expect(issuing.issueMissedCertificates).toHaveBeenCalledWith('config', 'admin', {
       notify: false,
-      createNotifications: false,
+      createNotifications: true,
       force: false,
       batchSize: 1,
     });
-    expect(notifications.createPendingOutbox).toHaveBeenCalledWith({ id: 'certificate' }, prisma);
     expect(prisma.certificateIssuanceRun.update).toHaveBeenCalledWith({
       where: { id: 'run' },
       data: expect.objectContaining({ status: 'COMPLETED', certificateCount: 1 }),
@@ -214,7 +210,7 @@ describe('CertificateIssuanceJobsService', () => {
   });
 
   it('never creates an outbox for a muted reissuance', async () => {
-    const { service, run, issuing, notifications } = fixture();
+    const { service, run, issuing } = fixture();
     run.notifyRecipients = false;
     run.reissue = true;
     await service.process('run', true);
@@ -223,11 +219,10 @@ describe('CertificateIssuanceJobsService', () => {
       'admin',
       expect.objectContaining({ force: true, createNotifications: false }),
     );
-    expect(notifications.createPendingOutbox).not.toHaveBeenCalled();
   });
 
-  it('retries partial failures without notifying and reports terminal failures', async () => {
-    const { service, issuing, notifications, prisma, run } = fixture();
+  it('preserves notification intent creation on retryable and terminal partial failures', async () => {
+    const { service, issuing, prisma, run } = fixture();
     const failure = new Error('batch failed');
     issuing.issueMissedCertificates.mockRejectedValue(failure);
     run.startedAt = new Date(Date.now() - 30_000);
@@ -241,7 +236,18 @@ describe('CertificateIssuanceJobsService', () => {
       where: { id: 'run' },
       data: expect.objectContaining({ status: 'FAILED', completedAt: expect.any(Date) }),
     });
-    expect(notifications.createPendingOutbox).not.toHaveBeenCalled();
+    expect(issuing.issueMissedCertificates).toHaveBeenNthCalledWith(
+      1,
+      'config',
+      'admin',
+      expect.objectContaining({ notify: false, createNotifications: true }),
+    );
+    expect(issuing.issueMissedCertificates).toHaveBeenNthCalledWith(
+      2,
+      'config',
+      'admin',
+      expect.objectContaining({ notify: false, createNotifications: true }),
+    );
   });
 
   it('fails a queued request if its configuration changed rather than executing under a different scope', async () => {

@@ -268,6 +268,7 @@ describe('merge candidate relation movement', () => {
 
 function createTransaction() {
   return {
+    certificateManualRecipient: { findMany: jest.fn().mockResolvedValue([]) },
     eventAttendance: {
       findMany: jest.fn().mockResolvedValue([]),
       createMany: jest.fn(),
