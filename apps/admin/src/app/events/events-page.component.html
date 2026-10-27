@@ -778,6 +778,11 @@
           </div>
         </section>
         @if (workspace.selectedEvent(); as event) {
+          <app-event-preparation
+            [eventId]="event.id"
+            [eventName]="event.name"
+            [published]="event.publicationState === 'PUBLISHED'"
+            [editable]="canEditEvent(event)" />
           <app-event-subscriber-information
             [eventId]="event.id"
             [published]="event.publicationState === 'PUBLISHED'"

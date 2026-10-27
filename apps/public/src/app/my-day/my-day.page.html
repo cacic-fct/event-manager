@@ -74,7 +74,7 @@
         </a>
         }
         <a matIconButton [routerLink]="link(current.infoAction.route)" [attr.aria-label]="current.infoAction.label">
-          <mat-icon>info</mat-icon>
+          <mat-icon>{{ current.infoAction.materialIcon }}</mat-icon>
         </a>
       </div>
     </div>
@@ -102,7 +102,7 @@
           }
         </div>
         <a matIconButton [routerLink]="link(next.infoAction.route)" [attr.aria-label]="next.infoAction.label">
-          <mat-icon>info</mat-icon>
+          <mat-icon>{{ next.infoAction.materialIcon }}</mat-icon>
         </a>
       </div>
 

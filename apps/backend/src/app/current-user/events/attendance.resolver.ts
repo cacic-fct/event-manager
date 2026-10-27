@@ -483,6 +483,7 @@ export class CurrentUserEventAttendanceResolver {
       title: this.resolveOrganizerTitle(targetType, events),
       events: events.map((event) => ({
         event: this.mapper.mapPublicEvent(event),
+        lecturerInformation: event.lecturerInformation,
         subscriberCount: subscriberCountByEventId.get(event.id) ?? 0,
         attendanceCount: attendanceCountByEventId.get(event.id) ?? 0,
         onlineAttendanceCode: event.onlineAttendanceCode ?? undefined,
@@ -509,6 +510,7 @@ export class CurrentUserEventAttendanceResolver {
         name: true,
         endDate: true,
         shouldProvideSubscriberListToLecturer: true,
+        lecturerInformation: true,
         lecturers: {
           where: {
             personId: person.id,
@@ -624,6 +626,7 @@ export class CurrentUserEventAttendanceResolver {
         ...PUBLIC_EVENT_SELECT,
         onlineAttendanceCode: true,
         shouldProvideSubscriberListToLecturer: true,
+        lecturerInformation: true,
       },
       orderBy: {
         startDate: 'asc',

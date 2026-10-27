@@ -43,7 +43,17 @@ export async function updateAuditEntityRecord(
     case AuditLogEntityType.PERSON:
       return tx.people.update({ where: { id: entityId }, data, select: getAuditLogRevertConfig(entityType).select });
     case AuditLogEntityType.EVENT:
-      return tx.event.update({ where: { id: entityId }, data, select: getAuditLogRevertConfig(entityType).select });
+      return tx.event.update({
+        where: { id: entityId },
+        data: {
+          ...data,
+          ...('lecturerInformation' in data || 'collectorInformation' in data
+            ? { preparationUpdatedAt: new Date() }
+            : {}),
+          ...('materials' in data ? { materialsUpdatedAt: new Date() } : {}),
+        },
+        select: getAuditLogRevertConfig(entityType).select,
+      });
     case AuditLogEntityType.MAJOR_EVENT:
       return tx.majorEvent.update({
         where: { id: entityId },

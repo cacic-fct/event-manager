@@ -1,3 +1,8 @@
+import { EventPreparationApiService } from '@cacic-fct/shared-angular/event-preparation';
+import {
+  createEventPreparationStoryApi,
+  storyLecturerInformation,
+} from '@cacic-fct/shared-angular/event-preparation/testing';
 import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { PLATFORM_ID } from '@angular/core';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -49,6 +54,7 @@ const withOrganizerInfoProviders: Decorator<OrganizerInfoStoryArgs> = (story, co
   const args = { ...defaultArgs, ...context.args };
   return applicationConfig({
     providers: [
+      { provide: EventPreparationApiService, useFactory: createEventPreparationStoryApi },
       provideRouter([]),
       provideNoopAnimations(),
       { provide: PLATFORM_ID, useValue: 'browser' },
@@ -120,12 +126,40 @@ type Story = StoryObj<OrganizerInfoStoryArgs>;
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Informações do organizador')).toBeVisible();
+    await expect(await canvas.findByText('Área do palestrante')).toBeVisible();
     await expect(await canvas.findByText('Perfil público de ministrante')).toBeVisible();
+    const downloads = await canvas.findAllByRole('button', { name: /Downloads/ });
+    await userEvent.click(downloads[0]);
     const downloadButtons = await canvas.findAllByRole('button', { name: /baixar lista de inscritos/i });
-    await expect(downloadButtons).toHaveLength(2);
+    await expect(downloadButtons).toHaveLength(1);
     await userEvent.hover(downloadButtons[0]);
     await expect(downloadButtons[0]).toBeVisible();
+  },
+};
+
+export const PreparationExpanded: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const panels = await canvas.findAllByRole('button', { name: /Sua preparação/ });
+    await userEvent.click(panels[0]);
+    await expect(await canvas.findByRole('heading', { name: 'Orientações da organização', level: 3 })).toBeVisible();
+  },
+};
+
+export const MaterialDraft: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const panels = await canvas.findAllByRole('button', { name: /Materiais para os inscritos/ });
+    await expect(panels[0]).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(panels[0]);
+    const title = (await canvas.findAllByLabelText('Título'))[0];
+    await userEvent.clear(title);
+    await userEvent.type(title, 'Slides revisados');
+    await userEvent.click(panels[0]);
+    await expect(await canvas.findByText('Alterações não salvas')).toBeVisible();
+    await expect(await canvas.findByText('CACIC-142')).toBeVisible();
+    await userEvent.click(panels[0]);
+    await expect((await canvas.findAllByLabelText('Título'))[0]).toHaveValue('Slides revisados');
   },
 };
 
@@ -143,7 +177,7 @@ export const EmptyEvents: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Eventos')).toBeVisible();
+    await expect(await canvas.findByText('Nenhum evento disponível na sua área do palestrante.')).toBeVisible();
     await expect(canvas.queryByText(/inscritos e/i)).toBeNull();
   },
 };
@@ -166,6 +200,8 @@ export const DownloadError: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const downloads = await canvas.findAllByRole('button', { name: /Downloads/ });
+    await userEvent.click(downloads[0]);
     const downloadButtons = await canvas.findAllByRole('button', { name: /baixar lista de inscritos/i });
     await userEvent.click(downloadButtons[0]);
     await expect(await screen.findByText('Não foi possível baixar a lista de inscritos.')).toBeVisible();
@@ -258,13 +294,18 @@ function buildOrganizerEvents(args: OrganizerInfoStoryArgs): OrganizerEventInfo[
   const count = Math.min(Math.max(Math.trunc(args.eventCount), 0), 5);
 
   return Array.from({ length: count }, (_, index) => ({
-    event: createPublicStoryEventFromControls(args, {
-      id: `organizer-event-${index + 1}`,
-      index,
-      name: index === 0 ? args.name : undefined,
-      dayOffset: args.dayOffset + index,
-      startHour: args.startHour + index,
-    }),
+    event: {
+      ...createPublicStoryEventFromControls(args, {
+        id: `organizer-event-${index + 1}`,
+        index,
+        name: index === 0 ? args.name : undefined,
+        dayOffset: args.dayOffset + index,
+        startHour: args.startHour + index,
+      }),
+      locationName: 'Laboratório 3',
+      locationDescription: null,
+    },
+    lecturerInformation: storyLecturerInformation,
     subscriberCount: Math.max(args.subscriberBaseCount - index * 3, 0),
     attendanceCount: Math.max(args.attendanceBaseCount - index * 2, 0),
     onlineAttendanceCode: args.includeOnlineAttendanceCode ? `CACIC-${index + 1}42` : null,

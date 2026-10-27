@@ -41,7 +41,7 @@ export class NovuNotificationTransport {
     return this.config.get<string>('NOVU_SECRET_KEY') ?? null;
   }
 
-  async trigger(secretKey: string, body: NovuTriggerRequest): Promise<boolean> {
+  async trigger(secretKey: string, body: NovuTriggerRequest, idempotencyKey?: string): Promise<boolean> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.triggerTimeoutMs());
 
@@ -51,6 +51,7 @@ export class NovuNotificationTransport {
         headers: {
           Authorization: `ApiKey ${secretKey}`,
           'Content-Type': 'application/json',
+          ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
         },
         body: JSON.stringify(body),
         signal: controller.signal,

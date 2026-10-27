@@ -61,7 +61,7 @@ export async function findCurrentUserAttendanceCollectionEvents(
     select: {
       eventId: true,
       event: {
-        select: PUBLIC_EVENT_SELECT,
+        select: { ...PUBLIC_EVENT_SELECT, collectorInformation: true },
       },
     },
     orderBy: {
@@ -74,6 +74,7 @@ export async function findCurrentUserAttendanceCollectionEvents(
   const collectorEvents = collectors.map((collector) => ({
     eventId: collector.eventId,
     event: collector.event,
+    collectorInformation: collector.event.collectorInformation,
   }));
   const officialEvents = await findOfficialCollectionEvents(deps.prisma, person.id, visibleFrom, endOfToday);
   const managerEvents = await findManagerCollectionEvents(deps, context, visibleFrom, endOfToday);
@@ -137,7 +138,7 @@ async function findOfficialCollectionEvents(
         ],
       },
     },
-    select: PUBLIC_EVENT_SELECT,
+    select: { ...PUBLIC_EVENT_SELECT, collectorInformation: true },
     orderBy: {
       startDate: 'asc',
     },
@@ -146,6 +147,7 @@ async function findOfficialCollectionEvents(
   return events.map((event) => ({
     eventId: event.id,
     event,
+    collectorInformation: event.collectorInformation,
   }));
 }
 
@@ -199,7 +201,7 @@ async function findManagerCollectionEvents(
       },
       AND: [PUBLIC_EVENT_WHERE, ...(hasGlobalAccess ? [] : [{ OR: scopeFilters }])],
     },
-    select: PUBLIC_EVENT_SELECT,
+    select: { ...PUBLIC_EVENT_SELECT, collectorInformation: true },
     orderBy: {
       startDate: 'asc',
     },
@@ -208,6 +210,7 @@ async function findManagerCollectionEvents(
   return events.map((event) => ({
     eventId: event.id,
     event,
+    collectorInformation: event.collectorInformation,
   }));
 }
 

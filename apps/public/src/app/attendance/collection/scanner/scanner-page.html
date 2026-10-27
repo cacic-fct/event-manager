@@ -6,6 +6,7 @@
 </mat-toolbar>
 
 <main class="scanner-page">
+  <lib-event-instructions title="Orientações para coleta" [content]="event()?.collectorInformation" />
   @if (event()?.event?.startDate; as startDate) {
   <p class="event-date">{{ startDate | date: 'short' }}</p>
   }

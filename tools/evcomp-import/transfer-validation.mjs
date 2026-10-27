@@ -8,10 +8,18 @@ let contract;
 export function loadTransferContract() {
   if (contract) return contract;
   const sharedDirectory = fileURLToPath(new URL('../../libs/shared-data-transfer/src/lib/', import.meta.url));
+  const preparationDirectory = fileURLToPath(new URL('../../libs/shared-event-preparation/src/', import.meta.url));
   const { register } = require('@swc-node/register/register');
   const unregister = register(
-    { target: 9 },
-    { matcher: (filename) => filename.startsWith(sharedDirectory) && filename.endsWith('.ts') },
+    {
+      target: 9,
+      baseUrl: fileURLToPath(new URL('../../', import.meta.url)),
+      paths: { '@cacic-fct/shared-event-preparation': [`${preparationDirectory}index.ts`] },
+    },
+    {
+      matcher: (filename) =>
+        (filename.startsWith(sharedDirectory) || filename.startsWith(preparationDirectory)) && filename.endsWith('.ts'),
+    },
   );
   try {
     contract = {

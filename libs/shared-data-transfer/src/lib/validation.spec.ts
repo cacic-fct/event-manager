@@ -22,6 +22,37 @@ describe('portable event data contract', () => {
     }
   });
 
+  it('accepts nullable Markdown team orientations and enforces their size limit', () => {
+    const document = createTransferTemplate('event');
+    const event = document.resources[0];
+    const withInstructions = {
+      ...document,
+      resources: [
+        {
+          ...event,
+          data: {
+            ...event.data,
+            lecturerInformation: '**Laboratório 3**',
+            collectorInformation: '- Conferir evento',
+          },
+        },
+      ],
+    };
+    expect(parseTransferDocument(withInstructions)).toEqual(withInstructions);
+    expect(() =>
+      parseTransferDocument({
+        ...document,
+        resources: [{ ...event, data: { lecturerInformation: 'x'.repeat(10001) } }],
+      }),
+    ).toThrow(TransferValidationError);
+    expect(
+      parseTransferDocument({
+        ...document,
+        resources: [{ ...event, data: { lecturerInformation: null, collectorInformation: null } }],
+      }).resources[0].data,
+    ).toEqual({ lecturerInformation: null, collectorInformation: null });
+  });
+
   it('creates scoped templates against existing parent IDs without reparenting existing records', () => {
     const now = new Date();
     const major = createTransferTemplate('major-event', now, { kind: 'major-event', id: 'major-existing' });

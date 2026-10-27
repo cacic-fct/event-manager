@@ -1,3 +1,4 @@
+import { storyCollectorInformation } from '@cacic-fct/shared-angular/event-preparation/testing';
 import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
@@ -286,6 +287,7 @@ function buildCollectionEvent(args: AttendanceScannerStoryArgs): AttendanceColle
   const eventEnd = new Date(eventStart.getTime() + args.eventDurationMinutes * 60_000);
   return {
     eventId: 'event-open',
+    collectorInformation: storyCollectorInformation,
     event: {
       id: 'event-open',
       name: args.eventName,

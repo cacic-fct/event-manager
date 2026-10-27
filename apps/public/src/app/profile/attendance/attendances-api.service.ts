@@ -99,6 +99,7 @@ interface CurrentUserEventParticipation {
 }
 
 export interface OrganizerEventInfo {
+  lecturerInformation?: string | null;
   event: PublicEvent;
   subscriberCount: number;
   attendanceCount: number;
@@ -535,6 +536,7 @@ export class AttendancesApiService {
             targetId
             title
             events {
+              lecturerInformation
               subscriberCount
               attendanceCount
               onlineAttendanceCode

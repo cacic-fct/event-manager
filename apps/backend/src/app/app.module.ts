@@ -1,3 +1,7 @@
+import { EventPreparationResolver } from './events/event-preparation.resolver';
+import { EventManualNotificationResolver } from './events/event-manual-notification.resolver';
+import { EventManualNotificationProcessor } from './events/event-manual-notification.processor';
+import { EVENT_MANUAL_NOTIFICATION_QUEUE } from './events/event-manual-notification';
 import { EVENT_INFORMATION_QUEUE } from './events/event-subscriber-information';
 import { EventSubscriberInformationResolver } from './events/event-subscriber-information.resolver';
 import { EventInformationProcessor } from './events/event-information.processor';
@@ -302,6 +306,7 @@ const useInMemoryTestInfra = process.env.BACKEND_E2E_IN_MEMORY_INFRA === 'true';
 const backendQueueNames = [
   'weather',
   EVENT_INFORMATION_QUEUE,
+  EVENT_MANUAL_NOTIFICATION_QUEUE,
   DASHBOARD_INSIGHTS_QUEUE,
   PUBLIC_PLATFORM_STATS_QUEUE,
   MAJOR_EVENT_RECEIPTS_QUEUE,
@@ -327,6 +332,7 @@ const queueImports = useInMemoryTestInfra
       BullModule.registerQueue({
         name: DASHBOARD_INSIGHTS_QUEUE,
       }),
+      BullModule.registerQueue({ name: EVENT_MANUAL_NOTIFICATION_QUEUE }),
       BullModule.registerQueue({
         name: PUBLIC_PLATFORM_STATS_QUEUE,
       }),
@@ -365,6 +371,7 @@ const queueProcessorProviders = useInMemoryTestInfra
       CertificateIssuanceJobsProcessor,
       OnlineAttendanceNotificationJobsProcessor,
       EventInformationProcessor,
+      EventManualNotificationProcessor,
       LgpdStorageCleanupProcessor,
       PrizeDrawNotificationJobsProcessor,
     ];
@@ -518,6 +525,8 @@ const schedulerProviders = useInMemoryTestInfra
     PlacePresetsResolver,
     EventsResolver,
     EventSubscriberInformationResolver,
+    EventPreparationResolver,
+    EventManualNotificationResolver,
     EventDraftsResolver,
     EventDraftsService,
     EventPostCommitEffectsService,
