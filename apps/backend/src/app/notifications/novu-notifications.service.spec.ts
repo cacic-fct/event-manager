@@ -69,6 +69,14 @@ describe('NovuNotificationsService', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it.each(['disabled', 'missing-key'])('completes manual notifications when Novu is %s', async (mode) => {
+    config.get.mockImplementation((key: string) =>
+      key === 'NOVU_SECURE_MODE_ENABLED' ? (mode === 'disabled' ? 'false' : 'true') : undefined,
+    );
+    await expect(service.notifyEventParticipant({} as never)).resolves.toBe('acknowledged');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   const originalFetch = global.fetch;
   let fetchMock: jest.Mock;
   let config: { get: jest.Mock };

@@ -410,7 +410,7 @@ export class NovuNotificationsService {
     recipient: import('./novu-notification.types').NotificationRecipient;
   }): Promise<NovuTriggerOutcome> {
     const secretKey = this.transport.secretKey();
-    if (!secretKey) return 'unknown';
+    if (!secretKey) return 'acknowledged';
     const title = `Aviso da organização: ${input.eventName}`;
     const transactionId = `event-manual:${input.requestId}:${input.recipient.subscriberId}`;
     return this.transport.triggerWithOutcome(

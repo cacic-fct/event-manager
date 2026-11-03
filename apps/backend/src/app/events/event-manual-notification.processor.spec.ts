@@ -89,12 +89,15 @@ describe('manual event notification processing', () => {
     );
   });
 
-  it('logs failures before retrying and keeps the same Novu request identifier', async () => {
+  it('logs uncertain outcomes before retrying and keeps the same Novu request identifier', async () => {
     const { processor, job, notifications, audit } = setup();
     notifications.notifyEventParticipant.mockResolvedValueOnce('unknown');
     await expect(processor.process(job as never)).rejects.toThrow('Novu');
     expect(audit.record).toHaveBeenCalledWith(
-      expect.objectContaining({ metadata: expect.objectContaining({ status: 'FAILED', attempt: 1 }) }),
+      expect.objectContaining({
+        summary: 'Não foi possível confirmar se o Novu aceitou o aviso manual.',
+        metadata: expect.objectContaining({ status: 'UNKNOWN', attempt: 1 }),
+      }),
     );
     await processor.process({ ...job, attemptsMade: 1 } as never);
     expect(notifications.notifyEventParticipant.mock.calls.map(([input]) => input.requestId)).toEqual([job.id, job.id]);
@@ -102,9 +105,15 @@ describe('manual event notification processing', () => {
   });
 
   it('persists a new key generation only after a confirmed failure, including across job retries', async () => {
-    const { processor, job, notifications } = setup();
+    const { processor, job, notifications, audit } = setup();
     notifications.notifyEventParticipant.mockResolvedValueOnce('rejected').mockResolvedValueOnce('unknown');
     await expect(processor.process(job as never)).rejects.toThrow('Novu');
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        summary: 'Falha no envio de aviso manual.',
+        metadata: expect.objectContaining({ status: 'FAILED', attempt: 1 }),
+      }),
+    );
     expect(job.updateData).toHaveBeenCalledWith(expect.objectContaining({ deliveryAttempts: { user: 1 } }));
     await expect(processor.process({ ...job, attemptsMade: 1 } as never)).rejects.toThrow('Novu');
     expect(job.updateData).toHaveBeenCalledTimes(1);
