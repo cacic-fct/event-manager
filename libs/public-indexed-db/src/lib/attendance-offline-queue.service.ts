@@ -24,7 +24,12 @@ export class AttendanceOfflineQueueService {
 
   async replaceCollectionEvents(
     userId: string,
-    events: readonly { eventId: string; event: PublicEvent; offlineCollectorCredential?: string | null }[],
+    events: readonly {
+      eventId: string;
+      event: PublicEvent;
+      collectorInformation?: string | null;
+      offlineCollectorCredential?: string | null;
+    }[],
   ): Promise<void> {
     const database = this.databaseProvider.getDatabase();
     if (!database) {
@@ -47,6 +52,7 @@ export class AttendanceOfflineQueueService {
             cachedAt,
             event: item.event,
             offlineCollectorCredential: item.offlineCollectorCredential,
+            collectorInformation: item.collectorInformation,
           }),
         ),
       );
@@ -55,7 +61,14 @@ export class AttendanceOfflineQueueService {
 
   async getCollectionEvents(
     userId: string,
-  ): Promise<Array<{ eventId: string; event: PublicEvent; offlineCollectorCredential?: string | null }>> {
+  ): Promise<
+    Array<{
+      eventId: string;
+      event: PublicEvent;
+      collectorInformation?: string | null;
+      offlineCollectorCredential?: string | null;
+    }>
+  > {
     const database = this.databaseProvider.getDatabase();
     if (!database) {
       return [];
@@ -68,6 +81,7 @@ export class AttendanceOfflineQueueService {
         eventId: record.eventId,
         event: record.event,
         offlineCollectorCredential: record.offlineCollectorCredential,
+        collectorInformation: record.collectorInformation,
       }))
       .sort((left, right) => compareIsoDateAsc(left.event.startDate, right.event.startDate));
   }
@@ -75,7 +89,12 @@ export class AttendanceOfflineQueueService {
   async getCollectionEvent(
     userId: string,
     eventId: string,
-  ): Promise<{ eventId: string; event: PublicEvent; offlineCollectorCredential?: string | null } | null> {
+  ): Promise<{
+    eventId: string;
+    event: PublicEvent;
+    collectorInformation?: string | null;
+    offlineCollectorCredential?: string | null;
+  } | null> {
     const database = this.databaseProvider.getDatabase();
     if (!database) {
       return null;
@@ -88,6 +107,7 @@ export class AttendanceOfflineQueueService {
           eventId: record.eventId,
           event: record.event,
           offlineCollectorCredential: record.offlineCollectorCredential,
+          collectorInformation: record.collectorInformation,
         }
       : null;
   }

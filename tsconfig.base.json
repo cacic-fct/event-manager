@@ -14,6 +14,11 @@
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "paths": {
+      "@cacic-fct/shared-angular/event-preparation/testing": [
+        "./libs/shared-angular/src/lib/event-preparation/event-preparation.story-fixtures.ts"
+      ],
+      "@cacic-fct/shared-event-preparation": ["./libs/shared-event-preparation/src/index.ts"],
+      "@cacic-fct/shared-angular/event-preparation": ["./libs/shared-angular/src/lib/event-preparation/index.ts"],
       "@cacic-fct/shared-data-transfer": ["./libs/shared-data-transfer/src/index.ts"],
       "@cacic-fct/shared-data-transfer/testing": ["./libs/shared-data-transfer/src/testing.ts"],
       "@cacic-fct/shared-angular/material/icons": ["./libs/shared-angular/src/lib/material/icons.ts"],

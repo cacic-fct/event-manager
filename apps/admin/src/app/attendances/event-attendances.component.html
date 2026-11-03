@@ -1,5 +1,8 @@
 <section class="subtab-layout event-attendance-layout">
   <section class="panel attendance-workbench">
+    @if (workspace.selectedAttendanceEvent(); as event) {
+      <lib-collector-instructions [eventId]="event.id" />
+    }
     <div class="panel-heading">
       <div>
         <h2>

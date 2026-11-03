@@ -142,6 +142,7 @@ jobs:
           - shared-data-transfer
           - shared-environment
           - shared-event-participation
+          - shared-event-preparation
           - shared-livestream
           - shared-permissions
           - shared-seo-angular
@@ -764,7 +765,7 @@ jobs:
         run: bunx prisma generate --schema apps/backend/prisma/schema
 
       - name: Run unit tests with coverage
-        run: bunx nx run-many -t test -p admin,backend,event-manager-m2m-contracts,event-manager-public-testing,public-indexed-db,public,shared-angular,shared-data-transfer,shared-environment,shared-event-participation,shared-livestream,shared-permissions,shared-seo-angular,shared-utils --parallel=3 --coverage
+        run: bunx nx run-many -t test -p admin,backend,event-manager-m2m-contracts,event-manager-public-testing,public-indexed-db,public,shared-angular,shared-data-transfer,shared-environment,shared-event-participation,shared-event-preparation,shared-livestream,shared-permissions,shared-seo-angular,shared-utils --parallel=3 --coverage
 
       - name: Verify atomic JSON import and undo with isolated PostgreSQL
         run: bunx nx run backend:test-data-transfer-integration

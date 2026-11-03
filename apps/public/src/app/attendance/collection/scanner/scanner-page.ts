@@ -1,3 +1,4 @@
+import { EventInstructionsComponent } from '@cacic-fct/shared-angular/event-preparation';
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
@@ -39,6 +40,7 @@ import { normalizeTicketBarcodeForAttendance } from './ticket-barcode';
 @Component({
   selector: 'app-attendance-scanner',
   imports: [
+    EventInstructionsComponent,
     DatePipe,
     RouterLink,
     ReactiveFormsModule,

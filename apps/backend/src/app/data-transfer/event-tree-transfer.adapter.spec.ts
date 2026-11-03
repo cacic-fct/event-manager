@@ -77,6 +77,72 @@ describe('EventTreeTransferAdapter normalization and mutations', () => {
     },
   );
 
+  it('imports team orientations as Markdown and advances the preparation revision', async () => {
+    const before = eventRecord({
+      lecturerInformation: 'Sala antiga',
+      collectorInformation: null,
+      preparationUpdatedAt: new Date(),
+    });
+    const updated = {
+      ...before,
+      lecturerInformation: '**Laboratório 3**',
+      collectorInformation: '- Conferir o evento',
+    };
+    const tx = eventUpdateTransaction(before, updated);
+    const adapter = createAdapter(tx);
+    const resource: TransferResource = {
+      kind: 'event',
+      id: before.id,
+      data: { lecturerInformation: ' **Laboratório 3** ', collectorInformation: ' - Conferir o evento ' },
+    };
+    const context = createContext(tx, [resource]);
+    const snapshot = await adapter.resolve(resource, context);
+    expect(diffResourceData(snapshot.current, snapshot.resource)).toEqual(
+      expect.arrayContaining([
+        { field: 'lecturerInformation', before: 'Sala antiga', after: '**Laboratório 3**' },
+        { field: 'collectorInformation', before: null, after: '- Conferir o evento' },
+      ]),
+    );
+    await adapter.validate(snapshot, context);
+    await adapter.apply(snapshot, 'update', context);
+    expect(tx.event.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          lecturerInformation: '**Laboratório 3**',
+          collectorInformation: '- Conferir o evento',
+          preparationUpdatedAt: expect.any(Date),
+        }),
+      }),
+    );
+    const written = tx.event.updateMany.mock.calls[0]?.[0].data;
+    expect(written.preparationUpdatedAt.getTime()).toBeGreaterThan(before.preparationUpdatedAt.getTime());
+    const audit = Reflect.get(adapter, 'audit');
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        before: expect.objectContaining({ lecturerInformation: 'Sala antiga', collectorInformation: null }),
+        after: expect.objectContaining({
+          lecturerInformation: '**Laboratório 3**',
+          collectorInformation: '- Conferir o evento',
+        }),
+      }),
+      tx,
+    );
+  });
+
+  it('exports lecturer and collector orientations without exporting editor revisions', async () => {
+    const record = eventRecord({
+      lecturerInformation: '**Sala 3**',
+      collectorInformation: '- Conferir evento',
+      preparationUpdatedAt: new Date(),
+    });
+    const tx = { event: { findFirst: jest.fn().mockResolvedValue(record) } };
+    const result = await createAdapter(tx).exportTarget({ kind: 'event', id: record.id }, {}, createContext(tx));
+    expect(result.resources[0]?.data).toEqual(
+      expect.objectContaining({ lecturerInformation: '**Sala 3**', collectorInformation: '- Conferir evento' }),
+    );
+    expect(result.resources[0]?.data).not.toHaveProperty('preparationUpdatedAt');
+  });
+
   it('preserves the saved location name for a description-only import', async () => {
     const before = eventRecord({ locationName: 'Auditório', locationDescription: 'Bloco 5' });
     const tx = eventUpdateTransaction(before, before);

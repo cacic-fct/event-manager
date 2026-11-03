@@ -20,6 +20,7 @@ export interface MyDayStoryControls {
   attentionCount: number;
   weatherCount: number;
   collectorRole: boolean;
+  lecturerRole: boolean;
   sportsOperatorRole: boolean;
   eventNamePrefix: string;
   locationDescription: string;
@@ -35,6 +36,7 @@ export const myDayStoryDefaultControls: MyDayStoryControls = {
   attentionCount: 3,
   weatherCount: 3,
   collectorRole: true,
+  lecturerRole: false,
   sportsOperatorRole: true,
   eventNamePrefix: '',
   locationDescription: 'Auditório 1',
@@ -59,6 +61,7 @@ export const myDayStoryControlArgTypes = {
   attentionCount: { control: { type: 'range', min: 0, max: 9, step: 1 }, name: 'Attention Items' },
   weatherCount: { control: { type: 'range', min: 0, max: 8, step: 1 }, name: 'Weather Alerts' },
   collectorRole: { control: 'boolean', name: 'Attendance Collector Role' },
+  lecturerRole: { control: 'boolean', name: 'Lecturer Role' },
   sportsOperatorRole: { control: 'boolean', name: 'Sports Operator Role' },
   eventNamePrefix: { control: 'text', name: 'Event Name Prefix' },
   locationDescription: { control: 'text', name: 'Location' },
@@ -157,6 +160,7 @@ function createMyDayStoryEvent(
     endDate: endDate.toISOString(),
     locationDescription: controls.locationDescription,
     roles: [
+      ...(controls.lecturerRole ? [{ kind: 'LECTURER' as const, label: 'Ministrante' }] : []),
       ...(options.collectAttendance ? [{ kind: 'ATTENDANCE_COLLECTOR' as const, label: 'Coleta de presença' }] : []),
       ...(options.sportsOperator ? [{ kind: 'OFFICIAL' as const, label: 'Oficial da partida' }] : []),
     ],
@@ -182,10 +186,10 @@ function createMyDayStoryEvent(
       : [],
     infoAction: {
       kind: 'EVENT_INFO',
-      label: 'Informações',
-      materialIcon: 'info',
-      route: `/event/${id}`,
-      offlineCapable: true,
+      label: controls.lecturerRole ? 'Preparar minha participação' : 'Informações',
+      materialIcon: controls.lecturerRole ? 'record_voice_over' : 'info',
+      route: controls.lecturerRole ? `/profile/attendances/event/${id}/organizer` : `/event/${id}`,
+      offlineCapable: !controls.lecturerRole,
     },
     mapAction: {
       kind: 'MAP',

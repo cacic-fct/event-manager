@@ -176,3 +176,19 @@ export const GeneratedDataReference: Story = {
     },
   },
 };
+
+export const LecturerNextSession: Story = {
+  args: {
+    lecturerRole: true,
+    currentEvent: false,
+    collectorRole: false,
+    sportsOperatorRole: false,
+    laterEventCount: 0,
+    attentionCount: 0,
+    weatherCount: 0,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Preparar minha participação', { exact: true })).toBeVisible();
+  },
+};

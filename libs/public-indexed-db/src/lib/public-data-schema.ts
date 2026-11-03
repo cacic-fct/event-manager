@@ -103,6 +103,7 @@ export interface OfflineTotpSeedRecord {
 }
 
 export interface OfflineAttendanceCollectionEventRecord {
+  collectorInformation?: string | null;
   key: string;
   userId: string;
   eventId: string;

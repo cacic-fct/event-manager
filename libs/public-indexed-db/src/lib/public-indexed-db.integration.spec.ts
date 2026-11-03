@@ -159,16 +159,27 @@ describe('offline public data access integration', () => {
 
     await service.replaceCollectionEvents('user-1', [
       { eventId: 'late-event', event: event('late-event', fixtureDate(31, 14)) },
-      { eventId: 'early-event', event: event('early-event', fixtureDate(30)) },
+      {
+        eventId: 'early-event',
+        event: event('early-event', fixtureDate(30)),
+        collectorInformation: '**Confira o evento antes da coleta.**',
+      },
     ]);
     await service.replaceCollectionEvents('user-2', [
       { eventId: 'other-user-event', event: event('other-user-event', fixtureDate(29)) },
     ]);
 
     await expect(service.getCollectionEvents('user-1')).resolves.toEqual([
-      { eventId: 'early-event', event: event('early-event', fixtureDate(30)) },
+      {
+        eventId: 'early-event',
+        event: event('early-event', fixtureDate(30)),
+        collectorInformation: '**Confira o evento antes da coleta.**',
+      },
       { eventId: 'late-event', event: event('late-event', fixtureDate(31, 14)) },
     ]);
+    await expect(service.getCollectionEvent('user-1', 'early-event')).resolves.toMatchObject({
+      collectorInformation: '**Confira o evento antes da coleta.**',
+    });
     await expect(service.getCollectionEvent('user-1', 'other-user-event')).resolves.toBeNull();
   });
 

@@ -1,3 +1,4 @@
+import { CollectorInstructionsComponent } from '@cacic-fct/shared-angular/event-preparation';
 import { isPlatformBrowser } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, OnDestroy, OnInit, PLATFORM_ID, computed, inject, signal } from '@angular/core';
@@ -39,9 +40,10 @@ const SYNC_RETRY_MAX_DELAY_MS = 30_000;
 
 @Component({
   selector: 'app-admin-oral-attendance-page',
-  imports: [OralAttendanceComponent],
+  imports: [CollectorInstructionsComponent, OralAttendanceComponent],
   styleUrl: './oral-attendance-page.component.scss',
   template: `
+    <lib-collector-instructions [eventId]="eventId" />
     <lib-oral-attendance
       [title]="eventName()"
       [people]="people()"
@@ -66,7 +68,7 @@ export class AdminOralAttendancePageComponent implements OnInit, OnDestroy {
   private readonly feedback = inject(AdminFeedbackService);
   private readonly routeResourceErrors = inject(AdminRouteResourceErrorService);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
-  private eventId = '';
+  protected eventId = '';
   private syncTimer: ReturnType<typeof setTimeout> | null = null;
   private syncRetryAttempt = 0;
   private destroyed = false;

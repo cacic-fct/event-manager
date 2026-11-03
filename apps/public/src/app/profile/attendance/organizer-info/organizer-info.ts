@@ -1,9 +1,13 @@
+import { ConfirmationDialogComponent, TwemojiComponent } from '@cacic-fct/shared-angular';
+import { firstValueFrom } from 'rxjs';
+import { MatDialog } from '@angular/material/dialog';
+import { EventInstructionsComponent, EventMaterialsComponent } from '@cacic-fct/shared-angular/event-preparation';
 import { DOCUMENT, DatePipe, isPlatformBrowser } from '@angular/common';
-import { Component, DestroyRef, PLATFORM_ID, inject, signal } from '@angular/core';
+import { Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
-import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -14,7 +18,6 @@ import { parseEventTargetType } from '@cacic-fct/shared-utils';
 import { EMPTY, Observable, catchError, combineLatest, map, of, startWith, switchMap } from 'rxjs';
 import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
 import { AttendancesApiService, OrganizerInfo } from '../attendances-api.service';
-import { EmojiService } from '../../../shared/emoji.service';
 import { RealtimeInvalidationService } from '../../../shared/realtime-invalidation.service';
 import { privateResourceErrorStatus } from '../../../shared/route-error-handling';
 
@@ -24,9 +27,12 @@ type OrganizerInfoState = { status: 'loading' } | { status: 'ready'; info: Organ
   selector: 'app-organizer-info',
   imports: [
     DatePipe,
+    TwemojiComponent,
+    EventInstructionsComponent,
+    EventMaterialsComponent,
     MatButtonModule,
     MatIconModule,
-    MatListModule,
+    MatExpansionModule,
     MatProgressBarModule,
     MatSnackBarModule,
     MatToolbarModule,
@@ -34,8 +40,12 @@ type OrganizerInfoState = { status: 'loading' } | { status: 'ready'; info: Organ
   ],
   templateUrl: './organizer-info.html',
   styleUrl: './organizer-info.css',
+  host: { '(window:beforeunload)': 'beforeUnload($event)' },
 })
 export class OrganizerInfoComponent {
+  private readonly dialog = inject(MatDialog);
+  private readonly dirtyMaterials = signal(new Set<string>());
+  readonly hasUnsavedChanges = computed(() => this.dirtyMaterials().size > 0);
   private readonly route = inject(ActivatedRoute);
   private readonly routeErrors = inject(RouteErrorService);
   private readonly api = inject(AttendancesApiService);
@@ -47,8 +57,6 @@ export class OrganizerInfoComponent {
   private readonly realtime = inject(RealtimeInvalidationService);
   private readonly refresh = signal(0);
   private loadedOrganizerTarget: string | null = null;
-
-  readonly emoji = inject(EmojiService);
 
   readonly state = toSignal(
     combineLatest([this.route.paramMap, toObservable(this.refresh)]).pipe(
@@ -69,6 +77,46 @@ export class OrganizerInfoComponent {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe(() => this.refresh.update((value) => value + 1));
+  }
+
+  materialsAreDirty(eventId: string): boolean {
+    return this.dirtyMaterials().has(eventId);
+  }
+
+  setMaterialsDirty(eventId: string, dirty: boolean): void {
+    this.dirtyMaterials.update((current) => {
+      const next = new Set(current);
+      if (dirty) next.add(eventId);
+      else next.delete(eventId);
+      return next;
+    });
+  }
+
+  beforeUnload(event: BeforeUnloadEvent): void {
+    if (this.hasUnsavedChanges()) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  }
+
+  async canDeactivate(): Promise<boolean> {
+    if (!this.hasUnsavedChanges()) return true;
+    return (
+      (await firstValueFrom(
+        this.dialog
+          .open(ConfirmationDialogComponent, {
+            data: {
+              title: 'Descartar materiais não salvos?',
+              message: 'Há links que ainda não foram salvos.',
+              confirmLabel: 'Descartar alterações',
+              cancelLabel: 'Continuar editando',
+            },
+            width: '420px',
+            maxWidth: 'calc(100vw - 32px)',
+          })
+          .afterClosed(),
+      )) === true
+    );
   }
 
   backRoute(info: OrganizerInfo): string[] {

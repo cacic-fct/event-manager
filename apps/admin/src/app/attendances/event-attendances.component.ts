@@ -1,3 +1,4 @@
+import { CollectorInstructionsComponent } from '@cacic-fct/shared-angular/event-preparation';
 import { DatePipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -22,6 +23,7 @@ import { attendanceCreationMethodLabel } from './attendance-labels';
 @Component({
   selector: 'app-workspace-event-attendances-subtab',
   imports: [
+    CollectorInstructionsComponent,
     DatePipe,
     ReactiveFormsModule,
     RouterLink,

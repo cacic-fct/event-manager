@@ -1,3 +1,4 @@
+import type { EventPreparation } from '@cacic-fct/shared-event-preparation';
 import type { TProperties, TSchema, Static } from '@sinclair/typebox';
 import { resource } from './schema-helpers';
 // The shared transfer schema is admin-only; this type-only edge anchors fields to the existing admin owner contracts.
@@ -210,7 +211,8 @@ export type EventTransferOwner = Pick<
   | 'publishedAt'
   | 'unpublishedAt'
 > &
-  Pick<AdminEventInput, 'invitationPersonIds'>;
+  Pick<AdminEventInput, 'invitationPersonIds'> &
+  Pick<EventPreparation, 'lecturerInformation' | 'collectorInformation'>;
 
 export type MajorEventPriceTransferOwner = Pick<AdminMajorEventPrice, 'id' | 'type'> & {
   majorEventId: ExactTransferBoundary<AdminMajorEvent['id']>['value'];

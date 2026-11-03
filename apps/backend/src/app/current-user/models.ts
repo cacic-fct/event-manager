@@ -71,6 +71,9 @@ export class CurrentUserPendingOnlineAttendanceEvent {
 
 @ObjectType()
 export class CurrentUserAttendanceCollectionEvent {
+  @Field(() => String, { nullable: true })
+  collectorInformation?: string | null;
+
   @Field(() => String)
   eventId!: string;
 
@@ -83,6 +86,9 @@ export class CurrentUserAttendanceCollectionEvent {
 
 @ObjectType()
 export class CurrentUserOrganizerEventInfo {
+  @Field(() => String, { nullable: true })
+  lecturerInformation?: string | null;
+
   @Field(() => PublicEvent)
   event!: PublicEvent;
 

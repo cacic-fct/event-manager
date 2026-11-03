@@ -42,6 +42,11 @@ model Event {
   isVirtual                      Boolean                   @default(false)
   subscriberInformation          String?
   subscriberInformationUpdatedAt DateTime?
+  lecturerInformation            String?
+  collectorInformation           String?
+  preparationUpdatedAt           DateTime?
+  materials                      Json                      @default("[]")
+  materialsUpdatedAt             DateTime?
 
   majorEvent   MajorEvent? @relation(fields: [majorEventId], references: [id])
   majorEventId String?

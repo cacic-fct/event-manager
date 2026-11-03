@@ -1,3 +1,4 @@
+import { CollectorInstructionsComponent } from '@cacic-fct/shared-angular/event-preparation';
 import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -41,6 +42,7 @@ const DUPLICATE_PERSON_ERROR_PREFIX = 'Pessoa tem registros duplicados';
 @Component({
   selector: 'app-workspace-attendance-scanner-dialog',
   imports: [
+    CollectorInstructionsComponent,
     DatePipe,
     ReactiveFormsModule,
     MatButtonModule,
@@ -56,6 +58,7 @@ const DUPLICATE_PERSON_ERROR_PREFIX = 'Pessoa tem registros duplicados';
     <h2 mat-dialog-title>Escanear presenças</h2>
 
     <mat-dialog-content>
+      <lib-collector-instructions [eventId]="data.eventId" />
       <section class="scanner-layout">
         <lib-aztec-scanner
           title="Escanear presença"
@@ -192,7 +195,7 @@ const DUPLICATE_PERSON_ERROR_PREFIX = 'Pessoa tem registros duplicados';
 export class AttendanceScannerDialogComponent implements OnInit {
   private readonly api = inject(AttendanceApiService);
   private readonly attendancesService = inject(AttendancesService);
-  private readonly data = inject<AttendanceScannerDialogData>(MAT_DIALOG_DATA);
+  protected readonly data = inject<AttendanceScannerDialogData>(MAT_DIALOG_DATA);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
   private readonly feedback = inject(ScannerFeedbackService);

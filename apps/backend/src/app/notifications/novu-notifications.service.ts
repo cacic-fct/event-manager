@@ -9,7 +9,7 @@ import {
   mapPersonToRecipient,
   mapUserToRecipient,
 } from './novu-notification-recipients';
-import { NovuNotificationTransport } from './novu-notification-transport';
+import { NovuNotificationTransport, type NovuTriggerOutcome } from './novu-notification-transport';
 import { NOVU_WORKFLOW_IDENTIFIERS } from './novu-workflow-identifiers';
 import type {
   CertificateAvailableNotification,
@@ -397,6 +397,41 @@ export class NovuNotificationsService {
       },
       overrides: { fcm: { data: { url: actionUrl } }, webPush: { data: { url: actionUrl } } },
     });
+  }
+
+  async notifyEventParticipant(input: {
+    audience: 'LECTURERS' | 'SUBSCRIBERS';
+    eventId: string;
+    eventName: string;
+    message: string;
+    requestId: string;
+    deliveryAttempt?: number;
+    actionUrl: string;
+    recipient: import('./novu-notification.types').NotificationRecipient;
+  }): Promise<NovuTriggerOutcome> {
+    const secretKey = this.transport.secretKey();
+    if (!secretKey) return 'skipped';
+    const title = `Aviso da organização: ${input.eventName}`;
+    const transactionId = `event-manual:${input.requestId}:${input.recipient.subscriberId}`;
+    return this.transport.triggerWithOutcome(
+      secretKey,
+      {
+        name: NOVU_WORKFLOW_IDENTIFIERS.eventManualNotification,
+        to: input.recipient,
+        transactionId,
+        payload: {
+          title,
+          subject: title,
+          body: input.message,
+          eventId: input.eventId,
+          actionLabel: 'Ver evento',
+          actionUrl: input.actionUrl,
+          redirectUrl: input.actionUrl,
+        },
+        overrides: { fcm: { data: { url: input.actionUrl } }, webPush: { data: { url: input.actionUrl } } },
+      },
+      input.deliveryAttempt ? `${transactionId}:retry-${input.deliveryAttempt}` : transactionId,
+    );
   }
 
   async notifyOnlineAttendanceAvailable(input: OnlineAttendanceAvailableNotification): Promise<boolean> {

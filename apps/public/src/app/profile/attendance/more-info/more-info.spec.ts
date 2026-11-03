@@ -1,3 +1,4 @@
+import { EventPreparationApiService } from '@cacic-fct/shared-angular/event-preparation';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
@@ -35,6 +36,10 @@ describe('MoreInfo', () => {
     await TestBed.configureTestingModule({
       imports: [MoreInfo, NoopAnimationsModule],
       providers: [
+        {
+          provide: EventPreparationApiService,
+          useValue: { getMaterials: async () => ({ links: [], updatedAt: null }) },
+        },
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),

@@ -1,10 +1,17 @@
+import { MAX_EVENT_INFORMATION_LENGTH } from '@cacic-fct/shared-event-preparation';
 import {
   normalizeEventTreeTransferResource,
   validateTransferAudienceAndPublication,
   transferPublicationActor,
 } from './event-tree-transfer-policy';
 import { TransferValidationException } from './transfer-validation.exception';
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type {
   TransferAdapterExportResult,
   TransferAdapterContext,
@@ -70,6 +77,8 @@ const EVENT_FIELDS = [
   'locationDescription',
   'locationName',
   'locationInternalNotes',
+  'lecturerInformation',
+  'collectorInformation',
   'isVirtual',
   'majorEventId',
   'eventGroupId',
@@ -187,6 +196,9 @@ const EVENT_SELECT = {
   locationDescription: true,
   locationName: true,
   locationInternalNotes: true,
+  lecturerInformation: true,
+  collectorInformation: true,
+  preparationUpdatedAt: true,
   isVirtual: true,
   majorEventId: true,
   eventGroupId: true,
@@ -1286,10 +1298,16 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
         : stringList(input['regularAttendancePriceTierIds']),
       eventResource(before).data as unknown as Record<string, unknown>,
     );
+    const preparationChanged = ['lecturerInformation', 'collectorInformation'].some(
+      (field) => normalized[field] !== undefined && normalized[field] !== Reflect.get(before, field),
+    );
     const updatedCount = await context.tx.event.updateMany({
       where: { id: resource.id, deletedAt: null, updatedAt: new Date(snapshot.revision) },
       data: {
         ...normalized,
+        ...(preparationChanged
+          ? { preparationUpdatedAt: new Date(Math.max(Date.now(), (before.preparationUpdatedAt?.getTime() ?? 0) + 1)) }
+          : {}),
         ...transferPublicationActor(raw, actorId),
         updatedById: actorId,
       } as Prisma.EventUpdateManyMutationInput,
@@ -1360,7 +1378,8 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
     return {
       postCommitEffects: [
         () => this.postCommit.syncEvent(updated.id),
-        ...(normalized['shouldCollectAttendance'] !== undefined ||
+        ...(preparationChanged ||
+        normalized['shouldCollectAttendance'] !== undefined ||
         normalized['isOnlineAttendanceAllowed'] !== undefined ||
         normalized['onlineAttendanceStartDate'] !== undefined ||
         normalized['onlineAttendanceEndDate'] !== undefined ||
@@ -1734,6 +1753,15 @@ function omitAudience(data: Record<string, unknown>): Record<string, unknown> {
 function normalizeEventData(data: Record<string, unknown>, applyCreateDefaults: boolean): Record<string, unknown> {
   const normalized = normalizeEventLocation(data);
   if (normalized['name'] !== undefined) normalized['name'] = requiredName(normalized['name'], 'Evento');
+  for (const field of ['lecturerInformation', 'collectorInformation']) {
+    if (normalized[field] !== undefined) {
+      const value = normalized[field];
+      if (value !== null && (typeof value !== 'string' || value.length > MAX_EVENT_INFORMATION_LENGTH)) {
+        throw new BadRequestException('Use até 10.000 caracteres por orientação.');
+      }
+      normalized[field] = typeof value === 'string' ? value.trim() || null : null;
+    }
+  }
   if (normalized['emoji'] !== undefined) normalized['emoji'] = stringValue(normalized['emoji'], 'emoji').trim() || '❔';
   if (applyCreateDefaults && normalized['type'] === undefined) normalized['type'] = 'OTHER';
   for (const key of ['youtubeCode', 'twitchChannel'] as const) {

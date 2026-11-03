@@ -1,3 +1,5 @@
+import { EventPreparationApiService } from '@cacic-fct/shared-angular/event-preparation';
+import { createEventPreparationStoryApi } from '@cacic-fct/shared-angular/event-preparation/testing';
 import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import type {
   CertificateParticipationStatus,
@@ -76,6 +78,7 @@ const meta: Meta<MoreInfoStoryArgs> = {
     (story, context) =>
       applicationConfig({
         providers: [
+          { provide: EventPreparationApiService, useFactory: createEventPreparationStoryApi },
           { provide: RouteErrorService, useValue: { navigate: navigateRouteError } },
           {
             provide: ActivatedRoute,

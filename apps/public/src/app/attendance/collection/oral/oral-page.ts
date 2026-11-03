@@ -1,3 +1,4 @@
+import { EventInstructionsComponent } from '@cacic-fct/shared-angular/event-preparation';
 import { isPlatformBrowser } from '@angular/common';
 import { Component, DestroyRef, OnInit, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -26,9 +27,10 @@ const ORAL_FEED_RECONNECT_MAX_DELAY_MS = 30_000;
 
 @Component({
   selector: 'app-oral-attendance-page',
-  imports: [OralAttendanceComponent],
+  imports: [EventInstructionsComponent, OralAttendanceComponent],
   template: `
     @if (event(); as selectedEvent) {
+      <lib-event-instructions title="Orientações para coleta" [content]="selectedEvent.collectorInformation" />
       <lib-oral-attendance
         [title]="selectedEvent.event.name"
         [people]="people()"

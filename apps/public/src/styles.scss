@@ -6,6 +6,7 @@
 @use '@angular/material' as mat;
 @use 'sass:meta';
 @use '../../../libs/shared-angular/src/styles/accessibility';
+@use '../../../libs/shared-angular/src/styles/event-preparation';
 
 @import '@fontsource-variable/inter/index.css';
 @import '@fontsource-variable/source-code-pro/index.css';

@@ -9,6 +9,8 @@ const labels: Readonly<Record<string, string>> = {
   creditMinutes: 'Carga horária em minutos',
   description: 'Descrição',
   shortDescription: 'Descrição resumida',
+  lecturerInformation: 'Orientações para palestrantes',
+  collectorInformation: 'Orientações para coletores',
   latitude: 'Latitude',
   longitude: 'Longitude',
   locationDescription: 'Descrição do local',

@@ -5,11 +5,77 @@ import { NovuNotificationsService } from './novu-notifications.service';
 const { jest } = import.meta;
 
 describe('NovuNotificationsService', () => {
+  it('reuses a recipient-specific idempotency key after a lost manual notification response', async () => {
+    const input = {
+      audience: 'LECTURERS' as const,
+      eventId: 'event-1',
+      eventName: 'Evento',
+      message: 'Confira a sala.',
+      requestId: 'request-1',
+      actionUrl: '/profile/attendances/event/event-1/organizer',
+      recipient: { subscriberId: 'user-1' },
+    };
+    fetchMock.mockRejectedValueOnce(new Error('Response lost'));
+    await expect(service.notifyEventParticipant(input)).resolves.toBe('unknown');
+    await expect(service.notifyEventParticipant(input)).resolves.toBe('acknowledged');
+    await service.notifyEventParticipant({ ...input, recipient: { subscriberId: 'user-2' } });
+    const requests = fetchMock.mock.calls.map(([, options]) => options);
+    expect(requests.map((options) => options.headers['Idempotency-Key'])).toEqual([
+      'event-manual:request-1:user-1',
+      'event-manual:request-1:user-1',
+      'event-manual:request-1:user-2',
+    ]);
+    expect(requests[0].body).toBe(requests[1].body);
+    expect(JSON.parse(requests[1].body).transactionId).toBe(requests[1].headers['Idempotency-Key']);
+  });
+  it.each([
+    { response: { ok: false, status: 503 }, outcome: 'rejected' },
+    { response: { ok: false, status: 429 }, outcome: 'rejected' },
+    { response: { ok: false, status: 409 }, outcome: 'unknown' },
+    { response: { ok: true, json: async () => ({ acknowledged: false, status: 'error' }) }, outcome: 'rejected' },
+    { response: { ok: true, json: async () => ({}) }, outcome: 'unknown' },
+    {
+      response: {
+        ok: true,
+        json: async () => {
+          throw new Error('Incomplete response');
+        },
+      },
+      outcome: 'unknown',
+    },
+  ])('classifies a manual trigger response as $outcome', async ({ response, outcome }) => {
+    fetchMock.mockResolvedValueOnce(response);
+    await expect(
+      service.notifyEventParticipant({
+        audience: 'LECTURERS',
+        eventId: 'event',
+        eventName: 'Evento',
+        message: 'Aviso',
+        requestId: 'request',
+        actionUrl: '/profile/attendances/event/event',
+        recipient: { subscriberId: 'user' },
+        deliveryAttempt: 1,
+      }),
+    ).resolves.toBe(outcome);
+    expect(fetchMock.mock.calls[0][1].headers['Idempotency-Key']).toBe('event-manual:request:user:retry-1');
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).transactionId).toBe('event-manual:request:user');
+  });
+
   it.each(['disabled', 'missing-key'])('completes ticket notifications when Novu is %s', async (mode) => {
     config.get.mockImplementation((key: string) =>
       key === 'NOVU_SECURE_MODE_ENABLED' ? (mode === 'disabled' ? 'false' : 'true') : undefined,
     );
     await expect(service.notifyTicketTransfer({} as never)).resolves.toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each(['disabled', 'missing-key'])('skips manual notifications when Novu is %s', async (mode) => {
+    config.get.mockImplementation((key: string) => {
+      if (key === 'NOVU_SECURE_MODE_ENABLED') return mode === 'disabled' ? 'false' : 'true';
+      if (key === 'NOVU_SECRET_KEY' && mode === 'disabled') return 'secret';
+      return undefined;
+    });
+    await expect(service.notifyEventParticipant({} as never)).resolves.toBe('skipped');
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

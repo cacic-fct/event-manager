@@ -1,3 +1,4 @@
+import { EventMaterialsComponent } from '@cacic-fct/shared-angular/event-preparation';
 import { SubscriberInformation } from './subscriber-information';
 import { isPlatformBrowser } from '@angular/common';
 import type {
@@ -82,6 +83,7 @@ const PRIZE_DRAW_RECONNECT_MAX_DELAY_MS = 30_000;
     MatToolbarModule,
     MarkdownComponent,
     SubscriberInformation,
+    EventMaterialsComponent,
     RouterLink,
     TicketPurchaseOptionsSectionComponent,
   ],

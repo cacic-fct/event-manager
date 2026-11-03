@@ -1,3 +1,4 @@
+import { MAX_EVENT_INFORMATION_LENGTH } from '@cacic-fct/shared-event-preparation';
 import { Type } from '@sinclair/typebox';
 import {
   AttendanceEligibility,
@@ -40,6 +41,8 @@ export const EventResourceSchema = checkedResource<EventTransferOwner>()('event'
   locationDescription: nullable(Type.String({ maxLength: 2000 })),
   locationName: nullable(Type.String({ maxLength: 250 })),
   locationInternalNotes: nullable(Type.String({ maxLength: 10000 })),
+  lecturerInformation: nullable(Type.String({ maxLength: MAX_EVENT_INFORMATION_LENGTH })),
+  collectorInformation: nullable(Type.String({ maxLength: MAX_EVENT_INFORMATION_LENGTH })),
   isVirtual: Type.Boolean(),
   majorEventId: nullable(Id),
   eventGroupId: nullable(Id),

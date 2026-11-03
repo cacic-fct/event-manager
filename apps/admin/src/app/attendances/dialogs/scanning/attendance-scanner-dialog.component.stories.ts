@@ -1,3 +1,5 @@
+import { EventPreparationApiService } from '@cacic-fct/shared-angular/event-preparation';
+import { createEventPreparationStoryApi } from '@cacic-fct/shared-angular/event-preparation/testing';
 import { NgComponentOutlet } from '@angular/common';
 import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -112,6 +114,7 @@ class AttendanceScannerDialogStoryHostComponent {
     Injector.create({
       parent: this.injector,
       providers: [
+        { provide: EventPreparationApiService, useFactory: createEventPreparationStoryApi },
         { provide: MAT_DIALOG_DATA, useValue: { eventId: this.eventId() } },
         { provide: MatDialogRef, useValue: dialogRefMock },
         { provide: AttendanceApiService, useValue: attendanceApi },

@@ -10,79 +10,137 @@
     <mat-icon>arrow_back</mat-icon>
   </a>
   }
-  <span>Informações do organizador</span>
+  <span>Área do palestrante</span>
 </mat-toolbar>
 
 <main class="organizer-page">
   @if (currentState.status === 'loading') {
-  <mat-progress-bar mode="indeterminate" aria-label="Carregando informações da organização"></mat-progress-bar>
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando área do palestrante"></mat-progress-bar>
   } @else {
   <header class="organizer-header">
     <h1>{{ currentState.info.title }}</h1>
-  </header>
-
-  <div class="button-container">
-    <a mat-stroked-button routerLink="/profile/lecturer-profile">
+    <a mat-button routerLink="/profile/lecturer-profile">
       <mat-icon>badge</mat-icon>
       Perfil público de ministrante
     </a>
-  </div>
+  </header>
 
-  <section class="detail-section">
-    <h2>Eventos</h2>
-    <mat-list>
-      @for (item of currentState.info.events; track item.event.id) {
-      <mat-list-item class="event-row">
-        <div matListItemIcon class="small-emoji-frame">
-          <img class="small-twemoji" [src]="emoji.getTwemojiUrl(item.event.emoji)" [alt]="item.event.emoji" />
+  <section class="events-section" aria-label="Eventos">
+    @for (item of currentState.info.events; track item.event.id) {
+    <article class="event-row" [attr.aria-labelledby]="'lecturer-event-' + item.event.id">
+      <header class="event-header">
+        <h2 [id]="'lecturer-event-' + item.event.id">
+          @if (item.event.emoji) {<lib-twemoji [emoji]="item.event.emoji" aria-hidden="true" />}<span
+            >{{ item.event.name }}</span
+          >
+        </h2>
+        <div class="event-details">
+          <p>
+            <mat-icon>schedule</mat-icon
+            ><span>{{ item.event.startDate | date: 'short' }} até {{ item.event.endDate | date: 'shortTime' }}</span>
+          </p>
+          <p>
+            <mat-icon>{{ item.event.isVirtual ? 'videocam' : 'location_on' }}</mat-icon
+            ><span
+              >{{ item.event.isVirtual ? 'Evento on-line' : (item.event.locationName || item.event.locationDescription
+              || 'Local a confirmar') }}</span
+            >
+          </p>
         </div>
-        <div matListItemTitle>{{ item.event.name }}</div>
-        <div matListItemLine>{{ item.event.startDate | date: 'short' }}</div>
-        <div matListItemLine class="event-metrics">
-          {{ item.subscriberCount }} inscritos e {{ item.attendanceCount }} presenças coletadas
-        </div>
-        @if (item.onlineAttendanceCode) {
-        <div matListItemLine>Código de presença on-line: {{ item.onlineAttendanceCode }}</div>
-        } @if (!item.onlineAttendanceCode) {
-        <div matListItemLine>Sem código de presença on-line.</div>
+        @if (item.event.locationName && item.event.locationDescription) {
+        <p class="location-description">{{ item.event.locationDescription }}</p>
         }
-        <div class="event-actions">
+      </header>
+
+      <div
+        class="attendance-summary"
+        role="group"
+        [attr.aria-labelledby]="'lecturer-event-' + item.event.id + ' attendance-label-' + item.event.id">
+        <mat-icon class="attendance-icon">how_to_reg</mat-icon>
+        <div class="attendance-code">
+          <h3 [id]="'attendance-label-' + item.event.id">Presença on-line</h3>
           @if (item.onlineAttendanceCode) {
-          <div class="attendance-code-actions">
-            <h3>Código Aztec para presença on-line</h3>
-            <p>
-              Inclua o código no material do evento para que os participantes registrem a presença de forma rápida e
-              prática.
-            </p>
-            <div class="attendance-code-download-buttons">
-              <button
-                mat-stroked-button
-                type="button"
-                aria-label="Baixar código Aztec em SVG"
-                (click)="downloadOnlineAttendanceCode(item.event.id, item.onlineAttendanceCode, 'svg')">
-                <mat-icon>download</mat-icon>
-                SVG
-              </button>
-              <button
-                mat-stroked-button
-                type="button"
-                aria-label="Baixar código Aztec em PNG"
-                (click)="downloadOnlineAttendanceCode(item.event.id, item.onlineAttendanceCode, 'png')">
-                <mat-icon>download</mat-icon>
-                PNG
-              </button>
-            </div>
-          </div>
-          } @if (item.canDownloadSubscriberList) {
-          <button mat-stroked-button type="button" (click)="downloadSubscriberList(item.event.id)">
-            <mat-icon>download</mat-icon>
-            Baixar lista de inscritos
-          </button>
+          <strong>{{ item.onlineAttendanceCode }}</strong>
+          } @else {
+          <p>Sem código de presença on-line.</p>
           }
         </div>
-      </mat-list-item>
-      }
-    </mat-list>
+        <p class="event-metrics">
+          <span><strong>{{ item.attendanceCount }}</strong> presenças coletadas</span
+          ><span>{{ item.subscriberCount }} inscritos</span>
+        </p>
+      </div>
+
+      <mat-accordion class="event-tools" multi>
+        @if (item.lecturerInformation?.trim()) {
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title><mat-icon>assignment</mat-icon>Sua preparação</mat-panel-title>
+          </mat-expansion-panel-header>
+          <lib-event-instructions
+            title="Orientações da organização"
+            [headingLevel]="3"
+            [content]="item.lecturerInformation" />
+        </mat-expansion-panel>
+        }
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title
+              ><mat-icon>attach_file</mat-icon
+              ><span
+                >Materiais para os inscritos@if (materialsAreDirty(item.event.id)) {<span class="unsaved-label"
+                  >Alterações não salvas</span
+                >}</span
+              ></mat-panel-title
+            >
+          </mat-expansion-panel-header>
+          <ng-template matExpansionPanelContent>
+            <lib-event-materials
+              [eventId]="item.event.id"
+              [editable]="true"
+              (dirtyChange)="setMaterialsDirty(item.event.id, $event)" />
+          </ng-template>
+        </mat-expansion-panel>
+        @if (item.onlineAttendanceCode || item.canDownloadSubscriberList) {
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title><mat-icon>download</mat-icon>Downloads</mat-panel-title>
+          </mat-expansion-panel-header>
+          <div class="downloads">
+            @if (item.onlineAttendanceCode) {
+            <div>
+              <h3>Código Aztec para presença on-line</h3>
+              <p>Inclua o código no material do evento para os participantes registrarem a presença.</p>
+              <div class="download-buttons">
+                <button
+                  mat-stroked-button
+                  type="button"
+                  aria-label="Baixar código Aztec em SVG"
+                  (click)="downloadOnlineAttendanceCode(item.event.id, item.onlineAttendanceCode, 'svg')">
+                  <mat-icon>download</mat-icon>SVG
+                </button>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  aria-label="Baixar código Aztec em PNG"
+                  (click)="downloadOnlineAttendanceCode(item.event.id, item.onlineAttendanceCode, 'png')">
+                  <mat-icon>download</mat-icon>PNG
+                </button>
+              </div>
+            </div>
+            } @if (item.canDownloadSubscriberList) {
+            <button mat-stroked-button type="button" (click)="downloadSubscriberList(item.event.id)">
+              <mat-icon>group</mat-icon>Baixar lista de inscritos
+            </button>
+            }
+          </div>
+        </mat-expansion-panel>
+        }
+      </mat-accordion>
+    </article>
+    } @empty {
+    <p class="empty-events">Nenhum evento disponível na sua área do palestrante.</p>
+    }
   </section>
   }
 </main>

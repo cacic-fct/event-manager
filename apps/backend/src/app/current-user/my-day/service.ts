@@ -377,10 +377,12 @@ export class CurrentUserMyDayService {
       sportsActions,
       infoAction: {
         kind: 'EVENT_INFO',
-        label: 'Informações',
-        materialIcon: 'info',
-        route: `/event/${event.id}`,
-        offlineCapable: true,
+        label: roleState.lecturerEventIds.has(event.id) ? 'Preparar minha participação' : 'Informações',
+        materialIcon: roleState.lecturerEventIds.has(event.id) ? 'record_voice_over' : 'info',
+        route: roleState.lecturerEventIds.has(event.id)
+          ? `/profile/attendances/${event.majorEventId ? 'major-event' : event.eventGroupId ? 'event-group' : 'event'}/${event.majorEventId ?? event.eventGroupId ?? event.id}/organizer`
+          : `/event/${event.id}`,
+        offlineCapable: !roleState.lecturerEventIds.has(event.id),
       },
       mapAction:
         event.latitude != null && event.longitude != null

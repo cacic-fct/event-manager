@@ -1,3 +1,5 @@
+import { EventPreparationApiService } from '@cacic-fct/shared-angular/event-preparation';
+import { createEventPreparationStoryApi } from '@cacic-fct/shared-angular/event-preparation/testing';
 import { of } from 'rxjs';
 import { GraphqlHttpService } from '../graphql/graphql-http.service';
 import { computed, inject, signal, type Provider } from '@angular/core';
@@ -104,6 +106,7 @@ const permissions: PermissionScope[] = [
 
 export function createPageStoryProviders(args: PageStoryArgs): Provider[] {
   return [
+    { provide: EventPreparationApiService, useFactory: createEventPreparationStoryApi },
     {
       provide: GraphqlHttpService,
       useValue: {
