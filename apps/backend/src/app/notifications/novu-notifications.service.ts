@@ -9,7 +9,7 @@ import {
   mapPersonToRecipient,
   mapUserToRecipient,
 } from './novu-notification-recipients';
-import { NovuNotificationTransport } from './novu-notification-transport';
+import { NovuNotificationTransport, type NovuTriggerOutcome } from './novu-notification-transport';
 import { NOVU_WORKFLOW_IDENTIFIERS } from './novu-workflow-identifiers';
 import type {
   CertificateAvailableNotification,
@@ -405,14 +405,15 @@ export class NovuNotificationsService {
     eventName: string;
     message: string;
     requestId: string;
+    deliveryAttempt?: number;
     actionUrl: string;
     recipient: import('./novu-notification.types').NotificationRecipient;
-  }): Promise<boolean> {
+  }): Promise<NovuTriggerOutcome> {
     const secretKey = this.transport.secretKey();
-    if (!secretKey) return false;
+    if (!secretKey) return 'unknown';
     const title = `Aviso da organização: ${input.eventName}`;
     const transactionId = `event-manual:${input.requestId}:${input.recipient.subscriberId}`;
-    return this.transport.trigger(
+    return this.transport.triggerWithOutcome(
       secretKey,
       {
         name: NOVU_WORKFLOW_IDENTIFIERS.eventManualNotification,
@@ -429,7 +430,7 @@ export class NovuNotificationsService {
         },
         overrides: { fcm: { data: { url: input.actionUrl } }, webPush: { data: { url: input.actionUrl } } },
       },
-      transactionId,
+      input.deliveryAttempt ? `${transactionId}:retry-${input.deliveryAttempt}` : transactionId,
     );
   }
 

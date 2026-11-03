@@ -11,6 +11,8 @@ type NotificationLogger = {
   warn(message: string): void;
 };
 
+export type NovuTriggerOutcome = 'acknowledged' | 'rejected' | 'unknown';
+
 export class NovuNotificationTransport {
   constructor(
     private readonly config: ConfigService,
@@ -42,6 +44,14 @@ export class NovuNotificationTransport {
   }
 
   async trigger(secretKey: string, body: NovuTriggerRequest, idempotencyKey?: string): Promise<boolean> {
+    return (await this.triggerWithOutcome(secretKey, body, idempotencyKey)) === 'acknowledged';
+  }
+
+  async triggerWithOutcome(
+    secretKey: string,
+    body: NovuTriggerRequest,
+    idempotencyKey?: string,
+  ): Promise<NovuTriggerOutcome> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.triggerTimeoutMs());
 
@@ -59,19 +69,20 @@ export class NovuNotificationTransport {
 
       if (!response.ok) {
         this.logger.warn(`Novu trigger failed with HTTP ${response.status}.`);
-        return false;
+        // A 409 can mean that the original request is still being processed.
+        return response.status === 409 ? 'unknown' : 'rejected';
       }
 
       const result = (await response.json()) as NovuTriggerResponse;
       if (!result.acknowledged) {
         this.logger.warn(`Novu trigger was not acknowledged: ${result.status} ${result.error?.join(', ') ?? ''}`);
-        return false;
+        return result.acknowledged === false ? 'rejected' : 'unknown';
       }
 
-      return true;
+      return 'acknowledged';
     } catch (error) {
       this.logger.warn(`Novu trigger failed: ${error instanceof Error ? error.message : String(error)}`);
-      return false;
+      return 'unknown';
     } finally {
       clearTimeout(timeout);
     }

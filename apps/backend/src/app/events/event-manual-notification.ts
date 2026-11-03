@@ -8,5 +8,6 @@ export interface EventManualNotificationJob {
   requestId: string;
   message: string;
   personIds: string[];
+  deliveryAttempts?: Record<string, number>;
   actor: { id: string; name: string; type: AuditLogActorType };
 }

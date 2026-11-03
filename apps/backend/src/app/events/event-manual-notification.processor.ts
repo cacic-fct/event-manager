@@ -92,15 +92,25 @@ export class EventManualNotificationProcessor extends WorkerHost {
         }
         const targetType = event.majorEventId ? 'major-event' : event.eventGroupId ? 'event-group' : 'event';
         const targetId = event.majorEventId ?? event.eventGroupId ?? eventId;
-        const accepted = await this.notifications.notifyEventParticipant({
+        const recipient = this.notifications.mapPersonToRecipient(person);
+        const deliveryAttempt = job.data.deliveryAttempts?.[recipient.subscriberId] ?? 0;
+        const outcome = await this.notifications.notifyEventParticipant({
           audience,
           eventId,
           eventName: event.name,
           message,
           requestId,
+          deliveryAttempt,
           actionUrl: `/profile/attendances/${targetType}/${targetId}${audience === 'LECTURERS' ? '/organizer' : ''}`,
-          recipient: this.notifications.mapPersonToRecipient(person),
+          recipient,
         });
+        if (outcome === 'rejected') {
+          await job.updateData({
+            ...job.data,
+            deliveryAttempts: { ...job.data.deliveryAttempts, [recipient.subscriberId]: deliveryAttempt + 1 },
+          });
+        }
+        const accepted = outcome === 'acknowledged';
         await record(accepted ? 'ACKNOWLEDGED' : 'FAILED', personId);
         failed ||= !accepted;
       }

@@ -1,4 +1,6 @@
 import { jest } from '@jest/globals';
+import type { EventManualNotificationJob } from './event-manual-notification';
+import type { NovuNotificationsService } from '../notifications/novu-notifications.service';
 import { EventManualNotificationProcessor } from './event-manual-notification.processor';
 
 function setup(audience: 'LECTURERS' | 'SUBSCRIBERS' = 'LECTURERS') {
@@ -12,12 +14,17 @@ function setup(audience: 'LECTURERS' | 'SUBSCRIBERS' = 'LECTURERS') {
     },
   };
   const notifications = {
-    notifyEventParticipant: jest.fn().mockResolvedValue(true),
+    notifyEventParticipant: jest
+      .fn<NovuNotificationsService['notifyEventParticipant']>()
+      .mockResolvedValue('acknowledged'),
     mapPersonToRecipient: jest.fn(() => ({ subscriberId: 'user' })),
   };
   const audit = { record: jest.fn() };
   const audiences = { principalForStoredUser: jest.fn().mockResolvedValue({}) };
   const job = {
+    updateData: jest.fn(async (data: EventManualNotificationJob) => {
+      job.data = data;
+    }),
     id: 'manual-request',
     attemptsMade: 0,
     data: {
@@ -27,7 +34,7 @@ function setup(audience: 'LECTURERS' | 'SUBSCRIBERS' = 'LECTURERS') {
       message: 'Mensagem',
       personIds: ['person'],
       actor: { id: 'admin', type: 'USER', name: 'Organização' },
-    },
+    } as EventManualNotificationJob,
   };
   const processor = new EventManualNotificationProcessor(
     prisma as never,
@@ -84,12 +91,35 @@ describe('manual event notification processing', () => {
 
   it('logs failures before retrying and keeps the same Novu request identifier', async () => {
     const { processor, job, notifications, audit } = setup();
-    notifications.notifyEventParticipant.mockResolvedValueOnce(false);
+    notifications.notifyEventParticipant.mockResolvedValueOnce('unknown');
     await expect(processor.process(job as never)).rejects.toThrow('Novu');
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({ metadata: expect.objectContaining({ status: 'FAILED', attempt: 1 }) }),
     );
     await processor.process({ ...job, attemptsMade: 1 } as never);
     expect(notifications.notifyEventParticipant.mock.calls.map(([input]) => input.requestId)).toEqual([job.id, job.id]);
+    expect(job.updateData).not.toHaveBeenCalled();
+  });
+
+  it('persists a new key generation only after a confirmed failure, including across job retries', async () => {
+    const { processor, job, notifications } = setup();
+    notifications.notifyEventParticipant.mockResolvedValueOnce('rejected').mockResolvedValueOnce('unknown');
+    await expect(processor.process(job as never)).rejects.toThrow('Novu');
+    expect(job.updateData).toHaveBeenCalledWith(expect.objectContaining({ deliveryAttempts: { user: 1 } }));
+    await expect(processor.process({ ...job, attemptsMade: 1 } as never)).rejects.toThrow('Novu');
+    expect(job.updateData).toHaveBeenCalledTimes(1);
+    await processor.process({ ...job, attemptsMade: 2 } as never);
+    expect(notifications.notifyEventParticipant.mock.calls.map(([input]) => input.deliveryAttempt)).toEqual([0, 1, 1]);
+  });
+
+  it('keeps successful recipients on their original key when another recipient is rejected', async () => {
+    const { processor, job, notifications } = setup();
+    job.data.personIds.push('other');
+    notifications.mapPersonToRecipient
+      .mockReturnValueOnce({ subscriberId: 'first' })
+      .mockReturnValueOnce({ subscriberId: 'second' });
+    notifications.notifyEventParticipant.mockResolvedValueOnce('acknowledged').mockResolvedValueOnce('rejected');
+    await expect(processor.process(job as never)).rejects.toThrow('Novu');
+    expect(job.data.deliveryAttempts).toEqual({ second: 1 });
   });
 });
