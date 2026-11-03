@@ -60,6 +60,7 @@ const compoundKeys = {
   eventGroupAudienceInvitation: ['eventGroupId', 'personId'],
   majorEventAudienceInvitation: ['majorEventId', 'personId'],
   eventLecturer: ['eventId', 'personId'],
+  certificateManualRecipient: ['configId', 'personId'],
   externalImportRecord: ['sourceNamespace', 'entityType', 'sourceId'],
   eventFormLinkPriceTier: ['linkId', 'priceTierId'],
   eventManagerRolePermission: ['roleId', 'permission'],

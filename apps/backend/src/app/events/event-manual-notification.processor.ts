@@ -44,7 +44,11 @@ export class EventManualNotificationProcessor extends WorkerHost {
               ? 'Novu aceitou o aviso manual.'
               : status === 'FAILED'
                 ? 'Falha no envio de aviso manual.'
-                : 'Aviso manual não enviado: vínculo ou evento indisponível.',
+                : status === 'UNKNOWN'
+                  ? 'Não foi possível confirmar se o Novu aceitou o aviso manual.'
+                  : status === 'SKIPPED_DISABLED'
+                    ? 'Aviso manual não enviado: Novu desativado ou sem chave.'
+                    : 'Aviso manual não enviado: vínculo ou evento indisponível.',
           scope: { eventId },
           metadata: {
             category: 'manual-event-notification',
@@ -93,20 +97,35 @@ export class EventManualNotificationProcessor extends WorkerHost {
         }
         const targetType = event.majorEventId ? 'major-event' : event.eventGroupId ? 'event-group' : 'event';
         const targetId = event.majorEventId ?? event.eventGroupId ?? eventId;
-        const accepted = await this.notifications.notifyEventParticipant({
+        const recipient = this.notifications.mapPersonToRecipient(person);
+        const deliveryAttempt = job.data.deliveryAttempts?.[recipient.subscriberId] ?? 0;
+        const outcome = await this.notifications.notifyEventParticipant({
           audience,
           eventId,
           eventName: event.name,
           message,
           requestId,
+          deliveryAttempt,
           actionUrl:
             audience === 'LECTURERS'
               ? `/profile/attendances/${targetType}/${encodeURIComponent(targetId)}/organizer`
               : eventInformationPath(targetType, targetId),
-          recipient: this.notifications.mapPersonToRecipient(person),
+          recipient,
         });
-        await record(accepted ? 'ACKNOWLEDGED' : 'FAILED', personId);
-        failed ||= !accepted;
+        if (outcome === 'rejected') {
+          await job.updateData({
+            ...job.data,
+            deliveryAttempts: { ...job.data.deliveryAttempts, [recipient.subscriberId]: deliveryAttempt + 1 },
+          });
+        }
+        const status = {
+          acknowledged: 'ACKNOWLEDGED',
+          rejected: 'FAILED',
+          unknown: 'UNKNOWN',
+          skipped: 'SKIPPED_DISABLED',
+        }[outcome];
+        await record(status, personId);
+        failed ||= outcome === 'rejected' || outcome === 'unknown';
       }
       if (failed) throw new Error('Novu did not acknowledge every manual event notification.');
     });

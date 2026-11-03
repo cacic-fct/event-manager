@@ -1,9 +1,10 @@
 import { BadRequestException } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { auditBatchId } from '../audit-log/audit-transaction-context';
 import {
   assertJournalReferenceLimits,
   normalizeJournalRelationKeys,
+  primaryFields,
   TransferJournalRecorder,
 } from './transfer-journal-recorder';
 const { jest } = import.meta;
@@ -34,6 +35,20 @@ function fixture(
 }
 
 describe('TransferJournalRecorder fail-closed backups', () => {
+  it.each(Prisma.dmmf.datamodel.models)('identifies the primary key for $name', (model) => {
+    const key = primaryFields(model.name[0].toLowerCase() + model.name.slice(1));
+    expect(key.length).toBeGreaterThan(0);
+    for (const field of key) {
+      expect(model.fields.some((candidate) => candidate.name === field && candidate.kind !== 'object')).toBe(true);
+    }
+  });
+
+  it('uses both keys when snapshotting a manual certificate recipient relation', () => {
+    expect(
+      normalizeJournalRelationKeys('certificateManualRecipient', [{ configId: 'config', personId: 'person' }]),
+    ).toEqual([{ configId: 'config', personId: 'person' }]);
+  });
+
   it('records complete trusted scalar snapshots inside the original transaction', async () => {
     const now = new Date();
     const { recorder } = fixture('eventGroup', {

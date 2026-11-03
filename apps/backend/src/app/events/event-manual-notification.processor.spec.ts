@@ -1,4 +1,6 @@
 import { jest } from '@jest/globals';
+import type { EventManualNotificationJob } from './event-manual-notification';
+import type { NovuNotificationsService } from '../notifications/novu-notifications.service';
 import { EventManualNotificationProcessor } from './event-manual-notification.processor';
 
 function setup(audience: 'LECTURERS' | 'SUBSCRIBERS' = 'LECTURERS') {
@@ -12,12 +14,17 @@ function setup(audience: 'LECTURERS' | 'SUBSCRIBERS' = 'LECTURERS') {
     },
   };
   const notifications = {
-    notifyEventParticipant: jest.fn().mockResolvedValue(true),
+    notifyEventParticipant: jest
+      .fn<NovuNotificationsService['notifyEventParticipant']>()
+      .mockResolvedValue('acknowledged'),
     mapPersonToRecipient: jest.fn(() => ({ subscriberId: 'user' })),
   };
   const audit = { record: jest.fn() };
   const audiences = { principalForStoredUser: jest.fn().mockResolvedValue({}) };
   const job = {
+    updateData: jest.fn(async (data: EventManualNotificationJob) => {
+      job.data = data;
+    }),
     id: 'manual-request',
     attemptsMade: 0,
     data: {
@@ -27,7 +34,7 @@ function setup(audience: 'LECTURERS' | 'SUBSCRIBERS' = 'LECTURERS') {
       message: 'Mensagem',
       personIds: ['person'],
       actor: { id: 'admin', type: 'USER', name: 'Organização' },
-    },
+    } as EventManualNotificationJob,
   };
   const processor = new EventManualNotificationProcessor(
     prisma as never,
@@ -39,6 +46,34 @@ function setup(audience: 'LECTURERS' | 'SUBSCRIBERS' = 'LECTURERS') {
 }
 
 describe('manual event notification processing', () => {
+  describe.each(['event', 'event-group', 'major-event'] as const)('%s notification links', (targetType) => {
+    it.each(['LECTURERS', 'SUBSCRIBERS'] as const)(
+      'preserves the destination and retry generation for %s',
+      async (audience) => {
+        const { processor, job, prisma, notifications } = setup(audience);
+        const targetId = 'target/id';
+        job.data.eventId = targetId;
+        job.data.deliveryAttempts = { user: 2 };
+        prisma.event.findFirst.mockResolvedValue({
+          name: 'Evento',
+          majorEventId: targetType === 'major-event' ? targetId : null,
+          eventGroupId: targetType === 'event-group' ? targetId : null,
+        });
+
+        await processor.process(job as never);
+
+        const actionUrl =
+          audience === 'LECTURERS'
+            ? `/profile/attendances/${targetType}/target%2Fid/organizer`
+            : `/${targetType}/target%2Fid`;
+        expect(notifications.notifyEventParticipant).toHaveBeenCalledWith(
+          expect.objectContaining({ actionUrl, deliveryAttempt: 2, recipient: { subscriberId: 'user' } }),
+        );
+        expect(job.updateData).not.toHaveBeenCalled();
+      },
+    );
+  });
+
   it('rechecks membership and audits Novu acknowledgement without claiming delivery', async () => {
     const { processor, job, prisma, notifications, audit } = setup();
     await processor.process(job as never);
@@ -71,6 +106,29 @@ describe('manual event notification processing', () => {
     );
   });
 
+  it.each(['LECTURERS', 'SUBSCRIBERS'] as const)(
+    'audits skipped %s notifications without retrying when Novu is unavailable',
+    async (audience) => {
+      const { processor, job, notifications, audit } = setup(audience);
+      job.data.personIds.push('other');
+      notifications.notifyEventParticipant.mockResolvedValue('skipped');
+
+      await expect(processor.process(job as never)).resolves.toBeUndefined();
+
+      expect(notifications.notifyEventParticipant).toHaveBeenCalledTimes(2);
+      expect(audit.record).toHaveBeenCalledTimes(2);
+      for (const personId of job.data.personIds) {
+        expect(audit.record).toHaveBeenCalledWith(
+          expect.objectContaining({
+            summary: 'Aviso manual não enviado: Novu desativado ou sem chave.',
+            metadata: expect.objectContaining({ status: 'SKIPPED_DISABLED', personId, audience, attempt: 1 }),
+          }),
+        );
+      }
+      expect(job.updateData).not.toHaveBeenCalled();
+    },
+  );
+
   it('checks current subscription and audience visibility before sending to subscribers', async () => {
     const { processor, job, prisma, notifications, audit, audiences } = setup('SUBSCRIBERS');
     prisma.event.findFirst.mockResolvedValueOnce({ name: 'Evento' }).mockResolvedValueOnce(null);
@@ -82,14 +140,46 @@ describe('manual event notification processing', () => {
     );
   });
 
-  it('logs failures before retrying and keeps the same Novu request identifier', async () => {
+  it('logs uncertain outcomes before retrying and keeps the same Novu request identifier', async () => {
     const { processor, job, notifications, audit } = setup();
-    notifications.notifyEventParticipant.mockResolvedValueOnce(false);
+    notifications.notifyEventParticipant.mockResolvedValueOnce('unknown');
     await expect(processor.process(job as never)).rejects.toThrow('Novu');
     expect(audit.record).toHaveBeenCalledWith(
-      expect.objectContaining({ metadata: expect.objectContaining({ status: 'FAILED', attempt: 1 }) }),
+      expect.objectContaining({
+        summary: 'Não foi possível confirmar se o Novu aceitou o aviso manual.',
+        metadata: expect.objectContaining({ status: 'UNKNOWN', attempt: 1 }),
+      }),
     );
     await processor.process({ ...job, attemptsMade: 1 } as never);
     expect(notifications.notifyEventParticipant.mock.calls.map(([input]) => input.requestId)).toEqual([job.id, job.id]);
+    expect(job.updateData).not.toHaveBeenCalled();
+  });
+
+  it('persists a new key generation only after a confirmed failure, including across job retries', async () => {
+    const { processor, job, notifications, audit } = setup();
+    notifications.notifyEventParticipant.mockResolvedValueOnce('rejected').mockResolvedValueOnce('unknown');
+    await expect(processor.process(job as never)).rejects.toThrow('Novu');
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        summary: 'Falha no envio de aviso manual.',
+        metadata: expect.objectContaining({ status: 'FAILED', attempt: 1 }),
+      }),
+    );
+    expect(job.updateData).toHaveBeenCalledWith(expect.objectContaining({ deliveryAttempts: { user: 1 } }));
+    await expect(processor.process({ ...job, attemptsMade: 1 } as never)).rejects.toThrow('Novu');
+    expect(job.updateData).toHaveBeenCalledTimes(1);
+    await processor.process({ ...job, attemptsMade: 2 } as never);
+    expect(notifications.notifyEventParticipant.mock.calls.map(([input]) => input.deliveryAttempt)).toEqual([0, 1, 1]);
+  });
+
+  it('keeps successful recipients on their original key when another recipient is rejected', async () => {
+    const { processor, job, notifications } = setup();
+    job.data.personIds.push('other');
+    notifications.mapPersonToRecipient
+      .mockReturnValueOnce({ subscriberId: 'first' })
+      .mockReturnValueOnce({ subscriberId: 'second' });
+    notifications.notifyEventParticipant.mockResolvedValueOnce('acknowledged').mockResolvedValueOnce('rejected');
+    await expect(processor.process(job as never)).rejects.toThrow('Novu');
+    expect(job.data.deliveryAttempts).toEqual({ second: 1 });
   });
 });
