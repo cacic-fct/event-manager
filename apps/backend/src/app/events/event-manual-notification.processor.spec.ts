@@ -78,6 +78,29 @@ describe('manual event notification processing', () => {
     );
   });
 
+  it.each(['LECTURERS', 'SUBSCRIBERS'] as const)(
+    'audits skipped %s notifications without retrying when Novu is unavailable',
+    async (audience) => {
+      const { processor, job, notifications, audit } = setup(audience);
+      job.data.personIds.push('other');
+      notifications.notifyEventParticipant.mockResolvedValue('skipped');
+
+      await expect(processor.process(job as never)).resolves.toBeUndefined();
+
+      expect(notifications.notifyEventParticipant).toHaveBeenCalledTimes(2);
+      expect(audit.record).toHaveBeenCalledTimes(2);
+      for (const personId of job.data.personIds) {
+        expect(audit.record).toHaveBeenCalledWith(
+          expect.objectContaining({
+            summary: 'Aviso manual não enviado: Novu desativado ou sem chave.',
+            metadata: expect.objectContaining({ status: 'SKIPPED_DISABLED', personId, audience, attempt: 1 }),
+          }),
+        );
+      }
+      expect(job.updateData).not.toHaveBeenCalled();
+    },
+  );
+
   it('checks current subscription and audience visibility before sending to subscribers', async () => {
     const { processor, job, prisma, notifications, audit, audiences } = setup('SUBSCRIBERS');
     prisma.event.findFirst.mockResolvedValueOnce({ name: 'Evento' }).mockResolvedValueOnce(null);

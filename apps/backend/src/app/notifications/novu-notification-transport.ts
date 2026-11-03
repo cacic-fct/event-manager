@@ -11,7 +11,7 @@ type NotificationLogger = {
   warn(message: string): void;
 };
 
-export type NovuTriggerOutcome = 'acknowledged' | 'rejected' | 'unknown';
+export type NovuTriggerOutcome = 'acknowledged' | 'rejected' | 'unknown' | 'skipped';
 
 export class NovuNotificationTransport {
   constructor(

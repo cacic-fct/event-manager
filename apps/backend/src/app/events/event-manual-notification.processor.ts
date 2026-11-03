@@ -45,7 +45,9 @@ export class EventManualNotificationProcessor extends WorkerHost {
                 ? 'Falha no envio de aviso manual.'
                 : status === 'UNKNOWN'
                   ? 'Não foi possível confirmar se o Novu aceitou o aviso manual.'
-                  : 'Aviso manual não enviado: vínculo ou evento indisponível.',
+                  : status === 'SKIPPED_DISABLED'
+                    ? 'Aviso manual não enviado: Novu desativado ou sem chave.'
+                    : 'Aviso manual não enviado: vínculo ou evento indisponível.',
           scope: { eventId },
           metadata: {
             category: 'manual-event-notification',
@@ -112,9 +114,14 @@ export class EventManualNotificationProcessor extends WorkerHost {
             deliveryAttempts: { ...job.data.deliveryAttempts, [recipient.subscriberId]: deliveryAttempt + 1 },
           });
         }
-        const accepted = outcome === 'acknowledged';
-        await record(accepted ? 'ACKNOWLEDGED' : outcome === 'unknown' ? 'UNKNOWN' : 'FAILED', personId);
-        failed ||= !accepted;
+        const status = {
+          acknowledged: 'ACKNOWLEDGED',
+          rejected: 'FAILED',
+          unknown: 'UNKNOWN',
+          skipped: 'SKIPPED_DISABLED',
+        }[outcome];
+        await record(status, personId);
+        failed ||= outcome === 'rejected' || outcome === 'unknown';
       }
       if (failed) throw new Error('Novu did not acknowledge every manual event notification.');
     });

@@ -69,11 +69,13 @@ describe('NovuNotificationsService', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it.each(['disabled', 'missing-key'])('completes manual notifications when Novu is %s', async (mode) => {
-    config.get.mockImplementation((key: string) =>
-      key === 'NOVU_SECURE_MODE_ENABLED' ? (mode === 'disabled' ? 'false' : 'true') : undefined,
-    );
-    await expect(service.notifyEventParticipant({} as never)).resolves.toBe('acknowledged');
+  it.each(['disabled', 'missing-key'])('skips manual notifications when Novu is %s', async (mode) => {
+    config.get.mockImplementation((key: string) => {
+      if (key === 'NOVU_SECURE_MODE_ENABLED') return mode === 'disabled' ? 'false' : 'true';
+      if (key === 'NOVU_SECRET_KEY' && mode === 'disabled') return 'secret';
+      return undefined;
+    });
+    await expect(service.notifyEventParticipant({} as never)).resolves.toBe('skipped');
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
