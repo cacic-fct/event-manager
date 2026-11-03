@@ -40,7 +40,7 @@ describe('shared utility coverage from public app', () => {
     expect(getContactLabel('WHATSAPP')).toBe('WhatsApp');
     expect(getContactLabel(null)).toBe('Contato');
     expect(getEventAttendanceStatusLabel({ eventId: 'event-1', attendedAt: '2026-05-21T09:30:00' })).toBe(
-      'Presença registrada às 21/05/2026, 09:30',
+      'Presença registrada em 21/05/2026 às 09:30',
     );
     expect(getEventAttendanceStatusLabel(null)).toBe('Sem presença registrada');
     expect(joinUnique([' Sala 1 ', 'Sala 1', '', ' Auditório '])).toBe('Sala 1\nAuditório');
