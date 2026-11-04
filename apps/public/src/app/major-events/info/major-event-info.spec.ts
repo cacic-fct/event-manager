@@ -61,13 +61,39 @@ describe('major-event program date navigation', () => {
     expect(text).toContain('Atividade de amanhã');
   });
 
-  it('preserves an explicit all-days selection as more activities load', () => {
+  it('advances the automatic day when the local date changes', () => {
+    const { fixture, tomorrow } = setup(Date.parse(publicFixtureDateFromNow()));
+    fixture.componentRef.setInput('now', Date.parse(tomorrow.startDate));
+    fixture.detectChanges();
+    const text = (fixture.nativeElement as HTMLElement).textContent;
+    expect(text).not.toContain('Atividade de hoje');
+    expect(text).toContain('Atividade de amanhã');
+  });
+
+  it('preserves a manually selected day when the local date changes', () => {
+    const { fixture } = setup(Date.parse(publicFixtureDateFromNow()));
+    const buttons = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.program mat-button-toggle button'),
+    );
+    expect(buttons).toHaveLength(3);
+    buttons[2].click();
+    fixture.detectChanges();
+
+    fixture.componentRef.setInput('now', Date.parse(publicFixtureDateFromNow(2)));
+    fixture.detectChanges();
+    const text = (fixture.nativeElement as HTMLElement).textContent;
+    expect(text).not.toContain('Atividade de hoje');
+    expect(text).toContain('Atividade de amanhã');
+  });
+
+  it('preserves an explicit all-days selection as more activities load and the local date changes', () => {
     const { fixture, today, tomorrow } = setup(Date.parse(publicFixtureDateFromNow()));
     const buttons = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button'));
     const allDays = buttons.find((button) => button.textContent?.includes('Todos os dias'));
     expect(allDays).toBeDefined();
     allDays?.click();
     fixture.detectChanges();
+    fixture.componentRef.setInput('now', Date.parse(tomorrow.startDate));
     fixture.componentRef.setInput('events', [
       today,
       tomorrow,

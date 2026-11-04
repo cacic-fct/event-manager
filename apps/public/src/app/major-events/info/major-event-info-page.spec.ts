@@ -95,18 +95,24 @@ describe('MajorEventInfoPage', () => {
     const nextDate = new Date(Date.parse(first.startDate) + 86_400_000);
     const next = createPublicEvent({ startDate: nextDate.toISOString() });
     const day = publicLocalDateKey(nextDate);
-    const rows = Array.from({ length: 100 }, (_, index) => ({ ...first, id: `activity-${index}` }));
-    queryParams.next(convertToParamMap({ programPages: '2', programDay: day }));
-    getProgram.mockReturnValueOnce(of(rows)).mockReturnValueOnce(of([next]));
+    const pages = 21;
+    queryParams.next(convertToParamMap({ programPages: String(pages), programDay: day }));
+    for (let page = 0; page < pages - 1; page++) {
+      const rows = Array.from({ length: 100 }, (_, index) => ({ ...first, id: `activity-${page}-${index}` }));
+      getProgram.mockReturnValueOnce(of(rows));
+    }
+    getProgram.mockReturnValueOnce(of([next]));
 
     const fixture = TestBed.createComponent(MajorEventInfoPage);
     fixture.detectChanges();
 
-    expect(getProgram).toHaveBeenCalledTimes(2);
-    expect(fixture.componentInstance.events()).toHaveLength(101);
+    expect(getProgram).toHaveBeenCalledTimes(pages);
+    expect(fixture.componentInstance.events()).toHaveLength(2001);
     const link = (fixture.nativeElement as HTMLElement).querySelector('.program a');
     const url = new URL(link?.getAttribute('href') ?? '', 'https://example.test');
-    expect(url.searchParams.get('returnUrl')).toBe(`/major-event/${majorEvent.id}?programDay=${day}&programPages=2`);
+    expect(url.searchParams.get('returnUrl')).toBe(
+      `/major-event/${majorEvent.id}?programDay=${day}&programPages=${pages}`,
+    );
     expect(link?.textContent).toContain(next.name);
   });
 

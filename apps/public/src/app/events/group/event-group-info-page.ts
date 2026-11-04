@@ -71,15 +71,18 @@ export class EventGroupInfoPage {
           return EMPTY;
         }
         return this.api.listPublicEventGroupEvents(id).pipe(
-          expand((events, index) =>
-            events.length === 100 ? this.api.listPublicEventGroupEvents(id, (index + 1) * 100) : EMPTY,
-          ),
+          expand((events) => {
+            const last = events.at(-1);
+            return last && events.length === 100
+              ? this.api.listPublicEventGroupEvents(id, { id: last.id, startDate: last.startDate })
+              : EMPTY;
+          }),
           reduce((all, page) => [...all, ...page], [] as PublicEvent[]),
           map((events) => {
             const group = events[0]?.eventGroup;
             if (!group || group.id !== id || group.majorEventId)
               throw new NotFoundGraphqlError('Grupo não encontrado.');
-            return { group, events };
+            return { group, events: [...new Map(events.map((event) => [event.id, event])).values()] };
           }),
           catchError((error: unknown) => this.fallback.eventGroup(id, error)),
           map((data) => ({ status: 'ready' as const, ...data })),

@@ -133,16 +133,19 @@ export class EventApiService {
     );
   }
 
-  listPublicEventGroupEvents(eventGroupId: string, skip = 0): Observable<PublicEvent[]> {
+  listPublicEventGroupEvents(
+    eventGroupId: string,
+    programAfter?: Pick<PublicEvent, 'id' | 'startDate'>,
+  ): Observable<PublicEvent[]> {
     return this.query<{ publicEvents: PublicEvent[] }>(
       `
-        query PublicEventGroupEvents($eventGroupId: String!, $skip: Int!) {
-          publicEvents(eventGroupId: $eventGroupId, skip: $skip, take: 100, oldestFirst: true) {
+        query PublicEventGroupEvents($eventGroupId: String!, $programAfter: PublicEventProgramCursorInput) {
+          publicEvents(eventGroupId: $eventGroupId, programAfter: $programAfter, take: 100, oldestFirst: true) {
             ${PUBLIC_EVENT_PAGE_FIELDS}
           }
         }
       `,
-      { eventGroupId, skip },
+      { eventGroupId, programAfter },
     ).pipe(map((data) => data.publicEvents));
   }
 

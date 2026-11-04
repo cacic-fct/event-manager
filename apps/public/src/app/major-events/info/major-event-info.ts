@@ -135,34 +135,22 @@ export class MajorEventInfo {
 
   protected readonly programDays = computed(() => eventProgramDays(this.events()));
 
-  private readonly daySelectionSource = computed(() => ({
-    days: this.programDays(),
-    majorEventId: this.majorEvent().id,
-    today: publicLocalDateKey(new Date(this.now())),
-    initialDay: this.initialProgramDay(),
-  }));
+  protected readonly manualProgramDay = linkedSignal({
+    source: () => ({ majorEventId: this.majorEvent().id, initialDay: this.initialProgramDay() }),
+    computation: (source, previous): string | null =>
+      previous?.source.majorEventId === source.majorEventId && previous.source.initialDay === source.initialDay
+        ? previous.value
+        : null,
+  });
 
-  protected readonly selectedDay = linkedSignal({
-    source: this.daySelectionSource,
-    computation: (source, previous): string => {
-      const sameContext =
-        previous?.source.majorEventId === source.majorEventId &&
-        previous.source.today === source.today &&
-        previous.source.initialDay === source.initialDay;
-      if (
-        source.initialDay !== null &&
-        (!sameContext || previous.source.days.every((day) => day.id !== source.initialDay)) &&
-        (source.initialDay === '' || source.days.some((day) => day.id === source.initialDay))
-      ) {
-        return source.initialDay;
-      }
-      if (sameContext && previous.source.days.length > 0) {
-        if (previous.value === '' || source.days.some((day) => day.id === previous.value)) {
-          return previous.value;
-        }
-      }
-      return source.days.some((day) => day.id === source.today) ? source.today : '';
-    },
+  protected readonly selectedDay = computed(() => {
+    const days = this.programDays();
+    const preferred = this.manualProgramDay() ?? this.initialProgramDay();
+    if (preferred !== null && (preferred === '' || days.some((day) => day.id === preferred))) {
+      return preferred;
+    }
+    const today = publicLocalDateKey(new Date(this.now()));
+    return days.some((day) => day.id === today) ? today : '';
   });
 
   protected readonly programReturnUrl = computed(() => {

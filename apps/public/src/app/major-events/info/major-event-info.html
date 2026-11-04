@@ -113,7 +113,7 @@
           aria-label="Dia da programação"
           [hideSingleSelectionIndicator]="true"
           [value]="selectedDay()"
-          (change)="selectedDay.set($event.value)">
+          (change)="manualProgramDay.set($event.value)">
           <mat-button-toggle value="" aria-label="Todos os dias">
             <span class="day-option-label all-days">
               <mat-icon aria-hidden="true">date_range</mat-icon>

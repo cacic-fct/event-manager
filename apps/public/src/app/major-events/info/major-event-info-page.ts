@@ -208,7 +208,7 @@ export class MajorEventInfoPage {
           this.programAfter = undefined;
           this.programPages.set(0);
           const requestedPages = Number(this.programParams()?.get('programPages'));
-          this.pagesToRestore = Number.isSafeInteger(requestedPages) ? Math.max(1, Math.min(requestedPages, 20)) : 1;
+          this.pagesToRestore = Number.isSafeInteger(requestedPages) ? Math.max(1, requestedPages) : 1;
           this.programHasMore.set(false);
           this.subscriptionState.set({ status: 'loading' });
           if (!id) {

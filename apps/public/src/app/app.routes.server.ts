@@ -110,6 +110,10 @@ const routes: ServerRoute[] = [
     path: 'profile/attendances',
     renderMode: RenderMode.Client,
   },
+  ...['event', 'event-group', 'major-event'].map<ServerRoute>((targetType) => ({
+    path: `profile/attendances/${targetType}/:eventId`,
+    renderMode: RenderMode.Client,
+  })),
   {
     path: 'profile/attendances/:eventType/:eventId/organizer',
     renderMode: RenderMode.Client,

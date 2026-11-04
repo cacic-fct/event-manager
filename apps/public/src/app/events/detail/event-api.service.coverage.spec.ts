@@ -19,16 +19,17 @@ describe('EventApiService uncovered operations', () => {
 
   afterEach(() => http.verify());
 
-  it('lists public events within an event group using the expected scope variable', async () => {
-    const result = firstValueFrom(service.listPublicEventGroupEvents('group / 1'));
+  it('continues a public group program after the last event date and ID', async () => {
+    const programAfter = { id: 'previous-event', startDate: publicFixtureDateFromNow() };
+    const result = firstValueFrom(service.listPublicEventGroupEvents('group / 1', programAfter));
     const request = http.expectOne('/api/graphql');
     const events = [createPublicEvent({ id: 'event-1', name: 'Atividade' })];
 
     expect(request.request.body.query).toContain('query PublicEventGroupEvents');
     expect(request.request.body.query).toContain(
-      'publicEvents(eventGroupId: $eventGroupId, skip: $skip, take: 100, oldestFirst: true)',
+      'publicEvents(eventGroupId: $eventGroupId, programAfter: $programAfter, take: 100, oldestFirst: true)',
     );
-    expect(request.request.body.variables).toEqual({ eventGroupId: 'group / 1', skip: 0 });
+    expect(request.request.body.variables).toEqual({ eventGroupId: 'group / 1', programAfter });
     request.flush({ data: { publicEvents: events } });
 
     await expect(result).resolves.toEqual(events);
