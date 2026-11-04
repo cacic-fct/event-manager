@@ -24,7 +24,7 @@
         } @if (majorEvent().sportsTournament && tier.includesSportsRegistration) {
         <li><mat-icon aria-hidden="true">check</mat-icon>Inscrição em esportes</li>
         } @for (summary of tierRuleSummaries(tier); track summary) {
-        <li class="tier-policy"><mat-icon aria-hidden="true">info</mat-icon>{{ summary }}</li>
+        <li class="tier-policy">{{ summary }}</li>
         }
       </ul>
     </div>

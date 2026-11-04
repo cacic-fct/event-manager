@@ -32,6 +32,8 @@ describe('CalendarEventListItem', () => {
     fixture.componentRef.setInput('event', event);
     fixture.detectChanges();
 
+    expect(fixture.nativeElement.querySelector('[matListItemIcon] img')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.top-emoji')).toBeNull();
     expect(
       Array.from(fixture.nativeElement.querySelectorAll('.metadata-item'), (item: Element) => item.textContent?.trim()),
     ).toEqual([

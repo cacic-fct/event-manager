@@ -17,6 +17,17 @@
     }
   </app-event-detail-heading>
 
+  @if (certificateRules().length) {
+  <details class="certificate-rules">
+    <summary id="group-certificates-heading">Certificados</summary>
+    <ul>
+      @for (rule of certificateRules(); track rule) {
+      <li>{{ rule }}</li>
+      }
+    </ul>
+  </details>
+  }
+
   <div class="participation-workspace">
     <ng-content select="[participationWorkspace]" />
   </div>
@@ -64,15 +75,4 @@
     <p class="feedback">Nenhum evento publicado neste grupo.</p>
     }
   </section>
-
-  @if (certificateRules().length) {
-  <section class="certificate-rules" aria-labelledby="group-certificates-heading">
-    <h2 id="group-certificates-heading">Certificados</h2>
-    <ul>
-      @for (rule of certificateRules(); track rule) {
-      <li>{{ rule }}</li>
-      }
-    </ul>
-  </section>
-  }
 </main>

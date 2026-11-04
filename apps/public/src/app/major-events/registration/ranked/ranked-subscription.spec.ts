@@ -92,6 +92,9 @@ describe('RankedMajorEventSubscription', () => {
     store.toggleEvent(eventFixtures[1] as PublicEvent);
 
     expect(component).toBeTruthy();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('app-event-detail-heading h1')?.textContent).toBe(majorEventFixture.name);
+    expect(host.querySelector('mat-toolbar')?.textContent).not.toContain(majorEventFixture.name);
     expect(store.rankingItems().some((item) => item.label === 'Trilha Web')).toBe(true);
     expect(store.rankingItems().some((item) => item.label === 'Angular')).toBe(false);
     expect(store.autoSelectedEvents().map((event) => event.id)).toEqual(['event-1']);

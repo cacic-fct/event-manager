@@ -278,7 +278,7 @@ export class MoreInfo {
       return {
         title: state.certificates.length === 1 ? 'Certificado disponível' : 'Certificados disponíveis',
         icon: 'workspace_premium',
-        description: 'A emissão já foi concluída. Você pode baixar os certificados disponíveis.',
+        description: '',
       };
     if (state.status === 'error' || !state.participation)
       return {

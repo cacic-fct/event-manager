@@ -16,7 +16,7 @@ export class CalendarEventListItem {
   readonly returnUrl = input('/calendar');
   readonly showMajorEventContext = input(true);
   readonly showEventGroupContext = input(true);
-  readonly iconPosition = input<'leading' | 'top'>('top');
+  readonly iconPosition = input<'leading' | 'top'>('leading');
   readonly eventTypeLabel = computed(() => getEventTypeLabel(this.event().type));
   readonly detailRoute = computed(() => {
     const sportsMatchId = this.event().sportsMatch?.id;

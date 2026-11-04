@@ -64,7 +64,7 @@ import { TwemojiComponent } from '@cacic-fct/shared-angular';
     }
     @media (max-width: 599px) {
       header {
-        flex-direction: column;
+        flex-direction: var(--event-detail-heading-mobile-direction, column);
         gap: 12px;
       }
       lib-twemoji {

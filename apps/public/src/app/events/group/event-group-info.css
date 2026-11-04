@@ -63,8 +63,7 @@ h2 {
   padding-block: 10px;
 }
 
-.program,
-.certificate-rules {
+.program {
   margin-top: 32px;
 }
 
@@ -84,8 +83,19 @@ h2 {
 }
 
 .certificate-rules {
-  border-top: 1px solid var(--mat-sys-outline-variant);
-  padding-top: 24px;
+  margin-top: 20px;
+}
+
+.certificate-rules summary {
+  width: fit-content;
+  padding-block: 10px;
+  cursor: pointer;
+  font: var(--mat-sys-title-small);
+}
+
+.certificate-rules summary:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 4px;
 }
 
 .certificate-rules ul {

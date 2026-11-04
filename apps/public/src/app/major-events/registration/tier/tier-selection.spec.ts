@@ -69,9 +69,9 @@ describe('tier benefits', () => {
 
     const content = fixture.nativeElement.textContent;
     expect(content).toContain('Esta modalidade não tem eventos disponíveis para seleção.');
-    expect(content).toContain('minicursos: não permitidos.');
-    expect(content).toContain('palestras: sem limite.');
-    expect(content).toContain('outros eventos: até 1.');
+    expect(content).toContain('Não inclui minicursos');
+    expect(content).toContain('Sem limite de palestras');
+    expect(content).toContain('Até 1 outro evento');
     expect(content).toContain('Esta modalidade não tem eventos disponíveis. Escolha outra modalidade para continuar.');
     expect((fixture.nativeElement.querySelector('button') as HTMLButtonElement).disabled).toBe(true);
   });

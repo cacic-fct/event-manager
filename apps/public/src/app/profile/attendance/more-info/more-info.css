@@ -35,9 +35,12 @@
 
 .workspace-heading {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 8px 24px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.workspace-heading h2 {
+  margin-bottom: 0;
 }
 h2 {
   margin: 0 0 12px;
