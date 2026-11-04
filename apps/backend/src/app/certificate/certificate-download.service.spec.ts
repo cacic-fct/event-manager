@@ -19,10 +19,15 @@ jestEsm.unstable_mockModule('../shared/zip-archive', () => ({
   createZipArchive: jest.fn(),
 }));
 
+jestEsm.unstable_mockModule('./protect-certificate-pdf', () => ({
+  protectCertificatePdf: jest.fn(),
+}));
+
 const { toBuffer } = await import('@bwip-js/node');
 const { chromium } = await import('playwright');
 const { CertificateDownloadService } = await import('./certificate-download.service');
 const { createZipArchive } = await import('../shared/zip-archive');
+const { protectCertificatePdf } = await import('./protect-certificate-pdf');
 
 describe('CertificateDownloadService', () => {
   const originalPublicAppOrigin = process.env.PUBLIC_APP_ORIGIN;
@@ -32,6 +37,10 @@ describe('CertificateDownloadService', () => {
     jest.mocked(toBuffer).mockReset();
     jest.mocked(chromium.launch).mockReset();
     jest.mocked(createZipArchive).mockReset();
+    jest
+      .mocked(protectCertificatePdf)
+      .mockReset()
+      .mockImplementation(async (pdf) => pdf);
   });
 
   afterAll(() => {
@@ -158,6 +167,7 @@ describe('CertificateDownloadService', () => {
   });
 
   it('renders public certificates without CSS using the configured public app origin', async () => {
+    jest.mocked(protectCertificatePdf).mockResolvedValue(Buffer.from('protected-public-pdf'));
     const setContent = jest.fn().mockResolvedValue(undefined);
     const evaluate = jest.fn().mockResolvedValue(undefined);
     const close = jest.fn().mockResolvedValue(undefined);
@@ -203,8 +213,9 @@ describe('CertificateDownloadService', () => {
     expect(result).toEqual({
       fileName: 'certificate-certificate-2.pdf',
       mimeType: 'application/pdf',
-      contentBase64: Buffer.from('public-pdf').toString('base64'),
+      contentBase64: Buffer.from('protected-public-pdf').toString('base64'),
     });
+    expect(protectCertificatePdf).toHaveBeenCalledWith(Buffer.from('public-pdf'));
     expect(prisma.certificate.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
@@ -396,6 +407,23 @@ describe('CertificateDownloadService', () => {
     expect(successfulPage.close).toHaveBeenCalledTimes(1);
     expect(failingPage.close).toHaveBeenCalledTimes(1);
     expect(sharedBrowser.close).not.toHaveBeenCalled();
+  });
+
+  it('fails certificate rendering when PDF protection fails', async () => {
+    const service = new CertificateDownloadService({} as never, {} as never);
+    const page = {
+      setContent: jest.fn().mockResolvedValue(undefined),
+      evaluate: jest.fn().mockResolvedValue(undefined),
+      pdf: jest.fn().mockResolvedValue(Buffer.from('unprotected-pdf')),
+      close: jest.fn().mockResolvedValue(undefined),
+    };
+    const browser = { newPage: jest.fn().mockResolvedValue(page) };
+    jest.mocked(protectCertificatePdf).mockRejectedValue(new Error('qpdf failed'));
+
+    await expect(service['renderPdf']('<html></html>', browser as never)).rejects.toThrow(
+      'Failed to render certificate PDF.',
+    );
+    expect(page.close).toHaveBeenCalledTimes(1);
   });
 
   it('contains archive browser cleanup failures in the detached task', async () => {

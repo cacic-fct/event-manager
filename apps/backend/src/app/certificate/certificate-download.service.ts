@@ -18,6 +18,7 @@ import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { PrismaService } from '../prisma/prisma.service';
 import { CertificateValidationService } from './certificate-validation.service';
+import { protectCertificatePdf } from './protect-certificate-pdf';
 import { createZipArchive, type ZipArchiveStream } from '../shared/zip-archive';
 
 type JsonRecord = Record<string, Prisma.JsonValue>;
@@ -375,10 +376,11 @@ export class CertificateDownloadService {
       page = await browser.newPage();
       await page.setContent(renderedHtml, { waitUntil: 'networkidle' });
       await page.evaluate(() => document.fonts.ready);
-      return await page.pdf({
+      const pdf = await page.pdf({
         format: 'A4',
         printBackground: true,
       });
+      return await protectCertificatePdf(pdf);
     } catch {
       throw new InternalServerErrorException('Failed to render certificate PDF.');
     } finally {

@@ -76,7 +76,7 @@ RUN --mount=type=bind,from=deps,source=/workspace,target=/workspace-src,readonly
     cd /workspace-src \
     && node node_modules/playwright/cli.js install-deps chromium \
     && apt-get update \
-    && apt-get install -y --no-install-recommends dumb-init poppler-utils \
+    && apt-get install -y --no-install-recommends dumb-init poppler-utils qpdf \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system app \
     && useradd --system --gid app --home-dir /app app
