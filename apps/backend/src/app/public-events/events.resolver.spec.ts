@@ -10,15 +10,41 @@ describe('PublicEventsResolver lecturer profiles', () => {
     const prisma = { event: { findMany: jest.fn().mockResolvedValue(events) } };
     const resolver = new PublicEventsResolver(prisma as never, { isEnabled: () => false } as never);
 
+    const startDate = new Date();
+    const programAfter = { startDate, id: 'previous-activity' };
     await expect(
-      resolver.publicEvents(undefined, undefined, undefined, 'major-1', undefined, 100, 100, true),
+      resolver.publicEvents(undefined, undefined, undefined, 'major-1', undefined, undefined, 100, true, programAfter),
     ).resolves.toEqual(events);
     expect(prisma.event.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { AND: [PUBLIC_EVENT_WHERE, { majorEventId: 'major-1' }] },
+        where: {
+          AND: [
+            PUBLIC_EVENT_WHERE,
+            { majorEventId: 'major-1' },
+            { OR: [{ startDate: { gt: startDate } }, { startDate, id: { gt: programAfter.id } }] },
+          ],
+        },
         orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
-        skip: 100,
+        skip: 0,
         take: 100,
+      }),
+    );
+  });
+
+  it('paginates chronological text searches in the database even when Typesense is enabled', async () => {
+    const prisma = { event: { findMany: jest.fn().mockResolvedValue([]) } };
+    const searchEvents = jest.fn();
+    const resolver = new PublicEventsResolver(prisma as never, { isEnabled: () => true, searchEvents } as never);
+
+    await resolver.publicEvents('aula', undefined, undefined, undefined, undefined, 10, 5, true);
+
+    expect(searchEvents).not.toHaveBeenCalled();
+    expect(prisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { AND: [PUBLIC_EVENT_WHERE, { name: { contains: 'aula', mode: 'insensitive' } }] },
+        orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
+        skip: 10,
+        take: 5,
       }),
     );
   });

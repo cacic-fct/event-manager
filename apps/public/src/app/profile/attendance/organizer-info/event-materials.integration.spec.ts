@@ -23,6 +23,24 @@ describe('shared event materials editor', () => {
     await fixture.whenStable();
     return fixture;
   }
+  it('keeps participant materials hidden while loading and reveals the returned links', async () => {
+    const links = [{ title: 'Slides', url: 'https://example.org/slides' }];
+    api.getMaterials.mockResolvedValueOnce({ links, updatedAt: null });
+
+    const fixture = TestBed.createComponent(EventMaterialsComponent);
+    fixture.componentRef.setInput('eventId', 'event');
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.loading()).toBe(true);
+    expect(fixture.nativeElement.hidden).toBe(true);
+
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.hidden).toBe(false);
+    expect(fixture.nativeElement.querySelector('a')?.href).toBe(links[0].url);
+  });
+
   it('hides empty reader materials and empty team guidance, while retaining the editing affordance', async () => {
     const subscriber = await create(false);
     subscriber.detectChanges();

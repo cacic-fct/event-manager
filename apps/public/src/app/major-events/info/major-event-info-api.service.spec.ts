@@ -29,11 +29,13 @@ describe('MajorEventInfoApiService', () => {
 
   it('reuses the public catalog with chronological pagination rather than registration eligibility', async () => {
     const events = [createPublicEvent({ allowSubscription: false })];
-    const result = firstValueFrom(service.getProgram('major-1', 100));
+    const { id, startDate } = createPublicEvent();
+    const cursor = { id, startDate };
+    const result = firstValueFrom(service.getProgram('major-1', cursor));
     const request = http.expectOne('/api/graphql');
     expect(request.request.body.query).toContain('publicEvents(majorEventId: $majorEventId');
     expect(request.request.body.query).toContain('oldestFirst: true');
-    expect(request.request.body.variables).toEqual({ majorEventId: 'major-1', skip: 100, take: 100 });
+    expect(request.request.body.variables).toEqual({ majorEventId: 'major-1', programAfter: cursor, take: 100 });
     request.flush({ data: { publicEvents: events } });
     await expect(result).resolves.toEqual(events);
   });

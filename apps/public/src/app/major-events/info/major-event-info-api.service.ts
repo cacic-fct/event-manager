@@ -5,6 +5,7 @@ import {
   PUBLIC_MAJOR_EVENT_PROGRAM_QUERY,
   type GraphqlResponse,
   type GraphqlVariables,
+  type PublicEvent,
   type PublicMajorEventInfoQuery,
   type PublicMajorEventProgramQuery,
 } from '@cacic-fct/event-manager-public-contracts';
@@ -12,6 +13,7 @@ import { map } from 'rxjs';
 import { graphqlError } from '../../shared/rate-limit-error';
 
 export const MAJOR_EVENT_PROGRAM_PAGE_SIZE = 100;
+export type MajorEventProgramCursor = Pick<PublicEvent, 'id' | 'startDate'>;
 
 @Service()
 export class MajorEventInfoApiService {
@@ -23,10 +25,10 @@ export class MajorEventInfoApiService {
     );
   }
 
-  getProgram(majorEventId: string, skip = 0) {
+  getProgram(majorEventId: string, programAfter?: MajorEventProgramCursor) {
     return this.query<PublicMajorEventProgramQuery>(PUBLIC_MAJOR_EVENT_PROGRAM_QUERY, {
       majorEventId,
-      skip,
+      programAfter,
       take: MAJOR_EVENT_PROGRAM_PAGE_SIZE,
     }).pipe(map((data) => data.publicEvents));
   }

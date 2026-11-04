@@ -44,8 +44,6 @@ h2 {
 }
 
 .registration {
-  display: grid;
-  gap: 20px;
   padding-block: 24px;
   border-block: 1px solid var(--mat-sys-outline-variant);
 }
@@ -54,13 +52,6 @@ h2 {
   margin: 8px 0 0;
   max-width: 65ch;
   color: var(--mat-sys-on-surface-variant);
-}
-
-.registration > a {
-  justify-self: start;
-  min-height: 44px;
-  height: auto;
-  padding-block: 10px;
 }
 
 .program {
@@ -111,12 +102,6 @@ h2 {
 @media (min-width: 800px) {
   .group-page {
     padding: 24px 32px 64px;
-  }
-
-  .registration {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 32px;
   }
 }
 

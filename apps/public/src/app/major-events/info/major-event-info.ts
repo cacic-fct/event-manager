@@ -22,7 +22,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MarkdownComponent } from '@cacic-fct/shared-angular';
 import type { PublicEvent, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
 import { formatDateRange, formatDateTime } from '@cacic-fct/shared-utils';
-import { format } from 'date-fns';
+import { publicLocalDateKey } from '../../shared/public-local-date';
 import { eventProgramDays } from '../../shared/event-program-days';
 import { CalendarEventListItem } from '../../calendar/event-list/event-list-item';
 import { EventDetailHeading } from '../../shared/event-detail-heading';
@@ -136,7 +136,7 @@ export class MajorEventInfo {
   private readonly daySelectionSource = computed(() => ({
     days: this.programDays(),
     majorEventId: this.majorEvent().id,
-    today: format(new Date(this.now()), 'yyyy-MM-dd'),
+    today: publicLocalDateKey(new Date(this.now())),
   }));
 
   protected readonly selectedDay = linkedSignal({

@@ -2,7 +2,7 @@
   <nav class="back-navigation" aria-label="Navegação do grupo de eventos">
     <a mat-button [routerLink]="backUrl()">
       <mat-icon aria-hidden="true">arrow_back</mat-icon>
-      {{ backUrl() === '/profile/attendances' ? 'Minhas participações' : 'Calendário' }}
+      {{ backLabel() }}
     </a>
   </nav>
 
@@ -41,9 +41,6 @@
       <p>Entre na sua conta durante a inscrição para acompanhar sua participação.</p>
       }
     </div>
-    @if (registrationRoute(); as route) {
-    <a mat-flat-button [routerLink]="route" [queryParams]="{ returnUrl: returnUrl() }"> Ver opções de inscrição </a>
-    }
   </section>
   }
 

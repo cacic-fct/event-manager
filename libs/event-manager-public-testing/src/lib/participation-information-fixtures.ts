@@ -258,7 +258,26 @@ export function participationInformationGraphqlData(
   if (query.includes('publicEvents(')) {
     const skip = typeof variables['skip'] === 'number' ? variables['skip'] : 0;
     const take = typeof variables['take'] === 'number' ? variables['take'] : 100;
-    return { publicEvents: events.slice(skip, skip + take) };
+    const majorEventId = variables['majorEventId'];
+    const eventGroupId = variables['eventGroupId'];
+    const after = variables['programAfter'];
+    const matching = events.filter((event) => {
+      if (typeof majorEventId === 'string' && event.majorEventId !== majorEventId) return false;
+      if (typeof eventGroupId === 'string' && event.eventGroupId !== eventGroupId) return false;
+      if (
+        after &&
+        typeof after === 'object' &&
+        'startDate' in after &&
+        'id' in after &&
+        typeof after.startDate === 'string' &&
+        typeof after.id === 'string'
+      ) {
+        const dateOrder = Date.parse(event.startDate) - Date.parse(after.startDate);
+        return dateOrder > 0 || (dateOrder === 0 && event.id > after.id);
+      }
+      return true;
+    });
+    return { publicEvents: matching.slice(skip, skip + take) };
   }
   if (query.includes('publicEvent(')) {
     return {

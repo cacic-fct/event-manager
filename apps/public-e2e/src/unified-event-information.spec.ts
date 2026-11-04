@@ -64,6 +64,11 @@ test('event groups show aggregate participation and let people open an activity'
     'href',
     `/app/event-group/${data.targetId}?returnUrl=%2Fevent%2F${data.events[0].id}`,
   );
+  await page.getByRole('link', { name: `Ver grupo: ${data.eventGroup.name}` }).click();
+  await expect(page.getByRole('link', { name: 'Evento', exact: true })).toHaveAttribute(
+    'href',
+    `/app/event/${data.events[0].id}`,
+  );
 });
 
 test('a non-subscribed visitor can read the page without requesting private workspace data', async ({ page }) => {
@@ -95,7 +100,9 @@ test('non-subscribed people can discover a group without a participation record'
   const data = await mockInformation(page, { targetType: 'event-group', subscribed: false }, false);
   await page.goto(`/app/event-group/${data.targetId}`);
   await expect(page.getByRole('heading', { name: data.eventGroup.name })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Ver opções de inscrição' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Participe do grupo' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Eventos do grupo' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Ver opções de inscrição' })).toHaveCount(0);
   await expect(page.locator('section.program').getByRole('link')).toHaveCount(3);
   await expect(page.getByRole('heading', { name: 'Meu certificado' })).toBeHidden();
 });

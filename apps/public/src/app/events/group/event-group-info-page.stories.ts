@@ -79,7 +79,7 @@ export const Subscribed: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Meu certificado' })).toBeVisible();
     await expect(canvas.getAllByRole('heading', { level: 1 })).toHaveLength(1);
-    await expect(canvas.queryByRole('link', { name: 'Ver opções de inscrição' })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole('heading', { name: 'Participe do grupo' })).not.toBeInTheDocument();
   },
 };
 export const NotSubscribed: Story = { args: { subscribed: false } };

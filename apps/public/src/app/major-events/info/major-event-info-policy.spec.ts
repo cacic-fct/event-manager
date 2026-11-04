@@ -47,11 +47,32 @@ describe('majorEventRegistrationInfo', () => {
     ).toBe('Evento encerrado');
   });
 
-  it('routes receipt corrections to payment and confirmed participants to their participations', () => {
-    const paid = { ...event(), isPaymentRequired: true };
+  it('offers canceled participants a new signup only when registration is open', () => {
+    const open = event();
+    const canceled = subscription('CANCELED');
+    expect(majorEventRegistrationInfo(open, true, canceled, now()).action).toEqual({
+      label: 'Inscrever-se novamente',
+      route: ['/major-event', open.id, 'subscription'],
+    });
     expect(
-      majorEventRegistrationInfo(paid, true, subscription('REJECTED_INVALID_RECEIPT'), now()).action?.route,
-    ).toEqual(['/major-event', paid.id, 'payment']);
+      majorEventRegistrationInfo({ ...open, regularSubscriptionOpen: false }, true, canceled, now()).action?.route,
+    ).toEqual(['/profile', 'attendances']);
+  });
+
+  it.each(['REJECTED_INVALID_RECEIPT', 'REJECTED_GENERIC', 'REJECTED_NO_SLOTS', 'REJECTED_SCHEDULE_CONFLICT'])(
+    'routes paid subscriptions with status %s to payment',
+    (status) => {
+      const paid = { ...event(), isPaymentRequired: true };
+      expect(majorEventRegistrationInfo(paid, true, subscription(status), now()).action?.route).toEqual([
+        '/major-event',
+        paid.id,
+        'payment',
+      ]);
+    },
+  );
+
+  it('routes outstanding receipts to payment and confirmed participants to their participations', () => {
+    const paid = { ...event(), isPaymentRequired: true };
     expect(
       majorEventRegistrationInfo(
         { ...paid, endDate: publicFixtureDateFromNow(-1) },
@@ -89,6 +110,13 @@ describe('majorEventRegistrationInfo', () => {
 });
 
 describe('majorEventInfoLinks', () => {
+  it('links a formatted phone number and leaves extensions as text', () => {
+    const phone = { ...event(), buttonLink: null, contactType: 'PHONE' as const };
+    expect(majorEventInfoLinks({ ...phone, contactInfo: '+55 (18) 1234-5678' })[0]?.href).toBe('tel:+551812345678');
+    expect(majorEventInfoLinks({ ...phone, contactInfo: '11 1234-5678 ramal 12' })).toEqual([]);
+    expect(majorEventInfoLinks({ ...phone, contactInfo: '11 1234-5678;ext=12' })).toEqual([]);
+  });
+
   it('rejects executable external URLs and creates explicit contact protocols', () => {
     expect(majorEventInfoLinks({ ...event(), buttonLink: 'javascript:alert(1)', contactInfo: null })).toEqual([]);
     expect(

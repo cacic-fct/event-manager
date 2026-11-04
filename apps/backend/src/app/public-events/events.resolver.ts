@@ -1,7 +1,7 @@
 import { formatEventLocation } from '@cacic-fct/shared-utils';
 import { getTierSelectableEventIds } from '@cacic-fct/shared-event-participation';
 import { IncludePastParticipation } from '../audiences/past-participation.decorator';
-import { Args, Context, Int, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
+import { Args, Context, Field, InputType, Int, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
 import { NotFoundException, UseGuards } from '@nestjs/common';
 import { startOfDay, subMonths } from 'date-fns';
 import { Prisma } from '@prisma/client';
@@ -29,6 +29,15 @@ import {
   publicMapEventWhere,
   publicRegularSubscriptionEventWhere,
 } from './models';
+
+@InputType()
+class PublicEventProgramCursorInput {
+  @Field(() => Date)
+  startDate!: Date;
+
+  @Field(() => String)
+  id!: string;
+}
 
 const PUBLIC_EVENTS_MAX_TAKE = 100;
 
@@ -267,7 +276,7 @@ export class PublicEventsResolver {
   @Query(() => [PublicEvent], {
     name: 'publicEvents',
     description:
-      'Lists public, non-deleted events for catalog and search surfaces. Supports optional date, major-event, event-group, text-search, and pagination filters; results are ordered by newest start date unless oldestFirst is requested or search relevance is available. Rate limited to 60 requests per minute.',
+      'Lists public, non-deleted events for catalog and search surfaces. Supports optional date, major-event, event-group, text-search, and pagination filters; results are ordered by newest start date unless chronological order is requested or search relevance is available. Chronological text searches match event names. Rate limited to 60 requests per minute.',
   })
   @UseGuards(RateLimitGuard)
   @RateLimit(RATE_LIMIT_POLICIES.publicEvents)
@@ -314,7 +323,14 @@ export class PublicEventsResolver {
         'Returns activities in chronological order, with a stable identifier tie-breaker. Defaults to false.',
     })
     oldestFirst?: boolean,
+    @Args('programAfter', {
+      type: () => PublicEventProgramCursorInput,
+      nullable: true,
+      description: 'Continues the chronological program after the supplied start date and event ID.',
+    })
+    programAfter?: PublicEventProgramCursorInput,
   ) {
+    const chronological = oldestFirst || Boolean(programAfter);
     const pagination = resolvePublicEventsPagination(skip, take);
     const whereParts: Prisma.EventWhereInput[] = [PUBLIC_EVENT_WHERE];
     const normalizedQuery = query?.trim();
@@ -338,9 +354,18 @@ export class PublicEventsResolver {
       whereParts.push({ majorEventId });
     }
 
+    if (programAfter) {
+      whereParts.push({
+        OR: [
+          { startDate: { gt: programAfter.startDate } },
+          { startDate: programAfter.startDate, id: { gt: programAfter.id } },
+        ],
+      });
+    }
+
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
-      if (this.typesenseSearch.isEnabled() && this.canUseAudienceUnscopedSearch()) {
+      if (!chronological && this.typesenseSearch.isEnabled() && this.canUseAudienceUnscopedSearch()) {
         const searchResult = await this.typesenseSearch.searchEvents(normalizedQuery, {
           filterBy: buildPublicEventsTypesenseFilter({
             eventGroupId,
@@ -370,8 +395,8 @@ export class PublicEventsResolver {
         AND: whereParts,
       },
       select: PUBLIC_EVENT_SELECT,
-      orderBy: oldestFirst ? [{ startDate: 'asc' }, { id: 'asc' }] : { startDate: 'desc' },
-      skip: prioritizedIds.length > 0 ? 0 : pagination.skip,
+      orderBy: chronological ? [{ startDate: 'asc' }, { id: 'asc' }] : { startDate: 'desc' },
+      skip: programAfter || prioritizedIds.length > 0 ? 0 : pagination.skip,
       take: prioritizedIds.length > 0 ? prioritizedIds.length : pagination.take,
     });
 

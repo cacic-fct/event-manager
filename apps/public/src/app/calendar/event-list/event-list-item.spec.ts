@@ -104,6 +104,10 @@ describe('CalendarEventListItem', () => {
     expect(fixture.nativeElement.textContent).toContain('Auditório central');
     expect(fixture.nativeElement.textContent).not.toContain('Bloco de extensão');
 
+    fixture.componentRef.setInput('event', { ...event, isVirtual: false, locationName: '   ' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Bloco de extensão');
+
     fixture.componentRef.setInput('event', { ...event, isVirtual: true });
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Online');

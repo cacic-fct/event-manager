@@ -140,6 +140,7 @@ export const MultipleParentContext: Story = {
         },
         isSubscribed: args.isSubscribed,
         returnUrl: args.returnUrl,
+        showMajorEventContext: args.showMajorEventContext,
       },
     };
   },

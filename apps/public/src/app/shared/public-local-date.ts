@@ -1,4 +1,4 @@
-const PUBLIC_TIME_ZONE = 'America/Sao_Paulo';
+export const PUBLIC_TIME_ZONE = 'America/Sao_Paulo';
 
 type CalendarParts = {
   year: number;

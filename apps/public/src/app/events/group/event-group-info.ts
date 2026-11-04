@@ -40,9 +40,12 @@ export class EventGroupInfo {
   readonly orderedEvents = computed(() =>
     [...this.events()].sort((left, right) => compareIsoDateAsc(left.startDate, right.startDate)),
   );
-  readonly registrationRoute = computed(() => {
-    const first = this.orderedEvents()[0];
-    return first ? ['/event', first.id] : null;
+  readonly backLabel = computed(() => {
+    const path = this.backUrl().split(/[?#]/, 1)[0];
+    if (path === '/profile/attendances') return 'Minhas participações';
+    if (path.startsWith('/event/')) return 'Evento';
+    if (path === '/calendar') return 'Calendário';
+    return 'Voltar';
   });
   readonly returnUrl = computed(() => `/event-group/${this.group().id}`);
   readonly dateLabel = computed(() => {

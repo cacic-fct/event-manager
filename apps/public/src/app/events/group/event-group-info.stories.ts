@@ -17,7 +17,9 @@ export const Visitor: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { level: 1 })).toHaveTextContent(fixture.eventGroup.name);
-    await expect(canvas.getByRole('link', { name: 'Ver opções de inscrição' })).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Participe do grupo' })).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Eventos do grupo' })).toBeVisible();
+    await expect(canvas.queryByRole('link', { name: 'Ver opções de inscrição' })).not.toBeInTheDocument();
   },
 };
 export const SignedIn: Story = { args: { isAuthenticated: true } };

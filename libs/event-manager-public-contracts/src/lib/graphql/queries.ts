@@ -88,8 +88,8 @@ export interface PublicMajorEventProgramQuery {
 }
 
 export const PUBLIC_MAJOR_EVENT_PROGRAM_QUERY = `
-  query PublicMajorEventProgram($majorEventId: String!, $skip: Int, $take: Int) {
-    publicEvents(majorEventId: $majorEventId, skip: $skip, take: $take, oldestFirst: true) {
+  query PublicMajorEventProgram($majorEventId: String!, $programAfter: PublicEventProgramCursorInput, $take: Int) {
+    publicEvents(majorEventId: $majorEventId, programAfter: $programAfter, take: $take, oldestFirst: true) {
       ${PUBLIC_CALENDAR_EVENT_FIELDS}
     }
   }

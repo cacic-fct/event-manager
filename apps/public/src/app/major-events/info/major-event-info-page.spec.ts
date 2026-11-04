@@ -5,10 +5,11 @@ import { provideHttpClient } from '@angular/common/http';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import { createPublicEvent, createPublicMajorEvent } from '@cacic-fct/event-manager-public-testing';
-import { BehaviorSubject, of, throwError } from 'rxjs';
+import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 import { MajorEventSubscriptionApiService } from '../registration/subscription-api.service';
 import { MajorEventInfoApiService } from './major-event-info-api.service';
 import { MajorEventInfoPage } from './major-event-info-page';
+import { EventInformationFallbackService } from '../../shared/event-information-fallback.service';
 import { MoreInfo } from '../../profile/attendance/more-info/more-info';
 import { ParticipationWorkspaceStub } from '../../testing/participation-workspace.stub';
 
@@ -20,6 +21,7 @@ describe('MajorEventInfoPage', () => {
   const login = vi.fn();
   const navigate = vi.fn();
   const getMajorEvent = vi.fn(() => of(majorEvent));
+  const fallback = vi.fn<EventInformationFallbackService['majorEvent']>();
   const getProgram = vi.fn(() => of([createPublicEvent()]));
   const getCurrentUserSubscription = vi.fn<MajorEventSubscriptionApiService['getCurrentUserSubscription']>(() =>
     of(null),
@@ -44,6 +46,7 @@ describe('MajorEventInfoPage', () => {
         { provide: ActivatedRoute, useValue: { paramMap: params, queryParamMap: of(convertToParamMap({})) } },
         { provide: AuthService, useValue: { isAuthenticated: authenticated, login } },
         { provide: RouteErrorService, useValue: { navigate } },
+        { provide: EventInformationFallbackService, useValue: { majorEvent: fallback } },
         { provide: MajorEventInfoApiService, useValue: { getMajorEvent, getProgram } },
         { provide: MajorEventSubscriptionApiService, useValue: { getCurrentUserSubscription } },
       ],
@@ -55,13 +58,13 @@ describe('MajorEventInfoPage', () => {
     fixture.detectChanges();
     expect(fixture.componentInstance.majorEvent()).toEqual(majorEvent);
     expect(fixture.componentInstance.events()).toHaveLength(1);
-    expect(getProgram).toHaveBeenCalledWith(majorEvent.id, 0);
+    expect(getProgram).toHaveBeenCalledWith(majorEvent.id, undefined);
     expect(getCurrentUserSubscription).not.toHaveBeenCalled();
     fixture.componentInstance.login();
     expect(login).toHaveBeenCalledWith({ returnTo: `/major-event/${majorEvent.id}` });
   });
 
-  it('keeps overview and already loaded activities when a later program page fails, and retries the same offset', () => {
+  it('keeps overview and already loaded activities when a later program page fails, and retries the same cursor', () => {
     const rows = Array.from({ length: 100 }, (_, index) => createPublicEvent({ id: `activity-${index}` }));
     getProgram
       .mockReturnValueOnce(of(rows))
@@ -76,9 +79,56 @@ describe('MajorEventInfoPage', () => {
     expect(page.majorEvent()).toEqual(majorEvent);
     expect(page.events()).toHaveLength(100);
     page.loadProgram();
-    expect(getProgram).toHaveBeenLastCalledWith(majorEvent.id, 100);
+    expect(getProgram).toHaveBeenLastCalledWith(majorEvent.id, {
+      id: rows[99].id,
+      startDate: rows[99].startDate,
+    });
     expect(page.programError()).toBe(false);
     expect(page.programHasMore()).toBe(false);
+  });
+
+  it('discards a pending program when navigating to another major event', () => {
+    const pending = new Subject<ReturnType<typeof createPublicEvent>[]>();
+    const nextEvent = createPublicMajorEvent({ id: 'next-major-event' });
+    const activity = createPublicEvent({ majorEventId: nextEvent.id });
+    getMajorEvent.mockReturnValueOnce(of(majorEvent)).mockReturnValueOnce(of(nextEvent));
+    getProgram.mockReturnValueOnce(pending).mockReturnValueOnce(of([activity]));
+    const fixture = TestBed.createComponent(MajorEventInfoPage);
+    fixture.detectChanges();
+
+    params.next(convertToParamMap({ majorEventId: nextEvent.id }));
+    pending.next([createPublicEvent({ majorEventId: majorEvent.id })]);
+
+    expect(getProgram).toHaveBeenLastCalledWith(nextEvent.id, undefined);
+    expect(fixture.componentInstance.events()).toEqual([activity]);
+    expect(fixture.componentInstance.programLoading()).toBe(false);
+  });
+
+  it('shows fallback program activities when the subscription has no selected events', () => {
+    const activity = createPublicEvent({ majorEventId: majorEvent.id });
+    getMajorEvent.mockReturnValueOnce(throwError(() => new Error('unavailable')));
+    getProgram.mockReturnValueOnce(throwError(() => new Error('unavailable')));
+    fallback.mockReturnValueOnce(
+      of({
+        event: majorEvent,
+        details: {
+          majorEvent,
+          events: [activity],
+          attendances: [],
+          subscription: {
+            id: 'subscription',
+            majorEventId: majorEvent.id,
+            majorEvent,
+            subscriptionStatus: 'CONFIRMED',
+            selectedEvents: [],
+          },
+        },
+      }),
+    );
+    const fixture = TestBed.createComponent(MajorEventInfoPage);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.events()).toEqual([activity]);
   });
 
   it.each([

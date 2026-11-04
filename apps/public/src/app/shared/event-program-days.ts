@@ -1,7 +1,19 @@
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { compareIsoDateAsc } from '@cacic-fct/shared-utils';
-import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale/pt-BR';
+import { PUBLIC_TIME_ZONE, publicLocalDateKey } from './public-local-date';
+
+const labelFormatter = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: PUBLIC_TIME_ZONE,
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+});
+const weekdayFormatter = new Intl.DateTimeFormat('pt-BR', { timeZone: PUBLIC_TIME_ZONE, weekday: 'short' });
+const shortDateFormatter = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: PUBLIC_TIME_ZONE,
+  day: '2-digit',
+  month: '2-digit',
+});
 
 export interface EventProgramDay {
   id: string;
@@ -15,15 +27,15 @@ export function eventProgramDays(events: readonly PublicEvent[]): EventProgramDa
   const days = new Map<string, EventProgramDay>();
   const ordered = [...events].sort((left, right) => compareIsoDateAsc(left.startDate, right.startDate));
   for (const event of ordered) {
-    const start = parseISO(event.startDate);
-    const id = format(start, 'yyyy-MM-dd');
+    const start = new Date(event.startDate);
+    const id = publicLocalDateKey(start);
     let day = days.get(id);
     if (!day) {
       day = {
         id,
-        label: format(start, "EEEE, d 'de' MMMM", { locale: ptBR }),
-        weekday: format(start, 'EEE', { locale: ptBR }).replace('.', ''),
-        shortDate: format(start, 'dd/MM'),
+        label: labelFormatter.format(start),
+        weekday: weekdayFormatter.format(start).replace('.', ''),
+        shortDate: shortDateFormatter.format(start),
         events: [],
       };
       days.set(id, day);

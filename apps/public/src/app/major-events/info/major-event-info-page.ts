@@ -26,7 +26,11 @@ import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
 import { routePageErrorStatus } from '../../shared/route-error-handling';
 import { MajorEventSubscriptionApiService } from '../registration/subscription-api.service';
 import { MajorEventInfo, type MajorEventInfoRegistration } from './major-event-info';
-import { MAJOR_EVENT_PROGRAM_PAGE_SIZE, MajorEventInfoApiService } from './major-event-info-api.service';
+import {
+  MAJOR_EVENT_PROGRAM_PAGE_SIZE,
+  MajorEventInfoApiService,
+  type MajorEventProgramCursor,
+} from './major-event-info-api.service';
 import { majorEventInfoLinks, majorEventRegistrationInfo } from './major-event-info-policy';
 
 type SubscriptionState =
@@ -102,7 +106,7 @@ export class MajorEventInfoPage {
   );
   private readonly programRequests = new Subject<void>();
   private readonly programReset = new Subject<void>();
-  private programOffset = 0;
+  private programAfter: MajorEventProgramCursor | undefined;
 
   readonly majorEvent = signal<PublicMajorEvent | null>(null);
   readonly events = signal<PublicEvent[]>([]);
@@ -152,7 +156,7 @@ export class MajorEventInfoPage {
           }
           this.programLoading.set(true);
           this.programError.set(false);
-          return this.api.getProgram(event.id, this.programOffset).pipe(
+          return this.api.getProgram(event.id, this.programAfter).pipe(
             takeUntil(this.programReset),
             catchError(() => {
               this.programError.set(true);
@@ -164,10 +168,14 @@ export class MajorEventInfoPage {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((events) => {
-        this.programOffset += events.length;
-        this.events.update((current) => [
-          ...new Map([...current, ...events].map((event) => [event.id, event])).values(),
-        ]);
+        const firstPage = !this.programAfter;
+        const last = events.at(-1);
+        if (last) {
+          this.programAfter = { id: last.id, startDate: last.startDate };
+          this.events.update((current) => [
+            ...new Map([...(firstPage ? [] : current), ...events].map((event) => [event.id, event])).values(),
+          ]);
+        }
         this.programHasMore.set(events.length === MAJOR_EVENT_PROGRAM_PAGE_SIZE);
         this.programLoading.set(false);
       });
@@ -184,7 +192,7 @@ export class MajorEventInfoPage {
           this.hasParticipation.set(false);
           this.participationDetail.set(null);
           this.events.set([]);
-          this.programOffset = 0;
+          this.programAfter = undefined;
           this.programHasMore.set(false);
           this.subscriptionState.set({ status: 'loading' });
           if (!id) {
@@ -195,7 +203,7 @@ export class MajorEventInfoPage {
             catchError((error: unknown) =>
               this.informationFallback.majorEvent(id, error).pipe(
                 map(({ event, details }) => {
-                  this.events.set(details.subscription?.selectedEvents ?? details.events ?? []);
+                  this.events.set(details.events ?? details.subscription?.selectedEvents ?? []);
                   return event;
                 }),
               ),

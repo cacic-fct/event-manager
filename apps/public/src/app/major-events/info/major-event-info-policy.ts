@@ -31,11 +31,12 @@ export function majorEventRegistrationInfo(
     };
   }
 
-  if (subscription) {
+  const canceled = subscription?.subscriptionStatus === 'CANCELED';
+  const canceledAction = canceled
+    ? { label: 'Ver minhas participações', route: ['/profile', 'attendances'] }
+    : undefined;
+  if (subscription && !canceled) {
     const title = getSubscriptionStatusLabel(subscription.subscriptionStatus);
-    if (subscription.subscriptionStatus === 'CANCELED') {
-      return { title, action: { label: 'Ver minhas participações', route: ['/profile', 'attendances'] } };
-    }
     if (subscription.subscriptionStatus === 'CONFIRMED') {
       const canChooseActivities =
         event.sportsTournament && event.hasEvents !== false && !subscription.selectedEvents?.length;
@@ -59,22 +60,36 @@ export function majorEventRegistrationInfo(
           : { label: 'Entrar para solicitar inscrição', login: true },
       };
     }
-    return { title: 'Participação', description: 'Consulte a programação e as orientações da organização.' };
+    return {
+      title: 'Participação',
+      description: 'Consulte a programação e as orientações da organização.',
+      action: canceledAction,
+    };
   }
 
   if (event.subscriptionStartDate && Date.parse(event.subscriptionStartDate) > now) {
-    return { title: 'Inscrições em breve', description: 'Confira abaixo o período de inscrições.' };
+    return {
+      title: 'Inscrições em breve',
+      description: 'Confira abaixo o período de inscrições.',
+      action: canceledAction,
+    };
   }
   if (
     (event.subscriptionEndDate && Date.parse(event.subscriptionEndDate) < now) ||
     event.regularSubscriptionOpen === false
   ) {
-    return { title: 'Inscrições encerradas', description: 'Você pode consultar as atividades e seus detalhes.' };
+    return {
+      title: 'Inscrições encerradas',
+      description: 'Você pode consultar as atividades e seus detalhes.',
+      action: canceledAction,
+    };
   }
   return {
-    title: 'Inscrições abertas',
+    title: canceled ? getSubscriptionStatusLabel('CANCELED') : 'Inscrições abertas',
     description: event.sportsTournament ? 'Escolha as atividades de que deseja participar.' : undefined,
-    action: authenticated ? { label: 'Inscrever-se', route } : { label: 'Entrar para inscrever-se', login: true },
+    action: authenticated
+      ? { label: canceled ? 'Inscrever-se novamente' : 'Inscrever-se', route }
+      : { label: 'Entrar para inscrever-se', login: true },
   };
 }
 
@@ -93,7 +108,7 @@ export function majorEventInfoLinks(event: PublicMajorEvent): MajorEventInfoLink
   }
   if (event.contactType === 'EMAIL' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)) {
     links.push({ label: 'Falar com a organização', icon: 'mail', href: `mailto:${contact}` });
-  } else if (event.contactType === 'WHATSAPP' || event.contactType === 'PHONE') {
+  } else if ((event.contactType === 'WHATSAPP' || event.contactType === 'PHONE') && /^\+?[0-9 ().-]+$/.test(contact)) {
     const digits = contact.replace(/\D/g, '');
     if (digits.length >= 8 && digits.length <= 15) {
       links.push({
