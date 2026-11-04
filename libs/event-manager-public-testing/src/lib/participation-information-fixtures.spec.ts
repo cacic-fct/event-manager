@@ -1,3 +1,4 @@
+import { PUBLIC_MAJOR_EVENT_PROGRAM_QUERY } from '@cacic-fct/event-manager-public-contracts';
 import {
   createParticipationInformationFixture,
   participationInformationGraphqlData,
@@ -8,7 +9,7 @@ describe('participation information GraphQL fixtures', () => {
     const fixture = createParticipationInformationFixture({ targetType: 'major-event' });
     const [first, second, third] = fixture.events;
     second.startDate = first.startDate;
-    const query = 'query PublicMajorEventProgram { publicEvents(majorEventId: $majorEventId) { id } }';
+    const query = PUBLIC_MAJOR_EVENT_PROGRAM_QUERY;
     const variables = { majorEventId: fixture.targetId };
 
     expect(participationInformationGraphqlData(query, { ...variables, take: 1 }, fixture)).toEqual({
@@ -50,6 +51,22 @@ describe('participation information GraphQL fixtures', () => {
         eventGroupSubscriptionId: 'information-group-subscription',
       },
       currentUserEventAttendance: { eventId: event.id },
+    });
+  });
+
+  it.each([
+    ['WAITING_RECEIPT_UPLOAD', 'PAYMENT_PENDING'],
+    ['RECEIPT_UNDER_REVIEW', 'PAYMENT_UNDER_REVIEW'],
+    ['CONFIRMED', 'ATTENDANCE_CONFIRMED'],
+  ])('models certificate eligibility when an attendee has subscription status %s', (subscriptionStatus, status) => {
+    const fixture = createParticipationInformationFixture({
+      targetType: 'major-event',
+      subscriptionStatus,
+      attended: true,
+    });
+
+    expect(participationInformationGraphqlData('query CurrentUserCertificateParticipation', {}, fixture)).toEqual({
+      currentUserCertificateParticipation: { status },
     });
   });
 

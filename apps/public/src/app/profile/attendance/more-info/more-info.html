@@ -220,12 +220,10 @@
       <mat-action-list>
         @for (item of detail.events; track item.event.id) {
         <a mat-list-item [routerLink]="eventRoute(item.event.id)" [queryParams]="eventRouteQueryParams()">
-          <div matListItemTitle class="participation-event-title">
-            <span class="small-emoji-frame" aria-hidden="true">
-              <img class="small-twemoji" [src]="emoji.getTwemojiUrl(item.event.emoji)" alt="" />
-            </span>
-            {{ item.event.name }}
-          </div>
+          <span matListItemIcon class="small-emoji-frame" aria-hidden="true">
+            <img class="small-twemoji" [src]="emoji.getTwemojiUrl(item.event.emoji)" alt="" />
+          </span>
+          <div matListItemTitle>{{ item.event.name }}</div>
           <div matListItemLine>{{ item.dateLine }}</div>
           <div matListItemLine>{{ item.statusLine }}</div>
         </a>
@@ -242,12 +240,10 @@
       <mat-action-list>
         @for (item of detail.notSubscribedEvents; track item.event.id) {
         <a mat-list-item [routerLink]="eventRoute(item.event.id)" [queryParams]="eventRouteQueryParams()">
-          <div matListItemTitle class="participation-event-title">
-            <span class="small-emoji-frame" aria-hidden="true">
-              <img class="small-twemoji" [src]="emoji.getTwemojiUrl(item.event.emoji)" alt="" />
-            </span>
-            {{ item.event.name }}
-          </div>
+          <span matListItemIcon class="small-emoji-frame" aria-hidden="true">
+            <img class="small-twemoji" [src]="emoji.getTwemojiUrl(item.event.emoji)" alt="" />
+          </span>
+          <div matListItemTitle>{{ item.event.name }}</div>
           <div matListItemLine>{{ item.dateLine }}</div>
           @if (item.statusLine !== "Sem presença registrada, Não inscrito") {
           <div matListItemLine>{{ item.statusLine }}</div>

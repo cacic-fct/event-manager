@@ -97,8 +97,11 @@ h2 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  flex: 0 0 28px;
+  align-self: flex-start;
+  margin: 12px 12px 0 0;
+  width: 28px;
+  height: 28px;
 }
 .small-twemoji {
   display: block;
@@ -194,17 +197,6 @@ mat-list [matListItemLine] {
 
 .secondary-section mat-panel-title {
   font: var(--mat-sys-title-medium);
-}
-
-.participation-event-title .small-emoji-frame {
-  display: block;
-  width: 28px;
-  height: 28px;
-  margin-bottom: 8px;
-}
-.participation-event-title .small-twemoji {
-  width: 28px;
-  height: 28px;
 }
 
 .flat-sections .participation-workspace {

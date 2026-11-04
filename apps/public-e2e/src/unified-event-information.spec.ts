@@ -47,6 +47,26 @@ test('the unified major-event page keeps payment tools and a working day filter'
   await expect(program.getByRole('link', { name: new RegExp(data.events[2].name) })).toBeHidden();
 });
 
+test('returning from a later activity restores the loaded major-event program', async ({ page }) => {
+  const data = await mockInformation(page, { targetType: 'major-event', eventCount: 101, subscribed: false }, false);
+  const activity = data.events[100];
+  const program = page.locator('section.program');
+  const activityLink = program.getByRole('link', { name: new RegExp(activity.name) });
+  const loadMore = program.getByRole('button', { name: 'Carregar mais atividades' });
+
+  await page.goto(`/app/major-event/${data.targetId}`);
+  await expect(loadMore).toBeVisible();
+  await expect(activityLink).toHaveCount(0);
+  await loadMore.click();
+  await activityLink.click();
+  await expect(page.getByRole('heading', { name: activity.name, exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Voltar', exact: true }).click();
+  await expect(page).toHaveURL(/programPages=2/);
+  await expect(activityLink).toBeVisible();
+  await expect(loadMore).toHaveCount(0);
+});
+
 test('event groups show aggregate participation and let people open an activity', async ({ page }) => {
   const data = await mockInformation(page, { targetType: 'event-group', eventCount: 3 });
   await page.goto(`/app/event-group/${data.targetId}`);

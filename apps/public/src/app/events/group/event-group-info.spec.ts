@@ -14,10 +14,12 @@ describe('EventGroupInfo', () => {
     fixture.componentRef.setInput('events', [...data.events].reverse());
     fixture.detectChanges();
     const host = fixture.nativeElement as HTMLElement;
-    const links = host.querySelectorAll('section.program a');
-    expect(links[0].textContent).toContain(data.events[0].name);
-    expect(links[0].getAttribute('href')).toContain('returnUrl=%2Fevent-group%2Finformation-group');
-    expect(host.querySelector('a[mat-flat-button]')?.getAttribute('href')).toContain(data.events[0].id);
+    const links = Array.from(host.querySelectorAll<HTMLAnchorElement>('section.program a'));
+    const destinations = links.map((link) => new URL(link.href));
+    expect(destinations.map((url) => url.pathname)).toEqual(data.events.map((event) => `/event/${event.id}`));
+    expect(destinations.map((url) => url.searchParams.get('returnUrl'))).toEqual(
+      data.events.map(() => `/event-group/${data.targetId}`),
+    );
   });
 
   it('avoids claiming a total workload or certificate rules when their data is incomplete', () => {

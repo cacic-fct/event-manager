@@ -16,7 +16,6 @@ mat-toolbar {
 }
 
 .page-header {
-  --event-detail-heading-mobile-direction: row;
   margin-bottom: 16px;
 }
 
