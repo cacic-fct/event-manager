@@ -29,6 +29,35 @@ describe('Attendances', () => {
     expect(offlineData.replaceAttendanceFeed).toHaveBeenCalledWith('user-1', subscriptionsFeedFixture);
   });
 
+  it('renders the online feed while its offline cache write is still pending', async () => {
+    const { fixture, offlineData } = await createFixture({
+      cacheWrite: () => new Promise<void>(() => undefined),
+    });
+
+    await settle(fixture);
+
+    expect(fixture.nativeElement.textContent).toContain('SECOMPP');
+    expect(offlineData.getAttendanceFeed).not.toHaveBeenCalled();
+  });
+
+  it('reuses the feed when returning to the list and reloads after an invalidation while away', async () => {
+    const { api, currentUserChanges, fixture } = await createFixture();
+    await settle(fixture);
+    fixture.destroy();
+
+    const returned = TestBed.createComponent(Attendances);
+    await settle(returned);
+    expect(returned.nativeElement.textContent).toContain('SECOMPP');
+    expect(api.getSubscriptionsFeed).toHaveBeenCalledTimes(1);
+
+    returned.destroy();
+    currentUserChanges.next();
+    const afterInvalidation = TestBed.createComponent(Attendances);
+    await settle(afterInvalidation);
+    expect(afterInvalidation.nativeElement.textContent).toContain('SECOMPP');
+    expect(api.getSubscriptionsFeed).toHaveBeenCalledTimes(2);
+  });
+
   it('renders ordered status icons with accessible labels and preserves detailed status text for assistive technology', async () => {
     const { component, fixture } = await createFixture();
 
@@ -702,12 +731,14 @@ describe('Attendances', () => {
 async function createFixture({
   latestUserSnapshot = null,
   online = true,
+  cacheWrite = () => Promise.resolve(),
   onlineFeed = subscriptionsFeedFixture,
   onlineFeedError = null,
   offlineFeed = null,
   user = { sub: 'user-1' },
 }: {
   latestUserSnapshot?: { userId: string } | null;
+  cacheWrite?: () => Promise<void>;
   online?: boolean;
   onlineFeed?: SubscriptionsFeed;
   onlineFeedError?: Error | null;
@@ -758,7 +789,7 @@ async function createFixture({
     getAttendanceFeed: vi.fn(() => Promise.resolve(offlineFeed)),
     getLatestUserSnapshot: vi.fn(() => Promise.resolve(latestUserSnapshot)),
     purgeUserData: vi.fn(() => Promise.resolve()),
-    replaceAttendanceFeed: vi.fn(() => Promise.resolve()),
+    replaceAttendanceFeed: vi.fn(cacheWrite),
   };
   const fileDownload = {
     saveBlob: vi.fn(),
