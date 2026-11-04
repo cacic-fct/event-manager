@@ -72,6 +72,8 @@ export class MajorEventInfo {
   readonly programLoading = input(false);
   readonly programError = input(false);
   readonly programHasMore = input(false);
+  readonly programPages = input(0);
+  readonly initialProgramDay = input<string | null>(null);
   readonly now = input(Date.now());
   readonly loginRequested = output<void>();
   readonly retryProgram = output<void>();
@@ -137,13 +139,23 @@ export class MajorEventInfo {
     days: this.programDays(),
     majorEventId: this.majorEvent().id,
     today: publicLocalDateKey(new Date(this.now())),
+    initialDay: this.initialProgramDay(),
   }));
 
   protected readonly selectedDay = linkedSignal({
     source: this.daySelectionSource,
     computation: (source, previous): string => {
       const sameContext =
-        previous?.source.majorEventId === source.majorEventId && previous.source.today === source.today;
+        previous?.source.majorEventId === source.majorEventId &&
+        previous.source.today === source.today &&
+        previous.source.initialDay === source.initialDay;
+      if (
+        source.initialDay !== null &&
+        (!sameContext || previous.source.days.every((day) => day.id !== source.initialDay)) &&
+        (source.initialDay === '' || source.days.some((day) => day.id === source.initialDay))
+      ) {
+        return source.initialDay;
+      }
       if (sameContext && previous.source.days.length > 0) {
         if (previous.value === '' || source.days.some((day) => day.id === previous.value)) {
           return previous.value;
@@ -151,6 +163,14 @@ export class MajorEventInfo {
       }
       return source.days.some((day) => day.id === source.today) ? source.today : '';
     },
+  });
+
+  protected readonly programReturnUrl = computed(() => {
+    const params = new URLSearchParams({
+      programDay: this.selectedDay(),
+      programPages: String(this.programPages()),
+    });
+    return `/major-event/${this.majorEvent().id}?${params}`;
   });
 
   protected readonly visibleDays = computed(() => {

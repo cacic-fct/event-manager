@@ -1,3 +1,4 @@
+import { publicLocalDateKey } from '../../shared/public-local-date';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
@@ -17,6 +18,7 @@ const majorEvent = createPublicMajorEvent({ hasEvents: true, regularSubscription
 
 describe('MajorEventInfoPage', () => {
   const params = new BehaviorSubject(convertToParamMap({ majorEventId: majorEvent.id }));
+  const queryParams = new BehaviorSubject(convertToParamMap({}));
   const authenticated = signal(false);
   const login = vi.fn();
   const navigate = vi.fn();
@@ -30,6 +32,7 @@ describe('MajorEventInfoPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authenticated.set(false);
+    queryParams.next(convertToParamMap({}));
     params.next(convertToParamMap({ majorEventId: majorEvent.id }));
     getMajorEvent.mockReturnValue(of(majorEvent));
     getProgram.mockReturnValue(of([createPublicEvent()]));
@@ -43,7 +46,7 @@ describe('MajorEventInfoPage', () => {
       providers: [
         provideRouter([]),
         provideHttpClient(),
-        { provide: ActivatedRoute, useValue: { paramMap: params, queryParamMap: of(convertToParamMap({})) } },
+        { provide: ActivatedRoute, useValue: { paramMap: params, queryParamMap: queryParams } },
         { provide: AuthService, useValue: { isAuthenticated: authenticated, login } },
         { provide: RouteErrorService, useValue: { navigate } },
         { provide: EventInformationFallbackService, useValue: { majorEvent: fallback } },
@@ -85,6 +88,26 @@ describe('MajorEventInfoPage', () => {
     });
     expect(page.programError()).toBe(false);
     expect(page.programHasMore()).toBe(false);
+  });
+
+  it('restores program pages and the selected day from the return URL', () => {
+    const first = createPublicEvent();
+    const nextDate = new Date(Date.parse(first.startDate) + 86_400_000);
+    const next = createPublicEvent({ startDate: nextDate.toISOString() });
+    const day = publicLocalDateKey(nextDate);
+    const rows = Array.from({ length: 100 }, (_, index) => ({ ...first, id: `activity-${index}` }));
+    queryParams.next(convertToParamMap({ programPages: '2', programDay: day }));
+    getProgram.mockReturnValueOnce(of(rows)).mockReturnValueOnce(of([next]));
+
+    const fixture = TestBed.createComponent(MajorEventInfoPage);
+    fixture.detectChanges();
+
+    expect(getProgram).toHaveBeenCalledTimes(2);
+    expect(fixture.componentInstance.events()).toHaveLength(101);
+    const link = (fixture.nativeElement as HTMLElement).querySelector('.program a');
+    const url = new URL(link?.getAttribute('href') ?? '', 'https://example.test');
+    expect(url.searchParams.get('returnUrl')).toBe(`/major-event/${majorEvent.id}?programDay=${day}&programPages=2`);
+    expect(link?.textContent).toContain(next.name);
   });
 
   it('discards a pending program when navigating to another major event', () => {

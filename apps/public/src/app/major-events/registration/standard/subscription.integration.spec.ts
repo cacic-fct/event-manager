@@ -133,6 +133,8 @@ describe('MajorEventSubscription form flow integration', () => {
     const component = fixture.componentInstance;
     const host = fixture.nativeElement as HTMLElement;
     expect(host.querySelector('app-event-detail-heading h1')?.textContent).toBe(majorEvent.name);
+    expect(component.dateLine()).not.toBe('');
+    expect(host.querySelector('app-event-detail-heading .header-date')?.textContent?.trim()).toBe(component.dateLine());
     expect(host.querySelector('mat-toolbar')?.textContent).not.toContain(majorEvent.name);
 
     expect(component.flowPhase()).toBe('forms');

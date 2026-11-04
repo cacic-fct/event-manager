@@ -363,11 +363,15 @@ export class Attendances {
 
     const attendanceByEventId = getAttendanceByEventId(state.data.attendances);
     const attendanceByMajorEventId = new Map<string, SubscriptionsFeed['attendances'][number]>();
-    const attendanceByGroupId = new Map<string, SubscriptionsFeed['attendances'][number]>();
+    const attendancesByGroupId = new Map<string, SubscriptionsFeed['attendances']>();
     for (const attendance of state.data.attendances) {
       const { majorEventId, eventGroupId } = attendance.event ?? {};
       if (majorEventId) attendanceByMajorEventId.set(majorEventId, attendance);
-      if (eventGroupId) attendanceByGroupId.set(eventGroupId, attendance);
+      if (eventGroupId) {
+        const groupAttendances = attendancesByGroupId.get(eventGroupId) ?? [];
+        groupAttendances.push(attendance);
+        attendancesByGroupId.set(eventGroupId, groupAttendances);
+      }
     }
 
     return [
@@ -376,18 +380,16 @@ export class Attendances {
         return this.majorEventFeedItem(item, attendance ? [attendance] : []);
       }),
       ...state.data.eventItems.map((item) => {
-        if (item.__typename === 'SubscribedEventGroupItem' && item.events.length > 0) {
-          const attendances = item.events.flatMap((event) => {
-            const attendance = attendanceByEventId.get(event.id);
-            return attendance ? [attendance] : [];
-          });
-          return this.eventFeedItem(item, attendances);
+        if (item.__typename === 'SubscribedSingleEventItem') {
+          const attendance = attendanceByEventId.get(item.event.id);
+          return this.eventFeedItem(item, attendance ? [attendance] : []);
         }
-        const attendance =
-          item.__typename === 'SubscribedSingleEventItem'
-            ? attendanceByEventId.get(item.event.id)
-            : attendanceByGroupId.get(item.eventGroup.id);
-        return this.eventFeedItem(item, attendance ? [attendance] : []);
+        const attendances = new Set(attendancesByGroupId.get(item.eventGroup.id));
+        for (const event of item.events) {
+          const attendance = attendanceByEventId.get(event.id);
+          if (attendance) attendances.add(attendance);
+        }
+        return this.eventFeedItem(item, [...attendances]);
       }),
     ].sort((left, right) => compareIsoDateDesc(left.startDate, right.startDate));
   });

@@ -30,7 +30,12 @@ describe('unified information pages HTTP integration', () => {
 
   afterEach(() => http.verify());
 
-  async function setup<T>(component: Type<T>, options: ParticipationInformationOptions = {}, authenticated = true) {
+  async function setup<T>(
+    component: Type<T>,
+    options: ParticipationInformationOptions = {},
+    authenticated = true,
+    queryParams: Record<string, string> = {},
+  ) {
     const data = createParticipationInformationFixture(options);
     const getMaterials = vi.fn(async () => ({ links: [], updatedAt: null }));
     const params = {
@@ -56,7 +61,10 @@ describe('unified information pages HTTP integration', () => {
         },
         {
           provide: ActivatedRoute,
-          useValue: { paramMap: of(convertToParamMap(params)), queryParamMap: of(convertToParamMap({})) },
+          useValue: {
+            paramMap: of(convertToParamMap(params)),
+            queryParamMap: of(convertToParamMap(queryParams)),
+          },
         },
         { provide: RouteErrorService, useValue: { navigate } },
         { provide: NetworkStatusService, useValue: { isOnline: signal(true) } },
@@ -191,6 +199,22 @@ describe('unified information pages HTTP integration', () => {
     );
     expect(host.querySelectorAll('section.program a')).toHaveLength(101);
     expect(queries.filter((query) => query.includes('query PublicEventGroupEvents'))).toHaveLength(2);
+  });
+
+  it('restores later pages of a major-event program when returning from an activity', async () => {
+    const { host, data, queries } = await setup(
+      MajorEventInfoPage,
+      { targetType: 'major-event', eventCount: 101, subscribed: false },
+      false,
+      { programPages: '2' },
+    );
+
+    const program = host.querySelector('section.program');
+    expect(program?.querySelectorAll('a')).toHaveLength(data.events.length);
+    expect(program?.textContent).toContain(data.events[0].name);
+    expect(program?.textContent).toContain(data.events[100].name);
+    expect(program?.textContent).not.toContain('Carregar mais atividades');
+    expect(queries.filter((query) => query.includes('query PublicMajorEventProgram'))).toHaveLength(2);
   });
 
   it('preserves the certificate-only experience on the unified event page', async () => {

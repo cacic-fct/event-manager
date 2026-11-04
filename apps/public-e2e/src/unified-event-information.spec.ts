@@ -114,10 +114,15 @@ test('closing registration does not hide a previously issued certificate', async
   await expect(page.getByRole('button', { name: 'Inscrever-se', exact: true })).toBeHidden();
 });
 
-test('a private participation failure leaves the public event readable and offers retry', async ({ page }) => {
+test('a participant can recover from a temporary failure without leaving the event page', async ({ page }) => {
   const data = await mockInformation(page);
+  let failNextParticipationRequest = true;
   await page.route('**/api/graphql', async (route) => {
-    if (route.request().postDataJSON().query.includes('query CurrentUserEventDetails')) {
+    if (
+      failNextParticipationRequest &&
+      route.request().postDataJSON().query.includes('query CurrentUserEventDetails')
+    ) {
+      failNextParticipationRequest = false;
       await route.fulfill({ json: { errors: [{ message: 'Serviço indisponível.' }] } });
     } else {
       await route.fallback();
@@ -126,7 +131,10 @@ test('a private participation failure leaves the public event readable and offer
   await page.goto(`/app/event/${data.targetId}`);
   await expect(page.getByRole('heading', { name: data.events[0].name, exact: true })).toBeVisible();
   await expect(page.getByText('Não foi possível consultar sua participação agora.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Tentar novamente' })).toBeVisible();
+  await page.getByRole('button', { name: 'Tentar novamente' }).click();
+  await expect(page.getByRole('heading', { name: 'Meu certificado' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Cancelar inscrição' })).toBeVisible();
+  await expect(page.getByText('Não foi possível consultar sua participação agora.')).toBeHidden();
 });
 
 test('an updated-instructions notification opens the participant guidance automatically', async ({ page }) => {

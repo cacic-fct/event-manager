@@ -14,6 +14,7 @@ import { CertificateFileDownloadService } from '../../../shared/certificate-file
 import { NetworkStatusService } from '../../../shared/network-status.service';
 import { RealtimeInvalidationService } from '../../../shared/realtime-invalidation.service';
 import { AttendancesApiService } from '../attendances-api.service';
+import { AttendanceFeedCacheService } from './attendance-feed-cache.service';
 import { Attendances } from './attendances';
 import { CertificateDialog } from '../certificate-dialog/certificate-dialog';
 
@@ -27,6 +28,26 @@ describe('Attendances', () => {
     expect(fixture.nativeElement.textContent).toContain('Oficina pública');
     expect(fixture.nativeElement.textContent).toContain('Atividades complementares');
     expect(offlineData.replaceAttendanceFeed).toHaveBeenCalledWith('user-1', subscriptionsFeedFixture);
+  });
+
+  it('refreshes the online cache after two minutes without a realtime invalidation', async () => {
+    const now = Date.now();
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+    try {
+      const { fixture, api } = await createFixture();
+      await settle(fixture);
+      const cache = TestBed.inject(AttendanceFeedCacheService);
+
+      clock.mockReturnValue(now + 119_999);
+      cache.load('user-1').subscribe();
+      expect(api.getSubscriptionsFeed).toHaveBeenCalledTimes(1);
+
+      clock.mockReturnValue(now + 120_000);
+      cache.load('user-1').subscribe();
+      expect(api.getSubscriptionsFeed).toHaveBeenCalledTimes(2);
+    } finally {
+      clock.mockRestore();
+    }
   });
 
   it('renders the online feed while its offline cache write is still pending', async () => {
@@ -1119,12 +1140,12 @@ const filterableSubscriptionsFeedFixture = {
       },
     },
     {
-      eventId: 'group-child-attended-event',
+      eventId: 'unlisted-group-child',
       attendedAt: '2026-07-03T12:30:00.000Z',
       event: {
-        id: 'group-child-attended-event',
+        id: 'unlisted-group-child',
         majorEventId: null,
-        eventGroupId: null,
+        eventGroupId: 'group-child-attended',
       },
     },
     {

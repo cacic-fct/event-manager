@@ -50,6 +50,8 @@ type SubscriptionState =
         [programLoading]="programLoading()"
         [programError]="programError()"
         [programHasMore]="programHasMore()"
+        [programPages]="programPages()"
+        [initialProgramDay]="initialProgramDay()"
         [now]="currentTime()"
         [backUrl]="backUrl()"
         [hasParticipation]="hasParticipation()"
@@ -104,6 +106,13 @@ export class MajorEventInfoPage {
     this.route.queryParamMap.pipe(map((params) => resolveInternalReturnUrl(params.get('returnUrl'), '/major-event'))),
     { initialValue: '/major-event' },
   );
+  private readonly programParams = toSignal(this.route.queryParamMap);
+  protected readonly initialProgramDay = computed(() => {
+    const day = this.programParams()?.get('programDay');
+    return day === '' || (day && /^\d{4}-\d{2}-\d{2}$/.test(day)) ? day : null;
+  });
+  protected readonly programPages = signal(0);
+  private pagesToRestore = 1;
   private readonly programRequests = new Subject<void>();
   private readonly programReset = new Subject<void>();
   private programAfter: MajorEventProgramCursor | undefined;
@@ -177,7 +186,11 @@ export class MajorEventInfoPage {
           ]);
         }
         this.programHasMore.set(events.length === MAJOR_EVENT_PROGRAM_PAGE_SIZE);
+        this.programPages.update((count) => count + 1);
         this.programLoading.set(false);
+        if (this.programHasMore() && this.programPages() < this.pagesToRestore) {
+          this.loadProgram();
+        }
       });
 
     this.route.paramMap
@@ -193,6 +206,9 @@ export class MajorEventInfoPage {
           this.participationDetail.set(null);
           this.events.set([]);
           this.programAfter = undefined;
+          this.programPages.set(0);
+          const requestedPages = Number(this.programParams()?.get('programPages'));
+          this.pagesToRestore = Number.isSafeInteger(requestedPages) ? Math.max(1, Math.min(requestedPages, 20)) : 1;
           this.programHasMore.set(false);
           this.subscriptionState.set({ status: 'loading' });
           if (!id) {

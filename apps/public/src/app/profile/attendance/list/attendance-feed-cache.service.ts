@@ -8,6 +8,8 @@ import { merge, of, tap } from 'rxjs';
 import { RealtimeInvalidationService } from '../../../shared/realtime-invalidation.service';
 import { AttendancesApiService } from '../attendances-api.service';
 
+const ATTENDANCE_FEED_CACHE_TTL_MS = 2 * 60_000;
+
 @Service()
 export class AttendanceFeedCacheService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
@@ -15,7 +17,7 @@ export class AttendanceFeedCacheService {
   private readonly auth = inject(AuthService);
   private readonly offlineData = inject(PublicDataAccessService);
   private readonly realtime = inject(RealtimeInvalidationService);
-  private readonly cachedFeed = linkedSignal<string | null, SubscriptionsFeed | null>({
+  private readonly cachedFeed = linkedSignal<string | null, { feed: SubscriptionsFeed; fetchedAt: number } | null>({
     source: () => this.auth.user()?.sub ?? null,
     computation: () => null,
   });
@@ -33,8 +35,8 @@ export class AttendanceFeedCacheService {
 
   load(userId: string) {
     const cached = this.isBrowser && this.auth.user()?.sub === userId ? this.cachedFeed() : null;
-    if (cached) {
-      return of(cached);
+    if (cached && Date.now() - cached.fetchedAt < ATTENDANCE_FEED_CACHE_TTL_MS) {
+      return of(cached.feed);
     }
 
     const revision = this.revision();
@@ -44,7 +46,7 @@ export class AttendanceFeedCacheService {
           return;
         }
         if (this.isBrowser) {
-          this.cachedFeed.set(feed);
+          this.cachedFeed.set({ feed, fetchedAt: Date.now() });
         }
         // Cache the feed for offline use without delaying the online result.
         void this.offlineData.replaceAttendanceFeed(userId, feed).catch(() => undefined);

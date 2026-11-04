@@ -86,9 +86,7 @@ export function getSubscribedItemStatusLine(item: SubscribedItem, attendances: C
 
   const attendedCount = item.events.filter((event) => attendanceByEventId.has(event.id)).length;
   const hasAttendance =
-    attendedCount > 0 ||
-    (item.events.length === 0 &&
-      attendances.some((attendance) => attendance.event?.eventGroupId === item.eventGroup.id));
+    attendedCount > 0 || attendances.some((attendance) => attendance.event?.eventGroupId === item.eventGroup.id);
 
   if (attendedCount === 0) {
     return formatStatusLine([
