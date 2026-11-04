@@ -240,6 +240,10 @@
     align-items: stretch;
   }
 
+  .quick-actions > a {
+    width: 100%;
+  }
+
   .dashboard-stack {
     gap: 20px;
   }

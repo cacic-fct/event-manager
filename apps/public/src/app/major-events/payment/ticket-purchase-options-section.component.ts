@@ -36,6 +36,7 @@ export class TicketPurchaseOptionsSectionComponent {
   private readonly ticketApi = inject(TicketingApiService);
   private requestId = 0;
 
+  readonly showProgress = input(true);
   readonly majorEventId = input.required<string>();
   readonly subscriptionStatus = input.required<string | null>();
   readonly state = signal<TicketPurchaseSectionState>({ status: 'loading' });

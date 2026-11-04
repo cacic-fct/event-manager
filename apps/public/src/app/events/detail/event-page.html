@@ -20,10 +20,10 @@
   </button>
   }
 </mat-toolbar>
+<app-page-progress [loading]="currentState.status === 'loading' || !!workspace()?.loading()" />
 
 <main class="event-page">
   @if (currentState.status === 'loading') {
-  <mat-progress-bar mode="indeterminate" aria-label="Carregando evento"></mat-progress-bar>
   <section class="event-skeleton" aria-hidden="true">
     <div class="emoji-placeholder"></div>
     <div class="line title-line"></div>
@@ -57,38 +57,28 @@
     <p class="date-line">{{ dateLine(event) }}</p>
   </app-event-detail-heading>
 
-  @let parentMajorEventId = event.majorEvent?.id || event.majorEventId || event.eventGroup?.majorEventId; @if
-  (parentMajorEventId || (event.eventGroup && !parentMajorEventId) || data.currentUserSubscription ||
+  @let parentMajorEventId = event.majorEvent?.id || event.majorEventId || event.eventGroup?.majorEventId; @let parentId
+  = parentMajorEventId || event.eventGroup?.id; @if (parentId || data.currentUserSubscription ||
   data.currentUserAttendance) {
   <ul class="event-context" aria-label="Resumo do evento">
-    @if (parentMajorEventId) {
-    <li class="parent-event-context">
-      <mat-icon aria-hidden="true">event</mat-icon>
-      <div>
-        <span>Faz parte de</span>
-        <a
-          class="parent-event-link"
-          [routerLink]="['/major-event', parentMajorEventId]"
-          [queryParams]="{ returnUrl: '/event/' + event.id }">
-          {{ event.majorEvent?.name || 'Ver evento principal' }}
-        </a>
-      </div>
-    </li>
-    } @if (event.eventGroup && !parentMajorEventId) {
-    <li>
-      <a
-        mat-button
-        [routerLink]="['/event-group', event.eventGroup.id]"
-        [queryParams]="{ returnUrl: '/event/' + event.id }">
-        <mat-icon aria-hidden="true">event_note</mat-icon>
-        Ver grupo: {{ event.eventGroup.name }}
-      </a>
-    </li>
-    } @if (data.currentUserSubscription) {
+    @if (data.currentUserSubscription) {
     <li class="participation-context"><mat-icon aria-hidden="true">event_available</mat-icon><span>Inscrito</span></li>
     } @if (data.currentUserAttendance) {
     <li class="participation-context">
       <mat-icon aria-hidden="true">how_to_reg</mat-icon><span>Presença confirmada</span>
+    </li>
+    } @if (parentId) {
+    <li class="parent-event-context">
+      <mat-icon aria-hidden="true">{{ parentMajorEventId ? 'event' : 'event_note' }}</mat-icon>
+      <div>
+        <span>Faz parte de</span>
+        <a
+          class="parent-event-link"
+          [routerLink]="[parentMajorEventId ? '/major-event' : '/event-group', parentId]"
+          [queryParams]="{ returnUrl: '/event/' + event.id }">
+          {{ parentMajorEventId ? (event.majorEvent?.name || 'Ver evento principal') : event.eventGroup?.name }}
+        </a>
+      </div>
     </li>
     }
   </ul>

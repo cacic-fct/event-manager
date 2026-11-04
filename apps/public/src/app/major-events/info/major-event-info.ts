@@ -18,7 +18,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { EventInformationNav } from '../../shared/event-information-nav';
 import { MarkdownComponent } from '@cacic-fct/shared-angular';
 import type { PublicEvent, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
 import { formatDateRange, formatDateTime } from '@cacic-fct/shared-utils';
@@ -29,7 +29,7 @@ import { EventDetailHeading } from '../../shared/event-detail-heading';
 import { StickyDateHeader } from '../../shared/sticky-date-header';
 
 export interface MajorEventInfoRegistration {
-  title: string;
+  title?: string;
   description?: string;
   action?: { label: string; route?: string[]; login?: boolean };
   secondaryAction?: { label: string; route: string[] };
@@ -52,7 +52,7 @@ export interface MajorEventInfoLink {
     MatButtonToggleModule,
     MatCardModule,
     MatIconModule,
-    MatProgressBarModule,
+    EventInformationNav,
     MarkdownComponent,
     EventDetailHeading,
     CalendarEventListItem,
@@ -70,6 +70,7 @@ export class MajorEventInfo {
   readonly registration = input.required<MajorEventInfoRegistration>();
   readonly links = input<MajorEventInfoLink[]>([]);
   readonly programLoading = input(false);
+  readonly participationLoading = input(false);
   readonly programError = input(false);
   readonly programHasMore = input(false);
   readonly programPages = input(0);
@@ -116,6 +117,12 @@ export class MajorEventInfo {
 
   protected readonly subscriptionPeriod = computed(() => {
     const event = this.majorEvent();
+    if (
+      Date.parse(event.endDate) <= this.now() ||
+      (event.subscriptionEndDate && Date.parse(event.subscriptionEndDate) <= this.now())
+    ) {
+      return null;
+    }
     if (event.subscriptionStartDate && event.subscriptionEndDate) {
       return formatDateRange(event.subscriptionStartDate, event.subscriptionEndDate);
     }

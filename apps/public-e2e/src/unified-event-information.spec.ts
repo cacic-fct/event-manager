@@ -45,6 +45,21 @@ test('the unified major-event page keeps payment tools and a working day filter'
   await page.getByRole('radio').nth(1).click();
   await expect(program.getByRole('link', { name: new RegExp(data.events[0].name) })).toBeVisible();
   await expect(program.getByRole('link', { name: new RegExp(data.events[2].name) })).toBeHidden();
+
+  await page.setViewportSize({ width: 320, height: 700 });
+  await expect(page.getByRole('tab', { name: 'Sobre', exact: true })).toBeVisible();
+  await expect
+    .poll(() =>
+      program.evaluate((section) => {
+        const tab = section.closest('.mat-mdc-tab-body-active');
+        return (
+          tab !== null &&
+          tab.getBoundingClientRect().right <= window.innerWidth &&
+          document.documentElement.scrollWidth <= window.innerWidth
+        );
+      }),
+    )
+    .toBe(true);
 });
 
 test('returning from a later activity restores the loaded major-event program', async ({ page }) => {
@@ -80,12 +95,12 @@ test('event groups show aggregate participation and let people open an activity'
     .click();
   await expect(page).toHaveURL(new RegExp(`/app/event/${data.events[0].id}`));
   await expect(page.getByRole('heading', { name: data.events[0].name, exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: `Ver grupo: ${data.eventGroup.name}` })).toHaveAttribute(
+  await expect(page.getByRole('link', { name: data.eventGroup.name })).toHaveAttribute(
     'href',
     `/app/event-group/${data.targetId}?returnUrl=%2Fevent%2F${data.events[0].id}`,
   );
-  await page.getByRole('link', { name: `Ver grupo: ${data.eventGroup.name}` }).click();
-  await expect(page.getByRole('link', { name: 'Evento', exact: true })).toHaveAttribute(
+  await page.getByRole('link', { name: data.eventGroup.name }).click();
+  await expect(page.getByRole('link', { name: 'Voltar ao evento', exact: true })).toHaveAttribute(
     'href',
     `/app/event/${data.events[0].id}`,
   );

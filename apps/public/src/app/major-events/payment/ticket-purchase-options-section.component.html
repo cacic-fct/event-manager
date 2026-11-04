@@ -1,7 +1,9 @@
 @let current = state();
 
 @if (current.status === 'loading') {
-  <mat-progress-bar mode="indeterminate" aria-label="Carregando bilhetes adicionais"></mat-progress-bar>
+  @if (showProgress()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Carregando bilhetes adicionais"></mat-progress-bar>
+  }
 } @else if (current.status === 'error') {
   <section class="ticket-purchase-error" aria-live="polite">
     <p>Não foi possível carregar os bilhetes adicionais.</p>

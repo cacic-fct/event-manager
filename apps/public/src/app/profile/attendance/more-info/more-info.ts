@@ -7,14 +7,27 @@ import type {
   PublicEventForm,
   PublicPrizeDrawAvailability,
 } from '@cacic-fct/event-manager-public-contracts';
-import { Component, DestroyRef, PLATFORM_ID, computed, effect, inject, input, output, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  PLATFORM_ID,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { PageProgress } from '../../../shared/page-progress';
+import { ParticipationStatusIcons } from '../../../shared/participation-status-icons';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService, MarkdownComponent } from '@cacic-fct/shared-angular';
@@ -85,7 +98,8 @@ const PRIZE_DRAW_RECONNECT_MAX_DELAY_MS = 30_000;
     MatDialogModule,
     MatIconModule,
     MatListModule,
-    MatProgressBarModule,
+    PageProgress,
+    ParticipationStatusIcons,
     MatToolbarModule,
     MarkdownComponent,
     SubscriberInformation,
@@ -161,6 +175,36 @@ export class MoreInfo {
       ...state,
       hasPrizeDraws: liveAvailability?.snapshot === state ? liveAvailability.value : state.hasPrizeDraws,
     };
+  });
+  private readonly guidance = viewChild(SubscriberInformation);
+  private readonly materials = viewChildren(EventMaterialsComponent);
+  private readonly tickets = viewChild(TicketPurchaseOptionsSectionComponent);
+  protected readonly showMaterials = computed(() => {
+    const materials = this.materials();
+    return (
+      materials.every((item) => !item.loading()) && materials.some((item) => item.original().length || item.loadError())
+    );
+  });
+  readonly loading = computed(
+    () =>
+      this.detailState().status === 'loading' ||
+      !!this.guidance()?.loading() ||
+      this.materials().some((item) => item.loading()) ||
+      this.tickets()?.state().status === 'loading',
+  );
+  protected readonly hasSubscription = computed(() => {
+    const state = this.detailState();
+    return state.status === 'ready' && state.detail.isSubscribed && state.detail.subscriptionStatus !== 'CANCELED';
+  });
+  protected readonly attendedEvents = computed(() => {
+    const state = this.detailState();
+    return state.status === 'ready'
+      ? [...state.detail.events, ...state.detail.notSubscribedEvents].filter((item) => item.attendanceAt)
+      : [];
+  });
+  protected readonly participationEvents = computed(() => {
+    const state = this.detailState();
+    return state.status === 'ready' ? (this.hasSubscription() ? state.detail.events : this.attendedEvents()) : [];
   });
   private readonly prizeDrawTargetType = computed<PrizeDrawTargetType | null>(() => {
     const state = this.detailStateSnapshot();
@@ -398,8 +442,8 @@ export class MoreInfo {
     );
   }
 
-  majorEventEventsHeading(detail: DetailViewModel): string {
-    return detail.isSubscribed ? 'Eventos inscritos' : 'Eventos com participação';
+  majorEventEventsHeading(): string {
+    return this.hasSubscription() ? 'Eventos inscritos' : 'Eventos com presença registrada';
   }
 
   private loadDetailState(eventType: EventTargetType | null, targetId: string | null): Observable<DetailState> {

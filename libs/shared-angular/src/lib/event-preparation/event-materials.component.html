@@ -1,7 +1,9 @@
 <section [attr.aria-busy]="loading() || saving()">
   <h3>Materiais{{ eventName() ? ': ' + eventName() : '' }}</h3>
   @if (loading()) {
-    <mat-progress-bar mode="indeterminate" aria-label="Carregando materiais" />
+    @if (showProgress()) {
+      <mat-progress-bar mode="indeterminate" aria-label="Carregando materiais" />
+    }
   } @else if (loadError()) {
     <p role="alert">Não foi possível carregar os materiais.</p>
     <button mat-button type="button" (click)="load()">Tentar novamente</button>
@@ -36,7 +38,7 @@
           </mat-checkbox>
         </fieldset>
       } @empty {
-        <p>Nenhum material compartilhado. Adicione o primeiro link quando estiver pronto.</p>
+        <p>Nenhum material compartilhado.</p>
       }
       @if (changed() && validationError()) {
         <p role="status">{{ validationError() }}</p>

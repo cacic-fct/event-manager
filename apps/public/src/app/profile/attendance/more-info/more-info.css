@@ -89,10 +89,6 @@ h2 {
   max-width: 72ch;
   overflow-wrap: anywhere;
 }
-.empty-text {
-  color: var(--mat-sys-on-surface-variant);
-  margin: 12px 0 0;
-}
 .small-emoji-frame {
   display: inline-flex;
   align-items: center;
@@ -110,7 +106,7 @@ h2 {
 }
 mat-toolbar {
   position: sticky;
-  top: 0;
+  top: var(--app-safe-area-top, 0px);
   z-index: 1;
 }
 mat-action-list a {
@@ -214,5 +210,9 @@ mat-action-list [matListItemTitle]::before,
 mat-action-list [matListItemTitle]::after,
 mat-action-list [matListItemLine]::before,
 mat-action-list [matListItemLine]::after {
+  display: none;
+}
+
+.secondary-section.empty-section {
   display: none;
 }

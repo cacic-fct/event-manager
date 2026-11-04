@@ -1,6 +1,6 @@
 import { EventDetailTabs } from '../../shared/event-detail-tabs';
 import { DatePipe, isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
-import { PLATFORM_ID, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { PLATFORM_ID, Component, DestroyRef, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import type {
@@ -25,7 +25,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { PageProgress } from '../../shared/page-progress';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -149,7 +149,7 @@ type EventStructuredData = {
     MatIconModule,
     MatListModule,
     MarkdownComponent,
-    MatProgressBarModule,
+    PageProgress,
     MatSnackBarModule,
     MatToolbarModule,
     MatTooltipModule,
@@ -162,6 +162,7 @@ type EventStructuredData = {
   styleUrl: './event-page.css',
 })
 export class Event {
+  protected readonly workspace = viewChild(MoreInfo);
   private readonly api = inject(EventApiService);
   private readonly informationFallback = inject(EventInformationFallbackService);
   private readonly authService = inject(AuthService);

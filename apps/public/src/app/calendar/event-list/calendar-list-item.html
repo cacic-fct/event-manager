@@ -47,6 +47,8 @@
         <mat-icon aria-hidden="true">location_on</mat-icon>
         <span class="metadata-item">{{ entry.locationDescription }}</span>
       </div>
+      } @if (entry.participationStatus; as status) {
+      <app-participation-status-icons [eventStatus]="status" />
       }
     </div>
   </a>
@@ -91,6 +93,8 @@
         <mat-icon aria-hidden="true">location_on</mat-icon>
         <span class="metadata-item">{{ entry.locationDescription }}</span>
       </div>
+      } @if (entry.participationStatus; as status) {
+      <app-participation-status-icons [eventStatus]="status" />
       }
     </div>
   </mat-list-item>

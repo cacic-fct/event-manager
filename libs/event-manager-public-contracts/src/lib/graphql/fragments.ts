@@ -236,10 +236,7 @@ export const PUBLIC_EVENT_PAGE_FIELDS = `
     ${PUBLIC_MAJOR_EVENT_SUMMARY_FIELDS}
   }
   eventGroup {
-    ${PUBLIC_NAMED_ENTITY_FIELDS}
-    requiresImageLicenseAgreement
-    interestEnabled
-    attendanceEligibility
+    ${PUBLIC_EVENT_GROUP_DETAIL_FIELDS}
   }
   sportsMatch {
     id

@@ -1,13 +1,10 @@
-<main class="group-page">
-  <nav class="back-navigation" aria-label="Navegação do grupo de eventos">
-    <a mat-button [routerLink]="backUrl()">
-      <mat-icon aria-hidden="true">arrow_back</mat-icon>
-      {{ backLabel() }}
-    </a>
-  </nav>
+<app-event-information-nav
+  title="Grupo de eventos"
+  [backUrl]="backUrl()"
+  [loading]="loading() || participationLoading()" />
 
+<main class="group-page">
   <app-event-detail-heading [title]="group().name" [emoji]="group().emoji">
-    <p class="type-label">Grupo de eventos</p>
     @if (dateLabel(); as dates) {
     <p class="metadata"><mat-icon aria-hidden="true">calendar_month</mat-icon><span>{{ dates }}</span></p>
     } @if (workloadLabel(); as workload) {
@@ -46,9 +43,7 @@
 
   <section class="program" aria-labelledby="group-program-heading" [attr.aria-busy]="loading()">
     <h2 id="group-program-heading">Eventos do grupo</h2>
-    @if (loading()) {
-    <mat-progress-bar mode="indeterminate" aria-label="Carregando eventos do grupo" />
-    } @for (day of programDays(); track day.id) {
+    @for (day of programDays(); track day.id) {
     <section class="program-day" [attr.aria-labelledby]="'group-day-' + day.id">
       <app-sticky-date-header [id]="'group-day-' + day.id" [label]="day.label" [headingLevel]="3" [topOffset]="0" />
       <ul class="activity-list">

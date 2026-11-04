@@ -43,8 +43,8 @@ describe('majorEventRegistrationInfo', () => {
         .action,
     ).toBeUndefined();
     expect(
-      majorEventRegistrationInfo({ ...event(), endDate: publicFixtureDateFromNow(-1) }, true, null, now()).title,
-    ).toBe('Evento encerrado');
+      majorEventRegistrationInfo({ ...event(), endDate: publicFixtureDateFromNow(-1) }, true, null, now()),
+    ).toEqual({});
   });
 
   it('offers canceled participants a new signup only when registration is open', () => {

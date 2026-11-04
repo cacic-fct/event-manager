@@ -106,3 +106,28 @@ describe('major-event program date navigation', () => {
     expect(text).toContain('Nova atividade');
   });
 });
+
+it('keeps one progress bar and hides the registration period after it closes', () => {
+  TestBed.configureTestingModule({ providers: [provideRouter([]), provideHttpClient()] });
+  const fixture = TestBed.createComponent(MajorEventInfo);
+  fixture.componentRef.setInput(
+    'majorEvent',
+    createPublicMajorEvent({
+      endDate: publicFixtureDateFromNow(5),
+      subscriptionStartDate: publicFixtureDateFromNow(-2),
+      subscriptionEndDate: publicFixtureDateFromNow(-1),
+    }),
+  );
+  fixture.componentRef.setInput('registration', { title: 'Inscrições encerradas' });
+  fixture.componentRef.setInput('backUrl', '/profile/attendances');
+  fixture.componentRef.setInput('programLoading', true);
+  fixture.componentRef.setInput('participationLoading', true);
+  fixture.detectChanges();
+
+  const host = fixture.nativeElement as HTMLElement;
+  const backLink = host.querySelector('mat-toolbar a[aria-label="Voltar para minhas participações"]');
+  expect(backLink?.getAttribute('href')).toBe('/profile/attendances');
+  expect(backLink?.textContent?.trim()).toBe('arrow_back');
+  expect(host.querySelectorAll('[role="progressbar"]')).toHaveLength(1);
+  expect(host.textContent).not.toContain('Período de inscrições');
+});

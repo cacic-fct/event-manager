@@ -14,7 +14,6 @@ import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-i
 import { CertificateSelectionGroup } from '../certificate-selection-group/certificate-selection-group';
 import type { CertificateSelectionGroup as CertificateCatalogGroup } from '@cacic-fct/shared-utils';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -61,6 +60,12 @@ import { CertificateFileDownloadService } from '../../../shared/certificate-file
 import { CertificateDialog, CertificateDialogData } from '../certificate-dialog/certificate-dialog';
 import type { StandaloneCertificateFolderItem, SubscribedEventGroupItem } from '@cacic-fct/shared-utils';
 import { AttendanceFeedCacheService } from './attendance-feed-cache.service';
+import {
+  getParticipationStatusItems,
+  ParticipationStatusIcons,
+  type ParticipationStatusIcon,
+} from '../../../shared/participation-status-icons';
+import { PageProgress } from '../../../shared/page-progress';
 
 type ParticipationTypeFilter = 'majorEvent' | 'eventGroup' | 'event';
 type AttendanceStatusFilter = 'interested' | 'subscribed' | 'present' | 'certificate' | 'lecturer' | 'sportsManager';
@@ -78,11 +83,6 @@ interface AttendanceFilterOption<TValue extends string> {
   value: TValue;
   label: string;
   icon?: string;
-}
-
-interface AttendanceStatusIcon {
-  label: string;
-  icon: string;
 }
 
 interface AttendanceWarning {
@@ -120,7 +120,6 @@ const EMPTY_SUBSCRIPTIONS_FEED = {
   imports: [
     MatIconModule,
     CertificateSelectionGroup,
-    MatProgressBarModule,
     MatProgressSpinnerModule,
     RouterLink,
     MatToolbarModule,
@@ -128,6 +127,8 @@ const EMPTY_SUBSCRIPTIONS_FEED = {
     MatDialogModule,
     MatSnackBarModule,
     MatTooltipModule,
+    ParticipationStatusIcons,
+    PageProgress,
   ],
 })
 export class Attendances {
@@ -428,46 +429,8 @@ export class Attendances {
       : 'Nenhuma participação encontrada.';
   }
 
-  statusItems(statusLine: string): AttendanceStatusIcon[] {
-    return statusLine.split(', ').map((label) => ({
-      label,
-      icon: this.statusIcon(label),
-    }));
-  }
-
-  private statusIcon(label: string): string {
-    if (label.startsWith('Presença registrada')) {
-      return 'how_to_reg';
-    }
-
-    switch (label) {
-      case 'Inscrito':
-        return 'event_available';
-      case 'Palestrante':
-        return 'record_voice_over';
-      case 'Gestão esportiva':
-        return 'sports';
-      case 'Certificado emitido':
-        return 'workspace_premium';
-      case 'Comprovante pendente':
-        return 'receipt_long';
-      case 'Em análise':
-        return 'hourglass_top';
-      case 'Comprovante inválido':
-        return 'error';
-      case 'Sem vagas':
-        return 'event_busy';
-      case 'Conflito de horário':
-        return 'schedule';
-      case 'Inscrição rejeitada':
-        return 'cancel';
-      case 'Inscrição cancelada':
-        return 'event_busy';
-      case 'Sem inscrição':
-        return 'person_off';
-      default:
-        return 'info';
-    }
+  statusItems(statusLine: string): ParticipationStatusIcon[] {
+    return getParticipationStatusItems(statusLine);
   }
 
   openStandaloneCertificates(folder: StandaloneCertificateFolderItem): void {

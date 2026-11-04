@@ -26,6 +26,7 @@ describe('EventApiService uncovered operations', () => {
     const events = [createPublicEvent({ id: 'event-1', name: 'Atividade' })];
 
     expect(request.request.body.query).toContain('query PublicEventGroupEvents');
+    expect(request.request.body.query).toMatch(/eventGroup\s*\{[^}]*\bemoji\b/);
     expect(request.request.body.query).toContain(
       'publicEvents(eventGroupId: $eventGroupId, programAfter: $programAfter, take: 100, oldestFirst: true)',
     );

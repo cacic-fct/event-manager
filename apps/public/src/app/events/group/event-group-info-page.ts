@@ -1,6 +1,6 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { EventInformationNav } from '../../shared/event-information-nav';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
@@ -18,7 +18,7 @@ import { EventGroupInfo } from './event-group-info';
 
 @Component({
   selector: 'app-event-group-info-page',
-  imports: [EventGroupInfo, MoreInfo, MatProgressBarModule],
+  imports: [EventGroupInfo, MoreInfo, EventInformationNav],
   template: `
     @let current = state();
     @if (current.status === 'ready') {
@@ -27,6 +27,7 @@ import { EventGroupInfo } from './event-group-info';
         [events]="programEvents()"
         [backUrl]="backUrl()"
         [participationStatuses]="participationStatuses()"
+        [participationLoading]="!!workspace()?.loading()"
         [isAuthenticated]="isAuthenticated()"
         [hasParticipation]="hasParticipation()">
         @if (isAuthenticated() || !isOnline()) {
@@ -41,7 +42,7 @@ import { EventGroupInfo } from './event-group-info';
         }
       </app-event-group-info>
     } @else {
-      <mat-progress-bar mode="indeterminate" aria-label="Carregando grupo de eventos" />
+      <app-event-information-nav title="Grupo de eventos" [backUrl]="backUrl()" [loading]="true" />
     }
   `,
 })
@@ -55,8 +56,9 @@ export class EventGroupInfoPage {
   readonly isOnline = inject(NetworkStatusService).isOnline;
   readonly hasParticipation = signal(false);
   readonly participationDetail = signal<DetailViewModel | null>(null);
+  protected readonly workspace = viewChild(MoreInfo);
   readonly participationStatuses = computed(() =>
-    Object.fromEntries((this.participationDetail()?.events ?? []).map((item) => [item.event.id, item.statusLine])),
+    Object.fromEntries((this.participationDetail()?.events ?? []).map((item) => [item.event.id, item])),
   );
   readonly backUrl = toSignal(
     this.route.queryParamMap.pipe(map((params) => resolveInternalReturnUrl(params.get('returnUrl'), '/calendar'))),

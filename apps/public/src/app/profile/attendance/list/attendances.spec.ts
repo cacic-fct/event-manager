@@ -24,6 +24,10 @@ describe('Attendances', () => {
 
     await settle(fixture);
 
+    const backLink = fixture.nativeElement.querySelector('mat-toolbar a') as HTMLAnchorElement;
+    expect(backLink.getAttribute('href')).toBe('/menu');
+    expect(backLink.getAttribute('aria-label')).toBe('Voltar para o menu');
+    expect(backLink.querySelector('mat-icon')?.getAttribute('aria-hidden')).toBe('true');
     expect(fixture.nativeElement.textContent).toContain('SECOMPP');
     expect(fixture.nativeElement.textContent).toContain('Oficina pública');
     expect(fixture.nativeElement.textContent).toContain('Atividades complementares');
@@ -404,6 +408,13 @@ describe('Attendances', () => {
     expect(fixture.nativeElement.textContent).toContain('Tipo de participação');
     expect(fixture.nativeElement.textContent).not.toContain('2 participações');
     expect(fixture.nativeElement.querySelector('.mat-button-toggle-checkbox-wrapper')).toBeNull();
+    const selectedFilter = fixture.nativeElement.querySelector(
+      '.filter-option[aria-pressed="true"]',
+    ) as HTMLButtonElement;
+    const selectedLabel = selectedFilter.querySelector('.mdc-button__label');
+    const selectedCheck = selectedFilter.querySelector('.filter-selected-icon');
+    if (!selectedLabel || !selectedCheck) throw new Error('Expected selected filter label and trailing check icon.');
+    expect(selectedLabel.compareDocumentPosition(selectedCheck) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
     component.clearFilters();
     fixture.detectChanges();

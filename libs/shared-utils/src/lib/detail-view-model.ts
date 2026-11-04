@@ -163,7 +163,10 @@ export function buildMajorEventDetail(details: MajorEventDetails): DetailViewMod
     subscription?.selectedEvents ?? details.events?.filter((event) => attendanceByEventId.has(event.id)) ?? [],
   );
   const notSubscribedEvents = sortEvents(subscription?.notSubscribedEvents ?? []);
-  const eventItems = selectedEvents.map((event) => buildEventItem(event, attendanceByEventId.get(event.id), true));
+  const hasActiveSubscription = Boolean(subscription && subscription.subscriptionStatus !== 'CANCELED');
+  const eventItems = selectedEvents.map((event) =>
+    buildEventItem(event, attendanceByEventId.get(event.id), hasActiveSubscription),
+  );
   const notSubscribedEventItems = notSubscribedEvents.map((event) =>
     buildEventItem(event, attendanceByEventId.get(event.id), false),
   );
@@ -219,6 +222,8 @@ export function buildEventItem(
     event,
     dateLine: formatDateRange(event.startDate, event.endDate),
     statusLine,
+    isSubscribed,
+    attendanceAt: attendance?.attendedAt,
     canRegisterAttendance: !attendance && isOnlineAttendanceRegistrationOpen(event),
   };
 }
@@ -361,7 +366,7 @@ function majorEventInfoRows(
 }
 
 function getGroupedStatusLine(eventItems: DetailEventItem[]): string {
-  const attendedCount = eventItems.filter((item) => item.statusLine.includes('Presença registrada')).length;
+  const attendedCount = eventItems.filter((item) => item.attendanceAt).length;
 
   if (attendedCount === 0) {
     return 'Inscrito';

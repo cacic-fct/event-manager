@@ -24,11 +24,7 @@ export function majorEventRegistrationInfo(
     };
   }
   if (Date.parse(event.endDate) <= now) {
-    return {
-      title: 'Evento encerrado',
-      description: 'A programação continua disponível para consulta.',
-      action: subscription ? { label: 'Ver minhas participações', route: ['/profile', 'attendances'] } : undefined,
-    };
+    return {};
   }
 
   const canceled = subscription?.subscriptionStatus === 'CANCELED';
@@ -62,7 +58,6 @@ export function majorEventRegistrationInfo(
     }
     return {
       title: 'Participação',
-      description: 'Consulte a programação e as orientações da organização.',
       action: canceledAction,
     };
   }
@@ -70,7 +65,6 @@ export function majorEventRegistrationInfo(
   if (event.subscriptionStartDate && Date.parse(event.subscriptionStartDate) > now) {
     return {
       title: 'Inscrições em breve',
-      description: 'Confira abaixo o período de inscrições.',
       action: canceledAction,
     };
   }
@@ -80,7 +74,6 @@ export function majorEventRegistrationInfo(
   ) {
     return {
       title: 'Inscrições encerradas',
-      description: 'Você pode consultar as atividades e seus detalhes.',
       action: canceledAction,
     };
   }

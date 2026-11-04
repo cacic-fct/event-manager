@@ -170,21 +170,55 @@ describe('unified information pages HTTP integration', () => {
     expect(host.textContent).toContain('Meu certificado');
   });
 
-  it('keeps group child materials and orientations lazy and available inside their own panels', async () => {
+  it('omits empty materials and shows available group guidance in its own panel', async () => {
     const { host, fixture, data, getMaterials, settleRequests } = await setup(EventGroupInfoPage, {
       targetType: 'event-group',
       eventCount: 3,
     });
-    expect(getMaterials).not.toHaveBeenCalled();
-    const panels = Array.from(host.querySelectorAll<HTMLElement>('mat-expansion-panel-header'));
-    panels.find((panel) => panel.textContent?.trim() === 'Materiais')?.click();
-    fixture.detectChanges();
-    await settleRequests();
     expect(getMaterials).toHaveBeenCalledTimes(data.events.length);
-    panels.find((panel) => panel.textContent?.trim() === 'Orientações')?.click();
+    expect(host.querySelector('mat-expansion-panel.empty-section')?.textContent).toContain('Materiais');
+    const panels = Array.from(host.querySelectorAll<HTMLElement>('mat-expansion-panel-header'));
+    const guidance = panels.find((panel) => panel.textContent?.trim() === 'Orientações');
+    expect(guidance).toBeDefined();
+    guidance?.click();
     fixture.detectChanges();
     await settleRequests();
     expect(host.textContent).toContain('Leve seu notebook');
+  });
+
+  it('keeps the certificate visible and omits empty participation tools for a certificate-only major event', async () => {
+    const { host } = await setup(MajorEventInfoPage, {
+      targetType: 'major-event',
+      subscribed: false,
+      issuedCertificate: true,
+    });
+
+    expect(host.textContent).toContain('Baixar certificado');
+    expect(host.textContent).not.toMatch(/Sua participação|Eventos com participação|Detalhes da participação/);
+    expect(host.querySelector('mat-expansion-panel')).toBeNull();
+  });
+
+  it('shows recorded attendance without labeling the person as subscribed', async () => {
+    const { fixture, host } = await setup(MajorEventInfoPage, {
+      targetType: 'major-event',
+      subscribed: false,
+      attended: true,
+    });
+    const header = host.querySelector<HTMLElement>('mat-expansion-panel-header');
+    expect(header?.textContent).toContain('Eventos com presença registrada');
+    header?.click();
+    fixture.detectChanges();
+    expect(host.querySelector('[aria-label^="Presença registrada em"]')).not.toBeNull();
+    expect(host.querySelector('[aria-label="Não inscrito"]')).not.toBeNull();
+  });
+
+  it('omits guidance for an unsubscribed group when none is available', async () => {
+    const { host } = await setup(EventGroupInfoPage, {
+      targetType: 'event-group',
+      subscribed: false,
+      attended: true,
+    });
+    expect(host.querySelector('app-subscriber-information mat-expansion-panel')).toBeNull();
   });
 
   it('loads the complete public group program beyond the API’s first page', async () => {

@@ -1,11 +1,9 @@
-<main class="info-page">
-  <nav class="back-navigation" aria-label="Navegação do evento">
-    <a mat-button [routerLink]="backUrl()">
-      <mat-icon aria-hidden="true">arrow_back</mat-icon>
-      {{ backUrl() === '/profile/attendances' ? 'Minhas participações' : 'Grandes eventos' }}
-    </a>
-  </nav>
+<app-event-information-nav
+  title="Grande evento"
+  [backUrl]="backUrl()"
+  [loading]="programLoading() || participationLoading()" />
 
+<main class="info-page">
   @let event = majorEvent(); @let participation = registration();
   <div class="overview">
     <app-event-detail-heading class="event-heading" [title]="event.name" [emoji]="event.emoji">
@@ -29,13 +27,16 @@
   <ng-template #generalContent>
     @if (!hasSubscription()) {
     <ng-container [ngTemplateOutlet]="subscriptionContent" />
-    }
-    <aside class="participation">
+    } @let showRegistration = participation.title || participation.description || participation.action ||
+    participation.secondaryAction || subscriptionPeriod(); @if (showRegistration || links().length || contactText()) {
+    <aside class="participation" aria-label="Inscrição e contato">
       <ng-template #registrationDetails>
-        <div class="registration-content">
+        <div class="registration-content" [class.compact]="hasSubscription()">
+          @if (!hasSubscription() || participation.description || subscriptionPeriod()) {
           <div class="registration-copy">
-            <h2 id="participation-heading">{{ hasSubscription() ? 'Inscrição e contato' : participation.title }}</h2>
-            @if (participation.description) {
+            @if (!hasSubscription() && participation.title) {
+            <h2>{{ participation.title }}</h2>
+            } @if (participation.description) {
             <p class="participation-description">{{ participation.description }}</p>
             } @if (subscriptionPeriod(); as period) {
             <dl class="participation-facts">
@@ -44,6 +45,7 @@
             </dl>
             }
           </div>
+          } @if (participation.action || participation.secondaryAction) {
           <div class="registration-controls">
             @if (participation.action; as action) {
             <div class="participation-actions">
@@ -57,7 +59,7 @@
             <a class="secondary-action" mat-stroked-button [routerLink]="action.route">{{ action.label }}</a>
             }
           </div>
-          @if (links().length) {
+          } @if (links().length) {
           <ul class="related-links" aria-label="Outras informações">
             @for (link of links(); track $index) {
             <li>
@@ -93,8 +95,7 @@
       </mat-card>
       }
     </aside>
-
-    @if (event.description?.trim()) {
+    } @if (event.description?.trim()) {
     <section class="description" aria-labelledby="about-heading">
       <h2 id="about-heading">Sobre o evento</h2>
       <lib-markdown [content]="event.description" />
@@ -103,7 +104,6 @@
     <section class="program" aria-labelledby="program-heading" [attr.aria-busy]="programLoading()">
       <div class="program-heading">
         <h2 id="program-heading">Programação</h2>
-        <p>Conheça as atividades e veja os detalhes de cada uma.</p>
       </div>
 
       @if (programDays().length) {
@@ -154,17 +154,12 @@
           }
         </ul>
       </section>
-      } @if (programLoading()) {
-      <div class="program-feedback" role="status">
-        <mat-progress-bar mode="indeterminate" aria-label="Carregando programação" />
-        <p>Carregando atividades...</p>
-      </div>
-      } @else if (programError()) {
+      } @if (programError()) {
       <div class="program-feedback" role="status">
         <p>Não foi possível carregar {{ events().length ? 'todas as atividades' : 'a programação' }}.</p>
         <button mat-stroked-button type="button" (click)="retryProgram.emit()">Tentar novamente</button>
       </div>
-      } @else if (!events().length) {
+      } @else if (!programLoading() && !events().length) {
       <div class="program-empty">
         <mat-icon aria-hidden="true">calendar_month</mat-icon>
         <p>Nenhuma atividade publicada por aqui.</p>
@@ -176,7 +171,6 @@
       </div>
       } @if (programHasMore() && !programError()) {
       <div class="load-more">
-        <p>Há mais atividades na programação. Carregue para consultar outros horários e dias.</p>
         <button mat-stroked-button type="button" [disabled]="programLoading()" (click)="loadMoreProgram.emit()">
           Carregar mais atividades
         </button>

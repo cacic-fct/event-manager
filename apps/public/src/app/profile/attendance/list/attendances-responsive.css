@@ -1,6 +1,6 @@
 mat-toolbar {
   position: sticky;
-  top: 0;
+  top: var(--app-safe-area-top, 0px);
   z-index: 2;
 }
 

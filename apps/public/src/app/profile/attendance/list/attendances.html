@@ -1,19 +1,20 @@
 <mat-toolbar role="navigation" aria-label="Navegação das participações">
   <a matIconButton routerLink="/menu" aria-label="Voltar para o menu">
-    <mat-icon>arrow_back</mat-icon>
+    <mat-icon aria-hidden="true">arrow_back</mat-icon>
   </a>
   <h1 class="global-toolbar-title">Minhas participações</h1>
 </mat-toolbar>
+<app-page-progress
+  [loading]="feedState().status === 'loading' || (selectionMode() && selectionState() === 'loading')"
+  [label]="feedState().status === 'loading' ? 'Carregando participações' : 'Carregando certificados para seleção'" />
 
 <main class="attendances-page">
-  @let currentState = feedState(); @if (currentState.status === 'loading') {
-  <mat-progress-bar mode="indeterminate" aria-label="Carregando participações"></mat-progress-bar>
-  } @else if (currentState.status === 'error') {
+  @let currentState = feedState(); @if (currentState.status === 'error') {
   <section class="empty-section" aria-live="polite">
     <mat-icon aria-hidden="true">error</mat-icon>
     <p>{{ currentState.message }}</p>
   </section>
-  } @else {
+  } @else if (currentState.status !== 'loading') {
   <div class="page-actions" [class.selection-actions]="selectionMode()">
     <button
       matButton="outlined"
@@ -72,9 +73,7 @@
     }
   </div>
 
-  @if (selectionMode()) { @if (selectionState() === 'loading') {
-  <mat-progress-bar mode="indeterminate" aria-label="Carregando certificados para seleção" />
-  } @else if (selectionState() === 'error') {
+  @if (selectionMode()) { @if (selectionState() === 'error') {
   <div class="selection-error">
     <p role="alert">Não foi possível carregar os certificados.</p>
     <button matButton="text" type="button" (click)="loadCertificateSelection()">Tentar novamente</button>
@@ -100,7 +99,7 @@
           (click)="setTypeFilter(option.value, !selectedTypeFilters().includes(option.value))">
           <span>{{ option.label }}</span>
           @if (selectedTypeFilters().includes(option.value)) {
-          <mat-icon class="filter-selected-icon" aria-hidden="true">check</mat-icon>
+          <mat-icon class="filter-selected-icon" iconPositionEnd aria-hidden="true">check</mat-icon>
           }
         </button>
         }
@@ -121,7 +120,7 @@
           <mat-icon class="filter-option-icon" aria-hidden="true">{{ option.icon }}</mat-icon>
           <span>{{ option.label }}</span>
           @if (selectedStatusFilters().includes(option.value)) {
-          <mat-icon class="filter-selected-icon" aria-hidden="true">check</mat-icon>
+          <mat-icon class="filter-selected-icon" iconPositionEnd aria-hidden="true">check</mat-icon>
           }
         </button>
         }
@@ -186,11 +185,8 @@
               <span class="warning-icon" role="img" [attr.aria-label]="warning.text" [matTooltip]="warning.text">
                 <mat-icon aria-hidden="true">{{ warning.icon }}</mat-icon>
               </span>
-              } @for (status of statusItems(item.statusLine); track status.label) {
-              <span class="status-icon" role="img" [attr.aria-label]="status.label" [matTooltip]="status.label">
-                <mat-icon aria-hidden="true">{{ status.icon }}</mat-icon>
-              </span>
               }
+              <app-participation-status-icons [statusLine]="item.statusLine" />
             </div>
           </div>
         </a>

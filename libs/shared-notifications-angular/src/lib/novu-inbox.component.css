@@ -96,6 +96,12 @@
 .notification-title,
 .notification-body {
   white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+:host ::ng-deep .notification-list .mat-mdc-list-item .mdc-list-item__content {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 :host ::ng-deep .notification-list .mat-mdc-list-item.notification-item {
@@ -172,23 +178,17 @@
   }
 }
 
-.notification-title,
-.notification-body {
-  overflow-wrap: anywhere;
-}
 .notification-actions {
-  flex-wrap: wrap;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
 }
 @media (max-width: 720px) {
-  :host ::ng-deep .notification-list .mat-mdc-list-item.notification-item {
-    flex-wrap: wrap;
-  }
   .notification-actions {
+    align-items: center;
     flex-direction: row;
-    flex-basis: 100%;
-    justify-content: flex-end;
+    gap: 0;
     margin: 0;
-    padding-block: 0.5rem;
+    padding: 0;
   }
 }
 

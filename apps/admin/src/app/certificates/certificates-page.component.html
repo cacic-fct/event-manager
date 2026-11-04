@@ -685,9 +685,9 @@
             <mat-list class="detail-list">
               @for (certificate of workspace.certificates(); track certificate.id) {
                 <mat-list-item>
-                  <span matListItemTitle>
-                    {{ certificate.person.name }}, certificado: {{ certificate.config.name }}
-                  </span>
+                  <span matListItemTitle
+                    >{{ certificate.person.name }}<br />Certificado: {{ certificate.config.name }}</span
+                  >
                   <span matListItemLine>
                     @if (certificate.revokedAt) {
                       Revogado em {{ certificate.revokedAt | date: 'short' }}. Reemissão bloqueada.

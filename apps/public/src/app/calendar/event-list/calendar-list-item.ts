@@ -6,6 +6,7 @@ import { RouterLink } from '@angular/router';
 import { formatTimeRange, getEventTypeLabel } from '@cacic-fct/shared-utils';
 import { EmojiService } from '../../shared/emoji.service';
 import { formatPublicTimeRange } from '../../shared/public-local-date';
+import { ParticipationStatusIcons, type ParticipationEventStatus } from '../../shared/participation-status-icons';
 
 export interface CalendarListItemData {
   id: string;
@@ -17,6 +18,7 @@ export interface CalendarListItemData {
   contextLines?: readonly string[];
   eventType?: string | null;
   secondaryLines?: readonly string[];
+  participationStatus?: ParticipationEventStatus | null;
   locationDescription?: string | null;
   expiresAt?: string | null;
   expiresLabel?: string;
@@ -28,7 +30,7 @@ export interface CalendarListItemData {
 
 @Component({
   selector: 'app-calendar-list-item',
-  imports: [DatePipe, MatListModule, MatIconModule, RouterLink],
+  imports: [DatePipe, MatListModule, MatIconModule, RouterLink, ParticipationStatusIcons],
   templateUrl: './calendar-list-item.html',
   styleUrl: './calendar-list-item.css',
 })

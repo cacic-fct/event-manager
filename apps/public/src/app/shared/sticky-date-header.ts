@@ -6,7 +6,7 @@ import { Component, input } from '@angular/core';
   host: {
     '[attr.role]': 'headingLevel() ? "heading" : null',
     '[attr.aria-level]': 'headingLevel()',
-    '[style.top.px]': 'topOffset()',
+    '[style.--date-header-offset.px]': 'topOffset()',
   },
   styles: `
     :host {
@@ -18,7 +18,7 @@ import { Component, input } from '@angular/core';
       font: var(--mat-sys-label-large);
       padding: 8px 16px;
       position: sticky;
-      top: var(--calendar-toolbar-height, 64px);
+      top: calc(var(--app-safe-area-top, 0px) + var(--date-header-offset, var(--calendar-toolbar-height, 64px)));
       z-index: 1;
     }
 

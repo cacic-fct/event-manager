@@ -10,11 +10,11 @@
   </a>
   <span>Detalhes</span>
 </mat-toolbar>
+<app-page-progress [loading]="loading()" />
 }
 
 <div class="detail-page" [class.embedded]="embedded()" [class.flat-sections]="flatSections()">
   @if (currentState.status === 'loading') {
-  <mat-progress-bar mode="indeterminate" aria-label="Carregando detalhes da participação"></mat-progress-bar>
   <ng-container [ngTemplateOutlet]="projectedActions" />
   } @else if (currentState.status === 'empty') {
   <ng-container [ngTemplateOutlet]="projectedActions" />
@@ -29,9 +29,12 @@
     <p class="date-line">{{ detail.dateLine }}</p>
     <p class="type-label">{{ detail.typeLabel }}</p>
   </app-event-detail-heading>
-  }
-
-  <section class="participation-workspace" aria-labelledby="workspace-heading">
+  } @let showParticipation = detail.targetType !== 'major-event' || detail.isSubscribed || attendedEvents().length > 0;
+  <div
+    [class.participation-workspace]="showParticipation"
+    [attr.role]="showParticipation ? 'region' : null"
+    [attr.aria-labelledby]="showParticipation ? 'workspace-heading' : null">
+    @if (showParticipation) {
     <div class="workspace-heading">
       <h2 id="workspace-heading">Sua participação</h2>
 
@@ -42,11 +45,12 @@
       </p>
       }
     </div>
+    }
 
     <ng-container [ngTemplateOutlet]="projectedActions" />
 
     <div class="actions">
-      @if (detail.sportsTournamentId) {
+      @if (showParticipation && detail.sportsTournamentId) {
       <a mat-flat-button [routerLink]="sportsPanelRoute(detail)">
         <mat-icon>sports</mat-icon>
         Abrir painel esportivo
@@ -71,7 +75,7 @@
         <mat-icon>record_voice_over</mat-icon>
         Área do palestrante
       </a>
-      } @if (currentState.hasPrizeDraws && !(embedded() && detail.targetType === 'event')) {
+      } @if (showParticipation && currentState.hasPrizeDraws && !(embedded() && detail.targetType === 'event')) {
       <a mat-stroked-button [routerLink]="prizeDrawRoute(detail)">
         <mat-icon>rewarded_ads</mat-icon>
         Sorteios
@@ -129,57 +133,33 @@
     } @if (detail.targetType === 'major-event' && detail.subscriptionStatus === 'CONFIRMED') {
     <app-ticket-purchase-options-section
       [majorEventId]="detail.targetId"
-      [subscriptionStatus]="detail.subscriptionStatus" />
+      [subscriptionStatus]="detail.subscriptionStatus"
+      [showProgress]="false" />
     }
-  </section>
+  </div>
 
   @if (!embedded() && detail.description) {
   <section class="detail-section">
     <h2>Sobre</h2>
     <lib-markdown class="description" [content]="detail.description" />
   </section>
-  } @if (detail.targetType !== 'major-event') {
-  <ng-template #materials>
-    @if (detail.targetType === 'event') {
-    <lib-event-materials [eventId]="detail.targetId" />
-    } @else { @for (item of detail.events; track item.event.id) {
-    <lib-event-materials [eventId]="item.event.id" [eventName]="item.event.name" />
-    } }
-  </ng-template>
-
-  <ng-template #guidance>
-    @if (detail.targetType === 'event') {
-    <app-subscriber-information [eventId]="detail.targetId" />
-    } @else {
-    <app-subscriber-information [events]="detail.events" />
-    }
-  </ng-template>
-
-  @if (embedded()) { @if (detail.isSubscribed) {
-  <mat-expansion-panel class="secondary-section">
+  } @if (detail.targetType !== 'major-event') { @if (detail.isSubscribed) {
+  <mat-expansion-panel class="secondary-section" [class.empty-section]="!showMaterials()">
     <mat-expansion-panel-header>
       <mat-panel-title>Materiais</mat-panel-title>
     </mat-expansion-panel-header>
-    <ng-template matExpansionPanelContent>
-      <ng-container [ngTemplateOutlet]="materials" />
-    </ng-template>
+    @if (detail.targetType === 'event') {
+    <lib-event-materials [eventId]="detail.targetId" [showProgress]="false" />
+    } @else { @for (item of detail.events; track item.event.id) {
+    <lib-event-materials [eventId]="item.event.id" [eventName]="item.event.name" [showProgress]="false" />
+    } }
   </mat-expansion-panel>
-  }
-  <mat-expansion-panel class="secondary-section" [expanded]="informationRequested()">
-    <mat-expansion-panel-header>
-      <mat-panel-title>Orientações</mat-panel-title>
-    </mat-expansion-panel-header>
-    <ng-template matExpansionPanelContent>
-      <ng-container [ngTemplateOutlet]="guidance" />
-    </ng-template>
-  </mat-expansion-panel>
-  } @else {
-  <section class="detail-section" aria-label="Materiais e orientações">
-    @if (detail.isSubscribed) {
-    <ng-container [ngTemplateOutlet]="materials" />
-    }
-    <ng-container [ngTemplateOutlet]="guidance" />
-  </section>
+  } @if (detail.targetType === 'event' || detail.events.length) {
+  <app-subscriber-information
+    [eventId]="detail.targetType === 'event' ? detail.targetId : ''"
+    [events]="detail.targetType === 'event' ? [] : detail.events"
+    [collapsible]="true"
+    [expanded]="informationRequested()" />
   } }
 
   <ng-template #participationFacts>
@@ -193,7 +173,8 @@
     </mat-list>
   </ng-template>
 
-  @if (embedded() && !flatSections() && detail.targetType === 'major-event') {
+  @if (detail.infoRows.length && detail.isSubscribed && embedded() && !flatSections() && detail.targetType ===
+  'major-event') {
   <mat-expansion-panel class="secondary-section">
     <mat-expansion-panel-header>
       <mat-panel-title>Detalhes da participação</mat-panel-title>
@@ -202,72 +183,53 @@
       <ng-container [ngTemplateOutlet]="participationFacts" />
     </ng-template>
   </mat-expansion-panel>
-  } @else if (!embedded() || (flatSections() && detail.targetType === 'major-event')) {
+  } @else if (detail.infoRows.length && (detail.targetType !== 'major-event' || detail.isSubscribed) && (!embedded() ||
+  (flatSections() && detail.targetType === 'major-event'))) {
   <section class="detail-section reference-information">
     <h2>{{ embedded() ? 'Detalhes da participação' : 'Informações' }}</h2>
     <ng-container [ngTemplateOutlet]="participationFacts" />
   </section>
-  } @if (showEvents() && detail.targetType !== 'event') {
-  <ng-template #participationEvents>
-    <section class="detail-section">
-      @switch (detail.targetType) { @case ('major-event') {
-      <h2>{{ majorEventEventsHeading(detail) }}</h2>
-      } @case ('event-group') {
-      <h2>Eventos do grupo</h2>
-      } } @if (detail.events.length === 0) {
-      <p class="empty-text">Nenhum evento selecionado.</p>
-      } @else {
-      <mat-action-list>
-        @for (item of detail.events; track item.event.id) {
-        <a mat-list-item [routerLink]="eventRoute(item.event.id)" [queryParams]="eventRouteQueryParams()">
-          <span matListItemIcon class="small-emoji-frame" aria-hidden="true">
-            <img class="small-twemoji" [src]="emoji.getTwemojiUrl(item.event.emoji)" alt="" />
-          </span>
-          <div matListItemTitle>{{ item.event.name }}</div>
-          <div matListItemLine>{{ item.dateLine }}</div>
-          <div matListItemLine>{{ item.statusLine }}</div>
-        </a>
-        }
-      </mat-action-list>
-      }
-    </section>
-    @if (detail.targetType === 'major-event') {
-    <section class="detail-section">
-      <h2>Outros eventos</h2>
-      @if (detail.notSubscribedEvents.length === 0) {
-      <p class="empty-text">Nenhum outro evento disponível.</p>
-      } @else {
-      <mat-action-list>
-        @for (item of detail.notSubscribedEvents; track item.event.id) {
-        <a mat-list-item [routerLink]="eventRoute(item.event.id)" [queryParams]="eventRouteQueryParams()">
-          <span matListItemIcon class="small-emoji-frame" aria-hidden="true">
-            <img class="small-twemoji" [src]="emoji.getTwemojiUrl(item.event.emoji)" alt="" />
-          </span>
-          <div matListItemTitle>{{ item.event.name }}</div>
-          <div matListItemLine>{{ item.dateLine }}</div>
-          @if (item.statusLine !== "Sem presença registrada, Não inscrito") {
-          <div matListItemLine>{{ item.statusLine }}</div>
+  } @if (showEvents() && detail.targetType !== 'event') { @let events = participationEvents(); @let otherEvents =
+  hasSubscription() ? detail.notSubscribedEvents : []; @let eventsHeading = detail.targetType === 'major-event' ?
+  majorEventEventsHeading() : 'Eventos do grupo';
+  <ng-template #eventRows let-items>
+    <mat-action-list>
+      @for (item of items; track item.event.id) {
+      <a mat-list-item [routerLink]="eventRoute(item.event.id)" [queryParams]="eventRouteQueryParams()">
+        <span matListItemIcon class="small-emoji-frame" aria-hidden="true">
+          <img class="small-twemoji" [src]="emoji.getTwemojiUrl(item.event.emoji)" alt="" />
+        </span>
+        <div matListItemTitle>{{ item.event.name }}</div>
+        <div matListItemLine>
+          <div>{{ item.dateLine }}</div>
+          @let location = item.event.isVirtual ? 'Online' : (item.event.locationName?.trim() ||
+          item.event.locationDescription?.trim()); @if (location) {
+          <div>{{ location }}</div>
           }
-        </a>
-        }
-      </mat-action-list>
+        </div>
+        <div matListItemLine><app-participation-status-icons [eventStatus]="item" /></div>
+      </a>
       }
-    </section>
-    }
+    </mat-action-list>
   </ng-template>
-  @if (embedded() && !flatSections()) {
+  @if (events.length) { @if (embedded() && !flatSections()) {
   <mat-expansion-panel class="secondary-section">
     <mat-expansion-panel-header>
-      <mat-panel-title
-        >{{ detail.targetType === 'major-event' ? majorEventEventsHeading(detail) : 'Eventos do grupo'
-        }}</mat-panel-title
-      >
+      <mat-panel-title>{{ eventsHeading }}</mat-panel-title>
     </mat-expansion-panel-header>
     <ng-template matExpansionPanelContent>
-      <ng-container [ngTemplateOutlet]="participationEvents" />
+      <ng-container [ngTemplateOutlet]="eventRows" [ngTemplateOutletContext]="{ $implicit: events }" />
     </ng-template>
   </mat-expansion-panel>
   } @else {
-  <ng-container [ngTemplateOutlet]="participationEvents" />
+  <section class="detail-section">
+    <h2>{{ eventsHeading }}</h2>
+    <ng-container [ngTemplateOutlet]="eventRows" [ngTemplateOutletContext]="{ $implicit: events }" />
+  </section>
+  } } @if (otherEvents.length) {
+  <section class="detail-section">
+    <h2>Outros eventos</h2>
+    <ng-container [ngTemplateOutlet]="eventRows" [ngTemplateOutletContext]="{ $implicit: otherEvents }" />
+  </section>
   } } }
 </div>

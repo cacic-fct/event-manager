@@ -60,6 +60,17 @@ import { MatTabsModule } from '@angular/material/tabs';
     }
     .tab-content {
       padding-top: 24px;
+      min-width: 0;
+    }
+    /* Keep inactive panels clipped while letting the active panel use page scrolling. */
+    :host ::ng-deep .event-detail-tab-group .mat-mdc-tab-body-wrapper {
+      overflow: clip;
+    }
+    :host ::ng-deep .event-detail-tab-group .mat-mdc-tab-body-active,
+    :host ::ng-deep .event-detail-tab-group .mat-mdc-tab-body-active .mat-mdc-tab-body-content {
+      min-width: 0;
+      max-width: 100%;
+      overflow: visible;
     }
     .short-label {
       display: none;

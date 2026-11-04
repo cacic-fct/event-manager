@@ -9,19 +9,9 @@
   padding: 16px 16px 48px;
 }
 
-.back-navigation {
-  margin: 0 -12px 24px;
-}
-
 h2 {
   margin: 0 0 12px;
   font: var(--mat-sys-title-large);
-}
-
-.type-label {
-  margin: 8px 0 0;
-  color: var(--mat-sys-on-surface-variant);
-  font: var(--mat-sys-label-large);
 }
 
 .metadata {

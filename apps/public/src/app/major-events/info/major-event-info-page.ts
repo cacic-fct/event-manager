@@ -1,7 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, PLATFORM_ID, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { EventInformationNav } from '../../shared/event-information-nav';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
@@ -40,7 +40,7 @@ type SubscriptionState =
 
 @Component({
   selector: 'app-major-event-info-page',
-  imports: [MajorEventInfo, MoreInfo, MatProgressBarModule],
+  imports: [MajorEventInfo, MoreInfo, EventInformationNav],
   template: `
     @if (majorEvent(); as event) {
       <app-major-event-info
@@ -49,6 +49,7 @@ type SubscriptionState =
         [registration]="registration()"
         [links]="links()"
         [programLoading]="programLoading()"
+        [participationLoading]="participationLoading()"
         [programError]="programError()"
         [programHasMore]="programHasMore()"
         [programPages]="programPages()"
@@ -72,8 +73,7 @@ type SubscriptionState =
         }
       </app-major-event-info>
     } @else {
-      <mat-progress-bar mode="indeterminate" aria-label="Carregando informações do evento" />
-      <p role="status">Carregando informações do evento...</p>
+      <app-event-information-nav title="Grande evento" [backUrl]="backUrl()" [loading]="true" />
     }
   `,
 })
@@ -122,6 +122,10 @@ export class MajorEventInfoPage {
   readonly majorEvent = signal<PublicMajorEvent | null>(null);
   readonly events = signal<PublicEvent[]>([]);
   readonly programLoading = signal(false);
+  private readonly workspace = viewChild(MoreInfo);
+  protected readonly participationLoading = computed(
+    () => (this.isAuthenticated() && this.subscriptionState().status === 'loading') || !!this.workspace()?.loading(),
+  );
   readonly programError = signal(false);
   readonly programHasMore = signal(false);
   readonly links = computed(() => {
@@ -136,7 +140,7 @@ export class MajorEventInfoPage {
     const authenticated = this.auth.isAuthenticated();
     const state = this.subscriptionState();
     if (authenticated && state.status === 'loading') {
-      return { title: 'Consultando sua inscrição...' };
+      return {};
     }
     if (authenticated && state.status === 'error') {
       return {

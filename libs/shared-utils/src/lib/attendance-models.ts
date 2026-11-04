@@ -173,6 +173,8 @@ export interface DetailEventItem {
   event: PublicEvent;
   dateLine: string;
   statusLine: string;
+  isSubscribed: boolean;
+  attendanceAt?: string;
   canRegisterAttendance: boolean;
 }
 

@@ -9,10 +9,6 @@
   padding: 16px 16px 48px;
 }
 
-.back-navigation {
-  margin: 0 -12px 24px;
-}
-
 .overview {
   display: grid;
   gap: 24px;
@@ -59,6 +55,25 @@ h2 {
 
 .registration-content {
   padding: 20px;
+}
+
+.registration-content.compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  padding: 0;
+}
+
+.registration-content.compact .participation-facts,
+.registration-content.compact .participation-actions,
+.registration-content.compact .secondary-action,
+.registration-content.compact .related-links {
+  margin-top: 0;
+}
+
+.registration-content.compact .related-links:first-child {
+  border-top: 0;
+  padding-top: 0;
 }
 
 .participation-description {
@@ -122,7 +137,8 @@ h2 {
 
 .description lib-markdown {
   display: block;
-  max-width: 72ch;
+  max-width: min(72ch, 100%);
+  overflow-x: auto;
   overflow-wrap: anywhere;
 }
 
@@ -136,17 +152,13 @@ h2 {
   margin-bottom: 16px;
 }
 
-.program-heading p {
-  margin-top: 8px;
-  color: var(--mat-sys-on-surface-variant);
-}
-
 .day-navigation {
   position: sticky;
-  top: 0;
+  top: var(--app-safe-area-top, 0px);
   z-index: 2;
   margin: 0 -4px 20px;
   padding: 8px 4px 12px;
+  min-width: 0;
   overflow-x: auto;
   background: var(--mat-sys-surface);
   scrollbar-width: thin;
@@ -216,10 +228,6 @@ h2 {
   justify-items: start;
   gap: 12px;
   padding-block: 16px;
-}
-
-.program-feedback mat-progress-bar {
-  width: 100%;
 }
 
 .program-empty p + p {

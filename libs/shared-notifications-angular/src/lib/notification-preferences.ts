@@ -75,7 +75,7 @@ export function notificationPreferenceGroups(preferences: Preference[]) {
     const presentation = workflow
       ? (WORKFLOW_PRESENTATION[workflow.identifier] ?? {
           title: workflow.name || 'Notificação',
-          description: 'Escolha onde receber.',
+          description: '',
           icon: 'notifications',
           category: 'other' as const,
         })

@@ -2,6 +2,7 @@ import { Component, computed, input } from '@angular/core';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { getEventTypeLabel } from '@cacic-fct/shared-utils';
 import { CalendarListItem } from './calendar-list-item';
+import type { ParticipationEventStatus } from '../../shared/participation-status-icons';
 
 @Component({
   selector: 'app-calendar-event-list-item',
@@ -12,7 +13,7 @@ import { CalendarListItem } from './calendar-list-item';
 export class CalendarEventListItem {
   readonly event = input.required<PublicEvent>();
   readonly isSubscribed = input(false);
-  readonly participationStatus = input<string | null>(null);
+  readonly participationStatus = input<ParticipationEventStatus | null>(null);
   readonly returnUrl = input('/calendar');
   readonly showMajorEventContext = input(true);
   readonly showEventGroupContext = input(true);
@@ -33,11 +34,6 @@ export class CalendarEventListItem {
     ].filter((line): line is string => Boolean(line));
   });
 
-  readonly secondaryLines = computed(() => {
-    const status = this.participationStatus();
-    return status ? [status] : this.isSubscribed() ? ['Inscrito'] : [];
-  });
-
   readonly listItem = computed(() => ({
     id: this.event().id,
     name: this.event().name,
@@ -47,7 +43,8 @@ export class CalendarEventListItem {
     contextLine: this.contextLines()[0] ?? '',
     contextLines: this.contextLines(),
     eventType: this.event().type,
-    secondaryLines: this.secondaryLines(),
+    secondaryLines: this.isSubscribed() && !this.participationStatus() ? ['Inscrito'] : [],
+    participationStatus: this.participationStatus(),
     locationDescription: this.event().isVirtual
       ? 'Online'
       : this.event().locationName?.trim() || this.event().locationDescription?.trim(),

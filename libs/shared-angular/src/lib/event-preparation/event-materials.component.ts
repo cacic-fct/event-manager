@@ -30,6 +30,7 @@ import { EventPreparationApiService } from './event-preparation-api.service';
 export class EventMaterialsComponent {
   readonly eventId = input.required<string>();
   readonly eventName = input('');
+  readonly showProgress = input(true);
   readonly editable = input(false);
   readonly management = input(false);
   readonly dirtyChange = output<boolean>();

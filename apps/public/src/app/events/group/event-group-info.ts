@@ -1,8 +1,8 @@
 import { Component, computed, input, output } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { EventInformationNav } from '../../shared/event-information-nav';
+import type { ParticipationEventStatus } from '../../shared/participation-status-icons';
 import type { PublicEvent, PublicEventGroup } from '@cacic-fct/event-manager-public-contracts';
 import { compareIsoDateAsc, formatDateRange } from '@cacic-fct/shared-utils';
 import { CalendarEventListItem } from '../../calendar/event-list/event-list-item';
@@ -13,10 +13,9 @@ import { EventDetailHeading } from '../../shared/event-detail-heading';
 @Component({
   selector: 'app-event-group-info',
   imports: [
-    RouterLink,
     MatButtonModule,
     MatIconModule,
-    MatProgressBarModule,
+    EventInformationNav,
     CalendarEventListItem,
     EventDetailHeading,
     StickyDateHeader,
@@ -30,7 +29,8 @@ export class EventGroupInfo {
   readonly backUrl = input('/calendar');
   readonly isAuthenticated = input(false);
   readonly hasParticipation = input(false);
-  readonly participationStatuses = input<Record<string, string>>({});
+  readonly participationStatuses = input<Record<string, ParticipationEventStatus>>({});
+  readonly participationLoading = input(false);
   readonly loading = input(false);
   readonly error = input(false);
   readonly retry = output<void>();
@@ -40,13 +40,6 @@ export class EventGroupInfo {
   readonly orderedEvents = computed(() =>
     [...this.events()].sort((left, right) => compareIsoDateAsc(left.startDate, right.startDate)),
   );
-  readonly backLabel = computed(() => {
-    const path = this.backUrl().split(/[?#]/, 1)[0];
-    if (path === '/profile/attendances') return 'Minhas participações';
-    if (path.startsWith('/event/')) return 'Evento';
-    if (path === '/calendar') return 'Calendário';
-    return 'Voltar';
-  });
   readonly returnUrl = computed(() => `/event-group/${this.group().id}`);
   readonly dateLabel = computed(() => {
     const events = this.orderedEvents();
