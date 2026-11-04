@@ -26,6 +26,8 @@ import { MoreInfo } from './more-info';
 
 interface MoreInfoStoryArgs extends PublicEventStoryControls {
   targetType: EventTargetType;
+  eventCount: number;
+  subscriptionStatus: string;
   certificateStatus: CertificateParticipationStatus;
   certificateApiState: 'ready' | 'error';
   apiState: 'ready' | 'loading' | 'error';
@@ -46,6 +48,8 @@ const defaultArgs: MoreInfoStoryArgs = {
   ...publicEventStoryDefaultControls,
   context: 'short-description',
   targetType: 'event',
+  eventCount: 3,
+  subscriptionStatus: 'CONFIRMED',
   certificateStatus: 'ATTENDANCE_CONFIRMED',
   certificateApiState: 'ready',
   apiState: 'ready',
@@ -112,6 +116,11 @@ const meta: Meta<MoreInfoStoryArgs> = {
     ...publicEventStoryControlArgTypes,
     context: { control: false, table: { disable: true } },
     targetType: { control: 'inline-radio', options: ['event', 'event-group', 'major-event'] },
+    eventCount: { control: { type: 'range', min: 1, max: 20, step: 1 } },
+    subscriptionStatus: {
+      control: 'select',
+      options: ['CONFIRMED', 'WAITING_RECEIPT_UPLOAD', 'RECEIPT_UNDER_REVIEW', 'CANCELED'],
+    },
     majorEventName: { control: false, table: { disable: true } },
     eventGroupName: { control: false, table: { disable: true } },
     apiState: { control: 'inline-radio', options: ['ready', 'loading', 'error'] },
@@ -257,10 +266,10 @@ export const LoadError: Story = {
   args: { apiState: 'error', latencyMs: 0 },
   globals: { network: 'online' },
   parameters: {
-    docs: { description: { story: 'A failed request with no saved detail redirects to the not-found route.' } },
+    docs: { description: { story: 'A failed request with no saved detail opens the shared error page.' } },
   },
   play: async () => {
-    await waitFor(() => expect(navigateRouteError).toHaveBeenCalledWith(404));
+    await waitFor(() => expect(navigateRouteError).toHaveBeenCalledWith(500));
   },
 };
 
@@ -320,7 +329,14 @@ function storyParameters(context: MoreInfoStoryContext) {
 
 function moreInfoGraphqlData(query: string, args: MoreInfoStoryArgs, variables: Record<string, unknown> = {}) {
   const event = buildEvent(args);
-  const events = [event];
+  const events =
+    args.targetType === 'event'
+      ? [event]
+      : Array.from({ length: Math.max(1, args.eventCount) }, (_, index) => ({
+          ...event,
+          id: index === 0 ? event.id : `${event.id}-${index}`,
+          name: index === 0 ? event.name : `${event.name}, encontro ${index + 1}`,
+        }));
   const targetId = storyTargetId(args.targetType);
   if (query.includes('CurrentUserCertificateParticipation')) {
     return {
@@ -338,9 +354,21 @@ function moreInfoGraphqlData(query: string, args: MoreInfoStoryArgs, variables: 
   }
   if (query.includes('CurrentUserMajorEventDetails')) {
     return {
-      currentUserMajorEventSubscription: null,
+      currentUserMajorEventSubscription: args.isSubscribed
+        ? {
+            id: 'major-subscription-story',
+            majorEventId: targetId,
+            majorEvent: event.majorEvent,
+            subscriptionStatus: args.subscriptionStatus,
+            amountPaid: 2500,
+            paymentDate: null,
+            paymentTier: 'Comunidade acadêmica',
+            selectedEvents: events,
+            notSubscribedEvents: [],
+          }
+        : null,
       currentUserMajorEventEventSubscriptions: [],
-      currentUserEventAttendances: events.map(currentUserEventAttendance),
+      currentUserEventAttendances: args.hasAttendance ? events.map(currentUserEventAttendance) : [],
       publicEvents: events,
     };
   }
@@ -351,14 +379,14 @@ function moreInfoGraphqlData(query: string, args: MoreInfoStoryArgs, variables: 
         {
           id: 'major-subscription-story',
           majorEventId: targetId,
-          subscriptionStatus: 'CONFIRMED',
+          subscriptionStatus: args.isSubscribed ? args.subscriptionStatus : null,
           amountPaid: null,
           paymentDate: null,
           paymentTier: null,
           sportsRepresentativeTeams: [],
           majorEvent: event.majorEvent,
           participation: {
-            isSubscribed: true,
+            isSubscribed: args.isSubscribed,
             isInterested: false,
             isLecturer: false,
             hasIssuedCertificate: args.hasIssuedCertificate,
@@ -371,8 +399,16 @@ function moreInfoGraphqlData(query: string, args: MoreInfoStoryArgs, variables: 
 
   if (query.includes('CurrentUserEventGroupDetails')) {
     return {
-      currentUserEventGroupSubscription: null,
-      currentUserEventAttendances: events.map(currentUserEventAttendance),
+      currentUserEventGroupSubscription: args.isSubscribed
+        ? {
+            id: 'group-subscription-story',
+            eventGroupId: targetId,
+            eventGroup: event.eventGroup,
+            events,
+            createdAt: event.subscriptionStartDate ?? event.startDate,
+          }
+        : null,
+      currentUserEventAttendances: args.hasAttendance ? events.map(currentUserEventAttendance) : [],
       publicEvents: events,
     };
   }
@@ -579,3 +615,13 @@ export const IssuanceDisabled: Story = {
 export const PreviouslyIssuedCertificates: Story = {
   args: { hasIssuedCertificate: true, shouldIssueCertificate: false, certificateCount: 2 },
 };
+
+export const GroupSubscribed: Story = { args: { targetType: 'event-group', hasAttendance: false, eventCount: 4 } };
+export const GroupAttendanceOnly: Story = {
+  args: { targetType: 'event-group', isSubscribed: false, hasAttendance: true, eventCount: 2 },
+};
+export const GroupLecturerOnly: Story = {
+  args: { targetType: 'event-group', isSubscribed: false, hasAttendance: false, isLecturer: true },
+};
+export const GroupLongProgram: Story = { args: { targetType: 'event-group', eventCount: 20 } };
+export const GroupSingleActivity: Story = { args: { targetType: 'event-group', eventCount: 1 } };

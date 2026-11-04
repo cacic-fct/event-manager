@@ -46,6 +46,34 @@ function setup(audience: 'LECTURERS' | 'SUBSCRIBERS' = 'LECTURERS') {
 }
 
 describe('manual event notification processing', () => {
+  describe.each(['event', 'event-group', 'major-event'] as const)('%s notification links', (targetType) => {
+    it.each(['LECTURERS', 'SUBSCRIBERS'] as const)(
+      'preserves the destination and retry generation for %s',
+      async (audience) => {
+        const { processor, job, prisma, notifications } = setup(audience);
+        const targetId = 'target/id';
+        job.data.eventId = targetId;
+        job.data.deliveryAttempts = { user: 2 };
+        prisma.event.findFirst.mockResolvedValue({
+          name: 'Evento',
+          majorEventId: targetType === 'major-event' ? targetId : null,
+          eventGroupId: targetType === 'event-group' ? targetId : null,
+        });
+
+        await processor.process(job as never);
+
+        const actionUrl =
+          audience === 'LECTURERS'
+            ? `/profile/attendances/${targetType}/target%2Fid/organizer`
+            : `/${targetType}/target%2Fid`;
+        expect(notifications.notifyEventParticipant).toHaveBeenCalledWith(
+          expect.objectContaining({ actionUrl, deliveryAttempt: 2, recipient: { subscriberId: 'user' } }),
+        );
+        expect(job.updateData).not.toHaveBeenCalled();
+      },
+    );
+  });
+
   it('rechecks membership and audits Novu acknowledgement without claiming delivery', async () => {
     const { processor, job, prisma, notifications, audit } = setup();
     await processor.process(job as never);

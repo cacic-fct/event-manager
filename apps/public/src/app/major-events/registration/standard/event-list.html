@@ -8,7 +8,7 @@
   @for (month of groupedEvents(); track month.key) {
   <div class="month-header">{{ month.label }}</div>
   @for (day of month.days; track day.key) {
-  <div class="date-sticky-bar">{{ day.label }}</div>
+  <app-sticky-date-header [label]="day.label" />
   @for (group of day.groups; track group.key) { @for (event of group.events; track event.id) {
   <lib-subscription-event-option
     [option]="eventOption(event)"

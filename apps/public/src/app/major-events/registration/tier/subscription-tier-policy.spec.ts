@@ -132,6 +132,26 @@ describe('subscription tier policy', () => {
     });
   });
 
+  it.each([
+    [1, 'Até 1 minicurso'],
+    [2, 'Até 2 minicursos'],
+  ])('describes a course limit of %s in natural Portuguese', (limit, expected) => {
+    const summaries = subscriptionTierRuleSummaries(
+      createPublicMajorEvent({
+        maxCoursesPerAttendee: limit,
+        maxLecturesPerAttendee: 2,
+        maxUncategorizedPerAttendee: 2,
+      }),
+      {
+        id: 'tier',
+        name: 'Geral',
+        value: 0,
+        includesSportsRegistration: false,
+      },
+    );
+    expect(summaries).toContain(`${expected}, 2 palestras e 2 outros eventos`);
+  });
+
   it('describes an empty restricted tier and zero/unlimited category quotas', () => {
     const majorEvent = createPublicMajorEvent();
     const summaries = subscriptionTierRuleSummaries(majorEvent, {
@@ -148,8 +168,8 @@ describe('subscription tier policy', () => {
     });
 
     expect(summaries).toContain('Esta modalidade não tem eventos disponíveis para seleção.');
-    expect(summaries).toContain('minicursos: não permitidos.');
-    expect(summaries).toContain('palestras: sem limite.');
-    expect(summaries).toContain('outros eventos: até 2.');
+    expect(summaries).toContain('Não inclui minicursos');
+    expect(summaries).toContain('Sem limite de palestras');
+    expect(summaries).toContain('Até 2 outros eventos');
   });
 });

@@ -23,7 +23,9 @@ import { EventPreparationApiService } from './event-preparation-api.service';
   ],
   templateUrl: './event-materials.component.html',
   styleUrl: './event-materials.component.scss',
-  host: { '[hidden]': '!editable() && !loading() && !loadError() && original().length === 0' },
+  host: {
+    '[hidden]': '!editable() && !loading() && !loadError() && original().length === 0',
+  },
 })
 export class EventMaterialsComponent {
   readonly eventId = input.required<string>();

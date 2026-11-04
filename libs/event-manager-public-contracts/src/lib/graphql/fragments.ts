@@ -94,6 +94,12 @@ export const PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS = `
   }
 `;
 
+export const PUBLIC_MAJOR_EVENT_INFO_FIELDS = `
+  ${PUBLIC_MAJOR_EVENT_CARD_FIELDS}
+  contactInfo
+  contactType
+`;
+
 export const PUBLIC_MAJOR_EVENT_PROFILE_FIELDS = `
   interestEnabled
   attendanceEligibility

@@ -82,6 +82,7 @@
 
       @if (!isPreview()) {
       <mat-card-actions align="end">
+        <a mat-stroked-button [routerLink]="['/major-event', majorEvent.id]">Informações</a>
         @if (majorEvent.sportsTournament) {
         <a mat-stroked-button [routerLink]="['/tournament', majorEvent.sportsTournament.id]">
           <mat-icon>sports</mat-icon>

@@ -56,7 +56,7 @@ describe('detail view model', () => {
     });
 
     expect(detail?.targetType).toBe('event-group');
-    expect(detail?.dateLine).toBe('26/06/2026, 09:00 - 27/06/2026, 15:00');
+    expect(detail?.dateLine).toBe('De 26/06/2026 às 09:00 a 27/06/2026 às 15:00');
     expect(detail?.statusLabel).toBe('Presente em 1 de 2 eventos');
     expect(detail?.events.map((item) => item.event.id)).toEqual(['early', 'late']);
     expect(detail?.certificateTargets).toEqual([

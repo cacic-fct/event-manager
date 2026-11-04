@@ -1,3 +1,4 @@
+import { eventInformationPath } from '@cacic-fct/shared-utils';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
 import { Job } from 'bullmq';
@@ -105,7 +106,10 @@ export class EventManualNotificationProcessor extends WorkerHost {
           message,
           requestId,
           deliveryAttempt,
-          actionUrl: `/profile/attendances/${targetType}/${targetId}${audience === 'LECTURERS' ? '/organizer' : ''}`,
+          actionUrl:
+            audience === 'LECTURERS'
+              ? `/profile/attendances/${targetType}/${encodeURIComponent(targetId)}/organizer`
+              : eventInformationPath(targetType, targetId),
           recipient,
         });
         if (outcome === 'rejected') {

@@ -16,40 +16,12 @@ mat-toolbar {
 }
 
 .page-header {
-  align-items: center;
-  display: flex;
-  gap: 16px;
   margin-bottom: 16px;
 }
 
-.emoji-frame {
-  align-items: center;
-  display: inline-flex;
-  flex: 0 0 auto;
-  height: 56px;
-  justify-content: center;
-  width: 56px;
-}
-
-.twemoji {
-  display: block;
-  height: 42px;
-  width: 42px;
-}
-
-.header-copy {
-  min-width: 0;
-}
-
-h1 {
-  font: var(--mat-sys-headline-medium);
-  margin: 0;
-}
-
-.header-copy p:last-child,
-.description {
+.header-date {
   color: var(--mat-sys-on-surface-variant);
-  margin: 4px 0 0;
+  margin: 8px 0 0;
 }
 
 mat-chip-set {
@@ -116,14 +88,6 @@ mat-chip-set {
 @media (max-width: 640px) {
   .subscription-page {
     padding: 16px 8px;
-  }
-
-  .page-header {
-    align-items: flex-start;
-  }
-
-  h1 {
-    font: var(--mat-sys-title-large);
   }
 
   .selection-actions {

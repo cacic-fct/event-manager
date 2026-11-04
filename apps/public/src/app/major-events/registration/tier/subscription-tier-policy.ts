@@ -13,10 +13,10 @@ export interface SubscriptionCategoryLimits {
   uncategorized: number | null;
 }
 
-const CATEGORY_LABELS: Record<SubscriptionEventCategory, string> = {
-  course: 'minicursos',
-  lecture: 'palestras',
-  uncategorized: 'outros eventos',
+const CATEGORY_LABELS = {
+  course: { singular: 'minicurso', plural: 'minicursos' },
+  lecture: { singular: 'palestra', plural: 'palestras' },
+  uncategorized: { singular: 'outro evento', plural: 'outros eventos' },
 };
 
 /** Use the shared domain policy so public selection matches server authorization. */
@@ -111,11 +111,20 @@ export function subscriptionTierRuleSummaries(
   const hasCustomLimits = tier.customizeSubscriptionLimits === true;
   const categories: SubscriptionEventCategory[] = ['course', 'lecture', 'uncategorized'];
   const limitedCategories = categories.filter((category) => limits[category] !== null);
-  if (hasCustomLimits || limitedCategories.length > 0) {
-    for (const category of hasCustomLimits ? categories : limitedCategories) {
-      const limit = limits[category];
-      summaries.push(`${CATEGORY_LABELS[category]}: ${limitDescription(limit)}.`);
+  const positiveLimits: string[] = [];
+  for (const category of hasCustomLimits ? categories : limitedCategories) {
+    const limit = limits[category];
+    const labels = CATEGORY_LABELS[category];
+    if (limit === null) {
+      summaries.push(`Sem limite de ${labels.plural}`);
+    } else if (limit === 0) {
+      summaries.push(`Não inclui ${labels.plural}`);
+    } else {
+      positiveLimits.push(`${limit} ${limit === 1 ? labels.singular : labels.plural}`);
     }
+  }
+  if (positiveLimits.length) {
+    summaries.push(`Até ${new Intl.ListFormat('pt-BR').format(positiveLimits)}`);
   }
 
   if (events) {
@@ -123,14 +132,4 @@ export function subscriptionTierRuleSummaries(
   }
 
   return summaries;
-}
-
-function limitDescription(limit: number | null): string {
-  if (limit === null) {
-    return 'sem limite';
-  }
-  if (limit === 0) {
-    return 'não permitidos';
-  }
-  return `até ${limit}`;
 }

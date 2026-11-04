@@ -5,6 +5,7 @@ import { CalendarListItem, type CalendarListItemData } from './calendar-list-ite
 
 type CalendarListItemStoryArgs = {
   item: CalendarListItemData;
+  iconPosition: 'leading' | 'top';
 };
 
 const meta: Meta<CalendarListItemStoryArgs> = {
@@ -16,6 +17,7 @@ const meta: Meta<CalendarListItemStoryArgs> = {
     a11y: { test: 'error' },
   },
   args: {
+    iconPosition: 'leading',
     item: {
       id: 'party-ticket',
       name: 'Festa de encerramento',
@@ -30,6 +32,7 @@ const meta: Meta<CalendarListItemStoryArgs> = {
   },
   argTypes: {
     item: { control: 'object' },
+    iconPosition: { control: 'radio', options: ['leading', 'top'] },
   },
 };
 
@@ -37,10 +40,19 @@ export default meta;
 
 type Story = StoryObj<CalendarListItemStoryArgs>;
 
+export const TopIcon: Story = {
+  args: { iconPosition: 'top' },
+  play: async ({ canvasElement }) => {
+    await expect(canvasElement.querySelector('.top-emoji img')).toBeVisible();
+    await expect(canvasElement.querySelector('[matListItemIcon]')).toBeNull();
+    await expect(canvasElement.querySelector('.time-content')).toBeVisible();
+  },
+};
+
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const link = await canvas.findByRole('link', { name: 'Abrir Festa de encerramento' });
+    const link = await canvas.findByRole('link', { name: /Festa de encerramento/ });
     await expect(link).toBeVisible();
     await expect(canvas.getByText('Cedente: Marina')).toBeVisible();
   },
@@ -49,7 +61,7 @@ export const Playground: Story = {
 export const Linked: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole('link', { name: 'Abrir Festa de encerramento' })).toBeVisible();
+    await expect(canvas.getByRole('link', { name: /Festa de encerramento/ })).toBeVisible();
     await expect(canvas.getByText('Cedente: Marina')).toBeVisible();
   },
 };
@@ -95,7 +107,7 @@ export const TransferMetadata: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('link', { name: 'Abrir Kit de boas-vindas' })).toBeVisible();
+    await expect(await canvas.findByRole('link', { name: /Kit de boas-vindas/ })).toBeVisible();
     const metadata = Array.from(canvasElement.querySelectorAll('.metadata-item'), (item) => item.textContent?.trim());
     await expect(metadata).toEqual([
       'Congresso de Computação',
@@ -106,6 +118,6 @@ export const TransferMetadata: Story = {
       expect.stringMatching(/^Disponível na lista até /),
       'Entrada principal',
     ]);
-    await userEvent.hover(canvas.getByRole('link', { name: 'Abrir Kit de boas-vindas' }));
+    await userEvent.hover(canvas.getByRole('link', { name: /Kit de boas-vindas/ }));
   },
 };

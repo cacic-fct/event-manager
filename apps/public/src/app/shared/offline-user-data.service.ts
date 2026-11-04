@@ -19,6 +19,10 @@ export class OfflineUserDataService {
       const user = this.auth.user();
       const userId = user?.sub ?? null;
       const previousUserId = this.observedUserId;
+      // On a cold start, a missing live session is inconclusive until auth finishes online.
+      if (userId === null && previousUserId == null && (!isOnline || !this.auth.initialized())) {
+        return;
+      }
       this.observedUserId = userId;
       const requiresPurge = userId === null || (previousUserId != null && previousUserId !== userId);
       if (!isOnline && !requiresPurge) {

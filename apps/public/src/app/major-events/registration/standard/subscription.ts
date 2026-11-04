@@ -15,7 +15,7 @@ import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils'
 import { compareIsoDateAsc, formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { areIntervalsOverlapping, isBefore, parseISO } from 'date-fns';
 import { EMPTY, catchError, filter, finalize, map } from 'rxjs';
-import { EmojiService } from '../../../shared/emoji.service';
+import { EventDetailHeading } from '../../../shared/event-detail-heading';
 import { AnalyticsService } from '../../../analytics/analytics.service';
 import { RateLimitError, createRateLimitCooldown } from '../../../shared/rate-limit-error';
 import { MajorEventSubscriptionApiService, type PublicMajorEventSubscriptionPage } from '../subscription-api.service';
@@ -64,6 +64,7 @@ interface SubscriptionFlowSelection {
 @Component({
   selector: 'app-subscription',
   imports: [
+    EventDetailHeading,
     MatButtonModule,
     MatChipsModule,
     CurrencyPipe,
@@ -96,7 +97,6 @@ export class MajorEventSubscription {
   private readonly snackBar = inject(MatSnackBar);
   private readonly subscriptionCooldown = createRateLimitCooldown(this.destroyRef);
 
-  readonly emoji = inject(EmojiService);
   readonly isAuthenticated = this.auth.isAuthenticated;
   readonly isSubmitting = signal(false);
   readonly subscriptionCooldownSeconds = this.subscriptionCooldown.seconds;

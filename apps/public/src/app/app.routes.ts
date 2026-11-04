@@ -97,6 +97,11 @@ export const appRoutes: Route[] = [
     title: 'Pré-Visualização',
   },
   {
+    path: 'event-group/:eventGroupId',
+    loadComponent: () => import('./events/group/event-group-info-page').then((m) => m.EventGroupInfoPage),
+    title: 'Grupo de eventos',
+  },
+  {
     path: 'event/:eventId',
     loadComponent: () => import('./events/detail/event-page').then((m) => m.Event),
     title: 'Evento',
@@ -160,6 +165,12 @@ export const appRoutes: Route[] = [
     loadComponent: () => import('./sports/operations/sports-autoroute-page').then((m) => m.SportsAutoroutePage),
     title: 'Minha próxima partida',
     canActivate: [authGuard],
+  },
+  {
+    path: 'major-event/:majorEventId',
+    pathMatch: 'full',
+    loadComponent: () => import('./major-events/info/major-event-info-page').then((m) => m.MajorEventInfoPage),
+    title: 'Informações do evento',
   },
   {
     path: 'major-event/:majorEventId/subscription',

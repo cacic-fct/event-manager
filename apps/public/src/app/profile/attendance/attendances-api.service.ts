@@ -67,7 +67,6 @@ interface CurrentUserSubscriptionFeedSingleEventItem {
   subscriptionId?: string | null;
   eventId: string;
   date: string;
-  createdAt: string;
   event: PublicEvent;
   participation: CurrentUserEventParticipation;
 }
@@ -77,7 +76,6 @@ interface CurrentUserSubscriptionFeedEventGroupItem {
   subscriptionId: string;
   eventGroupId: string;
   date: string;
-  createdAt: string;
   eventGroup: PublicEventGroup;
   participation: CurrentUserEventParticipation;
 }
@@ -195,20 +193,12 @@ export class AttendancesApiService {
             id
             majorEventId
             subscriptionStatus
-            amountPaid
-            paymentDate
-            paymentTier
-            sportsRepresentativeTeams {
-              id
-              name
-            }
             majorEvent {
               id
               name
               emoji
               startDate
               endDate
-              description
               sportsTournament {
                 id
               }
@@ -227,7 +217,6 @@ export class AttendancesApiService {
               type
               subscriptionId
               date
-              createdAt
 
               eventId
               event {
@@ -237,9 +226,6 @@ export class AttendancesApiService {
                 endDate
                 emoji
                 type
-                description
-                shortDescription
-                locationDescription: locationLabel
                 majorEventId
                 eventGroupId
                 eventGroup {

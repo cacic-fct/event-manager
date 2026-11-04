@@ -137,7 +137,7 @@ describe('OnlineAttendanceCodeComponent', () => {
       pendingEvents: [],
     });
 
-    expect(router.navigate).toHaveBeenCalledWith(['/profile', 'attendances', 'event', 'event-1']);
+    expect(router.navigate).toHaveBeenCalledWith(['/event', 'event-1']);
   });
 
   it('shows that the current attendance is no longer pending after an empty live snapshot', async () => {

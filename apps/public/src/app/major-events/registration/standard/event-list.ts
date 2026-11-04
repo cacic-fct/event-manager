@@ -7,6 +7,7 @@ import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { compareIsoDateAsc, getEventTypeLabel } from '@cacic-fct/shared-utils';
 import { isSameDay, isSameMonth, parseISO } from 'date-fns';
 import type { PublicEventSubscriptionSummary } from '../subscription-api.service';
+import { StickyDateHeader } from '../../../shared/sticky-date-header';
 
 interface SubscriptionListMonth {
   key: string;
@@ -27,7 +28,7 @@ interface SubscriptionListGroup {
 
 @Component({
   selector: 'app-subscription-event-list',
-  imports: [MatIconModule, MatListModule, SubscriptionEventOptionComponent],
+  imports: [MatIconModule, MatListModule, SubscriptionEventOptionComponent, StickyDateHeader],
   templateUrl: './event-list.html',
   styleUrl: './event-list.css',
 })

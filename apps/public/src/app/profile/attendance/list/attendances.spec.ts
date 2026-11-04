@@ -14,6 +14,7 @@ import { CertificateFileDownloadService } from '../../../shared/certificate-file
 import { NetworkStatusService } from '../../../shared/network-status.service';
 import { RealtimeInvalidationService } from '../../../shared/realtime-invalidation.service';
 import { AttendancesApiService } from '../attendances-api.service';
+import { AttendanceFeedCacheService } from './attendance-feed-cache.service';
 import { Attendances } from './attendances';
 import { CertificateDialog } from '../certificate-dialog/certificate-dialog';
 
@@ -27,6 +28,55 @@ describe('Attendances', () => {
     expect(fixture.nativeElement.textContent).toContain('Oficina pública');
     expect(fixture.nativeElement.textContent).toContain('Atividades complementares');
     expect(offlineData.replaceAttendanceFeed).toHaveBeenCalledWith('user-1', subscriptionsFeedFixture);
+  });
+
+  it('refreshes the online cache after two minutes without a realtime invalidation', async () => {
+    const now = Date.now();
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+    try {
+      const { fixture, api } = await createFixture();
+      await settle(fixture);
+      const cache = TestBed.inject(AttendanceFeedCacheService);
+
+      clock.mockReturnValue(now + 119_999);
+      cache.load('user-1').subscribe();
+      expect(api.getSubscriptionsFeed).toHaveBeenCalledTimes(1);
+
+      clock.mockReturnValue(now + 120_000);
+      cache.load('user-1').subscribe();
+      expect(api.getSubscriptionsFeed).toHaveBeenCalledTimes(2);
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  it('renders the online feed while its offline cache write is still pending', async () => {
+    const { fixture, offlineData } = await createFixture({
+      cacheWrite: () => new Promise<void>(() => undefined),
+    });
+
+    await settle(fixture);
+
+    expect(fixture.nativeElement.textContent).toContain('SECOMPP');
+    expect(offlineData.getAttendanceFeed).not.toHaveBeenCalled();
+  });
+
+  it('reuses the feed when returning to the list and reloads after an invalidation while away', async () => {
+    const { api, currentUserChanges, fixture } = await createFixture();
+    await settle(fixture);
+    fixture.destroy();
+
+    const returned = TestBed.createComponent(Attendances);
+    await settle(returned);
+    expect(returned.nativeElement.textContent).toContain('SECOMPP');
+    expect(api.getSubscriptionsFeed).toHaveBeenCalledTimes(1);
+
+    returned.destroy();
+    currentUserChanges.next();
+    const afterInvalidation = TestBed.createComponent(Attendances);
+    await settle(afterInvalidation);
+    expect(afterInvalidation.nativeElement.textContent).toContain('SECOMPP');
+    expect(api.getSubscriptionsFeed).toHaveBeenCalledTimes(2);
   });
 
   it('renders ordered status icons with accessible labels and preserves detailed status text for assistive technology', async () => {
@@ -114,8 +164,8 @@ describe('Attendances', () => {
       throw new Error('Expected attendance fixtures');
     }
 
-    expect(majorEvent.route).toEqual(['/profile/attendances', 'major-event', 'major-1']);
-    expect(event.route).toEqual(['/profile/attendances', 'event', 'event-1']);
+    expect(majorEvent.route).toEqual(['/major-event', 'major-1']);
+    expect(event.route).toEqual(['/event', 'event-1']);
   });
 
   it('keeps mixed major-event participation on the regular detail when regular events are selected', async () => {
@@ -140,8 +190,7 @@ describe('Attendances', () => {
     });
 
     expect(component.visibleParticipations().find((item) => item.title === 'SECOMPP')?.route).toEqual([
-      '/profile/attendances',
-      'major-event',
+      '/major-event',
       majorEvent.majorEvent.id,
     ]);
   });
@@ -155,7 +204,7 @@ describe('Attendances', () => {
       throw new Error('Expected a tournament fixture.');
     }
 
-    expect(tournamentOnlyItem.route).toEqual(['/profile/attendances', 'major-event', 'sports-major']);
+    expect(tournamentOnlyItem.route).toEqual(['/major-event', 'sports-major']);
   });
 
   it('falls back to the last offline feed when the network request fails', async () => {
@@ -304,7 +353,7 @@ describe('Attendances', () => {
     expect(fixture.nativeElement.textContent).toContain('Torneio com gestão esportiva');
     expect(fixture.nativeElement.textContent).not.toContain('Grande evento sem gestão esportiva');
     expect(fixture.nativeElement.textContent).not.toContain('1 de 2 participações');
-    expect(sportsManagerItem.route).toEqual(['/profile/attendances', 'major-event', 'sports-major']);
+    expect(sportsManagerItem.route).toEqual(['/major-event', 'sports-major']);
   });
 
   it('merges standalone event-group children into one event-group item', async () => {
@@ -317,7 +366,7 @@ describe('Attendances', () => {
         title: 'Grupo de atividades',
         type: 'eventGroup',
         typeLabel: 'Grupo de eventos',
-        route: ['/profile/attendances', 'event-group', 'standalone-group'],
+        route: ['/event-group', 'standalone-group'],
         statuses: ['subscribed', 'certificate'],
       }),
     ]);
@@ -703,12 +752,14 @@ describe('Attendances', () => {
 async function createFixture({
   latestUserSnapshot = null,
   online = true,
+  cacheWrite = () => Promise.resolve(),
   onlineFeed = subscriptionsFeedFixture,
   onlineFeedError = null,
   offlineFeed = null,
   user = { sub: 'user-1' },
 }: {
   latestUserSnapshot?: { userId: string } | null;
+  cacheWrite?: () => Promise<void>;
   online?: boolean;
   onlineFeed?: SubscriptionsFeed;
   onlineFeedError?: Error | null;
@@ -759,7 +810,7 @@ async function createFixture({
     getAttendanceFeed: vi.fn(() => Promise.resolve(offlineFeed)),
     getLatestUserSnapshot: vi.fn(() => Promise.resolve(latestUserSnapshot)),
     purgeUserData: vi.fn(() => Promise.resolve()),
-    replaceAttendanceFeed: vi.fn(() => Promise.resolve()),
+    replaceAttendanceFeed: vi.fn(cacheWrite),
   };
   const fileDownload = {
     saveBlob: vi.fn(),
@@ -1089,12 +1140,12 @@ const filterableSubscriptionsFeedFixture = {
       },
     },
     {
-      eventId: 'group-child-attended-event',
+      eventId: 'unlisted-group-child',
       attendedAt: '2026-07-03T12:30:00.000Z',
       event: {
-        id: 'group-child-attended-event',
+        id: 'unlisted-group-child',
         majorEventId: null,
-        eventGroupId: null,
+        eventGroupId: 'group-child-attended',
       },
     },
     {

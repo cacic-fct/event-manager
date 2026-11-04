@@ -1,16 +1,54 @@
 import { PublicEventsResolver } from './events.resolver';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
-import {
-  PUBLIC_EVENT_WHERE,
-  PUBLIC_MAJOR_EVENT_WHERE,
-  PUBLIC_MAP_EVENT_SELECT,
-  PUBLIC_REGULAR_EVENT_WHERE,
-  publicMapEventWhere,
-} from './models';
+import { PUBLIC_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE, PUBLIC_MAP_EVENT_SELECT, publicMapEventWhere } from './models';
 import { createPublicMajorEventRecord } from './testing/public-event-record.fixtures';
 const { jest } = import.meta;
 
 describe('PublicEventsResolver lecturer profiles', () => {
+  it('reuses the public catalog for a chronological major-event program without signup or retention filters', async () => {
+    const events = [{ id: 'past-or-non-subscribable-activity' }];
+    const prisma = { event: { findMany: jest.fn().mockResolvedValue(events) } };
+    const resolver = new PublicEventsResolver(prisma as never, { isEnabled: () => false } as never);
+
+    const startDate = new Date();
+    const programAfter = { startDate, id: 'previous-activity' };
+    await expect(
+      resolver.publicEvents(undefined, undefined, undefined, 'major-1', undefined, undefined, 100, true, programAfter),
+    ).resolves.toEqual(events);
+    expect(prisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          AND: [
+            PUBLIC_EVENT_WHERE,
+            { majorEventId: 'major-1' },
+            { OR: [{ startDate: { gt: startDate } }, { startDate, id: { gt: programAfter.id } }] },
+          ],
+        },
+        orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
+        skip: 0,
+        take: 100,
+      }),
+    );
+  });
+
+  it('paginates chronological text searches in the database even when Typesense is enabled', async () => {
+    const prisma = { event: { findMany: jest.fn().mockResolvedValue([]) } };
+    const searchEvents = jest.fn();
+    const resolver = new PublicEventsResolver(prisma as never, { isEnabled: () => true, searchEvents } as never);
+
+    await resolver.publicEvents('aula', undefined, undefined, undefined, undefined, 10, 5, true);
+
+    expect(searchEvents).not.toHaveBeenCalled();
+    expect(prisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { AND: [PUBLIC_EVENT_WHERE, { name: { contains: 'aula', mode: 'insensitive' } }] },
+        orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
+        skip: 10,
+        take: 5,
+      }),
+    );
+  });
+
   afterEach(() => {
     jest.useRealTimers();
   });

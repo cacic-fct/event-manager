@@ -1,7 +1,15 @@
+import { EventPreparationApiService } from '@cacic-fct/shared-angular/event-preparation';
+import { createEventPreparationStoryApi } from '@cacic-fct/shared-angular/event-preparation/testing';
+import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import type { PublicEvent, PublicEventForm } from '@cacic-fct/event-manager-public-contracts';
-import { createPublicEventInterest, publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
+import {
+  createPublicEventInterest,
+  createParticipationInformationFixture,
+  participationInformationGraphqlData,
+  publicFixtureDateFromNow,
+} from '@cacic-fct/event-manager-public-testing';
 import { HttpResponse, delay, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
@@ -23,6 +31,7 @@ import {
 import { Event } from './event-page';
 
 interface EventStoryArgs extends PublicEventStoryControls, PublicLecturerStoryControls {
+  mapEnabled: boolean;
   livestream: 'NONE' | 'YOUTUBE' | 'TWITCH' | 'BOTH';
   apiState: 'ready' | 'loading';
   latencyMs: number;
@@ -35,12 +44,15 @@ interface EventStoryArgs extends PublicEventStoryControls, PublicLecturerStoryCo
   requiresLicenseAgreement: boolean;
   interestEnabled: boolean;
   isInterested: boolean;
+  hasIssuedCertificate: boolean;
+  isLecturer: boolean;
 }
 
 const defaultArgs: EventStoryArgs = {
   ...publicEventStoryDefaultControls,
   ...publicLecturerStoryDefaultControls,
   apiState: 'ready',
+  mapEnabled: true,
   livestream: 'NONE',
   latencyMs: 120,
   weatherState: 'forecast',
@@ -52,6 +64,8 @@ const defaultArgs: EventStoryArgs = {
   requiresLicenseAgreement: false,
   interestEnabled: false,
   isInterested: false,
+  hasIssuedCertificate: false,
+  isLecturer: false,
 };
 
 type EventStoryContext = MutableStoryContext<EventStoryArgs>;
@@ -71,11 +85,26 @@ const meta: Meta<EventStoryArgs> = {
   component: Event,
   title: 'Public/Discovery/Events/Details',
   tags: ['autodocs'],
-  decorators: [withScenarioControls<EventStoryArgs>()],
+  decorators: [
+    withScenarioControls<EventStoryArgs>(),
+    applicationConfig({
+      providers: [
+        { provide: EventPreparationApiService, useFactory: createEventPreparationStoryApi },
+        {
+          provide: PublicDataAccessService,
+          useValue: {
+            replaceAttendanceDetail: async () => undefined,
+            getAttendanceDetail: async () => null,
+          },
+        },
+      ],
+    }),
+  ],
   args: defaultArgs,
   argTypes: {
     ...publicEventStoryControlArgTypes,
     ...publicLecturerStoryControlArgTypes,
+    mapEnabled: { control: 'boolean' },
     livestream: { control: 'select', options: ['NONE', 'YOUTUBE', 'TWITCH', 'BOTH'] },
     apiState: { control: 'inline-radio', options: ['ready', 'loading'] },
     latencyMs: { control: { type: 'range', min: 0, max: 2_000, step: 100 } },
@@ -88,6 +117,8 @@ const meta: Meta<EventStoryArgs> = {
     requiresLicenseAgreement: { control: 'boolean' },
     interestEnabled: { control: 'boolean' },
     isInterested: { control: 'boolean' },
+    hasIssuedCertificate: { control: 'boolean' },
+    isLecturer: { control: 'boolean' },
   },
   parameters: {
     layout: 'fullscreen',
@@ -373,10 +404,11 @@ function buildPreview(args: EventStoryArgs) {
 }
 
 function buildEvent(args: EventStoryArgs) {
+  const event = createPublicStoryEventFromControls(args, { id: 'event-1' });
   return {
-    ...createPublicStoryEventFromControls(args, {
-      id: 'event-1',
-    }),
+    ...event,
+    latitude: args.mapEnabled ? event.latitude : null,
+    longitude: args.mapEnabled ? event.longitude : null,
     allowSubscription: args.allowSubscription,
     lecturers: createPublicStoryLecturerProfilesFromControls(args),
     requiresImageLicenseAgreement: args.requiresLicenseAgreement,
@@ -388,6 +420,22 @@ function buildEvent(args: EventStoryArgs) {
 
 function eventGraphqlData(query: string, variables: Record<string, unknown>, args: EventStoryArgs) {
   const event = buildEvent(args);
+  const fixture = createParticipationInformationFixture({
+    subscribed: args.isSubscribed,
+    attended: args.hasAttendance,
+    issuedCertificate: args.hasIssuedCertificate,
+    lecturer: args.isLecturer,
+  });
+  fixture.events = [event];
+  fixture.targetId = event.id;
+  fixture.attendances = args.hasAttendance ? [{ ...currentUserEventAttendance(event), event }] : [];
+  if (
+    /CurrentUserEventDetails|CurrentUserCertificates|CurrentUserCertificateParticipation|CurrentUserOrganizerInfo|CurrentUserEventSubscriberInformation/.test(
+      query,
+    )
+  ) {
+    return participationInformationGraphqlData(query, variables, fixture);
+  }
   if (query.includes('PublicPrizeDrawAvailability')) {
     return { publicPrizeDrawAvailability: [] };
   }
@@ -565,3 +613,37 @@ function publicEventWeather(event: PublicEvent, state: EventStoryArgs['weatherSt
     attribution: 'Open-Meteo',
   };
 }
+
+export const UnifiedSubscribed: Story = {
+  args: { context: 'short-description', isSubscribed: true, dayOffset: 2 },
+  globals: { network: 'online' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'Meu certificado' })).toBeVisible();
+    await expect(canvas.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    await expect(canvas.getByRole('button', { name: 'Cancelar inscrição' })).toBeEnabled();
+    const subscription = canvas.getByRole('tab', { name: /^(Minha inscrição|Inscrição)$/ });
+    await expect(subscription).toHaveAttribute('aria-selected', 'true');
+    await userEvent.click(canvas.getByRole('tab', { name: /^(Sobre o evento|Sobre)$/ }));
+    await expect(await canvas.findByRole('heading', { name: 'Informações' })).toBeVisible();
+    await userEvent.click(subscription);
+  },
+};
+
+export const UnifiedCertificateOnly: Story = {
+  args: { context: 'short-description', isSubscribed: false, hasIssuedCertificate: true, dayOffset: -2 },
+  globals: { network: 'online' },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByRole('button', { name: 'Baixar certificado' })).toBeVisible();
+  },
+};
+
+export const UnifiedLecturer: Story = {
+  args: { context: 'short-description', isSubscribed: false, isLecturer: true, dayOffset: 2 },
+  globals: { network: 'online' },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByRole('link', { name: /Área do palestrante/ })).toBeVisible();
+  },
+};
+
+export const DescriptionOnlyLocation: Story = { args: { context: 'short-description', mapEnabled: false } };

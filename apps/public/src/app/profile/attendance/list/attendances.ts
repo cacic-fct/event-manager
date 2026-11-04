@@ -21,9 +21,11 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
 import {
   compareIsoDateDesc,
+  eventInformationRoute,
   CurrentUserMajorEventFeedItem,
   SubscribedItem,
   SubscriptionsFeed,
+  getAttendanceByEventId,
   getMajorEventStatusLine,
   getEventTypeLabel,
   getSubscribedItemEmoji,
@@ -58,7 +60,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
 import { CertificateDialog, CertificateDialogData } from '../certificate-dialog/certificate-dialog';
 import type { StandaloneCertificateFolderItem, SubscribedEventGroupItem } from '@cacic-fct/shared-utils';
-import { RealtimeInvalidationService } from '../../../shared/realtime-invalidation.service';
+import { AttendanceFeedCacheService } from './attendance-feed-cache.service';
 
 type ParticipationTypeFilter = 'majorEvent' | 'eventGroup' | 'event';
 type AttendanceStatusFilter = 'interested' | 'subscribed' | 'present' | 'certificate' | 'lecturer' | 'sportsManager';
@@ -97,6 +99,8 @@ interface ParticipationFeedItem {
   type: ParticipationTypeFilter;
   typeLabel: string;
   route: string[];
+  targetType: string;
+  targetId: string;
   statusLine: string;
   statuses: AttendanceStatusFilter[];
   warnings: AttendanceWarning[];
@@ -136,7 +140,7 @@ export class Attendances {
   private readonly certificateFileDownload = inject(CertificateFileDownloadService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
-  private readonly realtime = inject(RealtimeInvalidationService);
+  private readonly feedCache = inject(AttendanceFeedCacheService);
   readonly emoji = inject(EmojiService);
   readonly isDownloadingCertificates = signal(false);
   private readonly certificateArchiveCooldownEndsAt = signal(0);
@@ -171,7 +175,7 @@ export class Attendances {
   readonly selectionTrigger = viewChild('selectionTrigger', { read: ElementRef<HTMLButtonElement> });
   readonly selectionCancel = viewChild('selectionCancel', { read: ElementRef<HTMLButtonElement> });
   readonly additionalCertificateGroups = computed(() => {
-    const knownTargets = new Set(this.allParticipations().map((item) => `${item.route[1]}:${item.route[2]}`));
+    const knownTargets = new Set(this.allParticipations().map((item) => `${item.targetType}:${item.targetId}`));
     const state = this.feedState();
     if (state.status === 'ready') {
       for (const folder of state.data.standaloneCertificateFolders) {
@@ -184,7 +188,7 @@ export class Attendances {
     ...new Set(this.certificateCatalog().flatMap((group) => group.certificates.map(({ id }) => id))),
   ]);
   readonly visibleCertificateIds = computed(() => {
-    const visibleTargets = new Set(this.visibleParticipations().map((item) => `${item.route[1]}:${item.route[2]}`));
+    const visibleTargets = new Set(this.visibleParticipations().map((item) => `${item.targetType}:${item.targetId}`));
     const state = this.feedState();
     if (state.status === 'ready') {
       for (const folder of state.data.standaloneCertificateFolders) {
@@ -291,12 +295,14 @@ export class Attendances {
     { value: 'lecturer', label: 'Palestrante', icon: 'record_voice_over' },
     { value: 'sportsManager', label: 'Gestão esportiva', icon: 'sports' },
   ];
-  private readonly feedRefresh = signal(0);
   private readonly feedUserId = computed(() => this.auth.user()?.sub ?? null);
   private loadedFeedTarget: string | null = null;
 
   readonly feedState = toSignal(
-    combineLatest([toObservable(this.feedUserId).pipe(distinctUntilChanged()), toObservable(this.feedRefresh)]).pipe(
+    combineLatest([
+      toObservable(this.feedUserId).pipe(distinctUntilChanged()),
+      toObservable(this.feedCache.revision),
+    ]).pipe(
       switchMap(([userId]) => {
         const target = userId ? `user:${userId}` : 'anonymous';
         const preserveReadyState = this.loadedFeedTarget === target;
@@ -345,14 +351,6 @@ export class Attendances {
           }
         });
     }
-    this.realtime
-      .watchCurrentUserData()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.feedRefresh.update((value) => value + 1));
-    this.realtime
-      .watchCatalog()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.feedRefresh.update((value) => value + 1));
   }
 
   readonly activeFilterCount = computed(() => this.selectedTypeFilters().length + this.selectedStatusFilters().length);
@@ -363,9 +361,36 @@ export class Attendances {
       return [];
     }
 
+    const attendanceByEventId = getAttendanceByEventId(state.data.attendances);
+    const attendanceByMajorEventId = new Map<string, SubscriptionsFeed['attendances'][number]>();
+    const attendancesByGroupId = new Map<string, SubscriptionsFeed['attendances']>();
+    for (const attendance of state.data.attendances) {
+      const { majorEventId, eventGroupId } = attendance.event ?? {};
+      if (majorEventId) attendanceByMajorEventId.set(majorEventId, attendance);
+      if (eventGroupId) {
+        const groupAttendances = attendancesByGroupId.get(eventGroupId) ?? [];
+        groupAttendances.push(attendance);
+        attendancesByGroupId.set(eventGroupId, groupAttendances);
+      }
+    }
+
     return [
-      ...state.data.majorEventItems.map((item) => this.majorEventFeedItem(item, state.data.attendances)),
-      ...state.data.eventItems.map((item) => this.eventFeedItem(item, state.data.attendances)),
+      ...state.data.majorEventItems.map((item) => {
+        const attendance = attendanceByMajorEventId.get(item.majorEventId);
+        return this.majorEventFeedItem(item, attendance ? [attendance] : []);
+      }),
+      ...state.data.eventItems.map((item) => {
+        if (item.__typename === 'SubscribedSingleEventItem') {
+          const attendance = attendanceByEventId.get(item.event.id);
+          return this.eventFeedItem(item, attendance ? [attendance] : []);
+        }
+        const attendances = new Set(attendancesByGroupId.get(item.eventGroup.id));
+        for (const event of item.events) {
+          const attendance = attendanceByEventId.get(event.id);
+          if (attendance) attendances.add(attendance);
+        }
+        return this.eventFeedItem(item, [...attendances]);
+      }),
     ].sort((left, right) => compareIsoDateDesc(left.startDate, right.startDate));
   });
 
@@ -532,10 +557,7 @@ export class Attendances {
       return of(EMPTY_SUBSCRIPTIONS_FEED);
     }
 
-    return this.api.getSubscriptionsFeed().pipe(
-      switchMap((feed) => from(this.offlineData.replaceAttendanceFeed(userId, feed)).pipe(map(() => feed))),
-      catchError(() => from(this.loadOfflineFeed(userId))),
-    );
+    return this.feedCache.load(userId).pipe(catchError(() => from(this.loadOfflineFeed(userId))));
   }
 
   private async loadOfflineFeed(currentUserId: string | null): Promise<SubscriptionsFeed> {
@@ -619,7 +641,7 @@ export class Attendances {
     attendances: SubscriptionsFeed['attendances'],
   ): ParticipationFeedItem {
     const statusLine = getMajorEventStatusLine(item, attendances);
-    const isPresent = attendances.some((attendance) => attendance.event?.majorEventId === item.majorEventId);
+    const isPresent = attendances.length > 0;
 
     return {
       id: `major-event:${item.id}`,
@@ -629,7 +651,9 @@ export class Attendances {
       startDate: item.majorEvent.startDate,
       type: 'majorEvent',
       typeLabel: item.majorEvent.sportsTournament ? 'Grande evento com torneio' : 'Grande evento',
-      route: ['/profile/attendances', 'major-event', item.majorEvent.id],
+      route: eventInformationRoute('major-event', item.majorEvent.id),
+      targetType: 'major-event',
+      targetId: item.majorEvent.id,
       statusLine,
       statuses: this.participationStatuses(item.participation, isPresent),
       warnings: this.majorEventWarnings(item.subscriptionStatus),
@@ -643,7 +667,7 @@ export class Attendances {
     const startDate = firstEvent?.startDate ?? item.startDate;
     const endDate = lastEvent?.endDate ?? startDate;
     const statusLine = getSubscribedItemStatusLine(item, attendances);
-    const isPresent = this.eventItemHasAttendance(item, attendances);
+    const isPresent = attendances.length > 0;
 
     return {
       id: `${isSingleEvent ? 'event' : 'event-group'}:${item.id}`,
@@ -654,8 +678,10 @@ export class Attendances {
       type: isSingleEvent ? 'event' : 'eventGroup',
       typeLabel: isSingleEvent ? getEventTypeLabel(item.event.type) : 'Grupo de eventos',
       route: isSingleEvent
-        ? ['/profile/attendances', 'event', item.event.id]
-        : ['/profile/attendances', 'event-group', item.eventGroup.id],
+        ? eventInformationRoute('event', item.event.id)
+        : eventInformationRoute('event-group', item.eventGroup.id),
+      targetType: isSingleEvent ? 'event' : 'event-group',
+      targetId: isSingleEvent ? item.event.id : item.eventGroup.id,
       statusLine,
       statuses: this.participationStatuses(item.participation, isPresent),
       warnings: [],
@@ -743,18 +769,5 @@ export class Attendances {
 
   private shortMonth(date: Date): string {
     return format(date, 'MMM', { locale: ptBR }).replace('.', '');
-  }
-
-  private eventItemHasAttendance(item: SubscribedItem, attendances: SubscriptionsFeed['attendances']): boolean {
-    if (item.__typename === 'SubscribedSingleEventItem') {
-      return attendances.some((attendance) => attendance.eventId === item.event.id);
-    }
-
-    if (item.events.length > 0) {
-      const eventIds = new Set(item.events.map((event) => event.id));
-      return attendances.some((attendance) => eventIds.has(attendance.eventId));
-    }
-
-    return attendances.some((attendance) => attendance.event?.eventGroupId === item.eventGroup.id);
   }
 }

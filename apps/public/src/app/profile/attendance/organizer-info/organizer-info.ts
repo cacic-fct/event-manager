@@ -120,7 +120,7 @@ export class OrganizerInfoComponent {
   }
 
   backRoute(info: OrganizerInfo): string[] {
-    return ['/profile', 'attendances', info.targetType, info.targetId];
+    return ['/' + info.targetType, info.targetId];
   }
 
   downloadOnlineAttendanceCode(eventId: string, code: string | null | undefined, format: 'svg' | 'png'): void {

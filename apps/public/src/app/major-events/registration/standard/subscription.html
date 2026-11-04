@@ -5,7 +5,7 @@
   <a matIconButton routerLink="/menu" aria-label="Voltar">
     <mat-icon>arrow_back</mat-icon>
   </a>
-  <h1 class="global-toolbar-title">{{ state.status === 'ready' ? state.data.majorEvent.name : 'Inscrição' }}</h1>
+  <span class="global-toolbar-title">Inscrição</span>
 </mat-toolbar>
 
 <main class="subscription-page">
@@ -22,14 +22,9 @@
   </section>
   } @else { @let majorEvent = state.data.majorEvent;
 
-  <header class="page-header">
-    <div class="emoji-frame">
-      <img class="twemoji" [src]="emoji.getTwemojiUrl(majorEvent.emoji)" [alt]="majorEvent.emoji" />
-    </div>
-    <div class="header-copy">
-      <p>{{ dateLine() }}</p>
-    </div>
-  </header>
+  <app-event-detail-heading class="page-header" [title]="majorEvent.name" [emoji]="majorEvent.emoji">
+    <p class="header-date">{{ dateLine() }}</p>
+  </app-event-detail-heading>
 
   <mat-chip-set aria-label="Resumo da inscrição">
     @if (!showingTierStep() && decisions().includesEvents && effectiveCategoryLimits().course !== null) {
