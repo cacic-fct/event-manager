@@ -4,6 +4,7 @@ import { CertificateScope, Prisma } from '@prisma/client';
 import { isBefore, isValid, max, subMonths } from 'date-fns';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { ACTIVE_OR_REVOKED_CERTIFICATE_WHERE } from '../certificate/certificate.constants';
 import { PrismaService } from '../prisma/prisma.service';
 
 export type FrozenOperation = 'edit' | 'delete';
@@ -254,11 +255,12 @@ export class FrozenResourceService {
     certificateId: string,
     user: AuthenticatedUser | undefined,
     operation: FrozenOperation,
+    { includeRevoked = false }: { includeRevoked?: boolean } = {},
   ): Promise<void> {
     const certificate = await this.prisma.certificate.findFirst({
       where: {
         id: certificateId,
-        deletedAt: null,
+        ...(includeRevoked ? ACTIVE_OR_REVOKED_CERTIFICATE_WHERE : { deletedAt: null }),
       },
       select: {
         configId: true,

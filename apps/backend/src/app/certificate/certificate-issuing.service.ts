@@ -21,6 +21,7 @@ import { NovuNotificationsService } from '../notifications/novu-notifications.se
 import { PrismaService } from '../prisma/prisma.service';
 import type { DeferredInjection } from '../common/deferred-injection';
 import {
+  ACTIVE_OR_REVOKED_CERTIFICATE_WHERE,
   CERTIFICATE_SELECT,
   CERTIFICATE_CONFIG_SELECT,
   type CertificateRecord,
@@ -42,6 +43,10 @@ import { CertificateValidationService } from './certificate-validation.service';
 
 type CertificateWriteClient = AuditPrismaClient;
 type CertificateReissueClient = AuditPrismaClient;
+type CertificateUpsertOptions = Omit<CertificateIssuanceOptions, 'client'> & {
+  prisma?: CertificateWriteClient;
+  restore?: { id: string; revokedAt: Date };
+};
 
 @Injectable()
 export class CertificateIssuingService {
@@ -92,7 +97,7 @@ export class CertificateIssuingService {
 
     const certificates = await this.prisma.certificate.findMany({
       where: {
-        ...(includeRevoked ? { OR: [{ deletedAt: null }, { revokedAt: { not: null } }] } : { deletedAt: null }),
+        ...(includeRevoked ? ACTIVE_OR_REVOKED_CERTIFICATE_WHERE : { deletedAt: null }),
         person: { deletedAt: null },
         config: {
           deletedAt: null,
@@ -456,22 +461,67 @@ export class CertificateIssuingService {
     };
   }
 
-  async restoreCertificate(certificateId: string, issuedById?: string): Promise<Certificate> {
+  async restoreCertificate(
+    certificateId: string,
+    issuedById?: string,
+    { allowDeferred = false }: { allowDeferred?: boolean } = {},
+  ): Promise<Certificate> {
     const certificate = await this.prisma.certificate.findUnique({
-      where: { id: certificateId },
+      where: { id: certificateId, lgpdDeletionRequestId: null, person: { deletedAt: null } },
       select: CERTIFICATE_SELECT,
     });
-    if (!certificate?.revokedAt) {
+    if (!certificate) throw new NotFoundException(`Certificate ${certificateId} not found.`);
+    if (!certificate.revokedAt) {
       throw new BadRequestException('Este certificado não está revogado.');
     }
-    const { config, recipient } = await this.resolvePersonRecipient(certificate.configId, certificate.personId);
-    if (!config.isActive) throw new BadRequestException('Ative a configuração antes de reemitir.');
+    const config = await this.eligibilityService.getConfigById(certificate.configId);
+    const mayDefer = allowDeferred && !isManualCertificateIssuedTo(config.issuedTo as CertificateIssuedTo);
+    const canIssueNow = config.isActive && config.certificateTemplate.isActive && !config.certificateTemplate.deletedAt;
+    const recipients = canIssueNow
+      ? await this.eligibilityService.resolveEligibleRecipients(config, certificate.personId)
+      : [];
+    const recipient = recipients.find(({ person }) => person.id === certificate.personId);
+    if (!recipient) {
+      if (mayDefer) {
+        return this.clearCertificateRevocation(certificate, issuedById);
+      }
+      if (!canIssueNow) {
+        throw new BadRequestException('Ative a configuração e selecione um modelo disponível antes de reemitir.');
+      }
+      throw new BadRequestException('A pessoa não atende aos critérios atuais para receber este certificado.');
+    }
     return mapCertificate(
       await this.upsertCertificateForRecipient(config, recipient, issuedById, {
-        restoreRevoked: true,
+        restore: { id: certificate.id, revokedAt: certificate.revokedAt },
         force: true,
       }),
     );
+  }
+
+  private async clearCertificateRevocation(before: CertificateRecord, issuedById?: string): Promise<Certificate> {
+    if (!before.deletedAt || !before.revokedAt) {
+      throw new ConflictException('Não foi possível liberar a próxima emissão deste certificado.');
+    }
+    const certificate = await this.prisma.$transaction(async (tx) => {
+      await lockCertificateRecipient(tx, before.configId, before.personId);
+      const after = await tx.certificate.update({
+        where: {
+          id: before.id,
+          personId: before.personId,
+          person: { deletedAt: null },
+          configId: before.configId,
+          config: { deletedAt: null },
+          deletedAt: before.deletedAt,
+          revokedAt: before.revokedAt,
+          lgpdDeletionRequestId: null,
+        },
+        data: { revokedAt: null, revokedById: null, revocationReason: null },
+        select: CERTIFICATE_SELECT,
+      });
+      await this.recordCertificateAudit(before, after, AuditLogOperation.UPDATE, issuedById, tx);
+      return after;
+    });
+    return mapCertificate(certificate);
   }
 
   private async resolvePersonRecipient(
@@ -494,7 +544,7 @@ export class CertificateIssuingService {
     config: CertificateConfigRecord,
     recipient: EligibleCertificateRecipient,
     issuedById?: string,
-    options: Omit<CertificateIssuanceOptions, 'client'> & { prisma?: CertificateWriteClient } = {},
+    options: CertificateUpsertOptions = {},
   ) {
     const result = await this.upsertCertificateForRecipientResult(config, recipient, issuedById, options);
     return result.certificate;
@@ -504,7 +554,7 @@ export class CertificateIssuingService {
     config: CertificateConfigRecord,
     recipient: EligibleCertificateRecipient,
     issuedById?: string,
-    options: Omit<CertificateIssuanceOptions, 'client'> & { prisma?: CertificateWriteClient } = {},
+    options: CertificateUpsertOptions = {},
   ): Promise<{ certificate: CertificateRecord; shouldNotify: boolean }> {
     const shouldNotifyNow =
       (options.notify ?? true) && (options.prisma === undefined || options.prisma === this.prisma);
@@ -518,7 +568,15 @@ export class CertificateIssuingService {
       },
       select: CERTIFICATE_SELECT,
     });
-    if (existingCertificate?.revokedAt && !options.restoreRevoked) {
+    const { restore } = options;
+    if (
+      restore &&
+      (existingCertificate?.id !== restore.id ||
+        existingCertificate.revokedAt?.getTime() !== restore.revokedAt.getTime())
+    ) {
+      throw new ConflictException('A revogação do certificado mudou. Atualize a lista e tente novamente.');
+    }
+    if (existingCertificate?.revokedAt && !restore) {
       throw new ConflictException('Este certificado foi revogado. Remova a revogação antes de emitir novamente.');
     }
     const now = new Date();
@@ -581,7 +639,15 @@ export class CertificateIssuingService {
       const certificate = await client.certificate.update({
         where: {
           id: existingCertificate.id,
-          revokedAt: options.restoreRevoked ? existingCertificate.revokedAt : null,
+          revokedAt: restore?.revokedAt ?? null,
+          ...(restore
+            ? {
+                personId: recipient.person.id,
+                person: { deletedAt: null },
+                configId: config.id,
+                lgpdDeletionRequestId: null,
+              }
+            : {}),
         },
         data: {
           personId: recipient.person.id,
@@ -591,7 +657,7 @@ export class CertificateIssuingService {
           issuedById: issuedById ?? null,
           issuedAt,
           deletedAt: null,
-          ...(options.restoreRevoked ? { revokedAt: null, revokedById: null, revocationReason: null } : {}),
+          ...(restore ? { revokedAt: null, revokedById: null, revocationReason: null } : {}),
         },
         select: CERTIFICATE_SELECT,
       });

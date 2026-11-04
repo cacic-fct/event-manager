@@ -34,7 +34,9 @@ export class CertificateIssuanceAudit {
         ...(operation === AuditLogOperation.REISSUE ? { metadata: { renderedDataChanged } } : {}),
         summary:
           operation === AuditLogOperation.UPDATE
-            ? 'Revogação por remoção da lista retirada. Aguardando emissão.'
+            ? before?.revocationReason === 'MANUAL_RECIPIENT_REMOVED'
+              ? 'Revogação por remoção da lista retirada. Aguardando emissão.'
+              : 'Revogação removida sem emissão. Certificado permanece inválido.'
             : operation === AuditLogOperation.ISSUE
               ? 'Certificado emitido.'
               : operation === AuditLogOperation.DELETE

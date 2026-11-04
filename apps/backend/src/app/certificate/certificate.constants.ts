@@ -200,6 +200,10 @@ export const CERTIFICATE_CONFIG_SELECT = {
   deletedAt: true,
 } satisfies Prisma.CertificateConfigSelect;
 
+export const ACTIVE_OR_REVOKED_CERTIFICATE_WHERE = {
+  OR: [{ deletedAt: null }, { revokedAt: { not: null }, lgpdDeletionRequestId: null }],
+} satisfies Prisma.CertificateWhereInput;
+
 export const CERTIFICATE_SELECT = {
   revocationReason: true,
   revokedAt: true,

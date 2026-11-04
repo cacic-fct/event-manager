@@ -678,7 +678,7 @@
 
           <section class="surface field-group">
             <div class="surface-heading">
-              <h3>Certificados emitidos e revogados</h3>
+              <h3 #certificatesHeading tabindex="-1">Certificados emitidos e revogados</h3>
               <span>{{ workspace.certificates().length }} certificados</span>
             </div>
 
@@ -697,8 +697,13 @@
                   </span>
                   @if (certificate.revokedAt) {
                     @if (canEditSelectedTarget() && permissions.has(Permission.Certificate.Reissue)) {
-                      <button mat-button type="button" (click)="workspace.restoreCertificate(certificate)">
-                        Remover revogação e reemitir
+                      <button
+                        matListItemMeta
+                        mat-button
+                        type="button"
+                        [attr.aria-label]="'Permitir emissão para ' + certificate.person.name"
+                        (click)="allowCertificateIssuance(certificate, certificatesHeading)">
+                        Permitir emissão
                       </button>
                     }
                   } @else {

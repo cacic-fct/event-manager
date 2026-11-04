@@ -689,6 +689,33 @@ describe('AuthorizationPolicyService', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('allows scoped reissue of revoked certificates only in the granted event group', async () => {
+    activeScopes.mockResolvedValue([
+      grant({
+        permission: Permission.Certificate.Reissue,
+        scope: EventManagerPermissionScope.EVENT_GROUP,
+        eventGroupId: 'allowed-group',
+      }),
+    ]);
+    prisma.certificate.findFirst.mockImplementation(async ({ where }) =>
+      where?.OR
+        ? ({
+            config: {
+              scope: CertificateScope.EVENT_GROUP,
+              eventGroupId: where.id === 'allowed-certificate' ? 'allowed-group' : 'other-group',
+            },
+          } as never)
+        : null,
+    );
+    const actor = user([EventManagerKeycloakRole.Access]);
+    const permissions = [Permission.Certificate.Reissue];
+    const authorize = (id: string) =>
+      service.assertPermissions(actor, permissions, service.buildResourceContext({ id }, permissions));
+
+    await expect(authorize('allowed-certificate')).resolves.toBeUndefined();
+    await expect(authorize('other-certificate')).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
   it('resolves event-form ownership and linked targets for scoped form grants', async () => {
     activeScopes.mockResolvedValue([
       grant({
