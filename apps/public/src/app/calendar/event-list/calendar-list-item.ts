@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { formatTimeRange, getEventTypeLabel } from '@cacic-fct/shared-utils';
 import { EmojiService } from '../../shared/emoji.service';
+import { formatPublicTimeRange } from '../../shared/public-local-date';
 
 export interface CalendarListItemData {
   id: string;
@@ -33,6 +34,7 @@ export interface CalendarListItemData {
 })
 export class CalendarListItem {
   readonly item = input.required<CalendarListItemData>();
+  readonly usePublicTimeZone = input(false);
   readonly iconPosition = input<'leading' | 'top'>('leading');
   readonly emoji = inject(EmojiService);
 
@@ -49,6 +51,9 @@ export class CalendarListItem {
 
   readonly timeRangeLabel = computed(() => {
     const item = this.item();
+    if (this.usePublicTimeZone()) {
+      return formatPublicTimeRange(new Date(item.startDate), new Date(item.endDate));
+    }
     const start = item.startDate instanceof Date ? item.startDate.toISOString() : item.startDate;
     const end = item.endDate instanceof Date ? item.endDate.toISOString() : item.endDate;
     return formatTimeRange(start, end);

@@ -121,6 +121,25 @@ describe('CalendarListItem', () => {
     expect(time).toContain(`${String(end.getDate()).padStart(2, '0')}/${String(end.getMonth() + 1).padStart(2, '0')}`);
   });
 
+  it('uses São Paulo dates and times for program rows spanning local midnight', () => {
+    const start = new Date();
+    start.setUTCMonth(6, 10);
+    start.setUTCHours(2, 30, 0, 0);
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    fixture.componentRef.setInput('usePublicTimeZone', true);
+    fixture.componentRef.setInput('item', {
+      ...fixture.componentInstance.item(),
+      startDate: start,
+      endDate: end,
+    });
+    fixture.detectChanges();
+
+    const year = start.getUTCFullYear();
+    expect(fixture.nativeElement.querySelector('.time-range').textContent).toContain(
+      `De 09/07/${year} às 23:30 a 10/07/${year} às 00:30`,
+    );
+  });
+
   it('keeps a Material presentation list around the list item', () => {
     expect(fixture.nativeElement.querySelector('mat-list[role="presentation"]')).not.toBeNull();
   });

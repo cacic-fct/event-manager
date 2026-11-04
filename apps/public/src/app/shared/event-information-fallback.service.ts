@@ -8,7 +8,7 @@ import {
   type EventGroupDetails,
   type MajorEventDetails,
 } from '@cacic-fct/shared-utils';
-import { catchError, defer, from, map, of, switchMap, throwError } from 'rxjs';
+import { catchError, defer, map, of, switchMap, throwError } from 'rxjs';
 import type { EventPageData } from '../events/detail/event-api.service';
 import { AttendancesApiService } from '../profile/attendance/attendances-api.service';
 import { NetworkStatusService } from './network-status.service';
@@ -81,10 +81,16 @@ export class EventInformationFallbackService {
   }
 
   private savedDetails(targetType: EventTargetType, targetId: string) {
-    return defer(() => {
-      const userId = this.auth.user()?.sub;
-      if (!userId) return of(null);
-      return from(this.offline.getAttendanceDetail(userId, targetType, targetId));
+    return defer(async () => {
+      const liveUserId = this.auth.user()?.sub;
+      if (liveUserId) return this.offline.getAttendanceDetail(liveUserId, targetType, targetId);
+      if (this.network.isOnline()) return null;
+
+      const snapshot = await this.offline.getLatestUserSnapshot();
+      if (!snapshot) return null;
+
+      const saved = await this.offline.getAttendanceDetail(snapshot.userId, targetType, targetId);
+      return this.network.isOnline() ? null : saved;
     }).pipe(catchError(() => of(null)));
   }
 }

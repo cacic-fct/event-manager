@@ -221,7 +221,7 @@
   </ng-template>
 
   <ng-template #subscriptionContent>
-    @if (isAuthenticated() && !data.preview && isStandaloneEvent(event)) {
+    @if ((isAuthenticated() || !isOnline()) && !data.preview && isStandaloneEvent(event)) {
     <app-more-info
       [embedded]="true"
       [flatSections]="hasSubscription"

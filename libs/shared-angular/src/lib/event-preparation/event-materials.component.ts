@@ -24,7 +24,7 @@ import { EventPreparationApiService } from './event-preparation-api.service';
   templateUrl: './event-materials.component.html',
   styleUrl: './event-materials.component.scss',
   host: {
-    '[hidden]': '!editable() && (loading() ? !management() : !loadError() && original().length === 0)',
+    '[hidden]': '!editable() && !loading() && !loadError() && original().length === 0',
   },
 })
 export class EventMaterialsComponent {

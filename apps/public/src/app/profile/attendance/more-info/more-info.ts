@@ -182,7 +182,7 @@ export class MoreInfo {
   private readonly prizeDrawAvailabilityWatcher = effect((onCleanup) => {
     const targetType = this.prizeDrawTargetType();
     const targetId = this.prizeDrawTargetId();
-    if (!targetType || !targetId) {
+    if (!targetType || !targetId || !this.networkStatus.isOnline()) {
       return;
     }
 
@@ -427,13 +427,15 @@ export class MoreInfo {
         }[detail.targetType] as 'EVENT' | 'EVENT_GROUP' | 'MAJOR_EVENT';
         return forkJoin({
           formLinks: this.loadFormLinks(detail),
-          availability: this.prizeDrawsApi
-            .availability({
-              eventIds: targetType === 'EVENT' ? [detail.targetId] : undefined,
-              eventGroupIds: targetType === 'EVENT_GROUP' ? [detail.targetId] : undefined,
-              majorEventIds: targetType === 'MAJOR_EVENT' ? [detail.targetId] : undefined,
-            })
-            .pipe(catchError(() => of([]))),
+          availability: this.networkStatus.isOnline()
+            ? this.prizeDrawsApi
+                .availability({
+                  eventIds: targetType === 'EVENT' ? [detail.targetId] : undefined,
+                  eventGroupIds: targetType === 'EVENT_GROUP' ? [detail.targetId] : undefined,
+                  majorEventIds: targetType === 'MAJOR_EVENT' ? [detail.targetId] : undefined,
+                })
+                .pipe(catchError(() => of([])))
+            : of([]),
         }).pipe(
           map(
             ({ formLinks, availability }) =>

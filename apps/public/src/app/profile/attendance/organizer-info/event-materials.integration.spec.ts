@@ -23,7 +23,7 @@ describe('shared event materials editor', () => {
     await fixture.whenStable();
     return fixture;
   }
-  it('keeps participant materials hidden while loading and reveals the returned links', async () => {
+  it('shows the participant loading indicator and then the returned links', async () => {
     const links = [{ title: 'Slides', url: 'https://example.org/slides' }];
     api.getMaterials.mockResolvedValueOnce({ links, updatedAt: null });
 
@@ -32,7 +32,8 @@ describe('shared event materials editor', () => {
     fixture.detectChanges();
 
     expect(fixture.componentInstance.loading()).toBe(true);
-    expect(fixture.nativeElement.hidden).toBe(true);
+    expect(fixture.nativeElement.hidden).toBe(false);
+    expect(fixture.nativeElement.querySelector('mat-progress-bar')).not.toBeNull();
 
     await fixture.whenStable();
     fixture.detectChanges();

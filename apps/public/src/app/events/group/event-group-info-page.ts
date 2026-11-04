@@ -11,6 +11,7 @@ import { EventApiService } from '../detail/event-api.service';
 import { MoreInfo } from '../../profile/attendance/more-info/more-info';
 import { EventInformationFallbackService } from '../../shared/event-information-fallback.service';
 import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
+import { NetworkStatusService } from '../../shared/network-status.service';
 import { NotFoundGraphqlError } from '../../shared/rate-limit-error';
 import { routePageErrorStatus } from '../../shared/route-error-handling';
 import { EventGroupInfo } from './event-group-info';
@@ -23,12 +24,12 @@ import { EventGroupInfo } from './event-group-info';
     @if (current.status === 'ready') {
       <app-event-group-info
         [group]="current.group"
-        [events]="current.events"
+        [events]="programEvents()"
         [backUrl]="backUrl()"
         [participationStatuses]="participationStatuses()"
         [isAuthenticated]="isAuthenticated()"
         [hasParticipation]="hasParticipation()">
-        @if (isAuthenticated()) {
+        @if (isAuthenticated() || !isOnline()) {
           <app-more-info
             participationWorkspace
             [embedded]="true"
@@ -51,6 +52,7 @@ export class EventGroupInfoPage {
   private readonly routeErrors = inject(RouteErrorService);
   private readonly auth = inject(AuthService);
   readonly isAuthenticated = this.auth.isAuthenticated;
+  readonly isOnline = inject(NetworkStatusService).isOnline;
   readonly hasParticipation = signal(false);
   readonly participationDetail = signal<DetailViewModel | null>(null);
   readonly participationStatuses = computed(() =>
@@ -97,4 +99,17 @@ export class EventGroupInfoPage {
     ),
     { initialValue: { status: 'loading' as const } },
   );
+  readonly programEvents = computed(() => {
+    const state = this.state();
+    if (state.status !== 'ready') return [];
+
+    const events = new Map(state.events.map((event) => [event.id, event]));
+    const detail = this.participationDetail();
+    if (detail?.targetId === state.group.id && (this.isAuthenticated() || !this.isOnline())) {
+      for (const { event } of detail.events) {
+        if (!events.has(event.id)) events.set(event.id, event);
+      }
+    }
+    return [...events.values()];
+  });
 }

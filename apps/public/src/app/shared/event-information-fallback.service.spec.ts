@@ -11,6 +11,7 @@ const unavailable = new Error('Public catalog unavailable');
 
 describe('EventInformationFallbackService', () => {
   const data = createParticipationInformationFixture();
+  const getLatestUserSnapshot = vi.fn();
   const getAttendanceDetail = vi.fn();
   const getEventDetails = vi.fn();
   const getMajorEventDetails = vi.fn();
@@ -27,7 +28,7 @@ describe('EventInformationFallbackService', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: AuthService, useValue: { user: () => (userId ? { sub: userId } : null) } },
-        { provide: PublicDataAccessService, useValue: { getAttendanceDetail } },
+        { provide: PublicDataAccessService, useValue: { getAttendanceDetail, getLatestUserSnapshot } },
         { provide: AttendancesApiService, useValue: { getEventDetails, getMajorEventDetails, getEventGroupDetails } },
         { provide: NetworkStatusService, useValue: { isOnline: () => online } },
       ],
@@ -35,8 +36,10 @@ describe('EventInformationFallbackService', () => {
     service = TestBed.inject(EventInformationFallbackService);
   });
 
-  it('restores the current user’s saved event and attendance without network requests', async () => {
+  it('restores the latest saved participation when restarting offline without a live user', async () => {
     online = false;
+    userId = null;
+    getLatestUserSnapshot.mockResolvedValue({ userId: 'participant' });
     getAttendanceDetail.mockResolvedValue({
       eventType: 'event',
       details: {
@@ -67,6 +70,7 @@ describe('EventInformationFallbackService', () => {
   it('does not read another account’s cached details for a guest', async () => {
     userId = null;
     await expect(firstValueFrom(service.eventPage(data.targetId, unavailable))).rejects.toBe(unavailable);
+    expect(getLatestUserSnapshot).not.toHaveBeenCalled();
     expect(getAttendanceDetail).not.toHaveBeenCalled();
     expect(getEventDetails).not.toHaveBeenCalled();
   });

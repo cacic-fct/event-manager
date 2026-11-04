@@ -1,11 +1,17 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
-import { createPublicEvent, createPublicEventGroup } from '@cacic-fct/event-manager-public-testing';
+import {
+  createParticipationInformationFixture,
+  createPublicEvent,
+  createPublicEventGroup,
+} from '@cacic-fct/event-manager-public-testing';
 import { AuthService } from '@cacic-fct/shared-angular';
+import { buildDetailViewModel } from '@cacic-fct/shared-utils';
 import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import { of } from 'rxjs';
 import { EventInformationFallbackService } from '../../shared/event-information-fallback.service';
+import { NetworkStatusService } from '../../shared/network-status.service';
 import { EventApiService } from '../detail/event-api.service';
 import { EventGroupInfoPage } from './event-group-info-page';
 
@@ -24,6 +30,7 @@ it('loads the next group program page by cursor and shows rescheduled activities
     .fn()
     .mockReturnValueOnce(of(rows))
     .mockReturnValueOnce(of([rescheduled, next]));
+  const authenticated = signal(true);
   TestBed.overrideComponent(EventGroupInfoPage, { set: { template: '', imports: [] } });
   TestBed.configureTestingModule({
     providers: [
@@ -34,7 +41,8 @@ it('loads the next group program page by cursor and shows rescheduled activities
           queryParamMap: of(convertToParamMap({})),
         },
       },
-      { provide: AuthService, useValue: { isAuthenticated: signal(false) } },
+      { provide: AuthService, useValue: { isAuthenticated: authenticated } },
+      { provide: NetworkStatusService, useValue: { isOnline: signal(true) } },
       { provide: RouteErrorService, useValue: {} },
       { provide: EventInformationFallbackService, useValue: {} },
       { provide: EventApiService, useValue: { listPublicEventGroupEvents } },
@@ -50,4 +58,25 @@ it('loads the next group program page by cursor and shows rescheduled activities
   ]);
   const state = fixture.componentInstance.state();
   expect(state).toMatchObject({ status: 'ready', group, events: [rescheduled, ...rows.slice(1), next] });
+
+  const historical = { ...first, id: 'historical' };
+  const participation = createParticipationInformationFixture({ targetType: 'event-group' });
+  fixture.componentInstance.participationDetail.set(
+    buildDetailViewModel({
+      eventType: 'event-group',
+      details: {
+        eventGroup: group,
+        subscription: null,
+        events: [first, historical],
+        attendances: participation.attendances,
+        hasIssuedCertificate: true,
+      },
+    }),
+  );
+
+  expect(fixture.componentInstance.programEvents()).toEqual([rescheduled, ...rows.slice(1), next, historical]);
+  expect(fixture.componentInstance.participationStatuses()[historical.id]).toBeTruthy();
+
+  authenticated.set(false);
+  expect(fixture.componentInstance.programEvents()).not.toContain(historical);
 });

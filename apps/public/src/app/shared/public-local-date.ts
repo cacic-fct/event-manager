@@ -1,5 +1,27 @@
 export const PUBLIC_TIME_ZONE = 'America/Sao_Paulo';
 
+const publicTimeFormatter = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: PUBLIC_TIME_ZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+const publicDateFormatter = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: PUBLIC_TIME_ZONE,
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+});
+
+export function formatPublicTimeRange(start: Date, end: Date): string {
+  const startTime = publicTimeFormatter.format(start);
+  const endTime = publicTimeFormatter.format(end);
+  if (publicLocalDateKey(start) === publicLocalDateKey(end)) {
+    return `Das ${startTime} às ${endTime}`;
+  }
+  return `De ${publicDateFormatter.format(start)} às ${startTime} a ${publicDateFormatter.format(end)} às ${endTime}`;
+}
+
 type CalendarParts = {
   year: number;
   month: number;

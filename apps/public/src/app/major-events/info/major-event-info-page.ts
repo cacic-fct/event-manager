@@ -22,6 +22,7 @@ import {
 } from 'rxjs';
 import { MoreInfo } from '../../profile/attendance/more-info/more-info';
 import { EventInformationFallbackService } from '../../shared/event-information-fallback.service';
+import { NetworkStatusService } from '../../shared/network-status.service';
 import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
 import { routePageErrorStatus } from '../../shared/route-error-handling';
 import { MajorEventSubscriptionApiService } from '../registration/subscription-api.service';
@@ -59,7 +60,7 @@ type SubscriptionState =
         (loginRequested)="login()"
         (retryProgram)="loadProgram()"
         (loadMoreProgram)="loadProgram()">
-        @if (isAuthenticated()) {
+        @if (isAuthenticated() || !isOnline()) {
           <app-more-info
             participationWorkspace
             [embedded]="true"
@@ -91,6 +92,7 @@ export class MajorEventInfoPage {
   );
   private readonly subscriptionState = signal<SubscriptionState>({ status: 'loading' });
   readonly isAuthenticated = this.auth.isAuthenticated;
+  readonly isOnline = inject(NetworkStatusService).isOnline;
   readonly hasParticipation = signal(false);
   readonly participationDetail = signal<DetailViewModel | null>(null);
   readonly hasSubscription = computed(() => {
