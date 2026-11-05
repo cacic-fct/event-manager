@@ -942,6 +942,120 @@ describe('CertificateIssuingService', () => {
     deletedAt: null,
   };
 
+  describe('restoring a revoked certificate', () => {
+    function setupRestore(eligible = true) {
+      const revokedAt = new Date();
+      const certificate = {
+        ...mappedCertificateRecord,
+        deletedAt: revokedAt as Date | null,
+        revokedAt: revokedAt as Date | null,
+        revocationReason: 'ADMIN' as string | null,
+      };
+      const config = { ...certificate.config, issuedTo: 'LECTURER' };
+      const prisma = {
+        $executeRaw: jest.fn().mockResolvedValue(1),
+        $transaction: jest.fn((operation: (tx: unknown) => Promise<unknown>): Promise<unknown> => operation(prisma)),
+        people: { findFirst: jest.fn().mockResolvedValue(certificate.person) },
+        certificate: {
+          findUnique: jest.fn(async () => ({ ...certificate })),
+          create: jest.fn(),
+          update: jest.fn(async ({ data }: { data: Partial<typeof certificate> }) => ({
+            ...Object.assign(certificate, data),
+          })),
+        },
+      };
+      const eligibility = {
+        getConfigById: jest.fn().mockResolvedValue(config),
+        resolveEligibleRecipients: jest
+          .fn()
+          .mockResolvedValue(eligible ? [{ person: certificate.person, events: [] }] : []),
+      };
+      const validation = { normalizeRequiredId: (_field: string, value: string) => value };
+      const audit = { record: jest.fn().mockResolvedValue(undefined) };
+      const notifications = { createPendingOutbox: jest.fn(), enqueue: jest.fn() };
+      const service = new CertificateIssuingService(
+        prisma as never,
+        validation as never,
+        eligibility as never,
+        undefined,
+        audit as never,
+        notifications as never,
+      );
+      return { service, prisma, certificate, eligibility, audit, notifications };
+    }
+
+    it('reissues a soft-deleted certificate under the original ID', async () => {
+      const { service, prisma, certificate } = setupRestore();
+      const revokedAt = certificate.revokedAt;
+      await expect(
+        service.restoreCertificate(certificate.id, undefined, { allowDeferred: true }),
+      ).resolves.toMatchObject({
+        id: certificate.id,
+        deletedAt: undefined,
+        revokedAt: null,
+        revocationReason: null,
+      });
+      expect(prisma.certificate.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: certificate.id,
+            revokedAt,
+            lgpdDeletionRequestId: null,
+            person: { deletedAt: null },
+          }),
+        }),
+      );
+      expect(prisma.certificate.create).not.toHaveBeenCalled();
+    });
+
+    it('keeps a certificate revoked if the person no longer qualifies', async () => {
+      const { service, prisma, certificate } = setupRestore(false);
+      await expect(service.restoreCertificate(certificate.id)).rejects.toThrow('não atende aos critérios atuais');
+      expect(prisma.certificate.update).not.toHaveBeenCalled();
+      expect(prisma.certificate.create).not.toHaveBeenCalled();
+    });
+
+    it('refuses to restore a replacement row for the same person and config', async () => {
+      const { service, prisma, certificate } = setupRestore();
+      prisma.certificate.findUnique
+        .mockResolvedValueOnce(certificate)
+        .mockResolvedValueOnce({ ...certificate, id: 'replacement' });
+      await expect(service.restoreCertificate(certificate.id)).rejects.toThrow('A revogação do certificado mudou');
+      expect(prisma.certificate.update).not.toHaveBeenCalled();
+      expect(prisma.certificate.create).not.toHaveBeenCalled();
+    });
+
+    it('clears the block without issuing and reuses the ID once the person becomes eligible', async () => {
+      const { service, prisma, certificate, eligibility, audit, notifications } = setupRestore(false);
+      const deletedAt = certificate.deletedAt;
+      await expect(
+        service.restoreCertificate(certificate.id, undefined, { allowDeferred: true }),
+      ).resolves.toMatchObject({
+        id: certificate.id,
+        deletedAt,
+        revokedAt: null,
+        revocationReason: null,
+      });
+      expect(notifications.createPendingOutbox).not.toHaveBeenCalled();
+      expect(notifications.enqueue).not.toHaveBeenCalled();
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entityId: certificate.id,
+          summary: 'Revogação removida sem emissão. Certificado permanece inválido.',
+        }),
+        prisma,
+      );
+      await expect(service.issueForPerson(certificate.configId, certificate.personId)).rejects.toThrow('not eligible');
+
+      eligibility.resolveEligibleRecipients.mockResolvedValue([{ person: certificate.person, events: [] }]);
+      await expect(service.issueForPerson(certificate.configId, certificate.personId)).resolves.toMatchObject({
+        id: certificate.id,
+        deletedAt: undefined,
+      });
+      expect(prisma.certificate.create).not.toHaveBeenCalled();
+    });
+  });
+
   it('commits a notification intent before a later recipient fails and keeps it on an unchanged retry', async () => {
     const recipient = { person: mappedCertificateRecord.person, events: [] };
     const failure = new Error('second recipient failed');

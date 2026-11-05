@@ -15,6 +15,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import type { Notification, Preference } from '@novu/js';
 import { filter, firstValueFrom } from 'rxjs';
 import { NovuListNotificationsArgs, NovuNotificationsService } from './novu-notifications.service';
@@ -38,6 +39,7 @@ type NotificationRedirectResult = 'opened' | 'failed' | 'invalid' | 'none';
     MatSlideToggleModule,
     MatTabsModule,
     MatToolbarModule,
+    MatTooltipModule,
   ],
   templateUrl: './novu-inbox.component.html',
   styleUrl: './novu-inbox.component.css',

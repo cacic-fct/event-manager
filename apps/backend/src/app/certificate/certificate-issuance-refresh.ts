@@ -21,7 +21,6 @@ export interface CertificateIssuanceOptions {
   createNotifications?: boolean;
   batchSize?: number;
   force?: boolean;
-  restoreRevoked?: boolean;
   client?: CertificateWriteClient;
 }
 

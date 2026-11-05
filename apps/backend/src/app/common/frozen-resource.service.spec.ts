@@ -1,5 +1,6 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { CertificateScope } from '@prisma/client';
+import { subMonths } from 'date-fns';
 import {
   FROZEN_DELETE_PERMISSION,
   FROZEN_EDIT_PERMISSION,
@@ -381,6 +382,39 @@ describe('FrozenResourceService', () => {
         deletedAt: null,
       },
       select: expect.any(Object),
+    });
+  });
+
+  it('checks the same freeze rules for an explicitly revoked certificate during restoration', async () => {
+    const prisma = {
+      certificate: {
+        findFirst: jest.fn(({ where }) => (where.OR ? { configId: 'config-1' } : null)),
+      },
+      certificateConfig: {
+        findFirst: jest.fn().mockResolvedValue({
+          scope: CertificateScope.OTHER,
+          createdAt: subMonths(new Date(), 3),
+        }),
+      },
+    };
+    const service = new FrozenResourceService(prisma as unknown as PrismaService);
+    const user = buildUser([]);
+
+    await expect(service.assertCertificateMutable('revoked', user, 'delete')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.assertCertificateMutable('revoked', user, 'edit', { includeRevoked: true })).rejects.toThrow(
+      FROZEN_EDIT_PERMISSION,
+    );
+    await expect(
+      service.assertCertificateMutable('revoked', buildUser([FROZEN_EDIT_PERMISSION]), 'edit', {
+        includeRevoked: true,
+      }),
+    ).resolves.toBeUndefined();
+    expect(prisma.certificate.findFirst).toHaveBeenLastCalledWith({
+      where: {
+        id: 'revoked',
+        OR: [{ deletedAt: null }, { revokedAt: { not: null }, lgpdDeletionRequestId: null }],
+      },
+      select: { configId: true },
     });
   });
 

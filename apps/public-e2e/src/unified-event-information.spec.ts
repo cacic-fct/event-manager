@@ -55,6 +55,7 @@ test('the unified major-event page keeps payment tools and a working day filter'
         return (
           tab !== null &&
           tab.getBoundingClientRect().right <= window.innerWidth &&
+          section.scrollWidth <= section.clientWidth &&
           document.documentElement.scrollWidth <= window.innerWidth
         );
       }),
@@ -95,11 +96,12 @@ test('event groups show aggregate participation and let people open an activity'
     .click();
   await expect(page).toHaveURL(new RegExp(`/app/event/${data.events[0].id}`));
   await expect(page.getByRole('heading', { name: data.events[0].name, exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: data.eventGroup.name })).toHaveAttribute(
+  const groupLink = page.getByRole('link', { name: data.eventGroup.name, exact: true });
+  await expect(groupLink).toHaveAttribute(
     'href',
     `/app/event-group/${data.targetId}?returnUrl=%2Fevent%2F${data.events[0].id}`,
   );
-  await page.getByRole('link', { name: data.eventGroup.name }).click();
+  await groupLink.click();
   await expect(page.getByRole('link', { name: 'Voltar ao evento', exact: true })).toHaveAttribute(
     'href',
     `/app/event/${data.events[0].id}`,

@@ -381,7 +381,14 @@ export class CertificateDownloadService {
         printBackground: true,
       });
       return await protectCertificatePdf(pdf);
-    } catch {
+    } catch (error: unknown) {
+      const details =
+        error instanceof Error
+          ? (error.stack ?? error.message)
+          : typeof error === 'string'
+            ? error
+            : 'Unknown PDF rendering error';
+      this.logger.error('Failed to render certificate PDF.', details);
       throw new InternalServerErrorException('Failed to render certificate PDF.');
     } finally {
       clearTimeout(timeout);

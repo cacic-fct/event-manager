@@ -8,7 +8,7 @@ import { EventApiService } from '../graphql/event-api.service';
 import { EventGroupApiService } from '../graphql/event-group-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { PeopleApiService } from '../graphql/people-api.service';
-import { CertificateConfigInput } from '@cacic-fct/event-manager-admin-contracts';
+import { Certificate, CertificateConfigInput } from '@cacic-fct/event-manager-admin-contracts';
 import { Permission } from '@cacic-fct/shared-permissions';
 import {
   createAdminCertificateConfig,
@@ -235,6 +235,39 @@ describe('CertificatesService', () => {
     await service.removeManualRecipient(person);
     expect(api.removeCertificateManualRecipient).toHaveBeenCalledWith('config-1', person.id);
     expect(api.listCertificates.mock.calls.length).toBeGreaterThan(loadsBeforeRemoval);
+  });
+
+  it('uses the revoked certificate configuration for manual issuance confirmation', async () => {
+    const person = createAdminPerson();
+    const config = createAdminCertificateConfig({ scope: 'OTHER', issuedTo: 'OTHER' }, certificateTemplate);
+    const timestamp = new Date().toISOString();
+    const certificate: Certificate = {
+      id: 'revoked-certificate',
+      personId: person.id,
+      person,
+      configId: config.id,
+      config,
+      renderedDataJson: '{}',
+      issuedAt: timestamp,
+      certificateTemplateId: certificateTemplate.id,
+      certificateTemplate,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      revokedAt: timestamp,
+      deletedAt: timestamp,
+    };
+    dialog.open.mockReturnValueOnce({ afterClosed: () => of(false) });
+
+    expect(service.isManualCertificateIssue()).toBe(false);
+    await expect(service.allowCertificateIssuance(certificate)).resolves.toBe(false);
+    expect(dialog.open).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          message: expect.stringContaining('precisa atender aos critérios atuais de emissão'),
+        }),
+      }),
+    );
   });
 
   it('opens an event certificate workspace when parent-event read is forbidden', async () => {

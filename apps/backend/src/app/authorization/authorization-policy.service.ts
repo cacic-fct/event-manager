@@ -18,6 +18,7 @@ import {
 import { CertificateScope, EventManagerPermissionScope } from '@prisma/client';
 import { addHours, isFuture, isWithinInterval, subHours } from 'date-fns';
 import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { ACTIVE_OR_REVOKED_CERTIFICATE_WHERE } from '../certificate/certificate.constants';
 import { PrismaService } from '../prisma/prisma.service';
 
 export type AuthorizationResourceContext = {
@@ -590,7 +591,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     }
 
     if (context.certificateId) {
-      await this.addCertificateTarget(target, context.certificateId);
+      await this.addCertificateTarget(target, context.certificateId, permission === Permission.Certificate.Reissue);
     }
 
     if (context.eventFormId) {
@@ -678,10 +679,15 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
       return false;
     }
 
-    return this.addPrimaryResourceTarget(target, resource, context.genericId);
+    return this.addPrimaryResourceTarget(target, resource, context.genericId, permission);
   }
 
-  private async addPrimaryResourceTarget(target: ResolvedGrantTarget, resource: string, id: string): Promise<boolean> {
+  private async addPrimaryResourceTarget(
+    target: ResolvedGrantTarget,
+    resource: string,
+    id: string,
+    permission: Permission,
+  ): Promise<boolean> {
     switch (resource) {
       case 'event':
         await this.addEventTarget(target, id);
@@ -702,7 +708,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
         await this.addCertificateConfigTarget(target, id);
         return true;
       case 'certificate':
-        await this.addCertificateTarget(target, id);
+        await this.addCertificateTarget(target, id, permission === Permission.Certificate.Reissue);
         return true;
       case 'event-form':
         await this.addEventFormTarget(target, id);
@@ -875,11 +881,15 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     );
   }
 
-  private async addCertificateTarget(target: ResolvedGrantTarget, certificateId: string): Promise<void> {
+  private async addCertificateTarget(
+    target: ResolvedGrantTarget,
+    certificateId: string,
+    includeRevoked: boolean,
+  ): Promise<void> {
     const certificate = await this.prisma.certificate.findFirst({
       where: {
         id: certificateId,
-        deletedAt: null,
+        ...(includeRevoked ? ACTIVE_OR_REVOKED_CERTIFICATE_WHERE : { deletedAt: null }),
       },
       select: {
         config: {

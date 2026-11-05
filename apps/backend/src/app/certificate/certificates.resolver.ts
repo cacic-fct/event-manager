@@ -477,9 +477,13 @@ export class CertificatesResolver {
 
   @Mutation(() => Certificate, { name: 'restoreCertificate' })
   @RequirePermissions(Permission.Certificate.Reissue)
-  async restoreCertificate(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
-    await this.frozenResources.assertCertificateMutable(id, this.getUser(context), 'edit');
-    return this.issuingService.restoreCertificate(id, this.getIssuedById(context));
+  async restoreCertificate(
+    @Args('id', { type: () => String }) id: string,
+    @Context() context: GraphqlContext,
+    @Args('allowDeferred', { type: () => Boolean, defaultValue: false }) allowDeferred = false,
+  ) {
+    await this.frozenResources.assertCertificateMutable(id, this.getUser(context), 'edit', { includeRevoked: true });
+    return this.issuingService.restoreCertificate(id, this.getIssuedById(context), { allowDeferred });
   }
 
   @Query(() => [CertificateIssuanceRun], { name: 'certificateIssuanceRuns' })

@@ -90,6 +90,7 @@ type CertificateFieldDefinition = {
 type CertificateTemplatesLoadState = 'loading' | 'ready' | 'empty' | 'error';
 
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
+const MANUAL_CERTIFICATE_RECIPIENT_TYPES: readonly CertificateIssuedToOption[] = ['OTHER', 'SPORTS_ORGANIZER'];
 
 @Service()
 export class CertificatesService {
@@ -178,7 +179,7 @@ export class CertificatesService {
     this.requiresCustomCertificateTypeLabel(this.certificateConfigModel().issuedTo),
   );
   readonly isManualCertificateIssue = computed(() =>
-    ['OTHER', 'SPORTS_ORGANIZER'].includes(this.certificateConfigModel().issuedTo),
+    MANUAL_CERTIFICATE_RECIPIENT_TYPES.includes(this.certificateConfigModel().issuedTo),
   );
   readonly certificateOperationsEnabled = computed(
     () =>
@@ -1076,19 +1077,29 @@ export class CertificatesService {
     }
   }
 
-  async restoreCertificate(certificate: Certificate): Promise<void> {
+  async allowCertificateIssuance(certificate: Certificate): Promise<boolean> {
     const confirmed = await this.confirm({
-      title: 'Remover revogação e reemitir',
-      message: `Permitir a emissão novamente para ${certificate.person.name}? A elegibilidade será verificada antes da reemissão.`,
-      confirmLabel: 'Permitir e reemitir',
+      title: 'Permitir emissão novamente',
+      message: MANUAL_CERTIFICATE_RECIPIENT_TYPES.includes(certificate.config.issuedTo)
+        ? `Reemitir o certificado de ${certificate.person.name}? A pessoa precisa atender aos critérios atuais de emissão.`
+        : `O certificado de ${certificate.person.name} será reemitido agora se a pessoa já atender aos critérios. Caso contrário, continuará inválido até uma emissão futura. O código de validação será mantido.`,
+      confirmLabel: 'Permitir emissão',
     });
-    if (!confirmed) return;
+    if (!confirmed) return false;
     try {
-      await firstValueFrom(this.api.restoreCertificate(certificate.id));
+      const restored = await firstValueFrom(this.api.restoreCertificate(certificate.id));
       await this.loadCertificates();
-      this.snackbar.open('Revogação removida e certificado reemitido.', 'Fechar', { duration: 3000 });
+      this.snackbar.open(
+        restored.deletedAt
+          ? 'Emissão liberada. O certificado continua inválido por enquanto.'
+          : 'Certificado reemitido.',
+        'Fechar',
+        { duration: 3000 },
+      );
+      return true;
     } catch (error) {
-      this.feedback.error(error, 'Não foi possível remover a revogação.');
+      this.feedback.error(error, 'Não foi possível permitir a emissão.');
+      return false;
     }
   }
 

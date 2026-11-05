@@ -451,9 +451,9 @@ export class CertificateApiService {
 
   restoreCertificate(id: string) {
     return this.graphqlHttp
-      .request<{ restoreCertificate: Certificate }>(
+      .request<{ restoreCertificate: Pick<Certificate, 'id' | 'deletedAt'> }>(
         `mutation RestoreCertificate($id: String!) {
-        restoreCertificate(id: $id) { ${CERTIFICATE_FIELDS} }
+        restoreCertificate(id: $id, allowDeferred: true) { id deletedAt }
       }`,
         { id },
       )

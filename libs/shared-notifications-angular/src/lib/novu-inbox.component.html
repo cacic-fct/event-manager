@@ -188,12 +188,32 @@
             <span matListItemLine>{{ notification.createdAt | date: 'dd/MM/yyyy HH:mm' }}</span>
 
             <div matListItemMeta class="notification-actions">
-              @if (notification.primaryAction) {
-                <button mat-button type="button" [disabled]="busy()" (click)="runPrimaryAction(notification)">
-                  {{ notification.primaryAction.label }}
-                </button>
+              @if (notification.primaryAction; as action) {
+                @if (action.redirect?.url) {
+                  <button
+                    matIconButton
+                    type="button"
+                    [attr.aria-label]="action.label"
+                    [matTooltip]="action.label"
+                    [disabled]="busy()"
+                    (click)="runPrimaryAction(notification)">
+                    <mat-icon aria-hidden="true">chevron_right</mat-icon>
+                  </button>
+                } @else {
+                  <button mat-button type="button" [disabled]="busy()" (click)="runPrimaryAction(notification)">
+                    {{ action.label }}
+                  </button>
+                }
               } @else if (notification.redirect?.url) {
-                <button mat-button type="button" [disabled]="busy()" (click)="openRedirect(notification)">Abrir</button>
+                <button
+                  matIconButton
+                  type="button"
+                  aria-label="Abrir notificação"
+                  matTooltip="Abrir notificação"
+                  [disabled]="busy()"
+                  (click)="openRedirect(notification)">
+                  <mat-icon aria-hidden="true">chevron_right</mat-icon>
+                </button>
               }
 
               <button

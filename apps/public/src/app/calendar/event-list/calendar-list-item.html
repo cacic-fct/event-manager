@@ -48,7 +48,7 @@
         <span class="metadata-item">{{ entry.locationDescription }}</span>
       </div>
       } @if (entry.participationStatus; as status) {
-      <app-participation-status-icons [eventStatus]="status" />
+      <app-participation-status-icons [eventStatus]="status" [showSubscriptionLabel]="true" />
       }
     </div>
   </a>
@@ -94,7 +94,7 @@
         <span class="metadata-item">{{ entry.locationDescription }}</span>
       </div>
       } @if (entry.participationStatus; as status) {
-      <app-participation-status-icons [eventStatus]="status" />
+      <app-participation-status-icons [eventStatus]="status" [showSubscriptionLabel]="true" />
       }
     </div>
   </mat-list-item>

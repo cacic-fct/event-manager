@@ -12,11 +12,12 @@ import { applicationConfig } from '@storybook/angular';
 import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import type { CertificateFolder, CertificateTemplate } from '@cacic-fct/event-manager-admin-contracts';
 import { filter, map, of, startWith } from 'rxjs';
-import { createAdminCertificateConfig, createAdminPerson } from '../testing/admin-entity-fixtures';
+import { createAdminCertificateConfig, createAdminEvent, createAdminPerson } from '../testing/admin-entity-fixtures';
 import { CertificatesService } from './certificates.service';
 import { CertificateApiService } from '../graphql/certificate-api.service';
+import { EventApiService } from '../graphql/event-api.service';
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import {
   createCertificateTemplatesStoryHandler,
   type CertificateTemplatesStoryOptions,
@@ -405,6 +406,85 @@ export const IssuanceWorkspace: Story = {
   },
 };
 
+const revocationEvent = createAdminEvent();
+const revocationConfig = createAdminCertificateConfig(
+  { event: revocationEvent, name: 'Participante' },
+  standaloneCertificateTemplate,
+);
+const revokedCertificateId = 'revoked-certificate';
+const restoreRevokedCertificate = fn((id: string) => of({ id, deletedAt: folderStoryTimestamp }));
+
+export const RevocationWorkspace: Story = {
+  render: () => ({ props: {}, template: '<main><app-workspace-certificates-tab /></main>' }),
+  decorators: [
+    applicationConfig({
+      providers: [
+        { provide: EventApiService, useValue: { getEvent: () => of(revocationEvent) } },
+        {
+          provide: CertificateApiService,
+          useFactory: () => {
+            const person = createAdminPerson({ name: 'Ana Souza' });
+            const certificate = {
+              id: revokedCertificateId,
+              personId: person.id,
+              person,
+              configId: revocationConfig.id,
+              config: revocationConfig,
+              renderedDataJson: '{}',
+              issuedAt: folderStoryTimestamp,
+              certificateTemplateId: standaloneCertificateTemplate.id,
+              certificateTemplate: standaloneCertificateTemplate,
+              createdAt: folderStoryTimestamp,
+              updatedAt: folderStoryTimestamp,
+              revokedAt: folderStoryTimestamp,
+              deletedAt: folderStoryTimestamp,
+            };
+            let revoked = true;
+            return {
+              ...standaloneFolderCertificateApi,
+              listCertificateConfigs: () => of([revocationConfig]),
+              getCertificateConfig: () => of(revocationConfig),
+              listCertificateIssuanceRuns: () => of([]),
+              listCertificates: () => of(revoked ? [certificate] : []),
+              restoreCertificate: (id) => {
+                revoked = false;
+                return restoreRevokedCertificate(id);
+              },
+            } satisfies Partial<CertificateApiService>;
+          },
+        },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            paramMap: of(
+              convertToParamMap({ targetType: 'event', targetId: revocationEvent.id, configId: revocationConfig.id }),
+            ),
+          },
+        },
+        {
+          provide: PermissionsService,
+          useValue: { has: () => true, hasAny: () => true, hasAll: () => true, canDelete: () => true },
+        },
+        provideAppInitializer(() => inject(CertificatesService).loadCertificateTemplates()),
+      ],
+    }),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    const action = { name: 'Permitir emissão para Ana Souza — Participante' };
+    restoreRevokedCertificate.mockClear();
+    await userEvent.click(await canvas.findByRole('button', action));
+    const dialog = await page.findByRole('dialog', { name: 'Permitir emissão novamente' });
+    await expect(within(dialog).getByText(/continuará inválido/)).toBeVisible();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Permitir emissão' }));
+    await expect(restoreRevokedCertificate).toHaveBeenCalledWith(revokedCertificateId);
+    await waitFor(async () => {
+      await expect(canvas.queryByText('Ana Souza', { exact: true })).not.toBeInTheDocument();
+    });
+  },
+};
+
 const manualEligibilityConfig = createAdminCertificateConfig(
   {
     id: 'manual-eligibility-story',
@@ -478,6 +558,6 @@ export const ManualEligibilityWorkspace: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Lista de destinatários' })).toBeVisible();
-    await expect(canvas.getByRole('button', { name: 'Remover revogação e reemitir' })).toBeVisible();
+    await expect(await canvas.findByRole('button', { name: 'Permitir emissão para Carla Santos' })).toBeVisible();
   },
 };

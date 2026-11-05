@@ -124,6 +124,12 @@ export class CertificatesPageComponent {
     }
   }
 
+  protected async allowCertificateIssuance(certificate: Certificate, heading: HTMLElement): Promise<void> {
+    if (await this.workspace.allowCertificateIssuance(certificate)) {
+      heading.focus();
+    }
+  }
+
   protected canEditSelectedTarget(): boolean {
     return (
       this.permissions.hasAny([
