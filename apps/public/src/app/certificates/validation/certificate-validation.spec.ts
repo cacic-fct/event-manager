@@ -1,5 +1,5 @@
 import '../../testing/observer-mocks';
-import { HttpResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Component, DestroyRef, signal } from '@angular/core';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -232,6 +232,44 @@ describe('CertificateValidation', () => {
     component.onTurnstileTokenChange('scan-token');
 
     expect(api.validateCertificate).toHaveBeenCalledWith('scanned-certificate', 'scan-token');
+  });
+
+  it('uses the code from the PDF body for a Turnstile-protected lookup', async () => {
+    const { api, component, fixture, router } = await createFixture();
+    const file = new File(['pdf contents'], 'unrelated-filename.pdf', { type: 'application/pdf' });
+    api.validateCertificatePdf.mockReturnValue(of({ certificateId: 'certificate-1', ...verificationFixture }));
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(input.multiple).toBe(false);
+    Object.defineProperty(input, 'files', { value: [file] });
+
+    input.dispatchEvent(new Event('change'));
+    expect(component.state()).toEqual({ status: 'challenge', source: 'pdf' });
+    expect(api.validateCertificatePdf).not.toHaveBeenCalled();
+    component.onTurnstileTokenChange('pdf-token');
+    expect(api.validateCertificatePdf).toHaveBeenCalledExactlyOnceWith(file, 'pdf-token');
+    expect(api.validateCertificate).not.toHaveBeenCalled();
+    expect(router.navigate).toHaveBeenCalledWith(['/validate'], { queryParams: { certificateId: 'certificate-1' } });
+  });
+
+  it('rejects multiple files and reports when a PDF has no unique code', async () => {
+    const { api, component, fixture } = await createFixture();
+    const file = new File(['pdf contents'], 'certificate.pdf', { type: 'application/pdf' });
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [file, file], configurable: true });
+
+    component.onTurnstileTokenChange('pdf-token');
+    component.selectCertificatePdf(input);
+    expect(component.pdfError()).toBe('Selecione um único arquivo PDF.');
+    expect(api.validateCertificatePdf).not.toHaveBeenCalled();
+
+    api.validateCertificatePdf.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 422 })));
+    Object.defineProperty(input, 'files', { value: [file] });
+    component.selectCertificatePdf(input);
+    expect(component.pdfError()).toContain('Não foi possível identificar um único código');
+    expect(component.readingPdf()).toBe(false);
+    expect(api.validateCertificate).not.toHaveBeenCalled();
   });
 
   it.each(['path', 'query'])(
@@ -565,6 +603,7 @@ async function createFixture({
 } = {}): Promise<{
   api: {
     validateCertificate: ReturnType<typeof vi.fn>;
+    validateCertificatePdf: ReturnType<typeof vi.fn>;
     downloadCertificate: ReturnType<typeof vi.fn>;
     requestPreview: ReturnType<typeof vi.fn>;
     previewCertificate: ReturnType<typeof vi.fn>;
@@ -581,6 +620,7 @@ async function createFixture({
   const queryParamMap = new BehaviorSubject(convertToParamMap(queryParams));
   const api = {
     validateCertificate: vi.fn(() => of(verificationFixture)),
+    validateCertificatePdf: vi.fn(),
     downloadCertificate: vi.fn(),
     requestPreview: vi.fn(),
     previewCertificate: vi.fn(),

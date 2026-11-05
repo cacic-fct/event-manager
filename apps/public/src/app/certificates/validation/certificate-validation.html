@@ -18,6 +18,7 @@
   @let currentState = state(); @if (currentState.status === 'ready' && !lookupExpanded()) {
   <div class="lookup-shortcut">
     <button
+      #lookupShortcut
       mat-button
       type="button"
       (click)="openLookup()"
@@ -37,7 +38,6 @@
       <h2 id="lookup-heading">
         {{ currentState.status === 'ready' ? 'Consultar certificado' : 'Confira a autenticidade de um certificado' }}
       </h2>
-      <p>{{ currentState.status === 'ready' ? 'Digite outro código ou escaneie o QR code.' : '' }}</p>
     </div>
     <form id="certificate-lookup" class="lookup-form" (submit)="$event.preventDefault(); submit()">
       <mat-form-field class="id-field">
@@ -72,10 +72,26 @@
           matIconButton
           type="button"
           aria-label="Escanear código do certificado"
-          [disabled]="validationCooldownSeconds() > 0"
+          [disabled]="pdfUploadUnavailable()"
           (click)="scanCode()">
           <mat-icon>qr_code_scanner</mat-icon>
         </button>
+      </div>
+      <div class="pdf-lookup">
+        <input #pdfInput type="file" accept="application/pdf,.pdf" hidden (change)="selectCertificatePdf(pdfInput)" />
+        <button
+          #pdfPicker
+          mat-stroked-button
+          type="button"
+          [disabled]="pdfUploadUnavailable()"
+          [disabledInteractive]="true"
+          (click)="!pdfUploadUnavailable() && pdfInput.click()">
+          <mat-icon>upload_file</mat-icon>
+          Selecionar PDF
+        </button>
+        <p role="status" [class.error-text]="pdfError()">
+          {{ readingPdf() ? 'Enviando e verificando o PDF…' : pdfError() }}
+        </p>
       </div>
       <section class="turnstile-section">
         @if (currentState.status === 'challenge') {

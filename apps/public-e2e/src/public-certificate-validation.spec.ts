@@ -26,6 +26,43 @@ test('shows the generic not-found error for certificates from disabled configs',
   await expect(page.getByText('disabled')).toHaveCount(0);
 });
 
+test('uploads one PDF and displays the verification for the extracted code', async ({ page }) => {
+  const certificateId = '019cb4fe-76e3-7000-8000-8a75e6b8f1cb';
+  const buffer = Buffer.from('%PDF-1.7');
+  await page.route('**/api/certificates/validate/pdf', async (route) => {
+    expect(route.request().method()).toBe('POST');
+    expect(route.request().headers()['content-type']).toBe('application/pdf');
+    expect(route.request().headers()['x-turnstile-token']).toBe('e2e-turnstile-token');
+    await route.fulfill({
+      json: {
+        certificateId,
+        certificate: standaloneCertificateFixture(certificateId),
+        revokedAt: null,
+        previewToken: null,
+      },
+    });
+  });
+  await page.goto('/app/validate');
+  await page
+    .locator('input[type="file"]')
+    .setInputFiles({ name: 'arbitrary-name.pdf', mimeType: 'application/pdf', buffer });
+  await expect(page).toHaveURL(`/app/validate?certificateId=${certificateId}`);
+  await expect(page.getByText('Certificado válido', { exact: true })).toBeVisible();
+  await expect(page.getByText(certificateId, { exact: true })).toBeVisible();
+});
+
+test('shows an actionable error for a PDF without a certificate ID', async ({ page }) => {
+  await page.route('**/api/certificates/validate/pdf', (route) => route.fulfill({ status: 422, json: {} }));
+  await page.goto('/app/validate');
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'other-document.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-1.7'),
+  });
+  await expect(page.getByText('Digite o código ou escaneie o QR code.', { exact: false })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Código do certificado' })).toHaveValue('');
+});
+
 for (const returnMethod of ['browser', 'event button'] as const) {
   test(`preserves certificate results when returning with ${returnMethod}`, async ({ page }) => {
     let validationRequests = 0;
@@ -61,7 +98,7 @@ for (const returnMethod of ['browser', 'event button'] as const) {
 async function preventSilentSso(page: Page): Promise<void> {
   await page.addInitScript(() => {
     window.sessionStorage.setItem('cacic-eventos:silent-sso-attempted', 'true');
-    window.localStorage.setItem('cacic.cookieBanner.enabled', 'false');
+    window.localStorage.setItem('cacic.cookieBanner.accepted', 'true');
   });
 }
 

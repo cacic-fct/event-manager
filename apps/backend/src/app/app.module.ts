@@ -103,6 +103,8 @@ import { CertificateValidationService } from './certificate/certificate-validati
 import { CertificatesResolver } from './certificate/certificates.resolver';
 import { PublicCertificateValidationService } from './certificate/public-certificate-validation.service';
 import { PublicCertificateVerificationResolver } from './certificate/public-certificate-verification.resolver';
+import { PublicCertificateVerificationService } from './certificate/public-certificate-verification.service';
+import { CertificatePdfValidationController } from './certificate/certificate-pdf-validation.controller';
 import { CertificatePreviewCache } from './certificate/certificate-preview-cache';
 import { CertificatePreviewController } from './certificate/certificate-preview.controller';
 import { CertificatePreviewWorker } from './certificate/certificate-preview-worker';
@@ -436,6 +438,7 @@ const schedulerProviders = useInMemoryTestInfra
   ],
   controllers: [
     CertificatePreviewController,
+    CertificatePdfValidationController,
     AppController,
     HealthController,
     AccountMergeController,
@@ -685,6 +688,7 @@ const schedulerProviders = useInMemoryTestInfra
     LegacyRepeatableJobsMigrationService,
     PublicCertificateValidationService,
     PublicCertificateVerificationResolver,
+    PublicCertificateVerificationService,
     CertificatePreviewCache,
     CertificatePreviewService,
     CertificatePreviewWorker,

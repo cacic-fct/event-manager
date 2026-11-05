@@ -26,6 +26,17 @@ export class CertificateValidationApiService {
     }).pipe(map((data) => data.publicCertificateVerification));
   }
 
+  validateCertificatePdf(
+    file: File,
+    turnstileToken: string,
+  ): Observable<PublicCertificateVerification & { certificateId: string }> {
+    return this.http.post<PublicCertificateVerification & { certificateId: string }>(
+      '/api/certificates/validate/pdf',
+      file,
+      { headers: { 'Content-Type': 'application/pdf', 'X-Turnstile-Token': turnstileToken } },
+    );
+  }
+
   downloadCertificate(certificateId: string): Observable<CertificateDownload> {
     return this.query<DownloadPublicCertificateQuery>(DOWNLOAD_PUBLIC_CERTIFICATE_QUERY, { certificateId }).pipe(
       map((data) => data.downloadPublicCertificate),

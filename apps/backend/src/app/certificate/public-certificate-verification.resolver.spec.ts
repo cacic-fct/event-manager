@@ -6,6 +6,7 @@ import {
   REQUEST_PUBLIC_CERTIFICATE_PREVIEW_MUTATION,
 } from '@cacic-fct/event-manager-public-contracts';
 import { PublicCertificateVerificationResolver } from './public-certificate-verification.resolver';
+import { PublicCertificateVerificationService } from './public-certificate-verification.service';
 
 const { jest } = import.meta;
 
@@ -15,7 +16,7 @@ describe('PublicCertificateVerificationResolver', () => {
     const turnstile = { assertValidToken: jest.fn().mockResolvedValue(undefined) };
     const previews = { createToken: jest.fn().mockReturnValue('preview-token') };
     const resolver = new PublicCertificateVerificationResolver(
-      validation as never,
+      new PublicCertificateVerificationService(validation as never, previews as never),
       turnstile as never,
       previews as never,
     );

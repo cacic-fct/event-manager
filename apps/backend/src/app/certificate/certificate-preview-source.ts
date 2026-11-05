@@ -39,7 +39,7 @@ export async function findCertificatePreviewSource(prisma: PrismaService, certif
   const revision = createHash('sha256')
     .update(
       JSON.stringify([
-        'template-first-page-avif-v1',
+        'pdf-first-page-avif-v2',
         process.env.PUBLIC_APP_ORIGIN?.trim() || 'http://localhost:4200',
         certificateId,
         source,

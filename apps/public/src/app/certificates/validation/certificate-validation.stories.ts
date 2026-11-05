@@ -50,6 +50,7 @@ export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('textbox', { name: 'Código do certificado' })).toHaveValue('');
+    await expect(canvas.getByRole('button', { name: 'Selecionar PDF' })).toBeVisible();
     await expect(canvas.queryByText('Certificado válido')).toBeNull();
   },
 };

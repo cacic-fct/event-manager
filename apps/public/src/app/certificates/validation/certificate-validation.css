@@ -76,6 +76,9 @@ p {
   align-items: center;
   gap: 12px;
 }
+.pdf-lookup {
+  grid-column: 1 / -1;
+}
 .turnstile-section {
   display: grid;
   gap: 8px;
@@ -337,6 +340,9 @@ p {
   }
   .button-container button[type='submit'] {
     flex: 1;
+  }
+  .pdf-lookup button {
+    width: 100%;
   }
   .actions button {
     width: 100%;

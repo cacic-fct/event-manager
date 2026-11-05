@@ -3,20 +3,18 @@ import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
 import { UseGuards } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import type { Request } from 'express';
-import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { Public } from '../auth/decorators/public.decorator';
 import { RateLimit } from '../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
 import { TurnstileService } from '../turnstile/turnstile.service';
 import { CertificatePreviewService } from './certificate-preview.service';
-import { isCertificatePreviewId } from './certificate-preview-source';
-import { PublicCertificateValidationService } from './public-certificate-validation.service';
+import { PublicCertificateVerificationService } from './public-certificate-verification.service';
 
 @Resolver()
 export class PublicCertificateVerificationResolver {
   constructor(
-    private readonly validation: PublicCertificateValidationService,
+    private readonly verification: PublicCertificateVerificationService,
     private readonly turnstile: TurnstileService,
     private readonly previews: CertificatePreviewService,
   ) {}
@@ -38,17 +36,7 @@ export class PublicCertificateVerificationResolver {
       TURNSTILE_ACTIONS.certificateValidation,
     );
 
-    const id = certificateId.trim();
-    if (!isCertificatePreviewId(id)) {
-      return { certificate: null, revokedAt: null, previewToken: null };
-    }
-    return audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, async () => {
-      const certificate = await this.validation.validateCertificate(id);
-      if (!certificate) {
-        return { certificate: null, revokedAt: await this.validation.findPublicRevocation(id), previewToken: null };
-      }
-      return { certificate, revokedAt: null, previewToken: this.previews.createToken(certificate) };
-    });
+    return this.verification.verify(certificateId);
   }
 
   @Public()

@@ -1,5 +1,7 @@
 import type { CertificateIssuedTo, CertificateScope, DateTimeString, EventType } from './common';
 
+export const PUBLIC_CERTIFICATE_PDF_MAX_BYTES = 5 * 1024 * 1024;
+
 export type CertificateParticipationStatus =
   | 'AWAITING_RELEASE'
   | 'ATTENDANCE_CONFIRMED'
