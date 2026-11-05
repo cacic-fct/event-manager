@@ -299,23 +299,6 @@ p {
   margin-top: 12px;
   color: var(--mat-sys-error);
 }
-.validation-footer {
-  display: flex;
-  align-items: start;
-  gap: 12px;
-  max-width: 680px;
-  margin: 40px auto 0;
-  padding-top: 24px;
-  border-top: 1px solid var(--mat-sys-outline-variant);
-  color: var(--mat-sys-on-surface-variant);
-}
-.validation-footer mat-icon {
-  flex-shrink: 0;
-}
-.validation-footer p {
-  font: var(--mat-sys-body-small);
-  line-height: 1.6;
-}
 
 @media (min-width: 640px) {
   .lookup-form {
