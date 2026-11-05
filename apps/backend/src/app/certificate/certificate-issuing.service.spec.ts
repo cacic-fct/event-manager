@@ -996,7 +996,14 @@ describe('CertificateIssuingService', () => {
         revocationReason: null,
       });
       expect(prisma.certificate.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: expect.objectContaining({ id: certificate.id, revokedAt }) }),
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: certificate.id,
+            revokedAt,
+            lgpdDeletionRequestId: null,
+            person: { deletedAt: null },
+          }),
+        }),
       );
       expect(prisma.certificate.create).not.toHaveBeenCalled();
     });

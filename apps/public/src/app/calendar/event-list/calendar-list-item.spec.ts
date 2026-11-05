@@ -103,6 +103,22 @@ describe('CalendarListItem', () => {
     expect(link.getAttribute('aria-description')).toBe('Consultar transferência');
   });
 
+  it.each([
+    { route: ['/event', 'party'], isSubscribed: true, label: 'Inscrito' },
+    { route: null, isSubscribed: false, label: 'Não inscrito' },
+  ])('shows $label as text in the calendar row', ({ route, isSubscribed, label }) => {
+    fixture.componentRef.setInput('item', {
+      ...fixture.componentInstance.item(),
+      route,
+      participationStatus: { isSubscribed },
+    });
+    fixture.detectChanges();
+
+    const status = fixture.nativeElement.querySelector('app-participation-status-icons') as HTMLElement;
+    expect(status.textContent).toContain(label);
+    expect(status.querySelector(`[aria-label="${label}"]`)).toBeNull();
+  });
+
   it('includes the end date when an activity continues into another day', () => {
     const start = new Date();
     start.setHours(22, 0, 0, 0);

@@ -114,6 +114,40 @@ describe('NovuInboxComponent', () => {
     expect(root.querySelector('button[role="switch"]')?.getAttribute('aria-describedby')).toBeTruthy();
   });
 
+  it('shows named chevrons for navigation and keeps a visible label for an action without a destination', async () => {
+    const { component, fixture, notifications, router } = await createFixture();
+    const primary = createNotification({
+      primaryAction: { label: 'Ver inscrição', isCompleted: false, redirect: { url: '/profile/attendances' } },
+    });
+    const redirect = createNotification({ id: 'notification-2', redirect: { url: '/profile/forms' } });
+    const command = createNotification({
+      id: 'notification-3',
+      primaryAction: { label: 'Confirmar recebimento', isCompleted: false },
+    });
+    notifications.listNotificationPage.mockResolvedValue({
+      notifications: [primary, redirect, command],
+      hasMore: false,
+    });
+
+    await inboxMethods(component).reload();
+    fixture.detectChanges();
+
+    const root: HTMLElement = fixture.nativeElement;
+    const primaryButton = root.querySelector<HTMLButtonElement>('button[aria-label="Ver inscrição"]');
+    const redirectButton = root.querySelector<HTMLButtonElement>('button[aria-label="Abrir notificação"]');
+    expect(primaryButton?.textContent?.trim()).toBe('chevron_right');
+    expect(redirectButton?.textContent?.trim()).toBe('chevron_right');
+    expect(root.querySelector('.notification-actions button[mat-button]')?.textContent?.trim()).toBe(
+      'Confirmar recebimento',
+    );
+
+    redirectButton?.click();
+    primaryButton?.click();
+    await fixture.whenStable();
+    expect(router.navigateByUrl.mock.calls).toEqual([['/profile/forms'], ['/profile/attendances']]);
+    expect(notifications.completePrimary).toHaveBeenCalledExactlyOnceWith(primary);
+  });
+
   it('completes external actions when noopener returns a null window handle', async () => {
     const { component, notifications } = await createFixture();
     const open = vi.spyOn(window, 'open').mockReturnValue(null);
@@ -385,6 +419,7 @@ function createNotification(overrides: Partial<Notification>): Notification {
 
 function inboxMethods(component: NovuInboxComponent) {
   return component as unknown as {
+    reload(): Promise<void>;
     selectIndex(index: number): void;
     updatePreferenceChannel(preference: Preference, channel: 'in_app' | 'push', enabled: boolean): Promise<void>;
     activateNotification(event: Event, notification: Notification): void;

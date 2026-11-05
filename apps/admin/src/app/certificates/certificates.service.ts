@@ -90,6 +90,7 @@ type CertificateFieldDefinition = {
 type CertificateTemplatesLoadState = 'loading' | 'ready' | 'empty' | 'error';
 
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
+const MANUAL_CERTIFICATE_RECIPIENT_TYPES: readonly CertificateIssuedToOption[] = ['OTHER', 'SPORTS_ORGANIZER'];
 
 @Service()
 export class CertificatesService {
@@ -178,7 +179,7 @@ export class CertificatesService {
     this.requiresCustomCertificateTypeLabel(this.certificateConfigModel().issuedTo),
   );
   readonly isManualCertificateIssue = computed(() =>
-    ['OTHER', 'SPORTS_ORGANIZER'].includes(this.certificateConfigModel().issuedTo),
+    MANUAL_CERTIFICATE_RECIPIENT_TYPES.includes(this.certificateConfigModel().issuedTo),
   );
   readonly certificateOperationsEnabled = computed(
     () =>
@@ -1079,7 +1080,7 @@ export class CertificatesService {
   async allowCertificateIssuance(certificate: Certificate): Promise<boolean> {
     const confirmed = await this.confirm({
       title: 'Permitir emissão novamente',
-      message: this.isManualCertificateIssue()
+      message: MANUAL_CERTIFICATE_RECIPIENT_TYPES.includes(certificate.config.issuedTo)
         ? `Reemitir o certificado de ${certificate.person.name}? A pessoa precisa atender aos critérios atuais de emissão.`
         : `O certificado de ${certificate.person.name} será reemitido agora se a pessoa já atender aos critérios. Caso contrário, continuará inválido até uma emissão futura. O código de validação será mantido.`,
       confirmLabel: 'Permitir emissão',

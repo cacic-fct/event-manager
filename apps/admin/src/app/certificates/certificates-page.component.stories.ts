@@ -17,7 +17,7 @@ import { CertificatesService } from './certificates.service';
 import { CertificateApiService } from '../graphql/certificate-api.service';
 import { EventApiService } from '../graphql/event-api.service';
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import {
   createCertificateTemplatesStoryHandler,
   type CertificateTemplatesStoryOptions,
@@ -411,6 +411,8 @@ const revocationConfig = createAdminCertificateConfig(
   { event: revocationEvent, name: 'Participante' },
   standaloneCertificateTemplate,
 );
+const revokedCertificateId = 'revoked-certificate';
+const restoreRevokedCertificate = fn((id: string) => of({ id, deletedAt: folderStoryTimestamp }));
 
 export const RevocationWorkspace: Story = {
   render: () => ({ props: {}, template: '<main><app-workspace-certificates-tab /></main>' }),
@@ -423,7 +425,7 @@ export const RevocationWorkspace: Story = {
           useFactory: () => {
             const person = createAdminPerson({ name: 'Ana Souza' });
             const certificate = {
-              id: 'revoked-certificate',
+              id: revokedCertificateId,
               personId: person.id,
               person,
               configId: revocationConfig.id,
@@ -444,9 +446,9 @@ export const RevocationWorkspace: Story = {
               getCertificateConfig: () => of(revocationConfig),
               listCertificateIssuanceRuns: () => of([]),
               listCertificates: () => of(revoked ? [certificate] : []),
-              restoreCertificate: () => {
+              restoreCertificate: (id) => {
                 revoked = false;
-                return of({ id: certificate.id, deletedAt: certificate.deletedAt });
+                return restoreRevokedCertificate(id);
               },
             } satisfies Partial<CertificateApiService>;
           },
@@ -470,10 +472,22 @@ export const RevocationWorkspace: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const page = within(canvasElement.ownerDocument.body);
-    await userEvent.click(await canvas.findByRole('button', { name: /Permitir emissão para/ }));
+    const action = { name: 'Permitir emissão para Ana Souza — Participante' };
+    restoreRevokedCertificate.mockClear();
+    await userEvent.click(await canvas.findByRole('button', action));
     const dialog = await page.findByRole('dialog', { name: 'Permitir emissão novamente' });
     await expect(within(dialog).getByText(/continuará inválido/)).toBeVisible();
     await userEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+    await expect(restoreRevokedCertificate).not.toHaveBeenCalled();
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+
+    await userEvent.click(await canvas.findByRole('button', action));
+    const reopenedDialog = await page.findByRole('dialog', { name: 'Permitir emissão novamente' });
+    await userEvent.click(within(reopenedDialog).getByRole('button', { name: 'Permitir emissão' }));
+    await expect(restoreRevokedCertificate).toHaveBeenCalledWith(revokedCertificateId);
+    await waitFor(async () => {
+      await expect(canvas.queryByText('Ana Souza', { exact: true })).not.toBeInTheDocument();
+    });
   },
 };
 

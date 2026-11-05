@@ -11,6 +11,7 @@ export interface ParticipationEventStatus {
 export interface ParticipationStatusIcon {
   label: string;
   icon: string;
+  showLabel?: boolean;
   visibleTimestamp?: string;
 }
 
@@ -65,9 +66,16 @@ function participationStatusIcon(label: string): string {
     <span class="status-icons" [class.status-icons--event]="eventStatus()">
       @for (status of statuses(); track status.label) {
         <span class="status-row">
-          <span class="status-icon" role="img" [attr.aria-label]="status.label" [matTooltip]="status.label">
-            <mat-icon aria-hidden="true">{{ status.icon }}</mat-icon>
-          </span>
+          @if (status.showLabel) {
+            <span class="status-icon" aria-hidden="true">
+              <mat-icon>{{ status.icon }}</mat-icon>
+            </span>
+            <span>{{ status.label }}</span>
+          } @else {
+            <span class="status-icon" role="img" [attr.aria-label]="status.label" [matTooltip]="status.label">
+              <mat-icon aria-hidden="true">{{ status.icon }}</mat-icon>
+            </span>
+          }
           @if (status.visibleTimestamp) {
             <span class="status-timestamp" aria-hidden="true">{{ status.visibleTimestamp }}</span>
           }
@@ -98,10 +106,13 @@ function participationStatusIcon(label: string): string {
     .status-icon {
       align-items: center;
       color: var(--mat-sys-primary);
-      cursor: help;
       display: inline-flex;
       justify-content: center;
       padding: 0.125rem;
+    }
+
+    .status-icon[role='img'] {
+      cursor: help;
     }
 
     .status-icon mat-icon {
@@ -114,6 +125,7 @@ function participationStatusIcon(label: string): string {
 export class ParticipationStatusIcons {
   readonly statusLine = input('');
   readonly eventStatus = input<ParticipationEventStatus | null>(null);
+  readonly showSubscriptionLabel = input(false);
   readonly statuses = computed(() => {
     const eventStatus = this.eventStatus();
     if (!eventStatus) {
@@ -125,7 +137,7 @@ export class ParticipationStatusIcons {
     const subscription = eventStatus.isSubscribed ? 'Inscrito' : 'Não inscrito';
     return [
       { label: attendance, icon: participationStatusIcon(attendance), visibleTimestamp },
-      { label: subscription, icon: participationStatusIcon(subscription) },
+      { label: subscription, icon: participationStatusIcon(subscription), showLabel: this.showSubscriptionLabel() },
     ];
   });
 }

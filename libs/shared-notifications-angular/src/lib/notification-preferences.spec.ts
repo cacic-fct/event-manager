@@ -22,4 +22,12 @@ describe('required event notices', () => {
     expect(isRequiredNotificationPreference(optional)).toBe(false);
     expect(notificationPreferenceGroups([optional])[0].items[0].preference).toBe(optional);
   });
+
+  it('leaves the description empty for optional workflows without a known presentation', () => {
+    const optional = workflowPreference('unknown-optional-workflow', false);
+    expect(notificationPreferenceGroups([optional])[0].items[0]).toMatchObject({
+      preference: optional,
+      description: '',
+    });
+  });
 });

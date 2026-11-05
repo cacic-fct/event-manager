@@ -99,6 +99,11 @@
   overflow-wrap: anywhere;
 }
 
+.notification-actions {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+}
+
 :host ::ng-deep .notification-list .mat-mdc-list-item .mdc-list-item__content {
   flex: 1 1 0;
   min-width: 0;
@@ -157,38 +162,32 @@
     overflow-x: auto;
   }
 
-  .notification-actions {
-    align-items: flex-end;
-    flex-direction: column;
-    gap: 4px;
+  .notification-list .notification-item .notification-actions {
+    display: flex;
+    grid-column: 2;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0;
+    margin: 0;
+  }
+
+  .notification-list .notification-item .notification-actions::before {
+    content: none;
   }
 
   .notification-actions button[mat-button] {
+    height: auto;
     min-width: 0;
+    min-height: 40px;
     padding-inline: 8px;
+    white-space: normal;
   }
 
   :host ::ng-deep .notification-list .mat-mdc-list-item.notification-item {
-    min-height: 104px;
-    padding-inline: 4px;
-  }
-
-  :host ::ng-deep .notification-list .mat-mdc-list-item .mdc-list-item__content {
-    min-width: 0;
-  }
-}
-
-.notification-actions {
-  flex: 0 0 auto;
-  flex-wrap: nowrap;
-}
-@media (max-width: 720px) {
-  .notification-actions {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
-    flex-direction: row;
-    gap: 0;
-    margin: 0;
-    padding: 0;
+    padding-inline: 8px;
   }
 }
 
