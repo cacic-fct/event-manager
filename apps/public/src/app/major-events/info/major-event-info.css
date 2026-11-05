@@ -257,6 +257,9 @@ h2 {
 }
 
 @media (max-width: 599px) {
+  .day-navigation {
+    margin-inline: 0;
+  }
 }
 
 @media (min-width: 800px) {

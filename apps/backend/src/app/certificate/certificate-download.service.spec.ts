@@ -411,6 +411,7 @@ describe('CertificateDownloadService', () => {
 
   it('fails certificate rendering when PDF protection fails', async () => {
     const service = new CertificateDownloadService({} as never, {} as never);
+    const logError = jest.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
     const page = {
       setContent: jest.fn().mockResolvedValue(undefined),
       evaluate: jest.fn().mockResolvedValue(undefined),
@@ -423,6 +424,7 @@ describe('CertificateDownloadService', () => {
     await expect(service['renderPdf']('<html></html>', browser as never)).rejects.toThrow(
       'Failed to render certificate PDF.',
     );
+    expect(logError).toHaveBeenCalledWith('Failed to render certificate PDF.', expect.stringContaining('qpdf failed'));
     expect(page.close).toHaveBeenCalledTimes(1);
   });
 

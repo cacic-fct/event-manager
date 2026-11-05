@@ -701,7 +701,9 @@
                         matListItemMeta
                         mat-button
                         type="button"
-                        [attr.aria-label]="'Permitir emissão para ' + certificate.person.name"
+                        [attr.aria-label]="
+                          'Permitir emissão para ' + certificate.person.name + ' — ' + certificate.config.name
+                        "
                         (click)="allowCertificateIssuance(certificate, certificatesHeading)">
                         Permitir emissão
                       </button>
