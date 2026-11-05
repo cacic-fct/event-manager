@@ -1,10 +1,14 @@
 import '../../testing/observer-mocks';
+import { HttpResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Component, DestroyRef, signal } from '@angular/core';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, Params, RouteReuseStrategy, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import type { PublicCertificateValidation } from '@cacic-fct/event-manager-public-contracts';
+import type {
+  PublicCertificateValidation,
+  PublicCertificateVerification,
+} from '@cacic-fct/event-manager-public-contracts';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { MatDialog } from '@angular/material/dialog';
 import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
@@ -15,17 +19,144 @@ import { AppRouteReuseStrategy } from '../../layout/tab-reuse.strategy';
 import { appRoutes } from '../../app.routes';
 
 describe('CertificateValidation', () => {
+  it('shows only a lookup form before validation', async () => {
+    const { fixture } = await createFixture();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.lookup-form')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.certificate-section')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.preview-section')).toBeNull();
+  });
+
+  it('keeps the secondary lookup above the result and focuses it on request', async () => {
+    const { component, fixture } = await createFixture({ queryParams: { certificateId: 'certificate-1' } });
+    component.onTurnstileTokenChange('token');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#lookup-section').hidden).toBe(true);
+    const button = fixture.nativeElement.querySelector('.lookup-shortcut button') as HTMLButtonElement;
+    button.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('#lookup-section').hidden).toBe(false);
+    expect(document.activeElement).toBe(fixture.nativeElement.querySelector('input'));
+    expect(fixture.nativeElement.textContent).not.toContain('Verificação por');
+    expect(fixture.nativeElement.textContent).not.toContain(' · ');
+  });
+
+  it('shows revocation separately without recipient information or downloads', async () => {
+    const { api, component, fixture } = await createFixture({ queryParams: { certificateId: 'revoked' } });
+    api.validateCertificate.mockReturnValue(
+      of({ certificate: null, revokedAt: new Date().toISOString(), previewToken: null }),
+    );
+    component.onTurnstileTokenChange('token');
+    fixture.detectChanges();
+    expect(component.state().status).toBe('revoked');
+    expect(fixture.nativeElement.textContent).toContain('Certificado revogado');
+    expect(fixture.nativeElement.textContent).not.toContain('Ada Lovelace');
+    expect(fixture.nativeElement.querySelector('.actions')).toBeNull();
+  });
+
+  it('keeps temporary verification failures distinct from invalid certificates', async () => {
+    const { api, component, fixture } = await createFixture({ queryParams: { certificateId: 'certificate-1' } });
+    api.validateCertificate.mockReturnValue(throwError(() => new Error('Unavailable')));
+    component.onTurnstileTokenChange('token');
+    fixture.detectChanges();
+    expect(component.state().status).toBe('error');
+    expect(fixture.nativeElement.textContent).toContain('Não foi possível verificar agora');
+    expect(fixture.nativeElement.textContent).not.toContain('Certificado não encontrado');
+  });
+
+  it.each(['rate limit', 'unavailable'])(
+    'silently removes the preview after %s while keeping validation',
+    async (failure) => {
+      const { api, component, fixture } = await createFixture({ queryParams: { certificateId: 'certificate-1' } });
+      component.onTurnstileTokenChange('token');
+      expect(api.requestPreview).not.toHaveBeenCalled();
+      api.requestPreview.mockReturnValue(failure === 'rate limit' ? throwError(() => new Error('429')) : of(null));
+      component.togglePreview(certificateFixture);
+      fixture.detectChanges();
+      expect(component.state().status).toBe('ready');
+      expect(component.previewState()).toBe('hidden');
+      expect(fixture.nativeElement.querySelector('.preview-section')).toBeNull();
+      expect(fixture.nativeElement.textContent).toContain('Certificado válido');
+    },
+  );
+
+  it('moves keyboard focus to the PDF action when the preview disappears', async () => {
+    const { api, component, fixture } = await createFixture({ queryParams: { certificateId: 'certificate-1' } });
+    component.onTurnstileTokenChange('token');
+    const response = new Subject<null>();
+    api.requestPreview.mockReturnValue(response);
+    fixture.detectChanges();
+    const previewButton = fixture.nativeElement.querySelector('.preview-section button') as HTMLButtonElement;
+    previewButton.focus();
+    previewButton.click();
+    fixture.detectChanges();
+    response.next(null);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.preview-section')).toBeNull();
+    expect(document.activeElement).toBe(fixture.nativeElement.querySelector('.actions button'));
+  });
+
+  it('loads an on-demand AVIF and releases its object URL when changing certificates', async () => {
+    const { api, component, router } = await createFixture({ queryParams: { certificateId: 'certificate-1' } });
+    const createObjectURL = vi.fn(() => 'blob:certificate-preview');
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal(
+      'URL',
+      class extends URL {
+        static override createObjectURL = createObjectURL;
+        static override revokeObjectURL = revokeObjectURL;
+      },
+    );
+    try {
+      component.onTurnstileTokenChange('token');
+      api.requestPreview.mockReturnValue(of({ imagePath: '/api/certificates/validate/certificate-1/preview' }));
+      api.previewCertificate.mockReturnValue(
+        of(new HttpResponse({ body: new Blob(['image'], { type: 'image/avif' }), status: 200 })),
+      );
+      component.togglePreview(certificateFixture);
+      expect(api.requestPreview).toHaveBeenCalledWith('certificate-1', 'preview-token');
+      expect(api.previewCertificate).toHaveBeenCalledWith(
+        '/api/certificates/validate/certificate-1/preview',
+        'preview-token',
+      );
+      expect(component.previewUrl()).toBe('blob:certificate-preview');
+      await router.navigate(['/validate'], { queryParams: { certificateId: 'certificate-2' } });
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:certificate-preview');
+      expect(component.previewUrl()).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('bounds pending preview polling and silently removes an exhausted preview', async () => {
+    const { api, component, fixture } = await createFixture({ queryParams: { certificateId: 'certificate-1' } });
+    component.onTurnstileTokenChange('token');
+    api.requestPreview.mockReturnValue(of({ imagePath: null }));
+    vi.useFakeTimers();
+    try {
+      component.togglePreview(certificateFixture);
+      await vi.advanceTimersByTimeAsync(20000);
+      expect(api.requestPreview).toHaveBeenCalledTimes(10);
+      expect(component.previewState()).toBe('hidden');
+      expect(component.state().status).toBe('ready');
+      fixture.destroy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('cancels an unfinished validation when the page is destroyed', async () => {
     const { api, component, fixture } = await createFixture({
       queryParams: { certificateId: 'certificate-1' },
     });
-    const response = new Subject<PublicCertificateValidation>();
+    const response = new Subject<PublicCertificateVerification>();
     api.validateCertificate.mockReturnValue(response);
     component.onTurnstileTokenChange('turnstile-token');
     expect(response.observed).toBe(true);
 
     fixture.destroy();
-    response.next(certificateFixture);
+    response.next(verificationFixture);
 
     expect(response.observed).toBe(false);
     expect(component.state().status).toBe('loading');
@@ -157,13 +288,13 @@ describe('CertificateValidation', () => {
     fixture.destroy();
     const returnedFixture = TestBed.createComponent(CertificateValidation);
     const returnedComponent = returnedFixture.componentInstance;
-    api.validateCertificate.mockReturnValue(of(null));
+    api.validateCertificate.mockReturnValue(of({ certificate: null, revokedAt: null, previewToken: null }));
 
     returnedComponent.onTurnstileTokenChange('fresh-token');
     returnedComponent.submit();
 
     expect(api.validateCertificate).toHaveBeenCalledTimes(2);
-    expect(returnedComponent.state().status).toBe('error');
+    expect(returnedComponent.state().status).toBe('not-found');
     returnedFixture.destroy();
     expect(TestBed.createComponent(CertificateValidation).componentInstance.state().status).toBe('challenge');
   });
@@ -207,17 +338,16 @@ describe('CertificateValidation', () => {
     const { api, component, fixture } = await createFixture({
       routeParams: { certificateId: 'disabled-certificate' },
     });
-    api.validateCertificate.mockReturnValue(of(null));
+    api.validateCertificate.mockReturnValue(of({ certificate: null, revokedAt: null, previewToken: null }));
 
     component.onTurnstileTokenChange('turnstile-token');
     await fixture.whenStable();
     fixture.detectChanges();
 
     expect(component.state()).toEqual({
-      status: 'error',
-      message: 'Certificado não encontrado.',
+      status: 'not-found',
     });
-    expect(fixture.nativeElement.textContent).toContain('Certificado não encontrado.');
+    expect(fixture.nativeElement.textContent).toContain('Certificado não encontrado');
     expect(
       component.validationForm
         .certificateId()
@@ -281,18 +411,18 @@ describe('CertificateValidation', () => {
 
   it('cancels the previous lookup while a new certificate awaits its challenge', async () => {
     const { api, component, router } = await createFixture({ queryParams: { certificateId: 'certificate-1' } });
-    const previous = new Subject<PublicCertificateValidation>();
+    const previous = new Subject<PublicCertificateVerification>();
     api.validateCertificate.mockReturnValue(previous);
     component.onTurnstileTokenChange('first-token');
 
     await router.navigate(['/validate'], { queryParams: { certificateId: 'certificate-2' } });
     expect(previous.observed).toBe(false);
-    previous.next(certificateFixture);
+    previous.next(verificationFixture);
     previous.error(new Error('Old request failed'));
 
     expect(component.state()).toEqual({ status: 'challenge', certificateId: 'certificate-2', source: 'link' });
     const nextCertificate = { ...certificateFixture, id: 'certificate-2', personName: 'Outra pessoa' };
-    api.validateCertificate.mockReturnValue(of(nextCertificate));
+    api.validateCertificate.mockReturnValue(of({ ...verificationFixture, certificate: nextCertificate }));
     component.onTurnstileTokenChange('second-token');
     expect(component.state()).toEqual({ status: 'ready', certificate: nextCertificate });
   });
@@ -311,7 +441,7 @@ describe('CertificateValidation', () => {
     expect(previous.observed).toBe(false);
     expect(component.downloading()).toBe(false);
     const nextCertificate = { ...certificateFixture, id: 'certificate-2' };
-    api.validateCertificate.mockReturnValue(of(nextCertificate));
+    api.validateCertificate.mockReturnValue(of({ ...verificationFixture, certificate: nextCertificate }));
     component.onTurnstileTokenChange('second-token');
     const download = { fileName: 'certificate-2.pdf', mimeType: 'application/pdf', contentBase64: 'data' };
     api.downloadCertificate.mockReturnValue(of(download));
@@ -375,7 +505,9 @@ describe('CertificateValidation', () => {
     const { component, fixture } = await createFixture();
     component.state.set({ status: 'ready', certificate: { ...certificateFixture, targetName: null } });
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('h2')?.textContent).toBe(certificateFixture.certificateName);
+    expect(fixture.nativeElement.querySelector('.certificate-context')?.textContent).toContain(
+      certificateFixture.certificateName,
+    );
     expect(fixture.nativeElement.querySelector('.certificate-name')).toBeNull();
   });
 });
@@ -387,7 +519,7 @@ describe('CertificateValidation navigation lifecycle', () => {
   it.each(['/elsewhere', '/event/linked-event'])(
     'destroys the page when navigating to %s and restores data in a new instance',
     async (destination) => {
-      const api = { validateCertificate: vi.fn(() => of(certificateFixture)) };
+      const api = { validateCertificate: vi.fn(() => of(verificationFixture)) };
       await TestBed.configureTestingModule({
         providers: [
           provideNoopAnimations(),
@@ -434,6 +566,8 @@ async function createFixture({
   api: {
     validateCertificate: ReturnType<typeof vi.fn>;
     downloadCertificate: ReturnType<typeof vi.fn>;
+    requestPreview: ReturnType<typeof vi.fn>;
+    previewCertificate: ReturnType<typeof vi.fn>;
   };
   fileDownload: { save: ReturnType<typeof vi.fn> };
   component: CertificateValidation;
@@ -446,8 +580,10 @@ async function createFixture({
   const paramMap = new BehaviorSubject(convertToParamMap(routeParams));
   const queryParamMap = new BehaviorSubject(convertToParamMap(queryParams));
   const api = {
-    validateCertificate: vi.fn(() => of(certificateFixture)),
+    validateCertificate: vi.fn(() => of(verificationFixture)),
     downloadCertificate: vi.fn(),
+    requestPreview: vi.fn(),
+    previewCertificate: vi.fn(),
   };
   const fileDownload = { save: vi.fn() };
   const router = {
@@ -517,7 +653,7 @@ async function createFixture({
 
 const certificateFixture = {
   id: 'certificate-1',
-  issuedAt: '2026-06-01T12:00:00.000Z',
+  issuedAt: new Date(Date.now() - 86400000).toISOString(),
   personName: 'Ada Lovelace',
   maskedIdentityDocument: null,
   scope: 'EVENT',
@@ -532,3 +668,9 @@ const certificateFixture = {
   totalCreditMinutes: 60,
   sections: [],
 } satisfies PublicCertificateValidation;
+
+const verificationFixture = {
+  certificate: certificateFixture,
+  revokedAt: null,
+  previewToken: 'preview-token',
+} satisfies PublicCertificateVerification;

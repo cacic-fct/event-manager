@@ -5,7 +5,6 @@
 
 import { Logger, type INestApplication } from '@nestjs/common';
 import type { Server } from '@grpc/grpc-js';
-import { convertLegacyEventDescriptionsCommand } from './app/events/convert-legacy-event-descriptions.command';
 import { closeBackendResources } from './app/bootstrap/backend-lifecycle';
 
 const CONVERT_LEGACY_EVENT_DESCRIPTIONS_COMMAND = 'convert-legacy-event-descriptions';
@@ -54,7 +53,15 @@ async function bootstrap() {
 async function main(): Promise<void> {
   const [command, ...args] = process.argv.slice(2);
   if (command === CONVERT_LEGACY_EVENT_DESCRIPTIONS_COMMAND) {
+    const { convertLegacyEventDescriptionsCommand } = await import(
+      './app/events/convert-legacy-event-descriptions.command.js'
+    );
     await convertLegacyEventDescriptionsCommand(args);
+    return;
+  }
+  if (command === 'render-certificate-preview') {
+    const { runCertificatePreviewRenderer } = await import('./app/certificate/certificate-preview-renderer.js');
+    await runCertificatePreviewRenderer();
     return;
   }
   if (command) {

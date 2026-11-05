@@ -658,6 +658,22 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
     return { downloadPublicCertificate: certificateDownload('certificado-validado.pdf') };
   }
 
+  if (query.includes('publicCertificateVerification')) {
+    const revoked = variables['certificateId'] === 'certificate-revoked';
+    return {
+      publicCertificateVerification: {
+        certificate: revoked ? null : publicCertificateValidation(variables),
+        revokedAt: revoked ? isoDaysFromNow(-1, 10) : null,
+        previewToken:
+          variables['certificateId'] === 'certificate-preview-unavailable' ? 'storybook-preview-token' : null,
+      },
+    };
+  }
+
+  if (query.includes('requestPublicCertificatePreview')) {
+    return { requestPublicCertificatePreview: null };
+  }
+
   if (query.includes('publicCertificateValidation')) {
     return {
       publicCertificateValidation: publicCertificateValidation(variables),

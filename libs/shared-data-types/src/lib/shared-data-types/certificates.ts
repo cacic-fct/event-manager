@@ -414,6 +414,24 @@ export class PublicCertificateValidation {
 }
 
 @ObjectType()
+export class PublicCertificateVerification {
+  @Field(() => PublicCertificateValidation, { nullable: true })
+  certificate!: PublicCertificateValidation | null;
+
+  @Field(() => Date, { nullable: true })
+  revokedAt!: Date | null;
+
+  @Field(() => String, { nullable: true })
+  previewToken!: string | null;
+}
+
+@ObjectType()
+export class PublicCertificatePreview {
+  @Field(() => String, { nullable: true, description: 'Same-origin AVIF path; null while the preview is pending.' })
+  imagePath!: string | null;
+}
+
+@ObjectType()
 export class CertificateIssuanceRun {
   @Field(() => String)
   id!: string;

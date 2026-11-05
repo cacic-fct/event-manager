@@ -71,3 +71,13 @@ export interface PublicCertificateValidation {
   sections: PublicCertificateValidationEventSection[];
   totalCreditMinutes: number;
 }
+
+export interface PublicCertificateVerification {
+  certificate: PublicCertificateValidation | null;
+  revokedAt: DateTimeString | null;
+  previewToken: string | null;
+}
+
+export interface PublicCertificatePreview {
+  imagePath: string | null;
+}

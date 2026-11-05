@@ -102,6 +102,11 @@ import { CertificateTargetsService } from './certificate/certificate-targets.ser
 import { CertificateValidationService } from './certificate/certificate-validation.service';
 import { CertificatesResolver } from './certificate/certificates.resolver';
 import { PublicCertificateValidationService } from './certificate/public-certificate-validation.service';
+import { PublicCertificateVerificationResolver } from './certificate/public-certificate-verification.resolver';
+import { CertificatePreviewCache } from './certificate/certificate-preview-cache';
+import { CertificatePreviewController } from './certificate/certificate-preview.controller';
+import { CertificatePreviewWorker } from './certificate/certificate-preview-worker';
+import { CertificatePreviewService } from './certificate/certificate-preview.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { EventAttendancesController } from './events/attendances.controller';
 import { AttendanceAnalyticsController } from './events/attendance-analytics.controller';
@@ -430,6 +435,7 @@ const schedulerProviders = useInMemoryTestInfra
     AnalyticsModule,
   ],
   controllers: [
+    CertificatePreviewController,
     AppController,
     HealthController,
     AccountMergeController,
@@ -678,6 +684,10 @@ const schedulerProviders = useInMemoryTestInfra
     CertificateNotificationJobsService,
     LegacyRepeatableJobsMigrationService,
     PublicCertificateValidationService,
+    PublicCertificateVerificationResolver,
+    CertificatePreviewCache,
+    CertificatePreviewService,
+    CertificatePreviewWorker,
     WeatherService,
     FrozenResourceService,
     VotingIntegrationService,

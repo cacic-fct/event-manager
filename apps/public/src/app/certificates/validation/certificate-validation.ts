@@ -1,4 +1,14 @@
-import { Component, DestroyRef, inject, PLATFORM_ID, signal, viewChild } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  DestroyRef,
+  ElementRef,
+  inject,
+  Injector,
+  PLATFORM_ID,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormField, form, required, submit as submitSignalForm, validate } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
@@ -12,9 +22,10 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import type {
   PublicCertificateValidation,
   PublicCertificateValidationEvent,
+  PublicCertificateVerification,
 } from '@cacic-fct/event-manager-public-contracts';
 import { TURNSTILE_ACTIONS, formatCreditMinutes, formatDateRange, formatDateTime } from '@cacic-fct/shared-utils';
-import { Subscription, combineLatest, distinctUntilChanged, finalize, map } from 'rxjs';
+import { Subscription, combineLatest, distinctUntilChanged, finalize, map, timeout, timer } from 'rxjs';
 import { CertificateFileDownloadService } from '../../shared/certificate-file-download.service';
 import { EmojiService } from '../../shared/emoji.service';
 import { CertificateValidationApiService } from './certificate-validation-api.service';
@@ -26,7 +37,7 @@ import {
   CacicLogoComponent,
   CloudflareTurnstileComponent,
 } from '@cacic-fct/shared-angular';
-import { isPlatformBrowser } from '@angular/common';
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
@@ -37,6 +48,8 @@ type ValidationState =
   | { status: 'challenge'; certificateId: string; source: ValidationSource }
   | { status: 'loading' }
   | { status: 'ready'; certificate: PublicCertificateValidation }
+  | { status: 'revoked'; revokedAt: string }
+  | { status: 'not-found' }
   | { status: 'error'; message: string };
 
 type ValidationSource = 'link' | 'manual' | 'scan';
@@ -73,6 +86,12 @@ export class CertificateValidation {
   readonly emoji = inject(EmojiService);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly document = inject(DOCUMENT);
+  private readonly injector = inject(Injector);
+  private readonly lookupInput = viewChild<ElementRef<HTMLInputElement>>('lookupInput');
+  readonly lookupExpanded = signal(false);
+  private readonly previewSection = viewChild<ElementRef<HTMLElement>>('previewSection');
+  private readonly downloadAction = viewChild('downloadAction', { read: ElementRef<HTMLButtonElement> });
   private readonly turnstileWidget = viewChild(CloudflareTurnstileComponent);
   private readonly validationCooldown = createRateLimitCooldown(this.destroyRef);
   private readonly downloadCooldown = createRateLimitCooldown(this.destroyRef);
@@ -80,6 +99,12 @@ export class CertificateValidation {
   private platformId = inject(PLATFORM_ID);
   private activeValidation: Subscription | null = null;
   private activeDownload: Subscription | null = null;
+  private activePreview: Subscription | null = null;
+  private previewTimer: Subscription | null = null;
+  readonly previewState = signal<'available' | 'loading' | 'ready' | 'hidden'>('available');
+  readonly previewUrl = signal<string | null>(null);
+  readonly previewExpanded = signal(false);
+  readonly previewToken = signal<string | null>(null);
   private pendingCertificateId: string | null = null;
   private nextValidationSource: ValidationSource | null = null;
   private currentRouteCertificateId: string | null = null;
@@ -127,12 +152,13 @@ export class CertificateValidation {
       )
       .subscribe(({ certificateId, invalidId }) => {
         this.resetDownload();
+        this.resetPreview();
         this.currentRouteCertificateId = certificateId;
         this.syncInput(certificateId, invalidId);
 
         if (!certificateId) {
           this.cancelPendingValidation();
-          this.state.set({ status: 'idle' });
+          this.state.set(invalidId ? { status: 'not-found' } : { status: 'idle' });
           return;
         }
 
@@ -140,7 +166,7 @@ export class CertificateValidation {
         const certificate = this.validationState.get(certificateId);
         if (certificate && source === 'link') {
           this.cancelPendingValidation();
-          this.state.set({ status: 'ready', certificate });
+          this.applyVerification(certificate);
           return;
         }
 
@@ -150,6 +176,7 @@ export class CertificateValidation {
     this.destroyRef.onDestroy(() => {
       this.activeValidation?.unsubscribe();
       this.activeDownload?.unsubscribe();
+      this.resetPreview();
     });
 
     if (isPlatformBrowser(this.platformId) && window.matchMedia) {
@@ -167,6 +194,17 @@ export class CertificateValidation {
         media.removeEventListener('change', listener);
       });
     }
+  }
+
+  openLookup(): void {
+    this.lookupExpanded.set(true);
+    afterNextRender(
+      () => {
+        this.lookupInput()?.nativeElement.focus();
+        this.lookupInput()?.nativeElement.select();
+      },
+      { injector: this.injector },
+    );
   }
 
   submit(source: ValidationSource = 'manual'): void {
@@ -232,6 +270,83 @@ export class CertificateValidation {
           this.downloadError.set(this.getDownloadErrorMessage(error));
         },
       });
+  }
+
+  togglePreview(certificate: PublicCertificateValidation): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+    if (this.previewState() !== 'available') {
+      this.previewExpanded.update((expanded) => !expanded);
+      return;
+    }
+    this.previewExpanded.set(true);
+    this.previewState.set('loading');
+    this.requestPreview(certificate.id, 0);
+  }
+
+  hidePreview(): void {
+    if (this.previewSection()?.nativeElement.contains(this.document.activeElement)) {
+      this.downloadAction()?.nativeElement.focus();
+    }
+    this.resetPreview();
+    this.previewState.set('hidden');
+  }
+
+  private requestPreview(certificateId: string, attempt: number): void {
+    const token = this.previewToken();
+    if (!token) {
+      this.hidePreview();
+      return;
+    }
+    this.activePreview = this.api
+      .requestPreview(certificateId, token)
+      .pipe(timeout({ first: 4000 }), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (preview) => {
+          if (!preview) {
+            this.hidePreview();
+          } else if (!preview.imagePath && attempt < 9) {
+            this.previewTimer = timer(2000)
+              .pipe(takeUntilDestroyed(this.destroyRef))
+              .subscribe(() => this.requestPreview(certificateId, attempt + 1));
+          } else if (preview.imagePath === `/api/certificates/validate/${encodeURIComponent(certificateId)}/preview`) {
+            this.loadPreviewImage(preview.imagePath, token);
+          } else {
+            this.hidePreview();
+          }
+        },
+        error: () => this.hidePreview(),
+      });
+  }
+
+  private loadPreviewImage(imagePath: string, token: string): void {
+    this.activePreview = this.api
+      .previewCertificate(imagePath, token)
+      .pipe(timeout({ first: 4000 }), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          if (response.status !== 200 || !response.body?.size || response.body.type !== 'image/avif') {
+            this.hidePreview();
+            return;
+          }
+          this.previewUrl.set(URL.createObjectURL(response.body));
+          this.previewState.set('ready');
+        },
+        error: () => this.hidePreview(),
+      });
+  }
+
+  private resetPreview(): void {
+    this.activePreview?.unsubscribe();
+    this.previewTimer?.unsubscribe();
+    const url = this.previewUrl();
+    if (url) {
+      URL.revokeObjectURL(url);
+    }
+    this.previewUrl.set(null);
+    this.previewExpanded.set(false);
+    this.previewState.set('available');
   }
 
   public scanCode(): void {
@@ -348,7 +463,9 @@ export class CertificateValidation {
 
     this.cancelPendingValidation();
     this.resetDownload();
+    this.resetPreview();
     this.notFoundCertificateId.set(null);
+    this.previewToken.set(null);
     this.pendingCertificateId = normalizedCertificateId;
     this.validationState.clear(normalizedCertificateId);
 
@@ -384,21 +501,13 @@ export class CertificateValidation {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: (certificate) => {
-          if (!certificate) {
+        next: (verification) => {
+          if (!verification.certificate && !verification.revokedAt) {
             this.notFoundCertificateId.set(certificateId);
-            this.state.set({
-              status: 'error',
-              message: 'Certificado não encontrado.',
-            });
-            return;
+          } else {
+            this.validationState.set(certificateId, verification);
           }
-
-          this.validationState.set(certificateId, certificate);
-          this.state.set({
-            status: 'ready',
-            certificate,
-          });
+          this.applyVerification(verification);
         },
         error: (error: unknown) => {
           if (error instanceof RateLimitError) {
@@ -410,6 +519,18 @@ export class CertificateValidation {
           });
         },
       });
+  }
+
+  private applyVerification(verification: PublicCertificateVerification): void {
+    this.lookupExpanded.set(false);
+    this.previewToken.set(verification.previewToken);
+    if (verification.revokedAt) {
+      this.state.set({ status: 'revoked', revokedAt: verification.revokedAt });
+    } else if (verification.certificate) {
+      this.state.set({ status: 'ready', certificate: verification.certificate });
+    } else {
+      this.state.set({ status: 'not-found' });
+    }
   }
 
   private cancelPendingValidation(): void {
@@ -460,7 +581,7 @@ export class CertificateValidation {
       return 'Não foi possível confirmar a verificação anti-spam. Tente novamente.';
     }
 
-    return message || 'Não foi possível validar o certificado.';
+    return 'Não foi possível consultar o registro do certificado.';
   }
 
   private getDownloadErrorMessage(error: unknown): string {

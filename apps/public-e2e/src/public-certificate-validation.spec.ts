@@ -12,7 +12,7 @@ test('validates a standalone certificate without rendering an activities section
   await page.goto('/app/validate/certificate-standalone');
 
   await expect(page.getByRole('heading', { name: 'Validar certificado' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Atividades complementares' })).toBeVisible();
+  await expect(page.getByText('Atividades complementares', { exact: true })).toBeVisible();
   await expect(page.getByText('Atividade complementar', { exact: true })).toBeVisible();
   await expect(page.getByText('Certificamos a participação em atividade complementar.')).toBeVisible();
   await expect(page.getByText('Atividade validada sem vínculo com programação pública.')).toBeVisible();
@@ -22,7 +22,7 @@ test('validates a standalone certificate without rendering an activities section
 test('shows the generic not-found error for certificates from disabled configs', async ({ page }) => {
   await page.goto('/app/validate/certificate-disabled');
 
-  await expect(page.getByText('Certificado não encontrado.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Certificado não encontrado' })).toBeVisible();
   await expect(page.getByText('disabled')).toHaveCount(0);
 });
 
@@ -32,7 +32,7 @@ for (const returnMethod of ['browser', 'event button'] as const) {
     page.on('request', (request) => {
       if (request.url().endsWith('/api/graphql') && request.method() === 'POST') {
         const body = request.postDataJSON() as { query?: string };
-        if (body.query?.includes('publicCertificateValidation')) {
+        if (body.query?.includes('publicCertificateVerification')) {
           validationRequests += 1;
         }
       }
@@ -50,6 +50,7 @@ for (const returnMethod of ['browser', 'event button'] as const) {
 
     await expect(page.getByText('Certificado válido', { exact: true })).toBeVisible();
     await expect(page.getByText('Maria Teste', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Consultar outro certificado' }).click();
     await expect(page.getByRole('textbox', { name: 'Código do certificado' })).toHaveValue('certificate-with-event');
     await expect(page.getByRole('link', { name: /Atividade vinculada/ })).toBeVisible();
     await expect(page.getByText('Conclua a verificação para validar.', { exact: true })).toHaveCount(0);
@@ -136,14 +137,17 @@ async function fulfillGraphql(route: Route): Promise<void> {
   const query = body.query ?? '';
   const certificateId = String(body.variables?.['certificateId'] ?? '');
 
-  if (query.includes('publicCertificateValidation')) {
+  if (query.includes('publicCertificateVerification')) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
         data: {
-          publicCertificateValidation:
-            certificateId === 'certificate-disabled' ? null : standaloneCertificateFixture(certificateId),
+          publicCertificateVerification: {
+            certificate: certificateId === 'certificate-disabled' ? null : standaloneCertificateFixture(certificateId),
+            revokedAt: null,
+            previewToken: null,
+          },
         },
       }),
     });
@@ -160,7 +164,7 @@ async function fulfillGraphql(route: Route): Promise<void> {
 function standaloneCertificateFixture(certificateId: string): Record<string, unknown> {
   return {
     id: certificateId,
-    issuedAt: '2026-07-01T12:00:00.000Z',
+    issuedAt: new Date(Date.now() - 86400000).toISOString(),
     personName: 'Maria Teste',
     maskedIdentityDocument: '•••.123.456-••',
     scope: 'OTHER',

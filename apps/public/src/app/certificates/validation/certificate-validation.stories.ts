@@ -1,7 +1,7 @@
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { of } from 'rxjs';
 import { CertificateValidation } from './certificate-validation';
 
@@ -46,7 +46,12 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 
 export const Playground: Story = {
   args: {},
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+  decorators: [routeDecorator(null)],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('textbox', { name: 'Código do certificado' })).toHaveValue('');
+    await expect(canvas.queryByText('Certificado válido')).toBeNull();
+  },
 };
 
 export const StandaloneWithoutActivities: Story = {
@@ -68,7 +73,7 @@ export const ManualMajorEvent: Story = {
   globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('heading', { name: 'Semana de Computação' })).toBeVisible();
+    await expect(await canvas.findByText('Semana de Computação')).toBeVisible();
     await expect(await canvas.findByText('Maria Organizadora')).toBeVisible();
     await expect(await canvas.findByText('Organização', { exact: true })).toBeVisible();
     await expect(await canvas.findByText('Texto do verso')).toBeVisible();
@@ -99,6 +104,50 @@ export const DisabledCertificate: Story = {
     await expect(canvas.getByRole('textbox', { name: 'Código do certificado' })).toHaveValue('certificate-disabled');
     await expect(canvas.getByRole('button', { name: 'Validar' })).toBeDisabled();
     await canvasElement.ownerDocument.fonts.ready;
+  },
+};
+
+export const ConsultAnotherCertificate: Story = {
+  decorators: [routeDecorator('certificate-manual-major')],
+  globals: { network: 'online' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Consultar outro certificado' }));
+    const input = canvas.getByRole('textbox', { name: 'Código do certificado' });
+    await expect(input).toBeVisible();
+    await waitFor(() => expect(input).toHaveFocus());
+    await expect(canvas.getByText('Certificado válido', { exact: true })).toBeVisible();
+  },
+};
+
+export const RevokedCertificate: Story = {
+  decorators: [routeDecorator('certificate-revoked')],
+  globals: { network: 'online' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'Certificado revogado' })).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: /Baixar certificado/ })).toBeNull();
+  },
+};
+
+export const NotFound: Story = {
+  decorators: [routeDecorator('certificate-missing')],
+  globals: { network: 'online' },
+  play: async ({ canvasElement }) => {
+    await expect(
+      await within(canvasElement).findByRole('heading', { name: 'Certificado não encontrado' }),
+    ).toBeVisible();
+  },
+};
+
+export const PreviewUnavailable: Story = {
+  decorators: [routeDecorator('certificate-preview-unavailable')],
+  globals: { network: 'online' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Ver prévia do documento' }));
+    await waitFor(() => expect(canvas.queryByRole('region', { name: 'Prévia do documento' })).toBeNull());
+    await expect(canvas.getByText('Certificado válido', { exact: true })).toBeVisible();
   },
 };
 

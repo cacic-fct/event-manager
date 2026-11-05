@@ -97,6 +97,14 @@ export const RATE_LIMIT_POLICIES = {
     maxCooldownMs: minute,
     maxAttempts: 10,
   },
+  publicCertificatePreview: {
+    name: 'public-certificate-preview',
+    windowMs: minute,
+    freeAttempts: 18,
+    baseCooldownMs: minute,
+    maxCooldownMs: minute,
+    maxAttempts: 18,
+  },
   currentUserCertificateArchive: {
     name: 'current-user-certificate-archive',
     windowMs: 24 * 60 * minute,

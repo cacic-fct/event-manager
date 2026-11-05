@@ -1,14 +1,16 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import {
   DOWNLOAD_PUBLIC_CERTIFICATE_QUERY,
-  PUBLIC_CERTIFICATE_VALIDATION_QUERY,
+  PUBLIC_CERTIFICATE_VERIFICATION_QUERY,
+  REQUEST_PUBLIC_CERTIFICATE_PREVIEW_MUTATION,
   type CertificateDownload,
   type DownloadPublicCertificateQuery,
   type GraphqlResponse,
   type GraphqlVariables,
-  type PublicCertificateValidation,
-  type PublicCertificateValidationQuery,
+  type PublicCertificateVerification,
+  type PublicCertificatePreview,
+  type PublicCertificateVerificationQuery,
 } from '@cacic-fct/event-manager-public-contracts';
 import { Observable, map } from 'rxjs';
 import { graphqlError } from '../../shared/rate-limit-error';
@@ -17,17 +19,32 @@ import { graphqlError } from '../../shared/rate-limit-error';
 export class CertificateValidationApiService {
   private readonly http = inject(HttpClient);
 
-  validateCertificate(certificateId: string, turnstileToken: string): Observable<PublicCertificateValidation | null> {
-    return this.query<PublicCertificateValidationQuery>(PUBLIC_CERTIFICATE_VALIDATION_QUERY, {
+  validateCertificate(certificateId: string, turnstileToken: string): Observable<PublicCertificateVerification> {
+    return this.query<PublicCertificateVerificationQuery>(PUBLIC_CERTIFICATE_VERIFICATION_QUERY, {
       certificateId,
       turnstileToken,
-    }).pipe(map((data) => data.publicCertificateValidation));
+    }).pipe(map((data) => data.publicCertificateVerification));
   }
 
   downloadCertificate(certificateId: string): Observable<CertificateDownload> {
     return this.query<DownloadPublicCertificateQuery>(DOWNLOAD_PUBLIC_CERTIFICATE_QUERY, { certificateId }).pipe(
       map((data) => data.downloadPublicCertificate),
     );
+  }
+
+  requestPreview(certificateId: string, previewToken: string): Observable<PublicCertificatePreview | null> {
+    return this.query<{ requestPublicCertificatePreview: PublicCertificatePreview | null }>(
+      REQUEST_PUBLIC_CERTIFICATE_PREVIEW_MUTATION,
+      { certificateId, previewToken },
+    ).pipe(map((data) => data.requestPublicCertificatePreview));
+  }
+
+  previewCertificate(imagePath: string, previewToken: string): Observable<HttpResponse<Blob>> {
+    return this.http.get(imagePath, {
+      headers: { 'X-Certificate-Preview-Token': previewToken },
+      observe: 'response',
+      responseType: 'blob',
+    });
   }
 
   private query<TData>(query: string, variables?: GraphqlVariables): Observable<TData> {
