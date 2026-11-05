@@ -5,6 +5,7 @@ import type { CurrentUserCertificatesResolver } from './resolver';
 const { jest } = import.meta;
 
 jestEsm.unstable_mockModule('../../certificate/certificate.constants', () => ({
+  ACTIVE_OR_REVOKED_CERTIFICATE_WHERE: {},
   MAJOR_EVENT_SELECT: {},
   EVENT_GROUP_SELECT: {},
   EVENT_SELECT: {},
