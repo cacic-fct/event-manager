@@ -1,7 +1,7 @@
 import { Controller, Headers, type MessageEvent, Param, ParseIntPipe, Query, Req, Sse } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
 import { type Request } from 'express';
-import { Observable, interval, map, startWith, switchMap } from 'rxjs';
+import { Observable, exhaustMap, interval, map, startWith } from 'rxjs';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { SseReplayService } from '../realtime/sse-replay.service';
@@ -42,7 +42,7 @@ export class AttendanceAnalyticsController {
     resolveAttendanceAnalyticsWindow(requestedWindow);
     const snapshots = interval(2_000).pipe(
       startWith(0),
-      switchMap(() => this.analytics.snapshot(eventId, requestedWindow)),
+      exhaustMap(() => this.analytics.snapshot(eventId, requestedWindow)),
       map((snapshot) => ({ data: { type: 'event-attendance-analytics', snapshot } })),
     );
     return this.replay.replay(

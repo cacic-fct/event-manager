@@ -1,4 +1,5 @@
 import { jest as jestEsm } from '@jest/globals';
+import { ColumnTypeEnum } from '@prisma/driver-adapter-utils';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import type { PrismaService } from '../prisma/prisma.service';
@@ -11,6 +12,16 @@ const mockConnection = {
   adapterName: '@prisma/adapter-pg',
   queryRaw: async (query: CapturedQuery) => {
     mockQueries.push(query);
+    const columnNames = Array.from(query.sql.matchAll(/AS "(_(?:count|max)\$[^"]+)"/g), (match) => match[1]);
+    if (columnNames.length > 0) {
+      return {
+        columnNames,
+        columnTypes: columnNames.map((name) =>
+          name.startsWith('_count$') ? ColumnTypeEnum.Int64 : ColumnTypeEnum.DateTime,
+        ),
+        rows: [columnNames.map((name) => (name.startsWith('_count$') ? '0' : null))],
+      };
+    }
     return { columnNames: [], columnTypes: [], rows: [] };
   },
   executeRaw: async () => 0,
@@ -36,6 +47,8 @@ jestEsm.unstable_mockModule('@prisma/adapter-pg', () => ({
 const { PrismaService: PrismaServiceClass } = await import('../prisma/prisma.service');
 const { ANONYMOUS_AUDIENCE, audienceContext } = await import('./audience-context');
 const { scopeAudienceQuery } = await import('./audience-prisma.extension');
+const { RealtimeFingerprintService } = await import('../realtime/realtime-fingerprint.service');
+const { SseReplayService } = await import('../realtime/sse-replay.service');
 const generateAudienceRelationsTestPath = fileURLToPath(
   new URL('../../../../../tools/generate-audience-relations.test.mjs', import.meta.url),
 );
@@ -117,5 +130,25 @@ describe('event audience query boundary', () => {
     ]);
     expect(mockQueries.filter((query) => query.sql.includes('"audienceCourseCodes"'))).toHaveLength(1);
     expect(mockQueries.filter((query) => !query.sql.includes('"audience"'))).toHaveLength(1);
+  });
+
+  it('uses small account-owned queries for opaque realtime revisions and restores audience filtering afterward', async () => {
+    const service = new RealtimeFingerprintService(prisma, new SseReplayService({} as never));
+    const personId = 'person-1';
+    await audienceContext.run({ ...ANONYMOUS_AUDIENCE, personIds: [personId] }, async () => {
+      const fingerprint = await service.currentUser(personId);
+      expect(Object.keys(fingerprint).sort()).toEqual(['minute', 'revision', 'type']);
+      expect(mockQueries).toHaveLength(22);
+      for (const query of mockQueries) {
+        expect(query.args).toContain(personId);
+        expect(query.args).not.toContain('PUBLIC');
+        expect(query.sql.match(/JOIN/g)?.length ?? 0).toBeLessThanOrEqual(3);
+      }
+
+      mockQueries.length = 0;
+      await prisma.event.findMany({ select: { id: true } });
+      expect(mockQueries[0].args).toContain('PUBLIC');
+      expect(mockQueries[0].sql).toContain('"event_audience_invitations"');
+    });
   });
 });

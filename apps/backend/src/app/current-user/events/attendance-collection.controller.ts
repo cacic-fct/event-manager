@@ -11,7 +11,7 @@ import {
   ApiPropertyOptional,
   ApiTags,
 } from '@nestjs/swagger';
-import { Observable, defer, interval, map, startWith, switchMap } from 'rxjs';
+import { Observable, defer, exhaustMap, interval, map, startWith, switchMap } from 'rxjs';
 import { authenticateHttpRequest, type AuthenticatedRequest } from '../../auth/authenticated-request';
 import { AUTH_SESSION_COOKIE_NAME } from '../../auth/auth.constants';
 import { readAuthCookie } from '../../auth/auth-cookie-utils';
@@ -173,7 +173,7 @@ export class CurrentUserAttendanceCollectionController extends EventAttendancesS
   ): Observable<MessageEvent> {
     const snapshots = interval(2_000).pipe(
       startWith(0),
-      switchMap(async () => {
+      exhaustMap(async () => {
         await this.requireCollector(eventId, request, true);
         return this.getScannerFeed(eventId);
       }),

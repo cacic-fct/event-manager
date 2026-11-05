@@ -7,9 +7,12 @@ import { RealtimeInvalidationService } from './realtime-invalidation.service';
 describe('RealtimeInvalidationService', () => {
   const user = signal<{ sub: string } | null>(null);
   let refreshMe: ReturnType<typeof vi.fn>;
+  let visibility: DocumentVisibilityState;
 
   beforeEach(() => {
     user.set(null);
+    visibility = 'visible';
+    vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibility);
     refreshMe = vi.fn().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
       providers: [
@@ -20,7 +23,64 @@ describe('RealtimeInvalidationService', () => {
     });
   });
 
-  afterEach(() => TestBed.resetTestingModule());
+  afterEach(() => {
+    TestBed.resetTestingModule();
+    vi.restoreAllMocks();
+  });
+
+  it('shares a private stream and closes it only after the last consumer unsubscribes', async () => {
+    const restoreEventSource = installFakeEventSource();
+    try {
+      const service = TestBed.inject(RealtimeInvalidationService);
+      const first = service.watchCurrentUserData().subscribe();
+      const second = service.watchCurrentUserData().subscribe();
+      user.set({ sub: 'user-1' });
+      await flushSignals();
+
+      expect(FakeEventSource.instances).toHaveLength(1);
+      const source = FakeEventSource.instances[0] as FakeEventSource;
+      first.unsubscribe();
+      expect(source.close).not.toHaveBeenCalled();
+      second.unsubscribe();
+      expect(source.close).toHaveBeenCalledOnce();
+    } finally {
+      restoreEventSource();
+    }
+  });
+
+  it('pauses private streams in hidden tabs and reopens them for the current user on return', async () => {
+    const restoreEventSource = installFakeEventSource();
+    try {
+      visibility = 'hidden';
+      user.set({ sub: 'user-1' });
+      const service = TestBed.inject(RealtimeInvalidationService);
+      const subscription = service.watchCurrentUserData().subscribe();
+      await flushSignals();
+      expect(FakeEventSource.instances).toHaveLength(0);
+
+      visibility = 'visible';
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(FakeEventSource.instances).toHaveLength(1);
+      const source = FakeEventSource.instances[0] as FakeEventSource;
+
+      visibility = 'hidden';
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(source.close).toHaveBeenCalledOnce();
+      user.set({ sub: 'user-2' });
+      await flushSignals();
+      expect(FakeEventSource.instances).toHaveLength(1);
+
+      visibility = 'visible';
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(FakeEventSource.instances).toHaveLength(2);
+      subscription.unsubscribe();
+      expect((FakeEventSource.instances[1] as FakeEventSource).close).toHaveBeenCalledOnce();
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(FakeEventSource.instances).toHaveLength(2);
+    } finally {
+      restoreEventSource();
+    }
+  });
 
   it('opens the private stream only while a user is authenticated', async () => {
     const restoreEventSource = installFakeEventSource();

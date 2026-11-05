@@ -11,7 +11,7 @@ import {
   ApiPropertyOptional,
   ApiTags,
 } from '@nestjs/swagger';
-import { Observable, defer, interval, map, startWith, switchMap } from 'rxjs';
+import { Observable, defer, exhaustMap, interval, map, startWith, switchMap } from 'rxjs';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { authenticateHttpRequest, type AuthenticatedRequest } from '../auth/authenticated-request';
 import { AUTH_SESSION_COOKIE_NAME } from '../auth/auth.constants';
@@ -180,7 +180,7 @@ export class EventAttendancesController extends EventAttendancesScannerFeedSuppo
   ): Observable<MessageEvent> {
     const snapshots = interval(2_000).pipe(
       startWith(0),
-      switchMap(() => this.authorizedScannerSnapshot(eventId, request)),
+      exhaustMap(() => this.authorizedScannerSnapshot(eventId, request)),
       map((attendances) => ({
         data: {
           type: 'event-attendance-scanner-feed',
