@@ -8,6 +8,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   constructor() {
     const adapter = new PrismaPg({
       connectionString: process.env.DATABASE_URL!,
+      // Recycle busy pool connections so their PostgreSQL backends release retained heap memory.
+      maxLifetimeSeconds: 300,
     });
 
     super({ adapter });
