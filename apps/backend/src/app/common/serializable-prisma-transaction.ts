@@ -30,5 +30,20 @@ function waitBeforeRetry(attempt: number): Promise<void> {
 }
 
 function isRetryableTransactionError(error: unknown): boolean {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034';
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+    return false;
+  }
+  if (error.code === 'P2034') {
+    return true;
+  }
+  // The pg adapter exposes raw-query serialization failures through P2010's cause.
+  const adapterError = error.meta?.['driverAdapterError'];
+  const cause = adapterError instanceof Error ? adapterError.cause : undefined;
+  return (
+    error.code === 'P2010' &&
+    typeof cause === 'object' &&
+    cause !== null &&
+    'originalCode' in cause &&
+    cause.originalCode === '40001'
+  );
 }

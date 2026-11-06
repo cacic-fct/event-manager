@@ -79,6 +79,13 @@
         "command": "node tools/run-data-transfer-database-tests.mjs"
       }
     },
+    "test-subscription-counters-postgres": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config=apps/backend/jest.subscription-counters.postgres.config.mts --runInBand"
+      }
+    },
     "test-data-transfer-integration": {
       "executor": "nx:run-commands",
       "options": {

@@ -54,20 +54,49 @@ describe('AttendanceAnalyticsService snapshot filtering', () => {
     ['rolling window covering review detection', 120, 2],
     ['rolling window shorter than review detection', 15, 3],
   ])('reuses compatible reads for a %s', async (_label, windowMinutes, expectedQueries) => {
-    const row = attendance({ minute: 1, latitude: 0, longitude: 0 });
     const now = new Date();
-    row.attendedAt = new Date(now.getTime() - 60_000);
-    row.createdAt = row.attendedAt;
     jest.useFakeTimers().setSystemTime(now);
-    const { prisma, service } = snapshotFixture([row]);
+    const start = new Date(now.getTime() - windowMinutes * 60_000);
+    const rows = [start.getTime() - 1, start.getTime(), now.getTime() - 60_000].map((time, index) => ({
+      ...attendance({ minute: index, latitude: 0, longitude: 0 }),
+      attendedAt: new Date(time),
+      createdAt: new Date(time),
+    }));
+    const { prisma, service } = snapshotFixture(rows);
+    prisma.eventSubscription.findMany.mockResolvedValue(rows.map(({ personId }) => ({ personId })));
+    prisma.eventAttendance.findMany.mockImplementation(
+      async (args: { where: { status?: EventAttendanceStatus; attendedAt?: { gte: Date } } }) =>
+        rows.filter(
+          (row) =>
+            (!args.where.attendedAt || row.attendedAt >= args.where.attendedAt.gte) &&
+            (!args.where.status || row.status === args.where.status),
+        ),
+    );
 
-    await service.snapshot('event-1', { windowMinutes });
+    const result = await service.snapshot('event-1', { windowMinutes });
 
     expect(prisma.eventAttendance.findMany).toHaveBeenCalledTimes(expectedQueries);
+    expect(prisma.eventAttendance.findMany).toHaveBeenNthCalledWith(1, {
+      where: { eventId: 'event-1', attendedAt: { gte: start } },
+      select: expect.any(Object),
+      orderBy: { attendedAt: 'asc' },
+    });
     expect(prisma.eventAttendance.findMany).toHaveBeenCalledWith({
       where: { eventId: 'event-1', status: 'PRESENT' },
       select: { personId: true },
     });
+    expect(result).toMatchObject({
+      windowStart: start,
+      windowEnd: now,
+      windowMinutes,
+      presentCount: 3,
+      noShowCount: 0,
+    });
+    expect(result.methods).toEqual([{ method: AttendanceCreationMethod.SCANNER, count: 2 }]);
+    expect(result.scansPerMinute.reduce((total, bucket) => total + bucket.count, 0)).toBe(2);
+    expect(result.scansByHour.reduce((total, bucket) => total + bucket.count, 0)).toBe(2);
+    expect(result.collectors).toEqual([expect.objectContaining({ count: 2 })]);
+    expect(result.heatmapPoints).toEqual([expect.objectContaining({ count: 2 })]);
   });
 
   it('keeps complete totals while retaining the existing review-detection limit', async () => {
