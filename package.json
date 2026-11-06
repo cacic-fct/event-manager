@@ -16,6 +16,7 @@
     "lint:data-import": "bunx eslint tools/data-import/*.mjs tools/data-import/*.mts tools/data-import/lib/*.mts tools/evcomp-import/*.mjs",
     "test:prisma-migrations": "PRISMA_MIGRATION_INTEGRATION_TEST=1 bun tools/prisma-migration-integrity.test.mts",
     "test:attendance-access-migration": "node --test tools/attendance-access-migration.test.mts",
+    "test:database:pglite": "node --test tools/attendance-access-migration.test.mts tools/certificate-issuance-migration.test.mts tools/price-tier-registration-migration.test.mts",
     "test:ticketing:database": "node tools/run-ticketing-database-tests.mjs",
     "test:data-transfer:database": "node tools/run-data-transfer-database-tests.mjs",
     "test:data-transfer:runner": "node --test tools/run-data-transfer-database-tests.test.mjs",
