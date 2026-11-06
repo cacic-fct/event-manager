@@ -1,7 +1,7 @@
 import { Service } from '@angular/core';
 import type { PublicCertificateVerification } from '@cacic-fct/event-manager-public-contracts';
 
-/** Keeps successful lookups available when returning from linked event pages. */
+/** Briefly preserves results during linked-page navigation; older results require fresh verification. */
 @Service()
 export class CertificateValidationStateService {
   private readonly certificates = new Map<string, { verification: PublicCertificateVerification; expiresAt: number }>();
@@ -23,7 +23,7 @@ export class CertificateValidationStateService {
         this.certificates.delete(oldest.value);
       }
     }
-    this.certificates.set(certificateId, { verification, expiresAt: Date.now() + 60_000 });
+    this.certificates.set(certificateId, { verification, expiresAt: Date.now() + 5000 });
   }
 
   clear(certificateId: string): void {

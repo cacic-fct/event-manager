@@ -33,6 +33,7 @@ test('uploads one PDF and displays the verification for the extracted code', asy
     expect(route.request().method()).toBe('POST');
     expect(route.request().headers()['content-type']).toBe('application/pdf');
     expect(route.request().headers()['x-turnstile-token']).toBe('e2e-turnstile-token');
+    expect(route.request().postDataBuffer()).toEqual(buffer);
     await route.fulfill({
       json: {
         certificateId,

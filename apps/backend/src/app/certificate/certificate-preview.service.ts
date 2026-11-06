@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { Injectable, type OnModuleDestroy } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
@@ -18,6 +18,18 @@ type PreviewRequest = { imagePath: string | null };
 const MAX_HTTP_OPERATIONS = 12;
 const TOKEN_TTL_MS = 10 * 60_000;
 const RESERVE_COMMAND = 'reservePublicCertificatePreview';
+const RETRY_COMMAND = 'managePublicCertificatePreviewRetry';
+// Serialize failed-job replacement across producers and release only our own lock.
+const MANAGE_PREVIEW_RETRY = `
+local lock, reservations = KEYS[1], KEYS[2]
+local operation, token, revision = ARGV[1], ARGV[2], ARGV[3]
+if operation == 'acquire' then
+  return redis.call('SET', lock, token, 'PX', 30000, 'NX')
+end
+if redis.call('GET', lock) ~= token then return 0 end
+if operation == 'reset' then return redis.call('ZREM', reservations, revision) end
+return redis.call('DEL', lock)
+`;
 
 @Injectable()
 export class CertificatePreviewService implements OnModuleDestroy {
@@ -52,44 +64,76 @@ export class CertificatePreviewService implements OnModuleDestroy {
         return null;
       }
       const existing = await queue.getJob(revision);
-      if (existing) {
-        const state = await existing.getState();
+      const state = await existing?.getState();
+      if (existing && state !== 'failed') {
         return state === 'active' || state === 'waiting' ? { imagePath: null } : null;
       }
 
       const redis = await queue.client;
       if (!this.admissionRegistered) {
         redis.defineCommand(RESERVE_COMMAND, { lua: RESERVE_CERTIFICATE_PREVIEW, numberOfKeys: 7 });
+        redis.defineCommand(RETRY_COMMAND, { lua: MANAGE_PREVIEW_RETRY, numberOfKeys: 2 });
         this.admissionRegistered = true;
       }
-      const reserved: unknown = await redis.runCommand(RESERVE_COMMAND, [
-        queue.toKey('health'),
-        queue.toKey('cooldown'),
-        queue.toKey('budget'),
-        queue.toKey('reservations'),
-        queue.toKey('wait'),
-        queue.toKey('active'),
-        queue.toKey('paused'),
-        revision,
-        queue.toKey(''),
-      ]);
-      if (reserved !== 1 && reserved !== 2) {
-        return null;
+      const retryKey = queue.toKey(`retry:${revision}`);
+      const retryToken = randomUUID();
+      const retryArgs = [retryKey, queue.toKey('reservations')];
+      if (
+        existing &&
+        (await redis.runCommand(RETRY_COMMAND, [...retryArgs, 'acquire', retryToken, revision])) !== 'OK'
+      ) {
+        return { imagePath: null };
       }
-      if (reserved === 1) {
-        await queue.add(
-          CERTIFICATE_PREVIEW_JOB,
-          { certificateId, revision },
-          {
-            jobId: revision,
-            attempts: 1,
-            removeOnComplete: true,
-            removeOnFail: { age: 120, count: 32 },
-            stackTraceLimit: 0,
-          },
-        );
+      if (!existing && (await redis.get(retryKey))) {
+        return { imagePath: null };
       }
-      return { imagePath: null };
+      try {
+        if (existing) {
+          // Recheck under the retry lock: another caller may already have replaced it.
+          const current = await queue.getJob(revision);
+          if (current) {
+            const currentState = await current.getState();
+            if (currentState !== 'failed') {
+              return currentState === 'active' || currentState === 'waiting' ? { imagePath: null } : null;
+            }
+            await current.remove();
+          }
+          // A retained failure must not reuse the old pre-enqueue reservation.
+          await redis.runCommand(RETRY_COMMAND, [...retryArgs, 'reset', retryToken, revision]);
+        }
+        const reserved: unknown = await redis.runCommand(RESERVE_COMMAND, [
+          queue.toKey('health'),
+          queue.toKey('cooldown'),
+          queue.toKey('budget'),
+          queue.toKey('reservations'),
+          queue.toKey('wait'),
+          queue.toKey('active'),
+          queue.toKey('paused'),
+          revision,
+          queue.toKey(''),
+        ]);
+        if (reserved !== 1 && reserved !== 2) {
+          return null;
+        }
+        if (reserved === 1) {
+          await queue.add(
+            CERTIFICATE_PREVIEW_JOB,
+            { certificateId, revision },
+            {
+              jobId: revision,
+              attempts: 1,
+              removeOnComplete: true,
+              removeOnFail: { age: 120, count: 32 },
+              stackTraceLimit: 0,
+            },
+          );
+        }
+        return { imagePath: null };
+      } finally {
+        if (existing) {
+          await redis.runCommand(RETRY_COMMAND, [...retryArgs, 'release', retryToken, revision]);
+        }
+      }
     });
   }
 

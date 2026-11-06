@@ -7,7 +7,7 @@ import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 import { TurnstileService } from '../turnstile/turnstile.service';
 import { PublicCertificateVerificationService } from './public-certificate-verification.service';
 
-const extractId = jest.fn<(pdf: Buffer) => Promise<string | null>>();
+const extractId = jest.fn<(pdf: Buffer, signal?: AbortSignal) => Promise<string | null>>();
 jest.unstable_mockModule('./extract-certificate-pdf-id', () => ({ extractCertificatePdfId: extractId }));
 const { CertificatePdfValidationController } = await import('./certificate-pdf-validation.controller');
 
@@ -58,7 +58,7 @@ describe('certificate PDF verification over HTTP', () => {
     expect(response.headers.get('Cache-Control')).toContain('no-store');
     expect(await response.json()).toEqual({ certificateId: id, ...result });
     expect(turnstile.assertValidToken).toHaveBeenCalledWith('token', expect.anything(), 'certificate_validation');
-    expect(extractId).toHaveBeenCalledWith(pdf);
+    expect(extractId).toHaveBeenCalledWith(pdf, expect.any(AbortSignal));
     expect(verification.verify).toHaveBeenCalledWith(id);
   });
 
@@ -100,6 +100,52 @@ describe('certificate PDF verification over HTTP', () => {
     } as RequestInit & { duplex: 'half' });
     expect(response.status).toBe(413);
     expect(extractId).not.toHaveBeenCalled();
+  });
+
+  it('cancels disconnected clients but holds admission until extraction stops', async () => {
+    const signals: AbortSignal[] = [];
+    const finish: Array<() => void> = [];
+    extractId.mockImplementation(
+      (_pdf, signal) =>
+        new Promise((_resolve, reject) => {
+          if (!signal) {
+            reject(new Error('Missing cancellation signal'));
+            return;
+          }
+          signals.push(signal);
+          finish.push(() => reject(new Error('Parser stopped')));
+        }),
+    );
+    const clients = [new AbortController(), new AbortController()];
+    const uploads = clients.map((client) =>
+      fetch(url, {
+        method: 'POST',
+        body: pdf,
+        signal: client.signal,
+        headers: { 'Content-Type': 'application/pdf', 'X-Turnstile-Token': 'token' },
+      }).catch(() => undefined),
+    );
+    try {
+      for (let attempt = 0; attempt < 200 && signals.length < 2; attempt++) {
+        await setImmediate();
+      }
+      expect(signals).toHaveLength(2);
+      // Reading a complete request body must not cancel an extraction.
+      expect(signals.every((signal) => !signal.aborted)).toBe(true);
+      clients.forEach((client) => client.abort());
+      await Promise.all(uploads);
+      for (let attempt = 0; attempt < 200 && signals.some((signal) => !signal.aborted); attempt++) {
+        await setImmediate();
+      }
+      expect(signals.every((signal) => signal.aborted)).toBe(true);
+      expect((await upload()).status).toBe(503);
+      expect(verification.verify).not.toHaveBeenCalled();
+    } finally {
+      finish.forEach((stop) => stop());
+    }
+    extractId.mockResolvedValue(id);
+    await setImmediate();
+    expect((await upload()).status).toBe(200);
   });
 
   it('bounds concurrent work and recovers the slots after parser errors', async () => {

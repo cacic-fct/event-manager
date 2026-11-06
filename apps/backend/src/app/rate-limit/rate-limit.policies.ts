@@ -100,10 +100,11 @@ export const RATE_LIMIT_POLICIES = {
   publicCertificatePreview: {
     name: 'public-certificate-preview',
     windowMs: minute,
-    freeAttempts: 18,
+    // Three admitted previews, each with ten polls and one AVIF request.
+    freeAttempts: 33,
     baseCooldownMs: minute,
     maxCooldownMs: minute,
-    maxAttempts: 18,
+    maxAttempts: 33,
   },
   currentUserCertificateArchive: {
     name: 'current-user-certificate-archive',

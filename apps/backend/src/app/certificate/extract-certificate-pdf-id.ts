@@ -27,7 +27,8 @@ export function findCertificatePdfId(text: string, configuredOrigin?: string): s
   return ids.size === 1 ? [...ids][0] : null;
 }
 
-export async function extractCertificatePdfId(pdf: Buffer): Promise<string | null> {
+export async function extractCertificatePdfId(pdf: Buffer, signal?: AbortSignal): Promise<string | null> {
+  signal?.throwIfAborted();
   const args = ['-q', '-enc', 'UTF-8', '-raw', '-', '-'];
   // Allow slower hosts and CPU contention while bounding parser memory and execution time.
   const parser =
@@ -38,9 +39,25 @@ export async function extractCertificatePdfId(pdf: Buffer): Promise<string | nul
           PDF_PROCESS_OPTIONS,
         )
       : execFile('pdftotext', args, PDF_PROCESS_OPTIONS);
+  // Aborting execFile via its signal option rejects before the child stops. Keep
+  // admission occupied until close, including timeout and output-limit failures.
+  const closed = new Promise<void>((resolve) => parser.child.once('close', () => resolve()));
+  const cancel = () => {
+    parser.child.kill('SIGKILL');
+  };
+  signal?.addEventListener('abort', cancel, { once: true });
+  if (signal?.aborted) {
+    cancel();
+  }
   // A malformed file or exhausted limit can close stdin before the write completes.
   parser.child.stdin?.on('error', () => undefined);
   parser.child.stdin?.end(pdf);
-  const { stdout } = await parser;
-  return findCertificatePdfId(stdout, process.env.PUBLIC_APP_ORIGIN?.trim());
+  try {
+    const { stdout } = await parser;
+    signal?.throwIfAborted();
+    return findCertificatePdfId(stdout, process.env.PUBLIC_APP_ORIGIN?.trim());
+  } finally {
+    await closed;
+    signal?.removeEventListener('abort', cancel);
+  }
 }

@@ -86,6 +86,14 @@ export class CertificatePdfValidationController {
 
     // Admit before Turnstile or body buffering. Slow and aborted uploads must release their slot.
     this.activeUploads++;
+    const extraction = new AbortController();
+    const response = request.res;
+    const cancelExtraction = () => {
+      if (!response?.writableFinished) {
+        extraction.abort();
+      }
+    };
+    response?.on('close', cancelExtraction);
     const deadline = setTimeout(() => {
       if (!request.complete) {
         request.destroy();
@@ -105,14 +113,16 @@ export class CertificatePdfValidationController {
       if (request.res?.destroyed) {
         throw new BadRequestException('Certificate PDF upload was interrupted.');
       }
-      const certificateId = await extractCertificatePdfId(pdf).catch(() => {
+      const certificateId = await extractCertificatePdfId(pdf, extraction.signal).catch(() => {
         throw new BadRequestException('Could not read the certificate PDF.');
       });
+      extraction.signal.throwIfAborted();
       if (!certificateId) {
         throw new UnprocessableEntityException('No unique certificate ID in the PDF body.');
       }
       return { certificateId, ...(await this.verification.verify(certificateId)) };
     } finally {
+      response?.off('close', cancelExtraction);
       clearTimeout(deadline);
       this.activeUploads--;
     }

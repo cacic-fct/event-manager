@@ -104,7 +104,7 @@ export class CertificateValidation {
   private readonly injector = inject(Injector);
   private readonly lookupInput = viewChild<ElementRef<HTMLInputElement>>('lookupInput');
   private readonly lookupShortcut = viewChild('lookupShortcut', { read: ElementRef<HTMLButtonElement> });
-  private readonly pdfPicker = viewChild('pdfPicker', { read: ElementRef<HTMLButtonElement> });
+  private readonly lookupSection = viewChild<ElementRef<HTMLElement>>('lookupSection');
   readonly lookupExpanded = signal(false);
   private readonly previewSection = viewChild<ElementRef<HTMLElement>>('previewSection');
   private readonly downloadAction = viewChild('downloadAction', { read: ElementRef<HTMLButtonElement> });
@@ -325,6 +325,10 @@ export class CertificateValidation {
 
   togglePreview(certificate: PublicCertificateValidation): void {
     if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+    if (this.previewState() === 'loading') {
+      this.resetPreview();
       return;
     }
     if (this.previewState() !== 'available') {
@@ -588,14 +592,14 @@ export class CertificateValidation {
   }
 
   private applyVerification(verification: PublicCertificateVerification): void {
-    const restorePickerFocus = this.pdfPicker()?.nativeElement === this.document.activeElement;
+    const restoreLookupFocus = this.lookupSection()?.nativeElement.contains(this.document.activeElement);
     this.lookupExpanded.set(false);
     this.previewToken.set(verification.previewToken);
     if (verification.revokedAt) {
       this.state.set({ status: 'revoked', revokedAt: verification.revokedAt });
     } else if (verification.certificate) {
       this.state.set({ status: 'ready', certificate: verification.certificate });
-      if (restorePickerFocus) {
+      if (restoreLookupFocus) {
         afterNextRender(() => this.lookupShortcut()?.nativeElement.focus(), { injector: this.injector });
       }
     } else {

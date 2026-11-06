@@ -33,9 +33,9 @@ export function renderCertificatePreviewInChild(html: string, signal: AbortSigna
         PLAYWRIGHT_BROWSERS_PATH: process.env.PLAYWRIGHT_BROWSERS_PATH,
       },
       stdio: ['pipe', 'pipe', 'ignore'],
+      detached: process.platform !== 'win32',
     });
     const chunks: Buffer[] = [];
-    const observedDescendants = new Set<number>();
     let size = 0;
     let failure: Error | undefined;
     let sampling = false;
@@ -44,11 +44,12 @@ export function renderCertificatePreviewInChild(html: string, signal: AbortSigna
         return;
       }
       failure = error;
-      for (const pid of observedDescendants) {
+      if (process.platform !== 'win32' && child.pid) {
         try {
-          process.kill(pid, 'SIGKILL');
+          // Kill the process group, including descendants spawned between samples.
+          process.kill(-child.pid, 'SIGKILL');
         } catch {
-          // Chromium or Poppler may have already exited.
+          // The group may have exited before cancellation.
         }
       }
       child.kill('SIGKILL');
@@ -69,13 +70,9 @@ export function renderCertificatePreviewInChild(html: string, signal: AbortSigna
       sampling = true;
       try {
         const tree = process.platform === 'linux' ? await readProcessTree(child.pid) : [];
-        observedDescendants.clear();
         let rss = 0;
         for (const process of tree) {
           rss += process.rss;
-          if (process.pid !== child.pid) {
-            observedDescendants.add(process.pid);
-          }
         }
         if (rss > MAX_RENDER_RSS_BYTES || availableMemory() < HOST_MEMORY_RESERVE_BYTES) {
           terminate(new CertificatePreviewResourceError('Certificate preview exceeded its memory budget.'));

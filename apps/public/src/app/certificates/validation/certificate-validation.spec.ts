@@ -42,6 +42,69 @@ describe('CertificateValidation', () => {
     expect(fixture.nativeElement.textContent).not.toContain(' · ');
   });
 
+  it('restores focus after a manual lookup hides its focused input', async () => {
+    const { api, component, fixture } = await createFixture({ queryParams: { certificateId: 'certificate-1' } });
+    const response = new Subject<PublicCertificateVerification>();
+    api.validateCertificate.mockReturnValue(response);
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+    input.focus();
+    component.onTurnstileTokenChange('token');
+    response.next(verificationFixture);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('#lookup-section').hidden).toBe(true);
+    expect(document.activeElement).toBe(fixture.nativeElement.querySelector('.lookup-shortcut button'));
+  });
+
+  it.each(['request', 'poll', 'image'] as const)('cancels pending preview %s work on collapse', async (stage) => {
+    const { api, component, fixture } = await createFixture({ queryParams: { certificateId: 'certificate-1' } });
+    component.onTurnstileTokenChange('token');
+    const request = new Subject<{ imagePath: string | null }>();
+    const image = new Subject<HttpResponse<Blob>>();
+    api.requestPreview.mockReturnValue(request);
+    api.previewCertificate.mockReturnValue(image);
+    vi.useFakeTimers();
+    try {
+      component.togglePreview(certificateFixture);
+      if (stage !== 'request') {
+        request.next({ imagePath: stage === 'poll' ? null : '/api/certificates/validate/certificate-1/preview' });
+        request.complete();
+      }
+      component.togglePreview(certificateFixture);
+      await vi.advanceTimersByTimeAsync(20_000);
+      expect(component.previewState()).toBe('available');
+      expect(component.previewExpanded()).toBe(false);
+      expect(request.observed).toBe(false);
+      expect(image.observed).toBe(false);
+      expect(api.requestPreview).toHaveBeenCalledTimes(1);
+      fixture.destroy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('requires fresh verification after a brief navigation cache expires', async () => {
+    const { api, component, fixture } = await createFixture({ queryParams: { certificateId: 'certificate-1' } });
+    const now = Date.now();
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+    try {
+      component.onTurnstileTokenChange('token');
+      fixture.destroy();
+      clock.mockReturnValue(now + 5000);
+      const returned = TestBed.createComponent(CertificateValidation).componentInstance;
+      expect(returned.state().status).toBe('challenge');
+      api.validateCertificate.mockReturnValue(
+        of({ certificate: null, revokedAt: new Date(now).toISOString(), previewToken: null }),
+      );
+      returned.onTurnstileTokenChange('fresh-token');
+      expect(returned.state().status).toBe('revoked');
+      expect(api.validateCertificate).toHaveBeenCalledTimes(2);
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
   it('shows revocation separately without recipient information or downloads', async () => {
     const { api, component, fixture } = await createFixture({ queryParams: { certificateId: 'revoked' } });
     api.validateCertificate.mockReturnValue(

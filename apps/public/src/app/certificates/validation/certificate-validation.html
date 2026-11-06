@@ -29,6 +29,7 @@
   </div>
   }
   <section
+    #lookupSection
     id="lookup-section"
     class="lookup-section"
     [hidden]="currentState.status === 'ready' && !lookupExpanded()"
@@ -80,7 +81,6 @@
       <div class="pdf-lookup">
         <input #pdfInput type="file" accept="application/pdf,.pdf" hidden (change)="selectCertificatePdf(pdfInput)" />
         <button
-          #pdfPicker
           mat-stroked-button
           type="button"
           [disabled]="pdfUploadUnavailable()"
