@@ -562,16 +562,19 @@ export class SportsReadAdminService {
       [Permission.SportsMatch.Read, Permission.SportsMatch.Review],
       { sportsMatchId: matchId },
     );
+    const match = await this.prisma.sportsMatch.findFirst({
+      where: { id: matchId, deletedAt: null },
+      include: { event: true },
+    });
+    if (!match) {
+      throw new NotFoundException(`Sports match ${matchId} was not found.`);
+    }
     const [canReadOfficials, canReadPersonContacts] = await Promise.all([
       this.hasScopedPermission(user, Permission.SportsOfficial.Read, { sportsMatchId: matchId }),
       this.hasScopedPermission(user, Permission.Person.Read, {}),
     ]);
     const officialPersonSelect = this.officialPersonSelect(canReadPersonContacts);
-    const [match, actions, rosters, officials] = await Promise.all([
-      this.prisma.sportsMatch.findFirst({
-        where: { id: matchId, deletedAt: null },
-        include: { event: true },
-      }),
+    const [actions, rosters, officials] = await Promise.all([
       this.prisma.sportsMatchAction.findMany({
         where: { matchId },
         orderBy: [{ sequence: 'asc' }, { id: 'asc' }],
@@ -594,9 +597,6 @@ export class SportsReadAdminService {
           })
         : Promise.resolve([]),
     ]);
-    if (!match) {
-      throw new NotFoundException(`Sports match ${matchId} was not found.`);
-    }
     return {
       match: this.mapper.mapAdminMatch(match),
       actions: actions.map((action) => this.mapper.mapAdminAction(action)),

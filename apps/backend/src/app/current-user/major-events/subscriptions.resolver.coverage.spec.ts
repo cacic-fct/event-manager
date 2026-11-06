@@ -658,6 +658,148 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     expect(harness.attendanceCategories.refreshForMajorEventPerson).toHaveBeenCalledWith('major-1', 'person-1', tx);
   });
 
+  it.each([4, 5])(
+    'batches ranked counts and checks final capacity with %i existing subscriptions',
+    async (finalCount) => {
+      const harness = createHarness();
+      const majorEvent = majorEventRecord({ rankedSubscriptionEnabled: true });
+      const events = [
+        { ...eventRecord('event-1'), slots: 5 },
+        { ...eventRecord('event-2'), slots: 3 },
+        { ...eventRecord('event-3'), slots: null },
+      ];
+      const updated = subscriptionRecord(majorEvent, { subscriptionStatus: SubscriptionStatus.CONFIRMED });
+      const tx = createUpsertTransaction(majorEvent, events[0], updated);
+      tx.event.findMany.mockReset().mockResolvedValueOnce(events).mockResolvedValueOnce([]);
+      tx.eventSubscription.groupBy
+        .mockResolvedValueOnce([
+          { eventId: 'event-1', _count: { _all: 4 } },
+          { eventId: 'event-2', _count: { _all: 5 } },
+        ])
+        .mockResolvedValueOnce([{ eventId: 'event-1', _count: { _all: finalCount } }]);
+      harness.prisma.majorEvent.findFirst.mockResolvedValue(majorEvent);
+      harness.prisma.majorEventSubscription.findFirst.mockResolvedValue(null);
+      harness.prisma.event.findMany.mockResolvedValueOnce(events).mockResolvedValueOnce([]);
+      harness.prisma.$transaction.mockImplementation((operation: (transaction: unknown) => Promise<unknown>) =>
+        operation(tx),
+      );
+      harness.majorEventSubscriptions.resolveRankedDesiredCounts.mockReturnValue({
+        desiredCourses: 0,
+        desiredLectures: 0,
+        desiredUncategorized: 2,
+      });
+      harness.majorEventSubscriptions.allocateRankedEventIds.mockReturnValue(['event-1', 'event-3']);
+      harness.mapper.mapPublicMajorEvent.mockReturnValue({ id: 'major-1' });
+      harness.mapper.mapPublicEvent.mockImplementation((event: { id: string }) => ({ id: event.id }));
+
+      const operation = harness.resolver.upsertCurrentUserMajorEventSubscription(
+        { majorEventId: 'major-1', selectedEventIds: ['event-3', 'event-2', 'event-1'] },
+        { req: {} } as never,
+      );
+      if (finalCount === 5) {
+        await expect(operation).rejects.toThrow('Event event-1 has no available slots');
+        expect(tx.eventSubscription.createMany).not.toHaveBeenCalled();
+      } else {
+        await operation;
+        expect(tx.eventSubscription.createMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: [expect.objectContaining({ eventId: 'event-3' }), expect.objectContaining({ eventId: 'event-1' })],
+          }),
+        );
+      }
+
+      expect(tx.eventSubscription.groupBy).toHaveBeenCalledTimes(2);
+      expect(tx.eventSubscription.groupBy).toHaveBeenNthCalledWith(1, {
+        by: ['eventId'],
+        where: { eventId: { in: ['event-3', 'event-2', 'event-1'] }, deletedAt: null, personId: { not: 'person-1' } },
+        _count: { _all: true },
+      });
+      expect(tx.eventSubscription.groupBy).toHaveBeenNthCalledWith(2, {
+        by: ['eventId'],
+        where: { eventId: { in: ['event-1'] }, deletedAt: null },
+        _count: { _all: true },
+      });
+      expect(tx.eventSubscription.count).not.toHaveBeenCalled();
+      expect(tx.majorEventSubscriptionEventSelection.updateMany).not.toHaveBeenCalled();
+      expect(harness.majorEventSubscriptions.allocateRankedEventIds).toHaveBeenCalledWith(
+        [
+          expect.objectContaining({ id: 'event-3', slotsAvailable: null }),
+          expect.objectContaining({ id: 'event-2', slotsAvailable: 0 }),
+          expect.objectContaining({ id: 'event-1', slotsAvailable: 1 }),
+        ],
+        expect.any(Object),
+        expect.any(Object),
+      );
+    },
+  );
+
+  it.each([false, true])(
+    'only writes changed existing preference groups (already ordered = %s)',
+    async (alreadyOrdered) => {
+      const harness = createHarness();
+      const majorEvent = majorEventRecord({ rankedSubscriptionEnabled: true });
+      const events = [
+        { ...eventRecord('event-1'), slots: null, eventGroupId: 'group-1' },
+        { ...eventRecord('event-2'), slots: null, eventGroupId: 'group-1' },
+        { ...eventRecord('event-3'), slots: null },
+      ];
+      const selectedEventIds = ['event-1', 'event-2', 'event-3'];
+      const currentOrders = alreadyOrdered ? [0, 0, 2] : [2, 2, 0];
+      const selections = selectedEventIds.map((eventId, index) => ({
+        eventId,
+        preferenceOrder: currentOrders[index],
+      }));
+      const existing = subscriptionRecord(majorEvent, {
+        selectedEvents: [{ id: 'selection-1' }],
+        sportsTournamentParticipants: [],
+      });
+      const updated = subscriptionRecord(majorEvent, { subscriptionStatus: SubscriptionStatus.CONFIRMED });
+      const tx = createUpsertTransaction(majorEvent, events[0], updated);
+      tx.majorEventSubscription.findFirst
+        .mockReset()
+        .mockResolvedValueOnce(existing)
+        .mockResolvedValueOnce(existing)
+        .mockResolvedValueOnce({ id: 'subscription-1', subscriptionStatus: SubscriptionStatus.CONFIRMED })
+        .mockResolvedValueOnce(updated);
+      tx.majorEventSubscriptionEventSelection.findMany.mockResolvedValue(selections);
+      tx.event.findMany.mockReset().mockResolvedValueOnce(events).mockResolvedValueOnce(events.slice(0, 2));
+      harness.prisma.majorEvent.findFirst.mockResolvedValue(majorEvent);
+      harness.prisma.majorEventSubscription.findFirst.mockResolvedValue(existing);
+      harness.prisma.event.findMany.mockResolvedValueOnce(events).mockResolvedValueOnce(events.slice(0, 2));
+      harness.prisma.$transaction.mockImplementation((operation: (transaction: unknown) => Promise<unknown>) =>
+        operation(tx),
+      );
+      harness.majorEventSubscriptions.resolveRankedDesiredCounts.mockReturnValue({
+        desiredCourses: 0,
+        desiredLectures: 0,
+        desiredUncategorized: 3,
+      });
+      harness.majorEventSubscriptions.allocateRankedEventIds.mockReturnValue(selectedEventIds);
+      harness.majorEventSubscriptions.resolveNextSubscriptionStatus.mockReturnValue(SubscriptionStatus.CONFIRMED);
+      harness.mapper.mapPublicMajorEvent.mockReturnValue({ id: 'major-1' });
+      harness.mapper.mapPublicEvent.mockImplementation((event: { id: string }) => ({ id: event.id }));
+
+      await harness.resolver.upsertCurrentUserMajorEventSubscription({ majorEventId: 'major-1', selectedEventIds }, {
+        req: {},
+      } as never);
+
+      expect(tx.majorEventSubscriptionEventSelection.createMany).not.toHaveBeenCalled();
+      if (alreadyOrdered) {
+        expect(tx.majorEventSubscriptionEventSelection.updateMany).not.toHaveBeenCalled();
+      } else {
+        expect(tx.majorEventSubscriptionEventSelection.updateMany).toHaveBeenCalledTimes(2);
+        expect(tx.majorEventSubscriptionEventSelection.updateMany).toHaveBeenCalledWith({
+          where: { subscriptionId: 'subscription-1', deletedAt: null, eventId: { in: ['event-1', 'event-2'] } },
+          data: { preferenceOrder: 0 },
+        });
+        expect(tx.majorEventSubscriptionEventSelection.updateMany).toHaveBeenCalledWith({
+          where: { subscriptionId: 'subscription-1', deletedAt: null, eventId: { in: ['event-3'] } },
+          data: { preferenceOrder: 2 },
+        });
+      }
+    },
+  );
+
   it('reuses an active staff enrollment for a child linked through its event group', async () => {
     const harness = createHarness();
     const majorEvent = majorEventRecord();
@@ -985,6 +1127,7 @@ function createHarness() {
     ensureMajorEventScheduleHasNoConflicts: jest.fn(),
     ensureEventGroupsAreFullySelected: jest.fn(),
     resolveRankedDesiredCounts: jest.fn(),
+    allocateRankedEventIds: jest.fn(),
     resolveSelfServicePayment: jest.fn().mockReturnValue({ amountPaid: null, paymentTier: null }),
     resolveNextSubscriptionStatus: jest.fn().mockReturnValue(undefined),
     refreshEventSubscriptionCounters: jest.fn().mockResolvedValue(undefined),
@@ -1097,7 +1240,10 @@ function subscriptionRecord(majorEvent: ReturnType<typeof majorEventRecord>, ove
 
 function createUpsertTransaction(
   majorEvent: ReturnType<typeof majorEventRecord>,
-  selectedEvent: ReturnType<typeof eventRecord>,
+  selectedEvent: Omit<ReturnType<typeof eventRecord>, 'slots' | 'eventGroupId'> & {
+    slots: number | null;
+    eventGroupId: string | null;
+  },
   updatedSubscription: Record<string, unknown>,
 ) {
   return {
@@ -1124,6 +1270,7 @@ function createUpsertTransaction(
       updateMany: jest.fn().mockResolvedValue({ count: 0 }),
       createMany: jest.fn().mockResolvedValue({ count: 1 }),
       count: jest.fn().mockResolvedValue(0),
+      groupBy: jest.fn().mockResolvedValue([]),
     },
     event: {
       findMany: jest.fn().mockResolvedValueOnce([selectedEvent]).mockResolvedValueOnce([]),

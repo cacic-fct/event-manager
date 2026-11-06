@@ -1,6 +1,7 @@
-import { AttendanceCreationMethod } from '@prisma/client';
+import { AttendanceCreationMethod, type EventAttendanceStatus } from '@prisma/client';
 import {
   AttendanceAnalyticsService,
+  buildCollectorProductivity,
   buildHeatmapPoints,
   findInconsistentLocationPatterns,
   haversineMeters,
@@ -10,6 +11,125 @@ const { jest } = import.meta;
 
 describe('AttendanceAnalyticsService snapshot filtering', () => {
   afterEach(() => jest.useRealTimers());
+
+  it('executes one attendance query for all-time analytics and reuses the bounded review window', async () => {
+    const now = new Date();
+    jest.useFakeTimers().setSystemTime(now);
+    const rows = [-120, -60, -5, 5].map((minutes, index) => {
+      const at = new Date(now.getTime() + minutes * 60_000);
+      return {
+        ...attendance({ minute: index, latitude: 0, longitude: 0 }),
+        attendedAt: at,
+        createdAt: at,
+        status: index === 2 ? ('ABSENT' as const) : ('PRESENT' as const),
+      };
+    });
+    const { prisma, service } = snapshotFixture(rows);
+    prisma.eventSubscription.findMany.mockResolvedValue(rows.map((row) => ({ personId: row.personId })));
+    let executions = 0;
+    prisma.eventAttendance.findMany.mockImplementationOnce(
+      () =>
+        ({
+          then(resolve: (value: typeof rows) => void) {
+            executions += 1;
+            resolve(rows);
+          },
+        }) as never,
+    );
+    const detect = jest
+      .spyOn(service as unknown as { detectReviewFlags: (...args: unknown[]) => Promise<void> }, 'detectReviewFlags')
+      .mockResolvedValue();
+
+    const result = await service.snapshot('event-1');
+
+    expect(prisma.eventAttendance.findMany).toHaveBeenCalledTimes(1);
+    expect(executions).toBe(1);
+    expect(detect.mock.calls[0][1]).toEqual(rows.slice(1));
+    expect(result).toMatchObject({ presentCount: 3, noShowCount: 1 });
+    expect(result.methods).toEqual([{ method: AttendanceCreationMethod.SCANNER, count: 3 }]);
+    expect(prisma.attendanceReviewFlag.findMany).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['rolling window covering review detection', 120, 2],
+    ['rolling window shorter than review detection', 15, 3],
+  ])('reuses compatible reads for a %s', async (_label, windowMinutes, expectedQueries) => {
+    const row = attendance({ minute: 1, latitude: 0, longitude: 0 });
+    const now = new Date();
+    row.attendedAt = new Date(now.getTime() - 60_000);
+    row.createdAt = row.attendedAt;
+    jest.useFakeTimers().setSystemTime(now);
+    const { prisma, service } = snapshotFixture([row]);
+
+    await service.snapshot('event-1', { windowMinutes });
+
+    expect(prisma.eventAttendance.findMany).toHaveBeenCalledTimes(expectedQueries);
+    expect(prisma.eventAttendance.findMany).toHaveBeenCalledWith({
+      where: { eventId: 'event-1', status: 'PRESENT' },
+      select: { personId: true },
+    });
+  });
+
+  it('keeps complete totals while retaining the existing review-detection limit', async () => {
+    const at = new Date(Date.now() - 60_000);
+    const rows = Array.from({ length: 10_001 }, (_, index) => ({
+      ...attendance({ minute: 1, latitude: 0, longitude: 0 }),
+      personId: `person-${index}`,
+      attendedAt: at,
+      createdAt: at,
+    }));
+    const { prisma, service } = snapshotFixture(rows);
+
+    const result = await service.snapshot('event-1');
+
+    expect(prisma.eventAttendance.findMany).toHaveBeenCalledTimes(1);
+    expect(result.presentCount).toBe(10_001);
+    expect(result.scansPerMinute[0].count).toBe(10_001);
+    expect(prisma.attendanceReviewFlag.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          kind: 'UNUSUAL_VOLUME',
+          details: expect.objectContaining({ count: 10_000 }),
+        }),
+      }),
+    );
+  });
+
+  it('skips unchanged review writes across polling and summaries, but persists changed evidence', async () => {
+    const { prisma, service } = snapshotFixture([]);
+    const entry = {
+      id: 'audit-1',
+      eventId: 'event-1',
+      actorId: 'actor-1',
+      actorName: 'Ana',
+      operation: 'UPDATE',
+      groupedCount: 3,
+      entityId: 'attendance-1',
+      lastRecordedAt: new Date(),
+    };
+    prisma.auditLogEntry.findMany.mockResolvedValue([entry] as never);
+    const stored = {
+      dedupeKey: 'repeat:audit-1',
+      title: 'Tentativas repetidas de leitura',
+      summary: '3 tentativas semelhantes foram agrupadas para a mesma presença.',
+      details: { entityId: 'attendance-1', auditLogEntryId: 'audit-1' },
+    };
+    prisma.attendanceReviewFlag.findMany.mockImplementation(async (args: { select?: unknown }) =>
+      args.select ? [stored] : [],
+    );
+
+    await service.snapshot('event-1');
+    await service.pendingReviewSummaries();
+    expect(prisma.attendanceReviewFlag.upsert).not.toHaveBeenCalled();
+
+    entry.groupedCount = 4;
+    await service.snapshot('event-1');
+    expect(prisma.attendanceReviewFlag.upsert).toHaveBeenCalledTimes(1);
+    const update = prisma.attendanceReviewFlag.upsert.mock.calls[0][0].update;
+    expect(update.summary).toContain('4 tentativas');
+    expect(update).not.toHaveProperty('status');
+    expect(update).not.toHaveProperty('reviewedAt');
+  });
 
   it('filters attendance-derived analytics while preserving global totals and reviews', async () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-08-16T18:00:00.000Z'));
@@ -187,6 +307,86 @@ describe('AttendanceAnalyticsService snapshot filtering', () => {
     ]);
   });
 });
+
+describe('collector productivity aggregation', () => {
+  it('preserves totals, method order and scan boundaries without per-collector scan arrays', () => {
+    const now = Date.now();
+    const scans = [0, 1, 2].map((minute) => {
+      const at = new Date(now + minute * 60_000);
+      return { ...attendance({ minute, latitude: 0, longitude: 0 }), attendedAt: at, createdAt: at };
+    });
+    const offline = {
+      ...scans[1],
+      committedById: 'committer-1',
+      createdAt: new Date(scans[1].attendedAt.getTime() + 90_000),
+      createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
+    };
+    const fallback = { ...scans[2], createdById: null, committedById: null };
+    const absent = { ...scans[2], status: 'ABSENT' as const };
+    const result = buildCollectorProductivity([scans[0], offline, fallback, absent], new Map([['collector-1', 'Ana']]));
+
+    expect(result).toEqual([
+      {
+        actorId: 'collector-1',
+        name: 'Ana',
+        count: 2,
+        firstScanAt: scans[0].attendedAt,
+        lastScanAt: scans[1].attendedAt,
+        onlineCount: 1,
+        offlineCount: 1,
+        methods: [
+          { method: AttendanceCreationMethod.SCANNER, count: 1 },
+          { method: AttendanceCreationMethod.MANUAL_INPUT, count: 1 },
+        ],
+      },
+      {
+        actorId: 'method:SCANNER',
+        name: 'Leitor de crachá',
+        count: 1,
+        firstScanAt: scans[2].attendedAt,
+        lastScanAt: scans[2].attendedAt,
+        onlineCount: 1,
+        offlineCount: 0,
+        methods: [{ method: AttendanceCreationMethod.SCANNER, count: 1 }],
+      },
+    ]);
+  });
+});
+
+function snapshotFixture(
+  rows: Array<Omit<ReturnType<typeof attendance>, 'status'> & { status: EventAttendanceStatus }> = [],
+) {
+  const prisma = {
+    event: {
+      findFirst: jest.fn().mockResolvedValue({
+        id: 'event-1',
+        name: 'Evento',
+        emoji: '🎫',
+        startDate: new Date(),
+        latitude: null,
+        longitude: null,
+        allowSubscription: true,
+        majorEventId: null,
+        autoSubscribe: false,
+        attendanceEligibility: 'ANYONE',
+        sportsMatch: null,
+      }),
+    },
+    eventAttendance: { findMany: jest.fn().mockResolvedValue(rows) },
+    offlineEventAttendanceSubmission: { findMany: jest.fn().mockResolvedValue([]) },
+    user: { findMany: jest.fn().mockResolvedValue([]) },
+    eventSubscription: { findMany: jest.fn().mockResolvedValue([]) },
+    majorEventSubscription: { findMany: jest.fn().mockResolvedValue([]) },
+    auditLogEntry: { findMany: jest.fn().mockResolvedValue([]) },
+    attendanceReviewFlag: {
+      findMany: jest.fn().mockResolvedValue([]),
+      groupBy: jest.fn().mockResolvedValue([]),
+      upsert: jest.fn().mockResolvedValue({}),
+    },
+  };
+  const authorization = { accessibleEventTargets: jest.fn().mockResolvedValue(null) };
+  return { prisma, service: new AttendanceAnalyticsService(prisma as never, authorization as never) };
+}
 
 describe('attendance analytics heatmap', () => {
   it('excludes absent records even when old collection coordinates remain stored', () => {
