@@ -59,17 +59,28 @@ export function configureBackendHttpApp(app: INestApplication): void {
   const defaultJsonParser = express.json({ limit: '100kb', verify: captureRawBody });
   const transferJsonParser = express.json({ limit: '6mb', verify: captureRawBody });
   const certificateArchiveJsonParser = express.json({ limit: '2mb', verify: captureRawBody });
+  const urlencodedParser = express.urlencoded({ extended: true, limit: '100kb', verify: captureRawBody });
   app.use((request: ExpressRequest, response: ExpressResponse, next: NextFunction) => {
     const path = request.path;
+    // This upload has its own admission and body parser, including a ban on HTTP compression.
+    if (request.method === 'POST' && /^\/api\/certificates\/validate\/pdf\/?$/i.test(path)) {
+      next();
+      return;
+    }
     const parser =
       path === '/api/admin/data-transfer' || path.startsWith('/api/admin/data-transfer/')
         ? transferJsonParser
         : path === '/api/current-user/certificates/archive.zip' && request.method === 'POST'
           ? certificateArchiveJsonParser
           : defaultJsonParser;
-    parser(request, response, next);
+    parser(request, response, (error?: unknown) => {
+      if (error) {
+        next(error);
+      } else {
+        urlencodedParser(request, response, next);
+      }
+    });
   });
-  app.use(express.urlencoded({ extended: true, limit: '100kb', verify: captureRawBody }));
   app.use(
     '/api/a/glitchtip',
     express.raw({
