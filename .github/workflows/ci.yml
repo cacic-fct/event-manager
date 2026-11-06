@@ -438,7 +438,7 @@ jobs:
       - name: Verify Prisma migration integrity
         run: bun run test:prisma-migrations
 
-      - name: Create disposable JSON transfer database
+      - name: Create disposable JSON transfer and subscription counter databases
         run: |
           node <<'JS'
           const { Client } = require('pg');
@@ -447,6 +447,7 @@ jobs:
             await client.connect();
             try {
               await client.query('CREATE DATABASE fct_app_data_transfer_test');
+              await client.query('CREATE DATABASE fct_app_subscription_counters_test');
             } finally {
               await client.end();
             }
@@ -463,6 +464,11 @@ jobs:
         env:
           DATA_TRANSFER_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fct_app_data_transfer_test
         run: bunx nx run backend:test-data-transfer-postgres
+
+      - name: Verify subscription counter concurrency with PostgreSQL
+        env:
+          SUBSCRIPTION_COUNTERS_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fct_app_subscription_counters_test
+        run: bunx nx run backend:test-subscription-counters-postgres
 
       - name: Run backend auth e2e tests with fresh Keycloak
         run: bun run e2e:backend:keycloak -- --coverage
@@ -912,7 +918,7 @@ jobs:
       - name: Verify Prisma migration integrity
         run: bun run test:prisma-migrations
 
-      - name: Create disposable JSON transfer database
+      - name: Create disposable JSON transfer and subscription counter databases
         run: |
           node <<'JS'
           const { Client } = require('pg');
@@ -921,6 +927,7 @@ jobs:
             await client.connect();
             try {
               await client.query('CREATE DATABASE fct_app_data_transfer_test');
+              await client.query('CREATE DATABASE fct_app_subscription_counters_test');
             } finally {
               await client.end();
             }
@@ -937,6 +944,11 @@ jobs:
         env:
           DATA_TRANSFER_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fct_app_data_transfer_test
         run: bunx nx run backend:test-data-transfer-postgres
+
+      - name: Verify subscription counter concurrency with PostgreSQL
+        env:
+          SUBSCRIPTION_COUNTERS_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fct_app_subscription_counters_test
+        run: bunx nx run backend:test-subscription-counters-postgres
 
       - name: Run backend auth e2e tests with fresh Keycloak
         run: bun run e2e:backend:keycloak

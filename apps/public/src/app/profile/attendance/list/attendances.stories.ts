@@ -2,7 +2,7 @@ import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig, type Decorator } from '@storybook/angular';
-import { NEVER, of, throwError } from 'rxjs';
+import { NEVER, of, throwError, TimeoutError } from 'rxjs';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { NetworkStatusService } from '../../../shared/network-status.service';
 import { AttendancesApiService } from '../attendances-api.service';
@@ -49,7 +49,8 @@ const withStoryData: Decorator<AttendancesStoryControls> = (story, context) => {
       certificates: sampleCertificate && index % 2 === 0 ? [{ ...sampleCertificate, id: `event-${index}` }] : [],
     })),
   ];
-  const failCache = args.state === 'error';
+  const failCache = args.state === 'error' || args.state === 'timeout';
+  let feedAttempts = 0;
 
   return applicationConfig({
     providers: [
@@ -60,12 +61,16 @@ const withStoryData: Decorator<AttendancesStoryControls> = (story, context) => {
       {
         provide: AttendancesApiService,
         useValue: {
-          getSubscriptionsFeed: () =>
-            args.state === 'loading'
-              ? NEVER
-              : args.state === 'error'
-                ? throwError(() => new Error('Não foi possível carregar suas inscrições.'))
-                : of(feed),
+          getSubscriptionsFeed: () => {
+            feedAttempts++;
+            if (args.state === 'loading') return NEVER;
+            if (failCache && feedAttempts === 1) {
+              return throwError(() =>
+                args.state === 'timeout' ? new TimeoutError() : new Error('Falha na solicitação.'),
+              );
+            }
+            return of(feed);
+          },
           getCurrentUserCertificateCatalog: () => of(catalog),
           getCertificateArchiveCooldown: () => of({ cooldownSeconds: args.certificateArchiveCooldownSeconds }),
           downloadCurrentUserCertificatesArchive: () =>
@@ -163,7 +168,25 @@ export const Loading: Story = {
 export const LoadError: Story = {
   args: { state: 'error' },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Não foi possível carregar suas inscrições.')).toBeVisible();
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText('Não foi possível carregar suas participações. Tente novamente.'),
+    ).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: 'Tentar novamente' }));
+    await expect(await canvas.findByRole('heading', { name: 'Participações' })).toBeVisible();
+  },
+};
+
+export const RequestTimeout: Story = {
+  args: { state: 'timeout' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText('O carregamento das suas participações demorou mais que o esperado. Tente novamente.'),
+    ).toBeVisible();
+    await expect(canvas.queryByText('Nenhuma participação encontrada.')).not.toBeInTheDocument();
+    await userEvent.click(canvas.getByRole('button', { name: 'Tentar novamente' }));
+    await expect(await canvas.findByRole('heading', { name: 'Participações' })).toBeVisible();
   },
 };
 

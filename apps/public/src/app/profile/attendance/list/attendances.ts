@@ -36,6 +36,7 @@ import { AuthService } from '@cacic-fct/shared-angular';
 import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import {
   EMPTY,
+  TimeoutError,
   catchError,
   combineLatest,
   distinctUntilChanged,
@@ -46,6 +47,7 @@ import {
   of,
   startWith,
   switchMap,
+  throwError,
 } from 'rxjs';
 import { format, isSameDay, isSameMonth, isSameYear, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale/pt-BR';
@@ -298,11 +300,13 @@ export class Attendances {
   ];
   private readonly feedUserId = computed(() => this.auth.user()?.sub ?? null);
   private loadedFeedTarget: string | null = null;
+  private readonly feedRetry = signal(0);
 
   readonly feedState = toSignal(
     combineLatest([
       toObservable(this.feedUserId).pipe(distinctUntilChanged()),
       toObservable(this.feedCache.revision),
+      toObservable(this.feedRetry),
     ]).pipe(
       switchMap(([userId]) => {
         const target = userId ? `user:${userId}` : 'anonymous';
@@ -320,7 +324,11 @@ export class Attendances {
               ? EMPTY
               : of({
                   status: 'error',
-                  message: error instanceof Error ? error.message : 'Não foi possível carregar suas inscrições.',
+                  message:
+                    error instanceof TimeoutError ||
+                    (error instanceof HttpErrorResponse && [408, 504].includes(error.status))
+                      ? 'O carregamento das suas participações demorou mais que o esperado. Tente novamente.'
+                      : 'Não foi possível carregar suas participações. Tente novamente.',
                 } satisfies FeedState),
           ),
         );
@@ -329,6 +337,12 @@ export class Attendances {
     ),
     { initialValue: { status: 'loading' } satisfies FeedState },
   );
+
+  retryFeed(): void {
+    if (this.feedState().status === 'error') {
+      this.feedRetry.update((attempt) => attempt + 1);
+    }
+  }
 
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
@@ -520,14 +534,23 @@ export class Attendances {
       return of(EMPTY_SUBSCRIPTIONS_FEED);
     }
 
-    return this.feedCache.load(userId).pipe(catchError(() => from(this.loadOfflineFeed(userId))));
+    return this.feedCache
+      .load(userId)
+      .pipe(
+        catchError((error: unknown) =>
+          from(this.loadOfflineFeed(userId)).pipe(catchError(() => throwError(() => error))),
+        ),
+      );
   }
 
   private async loadOfflineFeed(currentUserId: string | null): Promise<SubscriptionsFeed> {
     const userId = currentUserId ?? (await this.offlineData.getLatestUserSnapshot())?.userId;
     const feed = userId ? await this.offlineData.getAttendanceFeed(userId) : null;
 
-    return feed ?? EMPTY_SUBSCRIPTIONS_FEED;
+    if (!feed) {
+      throw new Error('Nenhuma participação salva disponível.');
+    }
+    return feed;
   }
 
   private normalizeFeed(feed: SubscriptionsFeed): NormalizedSubscriptionsFeed {
