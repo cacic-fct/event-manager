@@ -891,9 +891,13 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         },
         select: {
           eventId: true,
+          preferenceOrder: true,
         },
       });
       const activeSelectionIdSet = new Set(activeSelections.map((selection) => selection.eventId));
+      const preferenceOrders = isRankedSubscription
+        ? this.getPreferenceOrders(selectedEventIds, selectedEventsById)
+        : new Map<string, number>();
       const selectionEventIdsToArchive = [...activeSelectionIdSet].filter(
         (eventId) => !selectedEventIdSet.has(eventId),
       );
@@ -918,24 +922,28 @@ export class CurrentUserMajorEventSubscriptionsResolver {
           data: selectionEventIdsToCreate.map((eventId) => ({
             subscriptionId: activeMajorEventSubscription.id,
             eventId,
-            preferenceOrder: isRankedSubscription
-              ? this.getPreferenceOrder(eventId, selectedEventIds, selectedEventsById)
-              : null,
+            preferenceOrder: preferenceOrders.get(eventId) ?? null,
           })),
         });
       }
       if (isRankedSubscription) {
+        const updatesByOrder = new Map<number, string[]>();
+        for (const selection of activeSelections) {
+          const order = preferenceOrders.get(selection.eventId);
+          if (order === undefined || order === selection.preferenceOrder) continue;
+          const eventIds = updatesByOrder.get(order) ?? [];
+          eventIds.push(selection.eventId);
+          updatesByOrder.set(order, eventIds);
+        }
         await Promise.all(
-          selectedEventIds.map((eventId) =>
+          [...updatesByOrder].map(([preferenceOrder, eventIds]) =>
             tx.majorEventSubscriptionEventSelection.updateMany({
               where: {
                 subscriptionId: activeMajorEventSubscription.id,
-                eventId,
+                eventId: { in: eventIds },
                 deletedAt: null,
               },
-              data: {
-                preferenceOrder: this.getPreferenceOrder(eventId, selectedEventIds, selectedEventsById),
-              },
+              data: { preferenceOrder },
             }),
           ),
         );
@@ -1004,20 +1012,20 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         activeMajorEventSubscription.subscriptionStatus === SubscriptionStatus.CONFIRMED
           ? confirmationEventIds.filter((eventId) => !activeEventIdSet.has(eventId))
           : [];
-      for (const eventId of eventIdsToCreate) {
-        const event = selectedEventsById.get(eventId);
-        if (event?.slots == null) {
-          continue;
-        }
-
-        const activeSubscriptionsCount = await tx.eventSubscription.count({
-          where: {
-            eventId,
-            deletedAt: null,
-          },
-        });
-        if (activeSubscriptionsCount >= event.slots) {
-          throw new BadRequestException(`Event ${eventId} has no available slots for subscription.`);
+      const limitedEvents = eventIdsToCreate
+        .map((eventId) => selectedEventsById.get(eventId))
+        .filter((event): event is EventRecord & { slots: number } => event?.slots != null);
+      const activeCounts = limitedEvents.length
+        ? await tx.eventSubscription.groupBy({
+            by: ['eventId'],
+            where: { eventId: { in: limitedEvents.map((event) => event.id) }, deletedAt: null },
+            _count: { _all: true },
+          })
+        : [];
+      const activeCountByEventId = new Map(activeCounts.map((item) => [item.eventId, item._count._all]));
+      for (const event of limitedEvents) {
+        if ((activeCountByEventId.get(event.id) ?? 0) >= event.slots) {
+          throw new BadRequestException(`Event ${event.id} has no available slots for subscription.`);
         }
       }
 
@@ -1136,21 +1144,19 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     };
   }
 
-  private getPreferenceOrder(
-    eventId: string,
+  private getPreferenceOrders(
     selectedEventIds: string[],
     selectedEventsById: Map<string, EventRecord>,
-  ): number {
-    const event = selectedEventsById.get(eventId);
-    if (!event?.eventGroupId) {
-      return selectedEventIds.indexOf(eventId);
+  ): Map<string, number> {
+    const orders = new Map<string, number>();
+    const groupOrders = new Map<string, number>();
+    for (const [index, eventId] of selectedEventIds.entries()) {
+      const groupId = selectedEventsById.get(eventId)?.eventGroupId;
+      const order = groupId ? (groupOrders.get(groupId) ?? index) : index;
+      if (groupId) groupOrders.set(groupId, order);
+      orders.set(eventId, order);
     }
-
-    const groupIndex = selectedEventIds.findIndex((selectedEventId) => {
-      const selectedEvent = selectedEventsById.get(selectedEventId);
-      return selectedEvent?.eventGroupId === event.eventGroupId;
-    });
-    return groupIndex === -1 ? selectedEventIds.indexOf(eventId) : groupIndex;
+    return orders;
   }
 
   private async resolveRankedConfirmationEventIds(
@@ -1161,21 +1167,20 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     desiredCounts: ReturnType<CurrentUserMajorEventSubscriptionService['resolveRankedDesiredCounts']>,
     tierPolicy?: PriceTierEventPolicy,
   ): Promise<string[]> {
-    const activeCounts = await Promise.all(
-      selectedEventIds.map(async (eventId) => ({
-        eventId,
-        count: await tx.eventSubscription.count({
+    const activeCounts = selectedEventIds.length
+      ? await tx.eventSubscription.groupBy({
+          by: ['eventId'],
           where: {
-            eventId,
+            eventId: { in: selectedEventIds },
             deletedAt: null,
             personId: {
               not: personId,
             },
           },
-        }),
-      })),
-    );
-    const activeCountByEventId = new Map(activeCounts.map((item) => [item.eventId, item.count]));
+          _count: { _all: true },
+        })
+      : [];
+    const activeCountByEventId = new Map(activeCounts.map((item) => [item.eventId, item._count._all]));
     const rankedEvents = selectedEventIds
       .map((eventId) => selectedEventsById.get(eventId))
       .filter((event): event is EventRecord => Boolean(event))

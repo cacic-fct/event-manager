@@ -46,11 +46,18 @@ describe('runSerializableSportsTransaction', () => {
     });
   });
 
-  it('retries serialization conflicts and eventually succeeds', async () => {
+  it.each([
+    retryableError(),
+    new Prisma.PrismaClientKnownRequestError('Raw serialization conflict', {
+      code: 'P2010',
+      clientVersion: 'test',
+      meta: { driverAdapterError: new Error('TransactionWriteConflict', { cause: { originalCode: '40001' } }) },
+    }),
+  ])('retries serialization conflicts and eventually succeeds (%#)', async (error) => {
     jest.useFakeTimers();
     jest.spyOn(Math, 'random').mockReturnValue(0);
     const prisma = {
-      $transaction: jest.fn().mockRejectedValueOnce(retryableError()).mockResolvedValueOnce('saved'),
+      $transaction: jest.fn().mockRejectedValueOnce(error).mockResolvedValueOnce('saved'),
     } as unknown as PrismaService;
 
     const result = runSerializableSportsTransaction(prisma, jest.fn());
@@ -76,8 +83,14 @@ describe('runSerializableSportsTransaction', () => {
     expect(prisma.$transaction).toHaveBeenCalledTimes(3);
   });
 
-  it('does not retry unrelated failures', async () => {
-    const error = new Error('database unavailable');
+  it.each([
+    new Error('database unavailable'),
+    new Prisma.PrismaClientKnownRequestError('Raw unique constraint violation', {
+      code: 'P2010',
+      clientVersion: 'test',
+      meta: { driverAdapterError: new Error('UniqueConstraintViolation', { cause: { originalCode: '23505' } }) },
+    }),
+  ])('does not retry unrelated failures (%#)', async (error) => {
     const prisma = {
       $transaction: jest.fn().mockRejectedValue(error),
     } as unknown as PrismaService;

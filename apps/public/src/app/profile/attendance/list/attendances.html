@@ -13,6 +13,10 @@
   <section class="empty-section" aria-live="polite">
     <mat-icon aria-hidden="true">error</mat-icon>
     <p>{{ currentState.message }}</p>
+    <button matButton="filled" type="button" (click)="retryFeed()">
+      <mat-icon aria-hidden="true">refresh</mat-icon>
+      Tentar novamente
+    </button>
   </section>
   } @else if (currentState.status !== 'loading') {
   <div class="page-actions" [class.selection-actions]="selectionMode()">

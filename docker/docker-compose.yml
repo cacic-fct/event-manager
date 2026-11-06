@@ -10,15 +10,15 @@ services:
     command:
       - postgres
       - -c
-      - shared_buffers=1GB
+      - shared_buffers=256MB
       - -c
       - effective_cache_size=3GB
       - -c
-      - maintenance_work_mem=256MB
+      - maintenance_work_mem=128MB
+      - -c
+      - autovacuum_work_mem=64MB
       - -c
       - checkpoint_completion_target=0.9
-      - -c
-      - wal_buffers=16MB
       - -c
       - default_statistics_target=100
       - -c

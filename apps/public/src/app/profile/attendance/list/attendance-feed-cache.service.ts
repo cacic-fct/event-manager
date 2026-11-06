@@ -4,7 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import { AuthService } from '@cacic-fct/shared-angular';
 import type { SubscriptionsFeed } from '@cacic-fct/shared-utils';
-import { merge, of, tap } from 'rxjs';
+import { merge, of, tap, timeout } from 'rxjs';
 import { RealtimeInvalidationService } from '../../../shared/realtime-invalidation.service';
 import { AttendancesApiService } from '../attendances-api.service';
 
@@ -41,6 +41,7 @@ export class AttendanceFeedCacheService {
 
     const revision = this.revision();
     return this.api.getSubscriptionsFeed().pipe(
+      timeout({ first: 30_000 }),
       tap((feed) => {
         if (this.auth.user()?.sub !== userId || this.revision() !== revision) {
           return;

@@ -20,6 +20,7 @@ import { AuthorizationPolicyService } from '../../authorization/authorization-po
 import { type AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { adminSportsWorkspacePath } from '@cacic-fct/shared-utils';
+import { isDeepStrictEqual } from 'node:util';
 
 const MIN_WINDOW_MINUTES = 15;
 const MAX_WINDOW_MINUTES = 240;
@@ -98,7 +99,7 @@ interface ResolvedAttendanceAnalyticsWindow {
   start: Date | null;
   end: Date | null;
   windowMinutes: number | null;
-  attendedAt?: Prisma.DateTimeFilter;
+  attendedAt?: { gte: Date; lte?: Date };
 }
 
 @Injectable()
@@ -116,24 +117,36 @@ export class AttendanceAnalyticsService {
     const generatedAt = new Date();
     const window = resolveAttendanceAnalyticsWindow(requestedWindow, generatedAt);
     const reviewDetectionStart = new Date(generatedAt.getTime() - REVIEW_DETECTION_WINDOW_MINUTES * 60_000);
+    // Share the executed query, rather than awaiting a lazy Prisma promise more than once.
+    const windowAttendancesPromise = Promise.resolve(
+      this.prisma.eventAttendance.findMany({
+        where: { eventId, ...(window.attendedAt ? { attendedAt: window.attendedAt } : {}) },
+        select: analyticsAttendanceSelect,
+        orderBy: { attendedAt: 'asc' },
+      }),
+    );
+    const includesReviewWindow =
+      !window.attendedAt || (window.attendedAt.lte === undefined && window.attendedAt.gte <= reviewDetectionStart);
 
     const [windowAttendances, reviewDetectionAttendances, allPresentAttendances, pendingOfflineSubmissions] =
       await Promise.all([
-        this.prisma.eventAttendance.findMany({
-          where: { eventId, ...(window.attendedAt ? { attendedAt: window.attendedAt } : {}) },
-          select: analyticsAttendanceSelect,
-          orderBy: { attendedAt: 'asc' },
-        }),
-        this.prisma.eventAttendance.findMany({
-          where: { eventId, attendedAt: { gte: reviewDetectionStart } },
-          select: analyticsAttendanceSelect,
-          orderBy: { attendedAt: 'asc' },
-          take: MAX_ANALYTICS_ATTENDANCES,
-        }),
-        this.prisma.eventAttendance.findMany({
-          where: { eventId, status: 'PRESENT' },
-          select: { personId: true },
-        }),
+        windowAttendancesPromise,
+        includesReviewWindow
+          ? windowAttendancesPromise.then((rows) =>
+              rows.filter((row) => row.attendedAt >= reviewDetectionStart).slice(0, MAX_ANALYTICS_ATTENDANCES),
+            )
+          : this.prisma.eventAttendance.findMany({
+              where: { eventId, attendedAt: { gte: reviewDetectionStart } },
+              select: analyticsAttendanceSelect,
+              orderBy: { attendedAt: 'asc' },
+              take: MAX_ANALYTICS_ATTENDANCES,
+            }),
+        !window.attendedAt
+          ? windowAttendancesPromise.then((rows) => rows.filter((row) => row.status === 'PRESENT'))
+          : this.prisma.eventAttendance.findMany({
+              where: { eventId, status: 'PRESENT' },
+              select: { personId: true },
+            }),
         this.prisma.offlineEventAttendanceSubmission.findMany({
           where: { eventId, status: 'PENDING' },
           select: { id: true, submittedAt: true },
@@ -142,7 +155,7 @@ export class AttendanceAnalyticsService {
         }),
       ]);
 
-    const actorNames = await this.actorNames([...windowAttendances, ...reviewDetectionAttendances]);
+    const actorNames = await this.actorNames(windowAttendances, reviewDetectionAttendances);
     await this.detectReviewFlags(event, reviewDetectionAttendances, pendingOfflineSubmissions, generatedAt, actorNames);
 
     const [subscribedPersonIds, reviewItems] = await Promise.all([
@@ -285,16 +298,16 @@ export class AttendanceAnalyticsService {
     return event;
   }
 
-  private async actorNames(attendances: AnalyticsAttendance[]): Promise<Map<string, string>> {
-    const actorIds = [
-      ...new Set(
-        attendances
-          .flatMap((attendance) => [attendance.createdById, attendance.committedById])
-          .filter((id): id is string => Boolean(id)),
-      ),
-    ];
-    const actors = actorIds.length
-      ? await this.prisma.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, name: true } })
+  private async actorNames(...batches: readonly AnalyticsAttendance[][]): Promise<Map<string, string>> {
+    const actorIds = new Set<string>();
+    for (const attendances of batches) {
+      for (const attendance of attendances) {
+        if (attendance.createdById) actorIds.add(attendance.createdById);
+        if (attendance.committedById) actorIds.add(attendance.committedById);
+      }
+    }
+    const actors = actorIds.size
+      ? await this.prisma.user.findMany({ where: { id: { in: [...actorIds] } }, select: { id: true, name: true } })
       : [];
     return new Map(actors.map((actor) => [actor.id, actor.name]));
   }
@@ -420,7 +433,26 @@ export class AttendanceAnalyticsService {
       });
     }
 
-    await Promise.all(candidates.map((candidate) => this.upsertFlag(candidate)));
+    await this.upsertFlags(candidates);
+  }
+
+  private async upsertFlags(candidates: readonly FlagCandidate[]): Promise<void> {
+    if (candidates.length === 0) return;
+    const existing = await this.prisma.attendanceReviewFlag.findMany({
+      where: { dedupeKey: { in: candidates.map((candidate) => candidate.dedupeKey) } },
+      select: { dedupeKey: true, title: true, summary: true, details: true },
+    });
+    const byKey = new Map(existing.map((flag) => [flag.dedupeKey, flag]));
+    const changed = candidates.filter((candidate) => {
+      const previous = byKey.get(candidate.dedupeKey);
+      return (
+        !previous ||
+        previous.title !== candidate.title ||
+        previous.summary !== candidate.summary ||
+        (candidate.details !== undefined && !isDeepStrictEqual(previous.details, candidate.details))
+      );
+    });
+    await Promise.all(changed.map((candidate) => this.upsertFlag(candidate)));
   }
 
   private upsertFlag(candidate: FlagCandidate): Promise<unknown> {
@@ -450,30 +482,27 @@ export class AttendanceAnalyticsService {
       orderBy: { lastRecordedAt: 'desc' },
       take: 500,
     });
-    await Promise.all(
-      entries.flatMap((entry) => {
-        if (!entry.eventId) {
-          return [];
-        }
-        const removal = entry.operation === 'DELETE';
-        return [
-          this.upsertFlag({
-            eventId: entry.eventId,
-            actorId: entry.actorId ?? undefined,
-            kind: removal
-              ? AttendanceReviewFlagKind.ATTENDANCE_REMOVAL
-              : AttendanceReviewFlagKind.REPEATED_SCAN_ATTEMPTS,
-            severity: removal ? AttendanceReviewFlagSeverity.WARNING : AttendanceReviewFlagSeverity.INFO,
-            dedupeKey: `${removal ? 'removal' : 'repeat'}:${entry.id}`,
-            title: removal ? 'Presença removida' : 'Tentativas repetidas de leitura',
-            summary: removal
-              ? `${entry.actorName} removeu uma presença; a ação auditada aguarda revisão humana.`
-              : `${entry.groupedCount} tentativas semelhantes foram agrupadas para a mesma presença.`,
-            details: { auditLogEntryId: entry.id, entityId: entry.entityId },
-          }),
-        ];
-      }),
-    );
+    const candidates: FlagCandidate[] = entries.flatMap((entry) => {
+      if (!entry.eventId) {
+        return [];
+      }
+      const removal = entry.operation === 'DELETE';
+      return [
+        {
+          eventId: entry.eventId,
+          actorId: entry.actorId ?? undefined,
+          kind: removal ? AttendanceReviewFlagKind.ATTENDANCE_REMOVAL : AttendanceReviewFlagKind.REPEATED_SCAN_ATTEMPTS,
+          severity: removal ? AttendanceReviewFlagSeverity.WARNING : AttendanceReviewFlagSeverity.INFO,
+          dedupeKey: `${removal ? 'removal' : 'repeat'}:${entry.id}`,
+          title: removal ? 'Presença removida' : 'Tentativas repetidas de leitura',
+          summary: removal
+            ? `${entry.actorName} removeu uma presença; o registro continua válido como ação auditada até revisão humana.`
+            : `${entry.groupedCount} tentativas semelhantes foram agrupadas para a mesma presença.`,
+          details: { auditLogEntryId: entry.id, entityId: entry.entityId },
+        },
+      ];
+    });
+    await this.upsertFlags(candidates);
   }
 
   private async reviewItems(event: EventAnalyticsRecord): Promise<AttendanceReviewItem[]> {
@@ -625,7 +654,8 @@ export function buildTimeBuckets(
   precision: 'minute' | 'hour',
 ): AttendanceTimeBucket[] {
   const counts = new Map<string, number>();
-  for (const attendance of attendances.filter((item) => item.status === 'PRESENT')) {
+  for (const attendance of attendances) {
+    if (attendance.status !== 'PRESENT') continue;
     const start = truncateDate(attendance.attendedAt, precision).toISOString();
     counts.set(start, (counts.get(start) ?? 0) + 1);
   }
@@ -638,30 +668,57 @@ export function buildCollectorProductivity(
   attendances: AnalyticsAttendance[],
   actorNames: Map<string, string>,
 ): AttendanceCollectorProductivity[] {
-  const collectors = new Map<string, { actorId: string; scans: AnalyticsAttendance[] }>();
-  for (const attendance of attendances.filter((item) => item.status === 'PRESENT')) {
+  const collectors = new Map<
+    string,
+    {
+      actorId: string;
+      count: number;
+      firstScanAt: Date;
+      lastScanAt: Date;
+      methods: Map<string, number>;
+      onlineCount: number;
+      offlineCount: number;
+    }
+  >();
+  for (const attendance of attendances) {
+    if (attendance.status !== 'PRESENT') continue;
     const actorId = collectorId(attendance);
-    const collector = collectors.get(actorId) ?? { actorId, scans: [] };
-    collector.scans.push(attendance);
+    const collector = collectors.get(actorId) ?? {
+      actorId,
+      count: 0,
+      firstScanAt: attendance.attendedAt,
+      lastScanAt: attendance.attendedAt,
+      methods: new Map<string, number>(),
+      onlineCount: 0,
+      offlineCount: 0,
+    };
+    collector.count += 1;
+    collector.lastScanAt = attendance.attendedAt;
+    collector.methods.set(attendance.createdByMethod, (collector.methods.get(attendance.createdByMethod) ?? 0) + 1);
+    if (isOfflineAttendance(attendance)) collector.offlineCount += 1;
+    else collector.onlineCount += 1;
     collectors.set(actorId, collector);
   }
   return [...collectors.values()]
-    .map(({ actorId, scans }) => ({
+    .map(({ actorId, count, firstScanAt, lastScanAt, methods, onlineCount, offlineCount }) => ({
       actorId,
       name: actorNames.get(actorId) ?? collectorFallbackName(actorId),
-      count: scans.length,
-      firstScanAt: scans[0].attendedAt,
-      lastScanAt: scans[scans.length - 1].attendedAt,
-      methods: countMethods(scans),
-      onlineCount: scans.filter((attendance) => !isOfflineAttendance(attendance)).length,
-      offlineCount: scans.filter(isOfflineAttendance).length,
+      count,
+      firstScanAt,
+      lastScanAt,
+      methods: [...methods]
+        .map(([method, count]) => ({ method, count }))
+        .sort((left, right) => right.count - left.count),
+      onlineCount,
+      offlineCount,
     }))
     .sort((left, right) => right.count - left.count || left.name.localeCompare(right.name));
 }
 
 export function countMethods(attendances: AnalyticsAttendance[]): AttendanceMethodCount[] {
   const counts = new Map<string, number>();
-  for (const attendance of attendances.filter((item) => item.status === 'PRESENT')) {
+  for (const attendance of attendances) {
+    if (attendance.status !== 'PRESENT') continue;
     counts.set(attendance.createdByMethod, (counts.get(attendance.createdByMethod) ?? 0) + 1);
   }
   return [...counts.entries()]
@@ -674,8 +731,12 @@ export function buildHeatmapPoints(attendances: AnalyticsAttendance[]): Attendan
     string,
     { latitude: number; longitude: number; count: number; accuracyTotal: number; accuracyCount: number }
   >();
-  for (const attendance of attendances.filter((item) => item.status === 'PRESENT')) {
-    if (attendance.collectedLatitude === null || attendance.collectedLongitude === null) {
+  for (const attendance of attendances) {
+    if (
+      attendance.status !== 'PRESENT' ||
+      attendance.collectedLatitude === null ||
+      attendance.collectedLongitude === null
+    ) {
       continue;
     }
     const latitude = Number(attendance.collectedLatitude.toFixed(4));

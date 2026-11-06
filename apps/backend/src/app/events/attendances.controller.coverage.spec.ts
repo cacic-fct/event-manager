@@ -178,6 +178,42 @@ describe('EventAttendancesController streamScannerFeed', () => {
     expect(getScannerFeed).not.toHaveBeenCalled();
   });
 
+  it('waits for a slow snapshot before polling again and delivers its result', async () => {
+    jest.useFakeTimers();
+    let completeSnapshot: () => void = () => undefined;
+    const pending = new Promise((resolve) => {
+      completeSnapshot = () => resolve([]);
+    });
+    const getScannerFeed = jest.fn().mockReturnValueOnce(pending).mockResolvedValue([]);
+    (controller as unknown as { getScannerFeed: jest.Mock }).getScannerFeed = getScannerFeed;
+    const receive = jest.fn();
+    const subscription = controller
+      .streamScannerFeed('event-1', undefined, {
+        user: { sub: 'collector-user' },
+        headers: { cookie: `${AUTH_SESSION_COOKIE_NAME}=session-cookie` },
+      } as never)
+      .subscribe(receive);
+
+    try {
+      await flushPromises();
+      await jest.advanceTimersByTimeAsync(6_000);
+      expect(getScannerFeed).toHaveBeenCalledTimes(1);
+      expect(receive).not.toHaveBeenCalled();
+
+      completeSnapshot();
+      await jest.advanceTimersByTimeAsync(0);
+      expect(receive).toHaveBeenCalledTimes(1);
+      await jest.advanceTimersByTimeAsync(2_000);
+      expect(getScannerFeed).toHaveBeenCalledTimes(2);
+      subscription.unsubscribe();
+      await jest.advanceTimersByTimeAsync(4_000);
+      expect(getScannerFeed).toHaveBeenCalledTimes(2);
+    } finally {
+      subscription.unsubscribe();
+      jest.useRealTimers();
+    }
+  });
+
   it('stops polling after an authenticated client disconnects', async () => {
     jest.useFakeTimers();
     const getScannerFeed = jest.fn().mockResolvedValue([]);

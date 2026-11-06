@@ -86,6 +86,36 @@ describe('AttendanceAnalyticsController', () => {
     expect(replay.scope).toHaveBeenCalledWith('event-attendance-analytics', `event-1:${start}:${end}`, 'admin-1');
   });
 
+  it('lets a slow analytics query finish before requesting another snapshot', async () => {
+    jest.useFakeTimers();
+    let completeSnapshot: () => void = () => undefined;
+    const pending = new Promise((resolve) => {
+      completeSnapshot = () => resolve({ eventId: 'event-1', total: 0 });
+    });
+    analytics.snapshot.mockReturnValueOnce(pending).mockResolvedValue({ eventId: 'event-1', total: 0 });
+    const receive = jest.fn();
+    const subscription = controller()
+      .streamAnalytics('event-1', undefined, undefined, undefined, undefined, { headers: {} } as never)
+      .subscribe(receive);
+
+    try {
+      await jest.advanceTimersByTimeAsync(6_000);
+      expect(analytics.snapshot).toHaveBeenCalledTimes(1);
+      expect(receive).not.toHaveBeenCalled();
+      completeSnapshot();
+      await jest.advanceTimersByTimeAsync(0);
+      expect(receive).toHaveBeenCalledTimes(1);
+      await jest.advanceTimersByTimeAsync(2_000);
+      expect(analytics.snapshot).toHaveBeenCalledTimes(2);
+      subscription.unsubscribe();
+      await jest.advanceTimersByTimeAsync(4_000);
+      expect(analytics.snapshot).toHaveBeenCalledTimes(2);
+    } finally {
+      subscription.unsubscribe();
+      jest.useRealTimers();
+    }
+  });
+
   it('propagates snapshot failures through the SSE observable', async () => {
     analytics.snapshot.mockRejectedValueOnce(new Error('Analytics unavailable.'));
 
