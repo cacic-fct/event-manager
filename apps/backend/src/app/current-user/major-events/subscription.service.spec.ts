@@ -451,6 +451,56 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
     });
   });
 
+  it('loads selected activities only when requested while preserving subscribed feed items', async () => {
+    const majorEvent = {
+      id: 'major-1',
+      startDate: new Date(publicFixtureDateFromNow(-2)),
+      endDate: new Date(publicFixtureDateFromNow(-1)),
+    };
+    const prisma = {
+      majorEventSubscription: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'subscription-1',
+            majorEventId: majorEvent.id,
+            majorEvent,
+            subscriptionStatus: SubscriptionStatus.CONFIRMED,
+          },
+        ]),
+      },
+      eventLecturer: { findMany: jest.fn().mockResolvedValue([]) },
+      certificate: { findMany: jest.fn().mockResolvedValue([]) },
+      eventAttendance: { findMany: jest.fn().mockResolvedValue([]) },
+      sportsTournament: { findMany: jest.fn().mockResolvedValue([]) },
+      eventInterest: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    service = new CurrentUserMajorEventSubscriptionService(
+      prisma as never,
+      { mapPublicMajorEvent: (item: unknown) => item } as never,
+    );
+    const selectedEvents = [{ id: 'selected-activity' }];
+    const loadSelected = jest
+      .spyOn(service, 'getSelectedEventsByMajorEvent')
+      .mockResolvedValue(new Map([[majorEvent.id, selectedEvents as never]]));
+
+    const summary = await service.getCurrentUserMajorEventFeedItems('person-1', false, {
+      includeSelectedEvents: false,
+    });
+    expect(summary).toEqual([
+      expect.objectContaining({
+        id: 'subscription-1',
+        majorEvent,
+        selectedEvents: [],
+        participation: expect.objectContaining({ isSubscribed: true }),
+      }),
+    ]);
+    expect(loadSelected).not.toHaveBeenCalled();
+
+    const complete = await service.getCurrentUserMajorEventFeedItems('person-1', false);
+    expect(loadSelected).toHaveBeenCalledWith('person-1', ['major-1']);
+    expect(complete[0].selectedEvents).toEqual(selectedEvents);
+  });
+
   it('adds attendance-only major events to the feed', async () => {
     const majorEvent = {
       id: 'major-attended',

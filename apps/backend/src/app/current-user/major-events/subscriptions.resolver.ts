@@ -1,7 +1,8 @@
 import { TicketSubscriptionSyncService } from '../../events/ticket-subscription-sync.service';
 import { IncludePastParticipation } from '../../audiences/past-participation.decorator';
 import { BadRequestException, NotFoundException, Optional, UseGuards } from '@nestjs/common';
-import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Info, Mutation, Query, Resolver } from '@nestjs/graphql';
+import type { GraphQLResolveInfo } from 'graphql';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -18,6 +19,7 @@ import { CurrentUserMajorEventSubscriptionService } from './subscription.service
 import { CurrentUserPublicEventService } from '../public-event.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
+import { graphqlFieldRequested } from '../../common/graphql-field-requested';
 import { runSerializablePrismaTransaction } from '../../common/serializable-prisma-transaction';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import {
@@ -187,16 +189,24 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       'Get current-user major events where the person is subscribed, a lecturer, has an issued major-event certificate, attended an event, or has a sports management role.',
   })
   @IncludePastParticipation()
-  async currentUserMajorEventFeed(@Context() context: GraphqlContext): Promise<CurrentUserMajorEventFeedItem[]> {
+  async currentUserMajorEventFeed(
+    @Context() context: GraphqlContext,
+    @Info() info?: GraphQLResolveInfo,
+  ): Promise<CurrentUserMajorEventFeedItem[]> {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
-    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser, false, {
+      requestContext: context,
+    });
     if (!person) {
       return [];
     }
 
-    const paymentInfoTableExists = await this.publicEvents.hasPaymentInfoTable();
+    const paymentInfoTableExists =
+      graphqlFieldRequested(info, ['majorEvent', 'paymentInfo']) && (await this.publicEvents.hasPaymentInfoTable());
 
-    return this.majorEventSubscriptions.getCurrentUserMajorEventFeedItems(person.id, paymentInfoTableExists);
+    return this.majorEventSubscriptions.getCurrentUserMajorEventFeedItems(person.id, paymentInfoTableExists, {
+      includeSelectedEvents: graphqlFieldRequested(info, ['selectedEvents']),
+    });
   }
 
   @Query(() => CurrentUserMajorEventSubscription, {

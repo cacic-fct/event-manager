@@ -504,6 +504,7 @@ export class CurrentUserMajorEventSubscriptionService {
   async getCurrentUserMajorEventFeedItems(
     personId: string,
     paymentInfoTableExists: boolean,
+    { includeSelectedEvents = true }: { includeSelectedEvents?: boolean } = {},
   ): Promise<CurrentUserMajorEventFeedItem[]> {
     const [subscriptions, lecturerMajorEvents, certificates, attendanceMajorEvents, sportsMajorEvents, interests] =
       await Promise.all([
@@ -734,9 +735,9 @@ export class CurrentUserMajorEventSubscriptionService {
         .filter(({ teams }) => teams.length > 0)
         .map(({ majorEventId, teams }) => [majorEventId, teams] as const),
     );
-    const selectedEventsByMajorEventId = await this.getSelectedEventsByMajorEvent(personId, [
-      ...subscribedMajorEventIds,
-    ]);
+    const selectedEventsByMajorEventId = includeSelectedEvents
+      ? await this.getSelectedEventsByMajorEvent(personId, [...subscribedMajorEventIds])
+      : new Map<string, PublicEvent[]>();
 
     const itemsByMajorEventId = new Map<string, CurrentUserMajorEventFeedItem>();
     for (const subscription of subscriptions) {

@@ -9,7 +9,7 @@ import { AuthService } from '@cacic-fct/shared-angular';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import type { SubscriptionsFeed } from '@cacic-fct/shared-utils';
-import { NEVER, of, Subject, throwError, TimeoutError } from 'rxjs';
+import { defer, NEVER, of, Subject, throwError, TimeoutError } from 'rxjs';
 import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
 import { NetworkStatusService } from '../../../shared/network-status.service';
 import { RealtimeInvalidationService } from '../../../shared/realtime-invalidation.service';
@@ -246,7 +246,7 @@ describe('Attendances', () => {
     expect(fixture.nativeElement.textContent).toContain('SECOMPP');
   });
 
-  it('ends a stalled feed request after 30 seconds', async () => {
+  it('allows a slow feed beyond 30 seconds and ends a stalled request after 60 seconds', async () => {
     const { fixture, api, component, currentUserChanges } = await createFixture({
       onlineFeedError: new TimeoutError(),
     });
@@ -259,10 +259,120 @@ describe('Attendances', () => {
       expect(component.feedState().status).toBe('loading');
       await vi.advanceTimersByTimeAsync(30_000);
       fixture.detectChanges();
+      expect(component.feedState().status).toBe('loading');
+      await vi.advanceTimersByTimeAsync(30_000);
+      fixture.detectChanges();
       expect(component.feedState()).toEqual({
         status: 'error',
         message: 'O carregamento das suas participações demorou mais que o esperado. Tente novamente.',
       });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('accepts a successful feed after the previous 30-second deadline', async () => {
+    const { fixture, api, component, currentUserChanges } = await createFixture({
+      onlineFeedError: new TimeoutError(),
+    });
+    await settle(fixture);
+    vi.useFakeTimers();
+    try {
+      const response = new Subject<SubscriptionsFeed>();
+      api.getSubscriptionsFeed.mockReturnValueOnce(response);
+      currentUserChanges.next();
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(45_000);
+      response.next(subscriptionsFeedFixture);
+      response.complete();
+      fixture.detectChanges();
+      expect(component.feedState().status).toBe('ready');
+      expect(fixture.nativeElement.textContent).toContain('SECOMPP');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([0, 408, 502, 503, 504])(
+    'recovers from a transient HTTP %s failure with one delayed retry',
+    async (status) => {
+      const { fixture, api, currentUserChanges, offlineData } = await createFixture();
+      await settle(fixture);
+      fixture.destroy();
+      currentUserChanges.next();
+      vi.useFakeTimers();
+      try {
+        let attempts = 0;
+        api.getSubscriptionsFeed.mockReturnValueOnce(
+          defer(() =>
+            ++attempts === 1 ? throwError(() => new HttpErrorResponse({ status })) : of(subscriptionsFeedFixture),
+          ),
+        );
+        const received = vi.fn();
+        TestBed.inject(AttendanceFeedCacheService).load('user-1').subscribe(received);
+        expect(attempts).toBe(1);
+        await vi.advanceTimersByTimeAsync(999);
+        expect(received).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1);
+        expect(attempts).toBe(2);
+        expect(received).toHaveBeenCalledWith(subscriptionsFeedFixture);
+        expect(offlineData.getAttendanceFeed).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
+
+  it('stops after one unsuccessful automatic retry', async () => {
+    const { fixture, api, currentUserChanges } = await createFixture();
+    await settle(fixture);
+    fixture.destroy();
+    currentUserChanges.next();
+    vi.useFakeTimers();
+    try {
+      const error = new HttpErrorResponse({ status: 504 });
+      const request = vi.fn(() => throwError(() => error));
+      api.getSubscriptionsFeed.mockReturnValueOnce(defer(request));
+      const failed = vi.fn();
+      TestBed.inject(AttendanceFeedCacheService).load('user-1').subscribe({ error: failed });
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(request).toHaveBeenCalledTimes(2);
+      expect(failed).toHaveBeenCalledWith(error);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([400, 401, 403, 429])('does not retry HTTP %s failures', async (status) => {
+    const { fixture, api, currentUserChanges } = await createFixture();
+    await settle(fixture);
+    fixture.destroy();
+    currentUserChanges.next();
+    const error = new HttpErrorResponse({ status });
+    const request = vi.fn(() => throwError(() => error));
+    api.getSubscriptionsFeed.mockReturnValueOnce(defer(request));
+    const failed = vi.fn();
+    TestBed.inject(AttendanceFeedCacheService).load('user-1').subscribe({ error: failed });
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(failed).toHaveBeenCalledWith(error);
+  });
+
+  it('keeps a late gateway failure and its retry within the total 60-second limit', async () => {
+    const { fixture, api, currentUserChanges } = await createFixture();
+    await settle(fixture);
+    fixture.destroy();
+    currentUserChanges.next();
+    vi.useFakeTimers();
+    try {
+      const response = new Subject<SubscriptionsFeed>();
+      api.getSubscriptionsFeed.mockReturnValueOnce(response);
+      const failed = vi.fn();
+      TestBed.inject(AttendanceFeedCacheService).load('user-1').subscribe({ error: failed });
+      await vi.advanceTimersByTimeAsync(59_500);
+      response.error(new HttpErrorResponse({ status: 504 }));
+      await vi.advanceTimersByTimeAsync(500);
+      expect(failed).toHaveBeenCalledWith(expect.any(TimeoutError));
+      expect(response.observed).toBe(false);
     } finally {
       vi.useRealTimers();
     }
@@ -278,11 +388,21 @@ describe('Attendances', () => {
   });
 
   it.each([408, 504])('identifies an HTTP %s response as a timeout', async (status) => {
-    const { fixture } = await createFixture({ onlineFeedError: new HttpErrorResponse({ status }) });
+    const { fixture, api, currentUserChanges } = await createFixture({ onlineFeedError: new TimeoutError() });
     await settle(fixture);
+    vi.useFakeTimers();
+    try {
+      api.getSubscriptionsFeed.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status })));
+      currentUserChanges.next();
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(1_000);
+      fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('demorou mais que o esperado');
-    expect(fixture.nativeElement.querySelector('main button')?.textContent).toContain('Tentar novamente');
+      expect(fixture.nativeElement.textContent).toContain('demorou mais que o esperado');
+      expect(fixture.nativeElement.querySelector('main button')?.textContent).toContain('Tentar novamente');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('keeps a successful empty response distinct from a failed request', async () => {

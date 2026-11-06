@@ -83,6 +83,7 @@ describe('CurrentUserSubscriptionFeedService', () => {
           personId: 'person-1',
           status: 'PRESENT',
           event: {
+            majorEventId: null,
             AND: [PUBLIC_EVENT_WHERE],
           },
         },

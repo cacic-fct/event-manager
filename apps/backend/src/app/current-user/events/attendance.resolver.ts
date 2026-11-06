@@ -79,7 +79,9 @@ export class CurrentUserEventAttendanceResolver {
   @IncludePastParticipation()
   async currentUserEventAttendances(@Context() context: GraphqlContext): Promise<CurrentUserEventAttendance[]> {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
-    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser, false, {
+      requestContext: context,
+    });
     if (!person) {
       return [];
     }

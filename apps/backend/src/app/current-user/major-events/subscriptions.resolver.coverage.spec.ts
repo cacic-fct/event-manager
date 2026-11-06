@@ -2,6 +2,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { AuditLogEntityType, AuditLogOperation, Prisma, SubscriptionStatus } from '@prisma/client';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
+import { buildSchema, graphql, type GraphQLResolveInfo } from 'graphql';
 import {
   CurrentUserMajorEventSubscriptionsResolver,
   majorEventIncludesEventRegistration,
@@ -93,7 +94,29 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
 
     await expect(harness.resolver.currentUserMajorEventFeed({ req: {} } as never)).resolves.toBe(feed);
 
-    expect(harness.majorEventSubscriptions.getCurrentUserMajorEventFeedItems).toHaveBeenCalledWith('person-1', false);
+    expect(harness.majorEventSubscriptions.getCurrentUserMajorEventFeedItems).toHaveBeenCalledWith('person-1', false, {
+      includeSelectedEvents: true,
+    });
+  });
+
+  it('skips payment capability and selected-activity reads for the participation list query', async () => {
+    const harness = createHarness();
+    harness.currentUserContext.resolveCurrentUserContext.mockResolvedValue({ person: { id: 'person-1' } });
+    harness.majorEventSubscriptions.getCurrentUserMajorEventFeedItems.mockResolvedValue([]);
+    const result = await graphql({
+      schema: buildSchema('type Query { feed: [Item!]! } type Item { id: ID! }'),
+      source: '{ feed { id } }',
+      rootValue: {
+        feed: (_args: unknown, _context: unknown, info: GraphQLResolveInfo) =>
+          harness.resolver.currentUserMajorEventFeed({ req: {} } as never, info),
+      },
+    });
+
+    expect(result.errors).toBeUndefined();
+    expect(harness.publicEvents.hasPaymentInfoTable).not.toHaveBeenCalled();
+    expect(harness.majorEventSubscriptions.getCurrentUserMajorEventFeedItems).toHaveBeenCalledWith('person-1', false, {
+      includeSelectedEvents: false,
+    });
   });
 
   it('maps a current-user major-event subscription and selected-event projections', async () => {
