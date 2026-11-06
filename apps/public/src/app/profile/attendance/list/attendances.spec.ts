@@ -9,7 +9,7 @@ import { AuthService } from '@cacic-fct/shared-angular';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import type { SubscriptionsFeed } from '@cacic-fct/shared-utils';
-import { of, Subject, throwError } from 'rxjs';
+import { NEVER, of, Subject, throwError, TimeoutError } from 'rxjs';
 import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
 import { NetworkStatusService } from '../../../shared/network-status.service';
 import { RealtimeInvalidationService } from '../../../shared/realtime-invalidation.service';
@@ -223,6 +223,78 @@ describe('Attendances', () => {
     expect(offlineData.getAttendanceFeed).toHaveBeenCalledWith('user-1');
   });
 
+  it('shows a timeout instead of an empty feed and retries the request', async () => {
+    const { fixture, api, component } = await createFixture({ onlineFeedError: new TimeoutError() });
+    await settle(fixture);
+
+    expect(fixture.nativeElement.textContent).toContain('demorou mais que o esperado');
+    expect(fixture.nativeElement.textContent).not.toContain('Nenhuma participação encontrada.');
+    const retry = fixture.nativeElement.querySelector('main button') as HTMLButtonElement;
+    expect(retry.textContent).toContain('Tentar novamente');
+
+    const response = new Subject<SubscriptionsFeed>();
+    api.getSubscriptionsFeed.mockReturnValueOnce(response);
+    retry.click();
+    await settle(fixture);
+    expect(component.feedState().status).toBe('loading');
+    expect(fixture.nativeElement.querySelector('main button')).toBeNull();
+    expect(api.getSubscriptionsFeed).toHaveBeenCalledTimes(2);
+
+    response.next(subscriptionsFeedFixture);
+    response.complete();
+    await settle(fixture);
+    expect(fixture.nativeElement.textContent).toContain('SECOMPP');
+  });
+
+  it('ends a stalled feed request after 30 seconds', async () => {
+    const { fixture, api, component, currentUserChanges } = await createFixture({
+      onlineFeedError: new TimeoutError(),
+    });
+    await settle(fixture);
+    vi.useFakeTimers();
+    try {
+      api.getSubscriptionsFeed.mockReturnValueOnce(NEVER);
+      currentUserChanges.next();
+      fixture.detectChanges();
+      expect(component.feedState().status).toBe('loading');
+      await vi.advanceTimersByTimeAsync(30_000);
+      fixture.detectChanges();
+      expect(component.feedState()).toEqual({
+        status: 'error',
+        message: 'O carregamento das suas participações demorou mais que o esperado. Tente novamente.',
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('shows a recoverable error when the request fails without an offline cache', async () => {
+    const { fixture } = await createFixture({ onlineFeedError: new Error('Internal request details') });
+    await settle(fixture);
+
+    expect(fixture.nativeElement.textContent).toContain('Não foi possível carregar suas participações.');
+    expect(fixture.nativeElement.textContent).not.toContain('Internal request details');
+    expect(fixture.nativeElement.textContent).not.toContain('Nenhuma participação encontrada.');
+  });
+
+  it.each([408, 504])('identifies an HTTP %s response as a timeout', async (status) => {
+    const { fixture } = await createFixture({ onlineFeedError: new HttpErrorResponse({ status }) });
+    await settle(fixture);
+
+    expect(fixture.nativeElement.textContent).toContain('demorou mais que o esperado');
+    expect(fixture.nativeElement.querySelector('main button')?.textContent).toContain('Tentar novamente');
+  });
+
+  it('keeps a successful empty response distinct from a failed request', async () => {
+    const { fixture } = await createFixture({
+      onlineFeed: { majorEventItems: [], eventItems: [], attendances: [], standaloneCertificateFolders: [] },
+    });
+    await settle(fixture);
+
+    expect(fixture.nativeElement.textContent).toContain('Nenhuma participação encontrada.');
+    expect(fixture.nativeElement.textContent).not.toContain('Tentar novamente');
+  });
+
   it('refreshes the visible feed from a current-user invalidation and keeps it on a transient failure', async () => {
     const { fixture, component, api, currentUserChanges, offlineData } = await createFixture();
     await settle(fixture);
@@ -269,7 +341,10 @@ describe('Attendances', () => {
     authUser.set({ sub: 'user-2' });
     await settle(fixture);
 
-    expect(component.feedState()).toEqual({ status: 'error', message: 'Cache indisponível' });
+    expect(component.feedState()).toEqual({
+      status: 'error',
+      message: 'Não foi possível carregar suas participações. Tente novamente.',
+    });
     expect(component.visibleParticipations()).toEqual([]);
     expect(offlineData.getAttendanceFeed).toHaveBeenCalledWith('user-2');
   });

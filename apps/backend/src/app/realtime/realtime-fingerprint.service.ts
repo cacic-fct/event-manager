@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
+import { SseReplayService } from './sse-replay.service';
 
 interface AggregateFingerprint {
   _count: number;
@@ -10,25 +12,7 @@ interface AggregateFingerprint {
 export interface CurrentUserRealtimeFingerprint {
   type: 'CURRENT_USER_DATA_INVALIDATED';
   minute: number;
-  attendances: AggregateFingerprint;
-  eventSubscriptions: AggregateFingerprint;
-  eventInterests: AggregateFingerprint;
-  eventSubscriptionGroups: string;
-  eventGroupSubscriptions: AggregateFingerprint;
-  majorEventSubscriptions: AggregateFingerprint;
-  certificates: AggregateFingerprint;
-  applications: AggregateFingerprint;
-  participants: AggregateFingerprint;
-  lecturers: AggregateFingerprint;
-  attendanceCollectors: AggregateFingerprint;
-  teamRepresentatives: AggregateFingerprint;
-  officialAssignments: AggregateFingerprint;
-  teamMemberships: AggregateFingerprint;
-  registrationMemberships: AggregateFingerprint;
-  rosterEntries: AggregateFingerprint;
-  roleAssignments: AggregateFingerprint;
-  roleAssignmentScopes: AggregateFingerprint;
-  permissionGroupMemberships: AggregateFingerprint;
+  revision: string;
 }
 
 export interface EventSubscriptionsRealtimeFingerprint {
@@ -56,9 +40,26 @@ export interface MajorEventSubscriptionsRealtimeFingerprint {
 
 @Injectable()
 export class RealtimeFingerprintService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly replay: SseReplayService,
+  ) {}
 
   async currentUser(personId: string): Promise<CurrentUserRealtimeFingerprint> {
+    // These queries only inspect the authenticated person's own relations. Returning a
+    // keyed revision keeps their counts and timestamps private without expanding every
+    // audience path into joins. The subsequent data reads still enforce audience access.
+    const revision = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
+      this.currentUserRevision(personId),
+    );
+    return {
+      type: 'CURRENT_USER_DATA_INVALIDATED',
+      minute: Math.floor(Date.now() / 60_000),
+      revision,
+    };
+  }
+
+  private async currentUserRevision(personId: string): Promise<string> {
     const [
       attendances,
       eventSubscriptions,
@@ -79,6 +80,9 @@ export class RealtimeFingerprintService {
       roleAssignments,
       roleAssignmentScopes,
       permissionGroupMemberships,
+      eventInvitations,
+      groupInvitations,
+      majorEventInvitations,
     ] = await Promise.all([
       this.prisma.eventAttendance.aggregate({
         where: { personId },
@@ -177,31 +181,51 @@ export class RealtimeFingerprintService {
         _count: true,
         _max: { updatedAt: true, validFrom: true, validUntil: true, archivedAt: true },
       }),
+      this.prisma.eventAudienceInvitation.aggregate({
+        where: { personId },
+        _count: true,
+        _max: { createdAt: true },
+      }),
+      this.prisma.eventGroupAudienceInvitation.aggregate({
+        where: { personId },
+        _count: true,
+        _max: { createdAt: true },
+      }),
+      this.prisma.majorEventAudienceInvitation.aggregate({
+        where: { personId },
+        _count: true,
+        _max: { createdAt: true },
+      }),
     ]);
 
-    return {
-      type: 'CURRENT_USER_DATA_INVALIDATED',
-      minute: Math.floor(Date.now() / 60_000),
-      attendances,
-      eventSubscriptions,
-      eventInterests,
-      eventSubscriptionGroups,
-      eventGroupSubscriptions,
-      majorEventSubscriptions,
-      certificates,
-      applications,
-      participants,
-      lecturers,
-      attendanceCollectors,
-      teamRepresentatives,
-      officialAssignments,
-      teamMemberships,
-      registrationMemberships,
-      rosterEntries,
-      roleAssignments,
-      roleAssignmentScopes,
-      permissionGroupMemberships,
-    };
+    return this.replay.scope(
+      'current-user-data-revision',
+      personId,
+      JSON.stringify({
+        attendances,
+        eventSubscriptions,
+        eventInterests,
+        eventSubscriptionGroups,
+        eventGroupSubscriptions,
+        majorEventSubscriptions,
+        certificates,
+        applications,
+        participants,
+        lecturers,
+        attendanceCollectors,
+        teamRepresentatives,
+        officialAssignments,
+        teamMemberships,
+        registrationMemberships,
+        rosterEntries,
+        roleAssignments,
+        roleAssignmentScopes,
+        permissionGroupMemberships,
+        eventInvitations,
+        groupInvitations,
+        majorEventInvitations,
+      }),
+    );
   }
 
   async eventSubscriptions(eventId: string): Promise<EventSubscriptionsRealtimeFingerprint> {

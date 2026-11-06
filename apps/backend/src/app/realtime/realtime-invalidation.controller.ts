@@ -12,6 +12,7 @@ import {
   defer,
   distinctUntilChanged,
   exhaustMap,
+  filter,
   interval,
   map,
   merge,
@@ -141,14 +142,24 @@ export class RealtimeInvalidationController {
     @Headers('last-event-id') lastEventId: string | undefined,
   ): Observable<MessageEvent> {
     return defer(() => this.currentUser.requireCurrentPerson({ req: request })).pipe(
-      switchMap((person) =>
-        this.replayPolling(
+      switchMap((person) => {
+        const catalogChanges = this.invalidations.watch(this.invalidations.scope(PUBLIC_CATALOG_REALTIME_CHANNEL)).pipe(
+          filter((event) => (event.data as { type?: string })?.type !== 'heartbeat'),
+          map((event) => ({
+            data: {
+              type: 'CURRENT_USER_DATA_INVALIDATED',
+              revision: event.id ?? createHash('sha256').update(JSON.stringify(event.data)).digest('base64url'),
+            },
+          })),
+        );
+        return this.replayPolling(
           this.invalidations.scope('current-user-data', person.id),
           lastEventId,
           PERSONAL_REFRESH_INTERVAL_MS,
           () => this.fingerprints.currentUser(person.id),
-        ),
-      ),
+          catalogChanges,
+        );
+      }),
     );
   }
 
@@ -263,6 +274,7 @@ export class RealtimeInvalidationController {
     lastEventId: string | undefined,
     refreshIntervalMs: number,
     load: () => Promise<object>,
+    invalidations: Observable<MessageEvent> = EMPTY,
   ): Observable<MessageEvent> {
     let snapshots = this.pollingSnapshots.get(scope);
     if (!snapshots) {
@@ -297,7 +309,7 @@ export class RealtimeInvalidationController {
       });
       this.pollingSnapshots.set(scope, snapshots);
     }
-    return this.replay.replay(scope, lastEventId, merge(snapshots, this.invalidations.heartbeat));
+    return this.replay.replay(scope, lastEventId, merge(snapshots, invalidations, this.invalidations.heartbeat));
   }
 
   private recordSnapshot(scope: string, event: MessageEvent): Observable<MessageEvent> {

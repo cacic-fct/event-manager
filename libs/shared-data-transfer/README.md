@@ -158,7 +158,7 @@ The PGlite fixture stores JSON rows through test delegates. It checks transactio
 
 Run `bun run test:data-transfer:database` (or `bunx nx run backend:test-data-transfer-postgres`) against a local, disposable PostGIS 18 database named `fct_app_data_transfer_test`. Set `DATA_TRANSFER_TEST_DATABASE_URL` to its connection URL. The runner accepts only `localhost` or `127.0.0.1`, with no query parameters. It does not use `DATABASE_URL` as a fallback or create or migrate the database. Missing configuration or schema fails the run. The connection checks have their own tests: `bun run test:data-transfer:runner`.
 
-After creating the test database and approving its migrations, apply the schema with `DATABASE_URL="$DATA_TRANSFER_TEST_DATABASE_URL" bunx prisma migrate deploy --config apps/backend/prisma.config.ts`. CI creates and migrates a separate database on its temporary PostGIS service before running the suite.
+After creating the test database and approving its migrations, apply the schema with `DATABASE_URL="$DATA_TRANSFER_TEST_DATABASE_URL" bunx prisma migrate deploy --config apps/backend/prisma.config.ts`. The trusted and untrusted backend E2E jobs create and migrate a separate database on their temporary PostGIS service before running the suite. The unit-test jobs run the PGlite integration target without a PostgreSQL container.
 
 These tests use the generated Prisma client, ticket issuance, and transactional realtime outboxes to check constraints, concurrent imports, retries, rollback, and undo conflicts. Separate clients and synchronization points force concurrent operations to overlap. Cleanup deletes each fixture's rows without truncating tables.
 

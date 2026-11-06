@@ -1,5 +1,5 @@
 import { ForbiddenException, MessageEvent } from '@nestjs/common';
-import { NEVER, Observable, firstValueFrom, of, take, toArray } from 'rxjs';
+import { NEVER, Observable, Subject, firstValueFrom, of, take, toArray } from 'rxjs';
 import { clearInterval as nodeClearInterval, setInterval as nodeSetInterval } from 'node:timers';
 import { PUBLIC_CATALOG_REALTIME_CHANNEL } from './public-catalog-invalidation';
 import { RealtimeInvalidationController } from './realtime-invalidation.controller';
@@ -166,6 +166,35 @@ describe('RealtimeInvalidationController', () => {
     expect(invalidations.scope).toHaveBeenCalledWith('current-user-data', 'person-1');
     expect(fingerprints.currentUser).toHaveBeenCalledWith('person-1');
     expect(replay.replay).toHaveBeenCalledWith('current-user-data:person-1', 'cursor-previous', expect.any(Object));
+  });
+
+  it('invalidates personal data on catalog changes and stops polling after the last client disconnects', async () => {
+    jest.useFakeTimers();
+    const { controller, currentUser, fingerprints, invalidations } = createControllerWithDependencies();
+    const catalog = new Subject<MessageEvent>();
+    invalidations.watch.mockReturnValue(catalog as never);
+    currentUser.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
+    const fingerprint = { type: 'CURRENT_USER_DATA_INVALIDATED', minute: 1, revision: 'personal-revision' };
+    fingerprints.currentUser.mockResolvedValue(fingerprint);
+    const events: MessageEvent[] = [];
+    const subscription = controller
+      .streamCurrentUserData({} as never, undefined)
+      .subscribe((event) => events.push(event));
+    await jest.advanceTimersByTimeAsync(0);
+    expect(events).toEqual([{ data: fingerprint }]);
+
+    catalog.next({ data: { type: 'heartbeat' } });
+    expect(events).toHaveLength(1);
+    catalog.next({ id: 'catalog-cursor', data: { type: 'PUBLIC_CATALOG_INVALIDATED', revision: 'changed-audience' } });
+    await jest.advanceTimersByTimeAsync(0);
+    expect(events[1]).toEqual({
+      data: { type: 'CURRENT_USER_DATA_INVALIDATED', revision: 'catalog-cursor' },
+    });
+
+    subscription.unsubscribe();
+    await jest.advanceTimersByTimeAsync(10_000);
+    expect(fingerprints.currentUser).toHaveBeenCalledTimes(1);
+    expect(catalog.observed).toBe(false);
   });
 
   it('hashes organizer snapshots after resolving the authorized target and never emits the raw details', async () => {

@@ -10,6 +10,7 @@ export default {
     'data-transfer/.*\\.integration\\.spec\\.ts$',
     'transfer-http\\.e2e\\.spec\\.ts$',
     'data-transfer\\.postgres\\.spec\\.ts$',
+    'subscription-counters\\.postgres\\.spec\\.ts$',
   ],
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/apps/backend',

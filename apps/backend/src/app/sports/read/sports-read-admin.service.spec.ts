@@ -209,8 +209,8 @@ describe('SportsReadAdminService', () => {
       .mockResolvedValueOnce([{ id: 'tournament-1' }] as never);
     const service = new SportsReadAdminService(prisma as never, authorization as never);
 
-    await expect(service.adminTournamentList(user as never)).resolves.toEqual([{ id: 'tournament-1' }]);
-    expect(delegated).toHaveBeenCalledWith(user);
+    await expect(service.adminTournamentList(user as never, {})).resolves.toEqual([{ id: 'tournament-1' }]);
+    expect(delegated).toHaveBeenCalledWith(user, {});
   });
 
   it('reports an event-scoped tournament hidden by visibility rules as not found', async () => {
@@ -556,7 +556,11 @@ describe('SportsReadAdminService', () => {
     expect(result.rosters[0]?.entries[0]?.roleMetadataJson).toBeNull();
     expect(result.officials).toEqual([{ id: 'official-1' }]);
 
+    jest.clearAllMocks();
     await expect(service.adminMatchReview(user as never, 'missing')).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.sportsMatchAction.findMany).not.toHaveBeenCalled();
+    expect(prisma.sportsMatchRoster.findMany).not.toHaveBeenCalled();
+    expect(prisma.sportsOfficialAssignment.findMany).not.toHaveBeenCalled();
   });
 
   it('returns no pending review actions when either read or review grants have no targets', async () => {

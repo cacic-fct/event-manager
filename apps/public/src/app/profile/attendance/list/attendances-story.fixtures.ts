@@ -7,7 +7,7 @@ import {
   publicStoryDate,
 } from '../../../testing/public-event-story-fixtures';
 
-export type AttendancesStoryState = 'ready' | 'offline' | 'loading' | 'error';
+export type AttendancesStoryState = 'ready' | 'offline' | 'loading' | 'error' | 'timeout';
 
 export interface AttendancesStoryControls {
   state: AttendancesStoryState;
@@ -38,7 +38,7 @@ export const attendancesStoryDefaultControls: AttendancesStoryControls = {
 };
 
 export const attendancesStoryControlArgTypes = {
-  state: { control: 'select', options: ['ready', 'offline', 'loading', 'error'] },
+  state: { control: 'select', options: ['ready', 'offline', 'loading', 'error', 'timeout'] },
   majorEventCount: { control: { type: 'range', min: 0, max: 20, step: 1 } },
   eventCount: { control: { type: 'range', min: 0, max: 40, step: 1 } },
   certificateFolderCount: { control: { type: 'range', min: 0, max: 12, step: 1 } },

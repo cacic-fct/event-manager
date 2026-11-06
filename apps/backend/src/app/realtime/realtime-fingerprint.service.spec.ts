@@ -1,10 +1,18 @@
 import { RealtimeFingerprintService } from './realtime-fingerprint.service';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
+import { SseReplayService } from './sse-replay.service';
 const { jest } = import.meta;
 
 describe('RealtimeFingerprintService', () => {
   it('covers the role and sports records used by current-user projections', async () => {
     const revision = { _count: 1, _max: { updatedAt: new Date(), deletedAt: null } };
-    const aggregate = () => ({ aggregate: jest.fn().mockResolvedValue(revision) });
+    const contexts: ReturnType<typeof audienceContext.getStore>[] = [];
+    const aggregate = () => ({
+      aggregate: jest.fn(async () => {
+        contexts.push(audienceContext.getStore());
+        return revision;
+      }),
+    });
     const prisma = {
       eventAttendance: aggregate(),
       eventSubscription: { ...aggregate(), findMany: jest.fn().mockResolvedValue([]) },
@@ -24,26 +32,33 @@ describe('RealtimeFingerprintService', () => {
       eventManagerRoleAssignment: aggregate(),
       eventManagerRoleAssignmentScope: aggregate(),
       eventManagerPermissionGroupMember: aggregate(),
+      eventAudienceInvitation: aggregate(),
+      eventGroupAudienceInvitation: aggregate(),
+      majorEventAudienceInvitation: aggregate(),
     };
-    const service = new RealtimeFingerprintService(prisma as never);
+    const replay = new SseReplayService({} as never);
+    const service = new RealtimeFingerprintService(prisma as never, replay);
 
-    await expect(service.currentUser('person-1')).resolves.toEqual(
-      expect.objectContaining({
+    const principal = { ...ANONYMOUS_AUDIENCE, personIds: ['person-1'] };
+    await audienceContext.run(principal, async () => {
+      const first = await service.currentUser('person-1');
+      expect(first).toEqual({
         type: 'CURRENT_USER_DATA_INVALIDATED',
         minute: expect.any(Number),
-        eventSubscriptionGroups: expect.any(String),
-        lecturers: revision,
-        attendanceCollectors: revision,
-        teamRepresentatives: revision,
-        officialAssignments: revision,
-        teamMemberships: revision,
-        registrationMemberships: revision,
-        rosterEntries: revision,
-        roleAssignments: revision,
-        roleAssignmentScopes: revision,
-        permissionGroupMemberships: revision,
-      }),
-    );
+        revision: expect.any(String),
+      });
+      expect((await service.currentUser('person-1')).revision).toBe(first.revision);
+      expect((await service.currentUser('person-2')).revision).not.toBe(first.revision);
+      expect(audienceContext.getStore()).toBe(principal);
+
+      prisma.sportsMatchRosterEntry.aggregate.mockResolvedValueOnce({ ...revision, _count: 2 });
+      expect((await service.currentUser('person-1')).revision).not.toBe(first.revision);
+      prisma.eventAudienceInvitation.aggregate.mockResolvedValueOnce({ ...revision, _count: 2 });
+      expect((await service.currentUser('person-1')).revision).not.toBe(first.revision);
+    });
+    expect(contexts.every((context) => context?.bypass === true)).toBe(true);
+    expect(contexts.length).toBeGreaterThan(0);
+    expect(audienceContext.getStore()).toBeUndefined();
     expect(prisma.sportsTeamMember.aggregate).toHaveBeenCalledWith(
       expect.objectContaining({ where: { participant: { personId: 'person-1' } } }),
     );
@@ -75,7 +90,7 @@ describe('RealtimeFingerprintService', () => {
       majorEventSubscriptionEventSelection: { aggregate: jest.fn().mockResolvedValue(selections) },
       majorEventSubscription: { aggregate: jest.fn().mockResolvedValue(rankedSubscriptions) },
     };
-    const service = new RealtimeFingerprintService(prisma as never);
+    const service = new RealtimeFingerprintService(prisma as never, new SseReplayService({} as never));
 
     const standalone = await service.eventSubscriptions('event-1');
     const grouped = await service.eventSubscriptions('event-1');
@@ -132,7 +147,7 @@ describe('RealtimeFingerprintService', () => {
         aggregate: jest.fn().mockResolvedValue({ _count: 8, _max: { updatedAt: null } }),
       },
     };
-    const service = new RealtimeFingerprintService(prisma as never);
+    const service = new RealtimeFingerprintService(prisma as never, new SseReplayService({} as never));
 
     await expect(service.majorEventSubscriptions('major-1')).resolves.toEqual({
       type: 'MAJOR_EVENT_SUBSCRIPTIONS_INVALIDATED',
