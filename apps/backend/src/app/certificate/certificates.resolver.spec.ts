@@ -555,24 +555,24 @@ describe('CertificatesResolver authorization', () => {
     configsService.listFolders.mockResolvedValue(folders);
     await expect(resolver.certificateFolders({ req: { user } } as never, 'cert', 0, 20)).resolves.toEqual(folders);
     expect(configsService.listFolders).toHaveBeenCalledWith('cert', 0, 20);
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledTimes(1);
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(user, [Permission.CertificateConfig.Read], {
-      allowScopedCollection: true,
-    });
-    expect(authorizationPolicy.evaluateGlobalPermissions).toHaveBeenCalledTimes(1);
+    expect(authorizationPolicy.assertCollectionPermission).toHaveBeenCalledTimes(1);
+    expect(authorizationPolicy.assertCollectionPermission).toHaveBeenCalledWith(
+      user,
+      Permission.CertificateConfig.Read,
+    );
   });
 
   it('does not load a folder page for scoped-only permissions', async () => {
     const { authorizationPolicy, configsService, resolver } = createResolver();
-    authorizationPolicy.evaluateGlobalPermissions.mockResolvedValue([]);
+    authorizationPolicy.assertCollectionPermission.mockResolvedValue(false);
     await expect(resolver.certificateFolders({ req: { user: { sub: 'user-1' } } } as never)).resolves.toEqual([]);
     expect(configsService.listFolders).not.toHaveBeenCalled();
   });
 
-  it('propagates global permission evaluation errors', async () => {
+  it('propagates collection authorization errors', async () => {
     const { authorizationPolicy, configsService, resolver } = createResolver();
     const error = new Error('policy store unavailable');
-    authorizationPolicy.evaluateGlobalPermissions.mockRejectedValue(error);
+    authorizationPolicy.assertCollectionPermission.mockRejectedValue(error);
     await expect(resolver.certificateFolders({ req: { user: { sub: 'user-1' } } } as never)).rejects.toBe(error);
     expect(configsService.listFolders).not.toHaveBeenCalled();
   });
@@ -786,9 +786,8 @@ describe('certificate folder collection with the real authorization policy', () 
         'findActiveGrants',
       )
       .mockResolvedValue(grants);
-    fixture.authorizationPolicy.assertPermissions.mockImplementation(policy.assertPermissions.bind(policy));
-    fixture.authorizationPolicy.evaluateGlobalPermissions.mockImplementation(
-      policy.evaluateGlobalPermissions.bind(policy),
+    fixture.authorizationPolicy.assertCollectionPermission.mockImplementation(
+      policy.assertCollectionPermission.bind(policy),
     );
     const user = { sub: 'manager', roleSet: new Set([EventManagerKeycloakRole.Access]) };
     return { ...fixture, grantStore, context: { req: { user } } as never };
@@ -810,15 +809,15 @@ describe('certificate folder collection with the real authorization policy', () 
     const { resolver, configsService, context, grantStore } = setupPolicy([grant(scope)]);
     await expect(resolver.certificateFolders(context)).resolves.toEqual([]);
     expect(configsService.listFolders).not.toHaveBeenCalled();
-    expect(grantStore).toHaveBeenCalledTimes(2);
+    expect(grantStore).toHaveBeenCalledTimes(1);
   });
 
-  it.each([1, 30])('loads all %i folders with a global grant using two grant resolutions', async (count) => {
+  it.each([1, 30])('loads all %i folders with a global grant using one grant resolution', async (count) => {
     const { resolver, configsService, context, grantStore } = setupPolicy([grant(EventManagerPermissionScope.GLOBAL)]);
     const folders = Array.from({ length: count }, (_, index) => ({ id: `folder-${index}` }));
     configsService.listFolders.mockResolvedValue(folders);
     await expect(resolver.certificateFolders(context, undefined, 0, count)).resolves.toEqual(folders);
-    expect(grantStore).toHaveBeenCalledTimes(2);
+    expect(grantStore).toHaveBeenCalledTimes(1);
     expect(configsService.listFolders).toHaveBeenCalledTimes(1);
   });
 
@@ -841,7 +840,7 @@ describe('certificate folder collection with the real authorization policy', () 
   it('propagates effective-grant storage errors before loading folders', async () => {
     const { resolver, configsService, context, grantStore } = setupPolicy([grant(EventManagerPermissionScope.GLOBAL)]);
     const error = new Error('grant database unavailable');
-    grantStore.mockResolvedValueOnce([grant(EventManagerPermissionScope.GLOBAL)]).mockRejectedValueOnce(error);
+    grantStore.mockRejectedValueOnce(error);
     await expect(resolver.certificateFolders(context)).rejects.toBe(error);
     expect(configsService.listFolders).not.toHaveBeenCalled();
   });
@@ -896,7 +895,7 @@ function createResolver() {
   };
   const authorizationPolicy = {
     accessibleEventTargets: jest.fn(),
-    evaluateGlobalPermissions: jest.fn().mockResolvedValue([Permission.CertificateConfig.Read]),
+    assertCollectionPermission: jest.fn().mockResolvedValue(true),
     assertPermissions: jest.fn(),
   };
   const prisma = {

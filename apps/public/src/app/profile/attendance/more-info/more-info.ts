@@ -46,13 +46,16 @@ import {
   catchError,
   combineLatest,
   defer,
+  distinctUntilChanged,
   forkJoin,
   from,
   map,
   of,
   retry,
+  scan,
   startWith,
   switchMap,
+  timeout,
   timer,
   throwError,
 } from 'rxjs';
@@ -66,6 +69,7 @@ import { PublicPrizeDrawApiService } from '../../../prize-draws/prize-draw-api.s
 import { TicketPurchaseOptionsSectionComponent } from '../../../major-events/payment/ticket-purchase-options-section.component';
 import { privateResourceErrorStatus } from '../../../shared/route-error-handling';
 import { EventDetailHeading } from '../../../shared/event-detail-heading';
+import { EVENT_INFORMATION_TIMEOUT_MS } from '../../../shared/event-information-fallback.service';
 import { certificateStatusCopy, type CertificateStatusCopy } from './certificate-status';
 
 type DetailFormLink = {
@@ -81,6 +85,11 @@ type DetailState =
   | { status: 'loading' | 'empty' | 'error' }
   | { status: 'ready'; detail: DetailViewModel; formLinks: DetailFormLink[]; hasPrizeDraws: boolean };
 type ReadyDetailState = Extract<DetailState, { status: 'ready' }>;
+const INITIAL_DETAIL_LOAD: { state: DetailState; initialLoading: boolean } = {
+  state: { status: 'loading' },
+  initialLoading: true,
+};
+const PARTICIPATION_EXTRAS_TIMEOUT_MS = 5_000;
 
 type PrizeDrawTargetType = 'EVENT' | 'EVENT_GROUP' | 'MAJOR_EVENT';
 
@@ -138,24 +147,29 @@ export class MoreInfo {
   private readonly prizeDrawsApi = inject(PublicPrizeDrawApiService);
   readonly emoji = inject(EmojiService);
 
-  private readonly detailStateSnapshot = toSignal(
-    combineLatest([
-      this.route.paramMap,
-      toObservable(this.targetType),
-      toObservable(this.targetId),
-      toObservable(this.refreshKey),
-      toObservable(this.detailRefresh),
-    ]).pipe(
-      switchMap(([params, targetType, targetId]) =>
-        this.loadDetailState(
-          targetType ?? parseEventTargetType(params.get('eventType')),
-          targetId ?? params.get('eventId'),
+  private readonly detailRefreshes = combineLatest([toObservable(this.refreshKey), toObservable(this.detailRefresh)]);
+  private readonly detailLoad = toSignal(
+    combineLatest([this.route.paramMap, toObservable(this.targetType), toObservable(this.targetId)]).pipe(
+      map(([params, targetType, targetId]) => ({
+        type: targetType ?? parseEventTargetType(params.get('eventType')),
+        id: targetId ?? params.get('eventId'),
+      })),
+      distinctUntilChanged((left, right) => left.type === right.type && left.id === right.id),
+      switchMap(({ type, id }) =>
+        this.detailRefreshes.pipe(
+          switchMap(() => this.loadDetailState(type, id)),
+          scan(
+            (previous, state) => ({ state, initialLoading: previous.initialLoading && state.status === 'loading' }),
+            INITIAL_DETAIL_LOAD,
+          ),
+          startWith(INITIAL_DETAIL_LOAD),
         ),
       ),
-      startWith({ status: 'loading' } satisfies DetailState),
     ),
-    { initialValue: { status: 'loading' } satisfies DetailState },
+    { initialValue: INITIAL_DETAIL_LOAD },
   );
+  private readonly detailStateSnapshot = computed(() => this.detailLoad().state);
+  readonly initialDetailLoading = computed(() => this.detailLoad().initialLoading);
   private readonly participationWatcher = effect(() => {
     const state = this.detailStateSnapshot();
     if (state.status === 'ready' || state.status === 'empty') {
@@ -290,6 +304,7 @@ export class MoreInfo {
             .getCertificateParticipation(scope[state.detail.targetType], state.detail.targetId)
             .pipe(catchError(() => of(null))),
         }).pipe(
+          timeout({ first: EVENT_INFORMATION_TIMEOUT_MS }),
           map((result) => ({ status: 'ready', ...result }) as const),
           catchError(() => of({ status: 'error' } as const)),
           startWith({ status: 'loading' } as const),
@@ -478,7 +493,10 @@ export class MoreInfo {
                   eventGroupIds: targetType === 'EVENT_GROUP' ? [detail.targetId] : undefined,
                   majorEventIds: targetType === 'MAJOR_EVENT' ? [detail.targetId] : undefined,
                 })
-                .pipe(catchError(() => of([])))
+                .pipe(
+                  timeout({ first: PARTICIPATION_EXTRAS_TIMEOUT_MS }),
+                  catchError(() => of([])),
+                )
             : of([]),
         }).pipe(
           map(
@@ -538,6 +556,7 @@ export class MoreInfo {
     switch (eventType) {
       case 'event':
         return this.api.getEventDetails(eventId).pipe(
+          timeout({ first: EVENT_INFORMATION_TIMEOUT_MS }),
           switchMap((details) =>
             from(this.offlineData.replaceAttendanceDetail(userId, eventId, { eventType, details })).pipe(
               catchError(() => of(undefined)),
@@ -552,6 +571,7 @@ export class MoreInfo {
         );
       case 'event-group':
         return this.api.getEventGroupDetails(eventId).pipe(
+          timeout({ first: EVENT_INFORMATION_TIMEOUT_MS }),
           switchMap((details) =>
             from(this.offlineData.replaceAttendanceDetail(userId, eventId, { eventType, details })).pipe(
               catchError(() => of(undefined)),
@@ -566,6 +586,7 @@ export class MoreInfo {
         );
       case 'major-event':
         return this.api.getMajorEventDetails(eventId).pipe(
+          timeout({ first: EVENT_INFORMATION_TIMEOUT_MS }),
           switchMap((details) =>
             from(this.offlineData.replaceAttendanceDetail(userId, eventId, { eventType, details })).pipe(
               catchError(() => of(undefined)),
@@ -658,6 +679,7 @@ export class MoreInfo {
         majorEventId: target.targetType === 'MAJOR_EVENT' ? target.targetId : null,
       })
       .pipe(
+        timeout({ first: PARTICIPATION_EXTRAS_TIMEOUT_MS }),
         map((forms) =>
           forms.flatMap((form) => {
             const link = this.findFormTargetLink(form, target);

@@ -1193,6 +1193,36 @@ describe('CalendarService', () => {
     expect(prisma.userAdminCalendarFeedSettings.update).not.toHaveBeenCalled();
   });
 
+  it('continues admin feed maintenance after an individual lookup or update fails', async () => {
+    const prisma = createPrismaMock({
+      userAdminCalendarFeedSettings: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            { userId: 'a-lookup-failure' },
+            { userId: 'b-update-failure' },
+            { userId: 'c-already-disabled' },
+            { userId: 'd-disabled' },
+          ]),
+        updateMany: jest
+          .fn()
+          .mockRejectedValueOnce(new Error('update failed'))
+          .mockResolvedValueOnce({ count: 0 })
+          .mockResolvedValueOnce({ count: 1 }),
+      },
+      eventManagerPermissionGrant: {
+        findMany: jest.fn().mockRejectedValueOnce(new Error('lookup failed')).mockResolvedValue([]),
+      },
+    });
+    const service = new CalendarService(prisma as never);
+
+    await expect(service.runAdminCalendarFeedMaintenance()).resolves.toBe(1);
+    expect(prisma.userAdminCalendarFeedSettings.updateMany).toHaveBeenCalledTimes(3);
+    expect(prisma.userAdminCalendarFeedSettings.updateMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({ where: { userId: 'd-disabled', enabled: true } }),
+    );
+  });
+
   it('cursor-pages admin maintenance while earlier pages deactivate their feed rows', async () => {
     const settings = Array.from({ length: 205 }, (_, index) => ({
       userId: `user-${String(index).padStart(3, '0')}`,

@@ -230,11 +230,12 @@ export class CertificateIssuanceJobsService implements OnModuleInit {
           createNotifications: run.notifyRecipients,
           force: run.reissue,
           batchSize: 1,
+          issuanceRunId: run.id,
         });
         await this.prisma.$transaction(
           async (tx) => {
             const certificateCount = await tx.certificate.count({
-              where: { configId: run.configId, deletedAt: null, revokedAt: null, issuedAt: { gte: startedAt } },
+              where: { issuanceRunId: run.id },
             });
             const completed = {
               ...run,

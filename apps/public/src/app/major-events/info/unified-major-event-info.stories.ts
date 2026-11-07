@@ -20,7 +20,7 @@ interface UnifiedInfoArgs {
   issuedCertificate: boolean;
   subscriptionStatus: string;
   eventCount: number;
-  state: 'ready' | 'loading' | 'program-error';
+  state: 'ready' | 'loading' | 'program-error' | 'slow-subscription' | 'subscription-error';
 }
 
 const context: { args: UnifiedInfoArgs } = {
@@ -67,7 +67,10 @@ const meta: Meta<UnifiedInfoArgs> = {
       options: ['CONFIRMED', 'WAITING_RECEIPT_UPLOAD', 'RECEIPT_UNDER_REVIEW', 'REJECTED_INVALID_RECEIPT', 'CANCELED'],
     },
     eventCount: { control: { type: 'range', min: 0, max: 20, step: 1 } },
-    state: { control: 'radio', options: ['ready', 'loading', 'program-error'] },
+    state: {
+      control: 'radio',
+      options: ['ready', 'loading', 'program-error', 'slow-subscription', 'subscription-error'],
+    },
   },
   parameters: {
     layout: 'fullscreen',
@@ -83,6 +86,12 @@ const meta: Meta<UnifiedInfoArgs> = {
           http.post('/api/graphql', async ({ request }) => {
             const body = (await request.json()) as { query: string; variables?: Record<string, unknown> };
             if (context.args.state === 'loading') await delay('infinite');
+            if (body.query.includes('query CurrentUserMajorEventSubscription(')) {
+              if (context.args.state === 'slow-subscription') await delay(900);
+              if (context.args.state === 'subscription-error') {
+                return HttpResponse.json({}, { status: 504 });
+              }
+            }
             if (context.args.state === 'program-error' && body.query.includes('publicEvents(')) {
               return HttpResponse.json({ errors: [{ message: 'Programação temporariamente indisponível.' }] });
             }
@@ -137,3 +146,28 @@ export const EmptyProgram: Story = { args: { eventCount: 0 } };
 export const ManyActivities: Story = { args: { eventCount: 20, attended: true } };
 export const ProgramError: Story = { args: { state: 'program-error' } };
 export const Loading: Story = { args: { state: 'loading' } };
+export const SlowSubscription: Story = {
+  args: { state: 'slow-subscription' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Consultando sua participação…')).toBeVisible();
+    await expect(canvas.getByRole('heading', { level: 1 })).toBeVisible();
+    await expect(canvas.queryByRole('heading', { name: 'Programação' })).not.toBeInTheDocument();
+    const tab = await canvas.findByRole('tab', { name: /^(Minha inscrição|Inscrição)$/ }, { timeout: 4000 });
+    await expect(tab).toHaveAttribute('aria-selected', 'true');
+  },
+};
+export const SubscriptionError: Story = {
+  args: { state: 'subscription-error', subscribed: false },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'Programação' })).toBeVisible();
+    await expect(canvas.getByText('Não foi possível consultar sua inscrição agora.')).toBeVisible();
+    await expect(
+      canvas.getByRole('button', {
+        name: 'Tentar novamente',
+        description: 'Não foi possível consultar sua inscrição agora.',
+      }),
+    ).toBeVisible();
+  },
+};

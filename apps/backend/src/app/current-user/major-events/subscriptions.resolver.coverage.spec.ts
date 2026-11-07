@@ -99,6 +99,20 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     });
   });
 
+  it('passes through an empty major-event ID so the feed stays scoped', async () => {
+    const harness = createHarness();
+    harness.currentUserContext.resolveCurrentUserContext.mockResolvedValue({ person: { id: 'person-1' } });
+
+    harness.publicEvents.hasPaymentInfoTable.mockResolvedValue(false);
+
+    await harness.resolver.currentUserMajorEventFeed({}, undefined, '');
+
+    expect(harness.majorEventSubscriptions.getCurrentUserMajorEventFeedItems).toHaveBeenCalledWith('person-1', false, {
+      includeSelectedEvents: true,
+      majorEventId: '',
+    });
+  });
+
   it('skips payment capability and selected-activity reads for the participation list query', async () => {
     const harness = createHarness();
     harness.currentUserContext.resolveCurrentUserContext.mockResolvedValue({ person: { id: 'person-1' } });

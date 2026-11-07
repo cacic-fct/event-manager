@@ -506,7 +506,7 @@ export class CurrentUserMajorEventSubscriptionService {
     paymentInfoTableExists: boolean,
     { includeSelectedEvents = true, majorEventId }: { includeSelectedEvents?: boolean; majorEventId?: string } = {},
   ): Promise<CurrentUserMajorEventFeedItem[]> {
-    const majorEventWhere = { ...PUBLIC_MAJOR_EVENT_WHERE, ...(majorEventId ? { id: majorEventId } : {}) };
+    const majorEventWhere = { ...PUBLIC_MAJOR_EVENT_WHERE, ...(majorEventId != null ? { id: majorEventId } : {}) };
     const [subscriptions, lecturerMajorEvents, certificates, attendanceMajorEvents, sportsMajorEvents, interests] =
       await Promise.all([
         this.prisma.majorEventSubscription.findMany({

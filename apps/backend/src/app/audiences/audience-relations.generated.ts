@@ -212,6 +212,13 @@ export const AUDIENCE_RELATIONS = {
       isRequired: true,
       ownsRelation: false,
     },
+    {
+      name: 'issuanceRun',
+      type: 'CertificateIssuanceRun',
+      isList: false,
+      isRequired: false,
+      ownsRelation: true,
+    },
   ],
   CertificateIssuanceRun: [
     {
@@ -220,6 +227,13 @@ export const AUDIENCE_RELATIONS = {
       isList: false,
       isRequired: true,
       ownsRelation: true,
+    },
+    {
+      name: 'certificates',
+      type: 'Certificate',
+      isList: true,
+      isRequired: true,
+      ownsRelation: false,
     },
   ],
   CertificateNotificationOutbox: [

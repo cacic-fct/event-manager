@@ -115,7 +115,7 @@ describe('EventSubscriptionsResolver', () => {
     );
   });
 
-  it('attaches major-event history only for selected event subscriptions', async () => {
+  it('returns major-event history and lecturer status when requested in GraphQL', async () => {
     const createdAt = new Date('2026-06-22T12:00:00.000Z');
     const subscriptions = [
       {
@@ -170,7 +170,7 @@ describe('EventSubscriptionsResolver', () => {
         ]),
       },
       eventLecturer: {
-        findMany: jest.fn().mockResolvedValue([]),
+        findMany: jest.fn().mockResolvedValue([{ personId: 'person-1' }]),
       },
     };
     const resolver = new EventSubscriptionsResolver(
@@ -181,15 +181,30 @@ describe('EventSubscriptionsResolver', () => {
       {} as never,
     );
 
-    await expect(resolver.workspaceEventSubscriptions('event-selected')).resolves.toEqual([
-      expect.objectContaining({
+    const result = await graphql({
+      schema: buildSchema(`
+        type Query { subscriptions: [Subscription!]! }
+        type Subscription { id: ID!, majorEventSubscriptionId: ID, isLecturerSubscription: Boolean! }
+      `),
+      source: '{ subscriptions { id majorEventSubscriptionId isLecturerSubscription } }',
+      rootValue: {
+        subscriptions: (_args: unknown, _context: unknown, info: GraphQLResolveInfo) =>
+          resolver.workspaceEventSubscriptions('event-selected', undefined, undefined, undefined, info),
+      },
+    });
+
+    expect(result.errors).toBeUndefined();
+    expect(result.data?.subscriptions).toEqual([
+      {
         id: 'event-subscription-selected',
         majorEventSubscriptionId: 'major-subscription-1',
-      }),
-      expect.objectContaining({
+        isLecturerSubscription: true,
+      },
+      {
         id: 'event-subscription-direct',
         majorEventSubscriptionId: null,
-      }),
+        isLecturerSubscription: false,
+      },
     ]);
 
     expect(prisma.majorEventSubscriptionEventSelection.findMany).toHaveBeenCalledWith(

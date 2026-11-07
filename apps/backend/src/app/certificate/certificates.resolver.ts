@@ -143,13 +143,11 @@ export class CertificatesResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
-    await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.CertificateConfig.Read], {
-      allowScopedCollection: true,
-    });
-    const permissions = await this.authorizationPolicy.evaluateGlobalPermissions(this.getUser(context), [
+    const hasGlobalRead = await this.authorizationPolicy.assertCollectionPermission(
+      this.getUser(context),
       Permission.CertificateConfig.Read,
-    ]);
-    if (!permissions.includes(Permission.CertificateConfig.Read)) {
+    );
+    if (!hasGlobalRead) {
       return [];
     }
     const pagination = resolvePagination(skip, take);

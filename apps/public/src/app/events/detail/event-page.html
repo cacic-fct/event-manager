@@ -210,8 +210,9 @@
     }
   </ng-template>
 
+  @let showParticipationWorkspace = (isAuthenticated() || !isOnline()) && !data.preview && isStandaloneEvent(event);
   <ng-template #subscriptionContent>
-    @if ((isAuthenticated() || !isOnline()) && !data.preview && isStandaloneEvent(event)) {
+    @if (showParticipationWorkspace) {
     <app-more-info
       [embedded]="true"
       [flatSections]="hasSubscription"
@@ -232,7 +233,8 @@
   <ng-template #generalContent>
     @if (!hasSubscription) {
     <ng-container [ngTemplateOutlet]="subscriptionContent" />
-    } @if (event.description) {
+    } @if (hasSubscription || !showParticipationWorkspace || workspace()?.initialDetailLoading() === false) { @if
+    (event.description) {
     <section class="detail-section">
       <h2>Sobre</h2>
       <lib-markdown class="description" [content]="event.description" />
@@ -360,6 +362,7 @@
         </mat-list>
       </div>
     </section>
+    }
   </ng-template>
 
   <app-event-detail-tabs

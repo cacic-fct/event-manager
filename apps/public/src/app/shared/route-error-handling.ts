@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import type { PageErrorStatus } from '@cacic-fct/shared-angular/errors/routing';
+import { TimeoutError } from 'rxjs';
 import { ForbiddenGraphqlError, GraphqlServiceError, NotFoundGraphqlError, RateLimitError } from './rate-limit-error';
 
 /** Maps a page-load failure without exposing API payloads as page copy. */
@@ -13,7 +14,7 @@ export function routePageErrorStatus(error: unknown): PageErrorStatus {
   if (error instanceof GraphqlServiceError) {
     return error.status;
   }
-  if (error instanceof RateLimitError) {
+  if (error instanceof RateLimitError || error instanceof TimeoutError) {
     return 503;
   }
 

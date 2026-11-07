@@ -33,7 +33,7 @@ export class CurrentUserParticipationEventsResolver {
     @Args('eventGroupId', { type: () => String, nullable: true }) eventGroupId?: string,
     @Info() info?: GraphQLResolveInfo,
   ) {
-    if (!majorEventId && !eventGroupId) {
+    if (majorEventId == null && eventGroupId == null) {
       throw new BadRequestException('Choose a group or major event for participation history.');
     }
     const person = await this.currentUser.requireCurrentPerson(context);
@@ -47,8 +47,8 @@ export class CurrentUserParticipationEventsResolver {
       this.prisma.event.findMany({
         where: {
           deletedAt: null,
-          ...(majorEventId ? { majorEventId } : {}),
-          ...(eventGroupId ? { eventGroupId } : {}),
+          ...(majorEventId != null ? { majorEventId } : {}),
+          ...(eventGroupId != null ? { eventGroupId } : {}),
           OR: [{ AND: [PUBLIC_EVENT_WHERE, eventAudienceWhere(current)] }, pastEventParticipationWhere(principal)],
         },
         select: publicEventQuerySelect(info),

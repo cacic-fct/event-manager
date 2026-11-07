@@ -21,6 +21,7 @@ export interface CertificateIssuanceOptions {
   createNotifications?: boolean;
   batchSize?: number;
   force?: boolean;
+  issuanceRunId?: string;
   client?: CertificateWriteClient;
 }
 
@@ -251,6 +252,7 @@ export class CertificateIssuanceRefresh {
               notify: options.notify,
               createNotifications: options.createNotifications,
               force: options.force,
+              ...(options.issuanceRunId ? { issuanceRunId: options.issuanceRunId } : {}),
             });
           }
           await this.invalidateCertificates(
@@ -315,6 +317,7 @@ export class CertificateIssuanceRefresh {
               notify: options.notify,
               createNotifications: options.createNotifications,
               force: options.force,
+              ...(options.issuanceRunId ? { issuanceRunId: options.issuanceRunId } : {}),
             }),
           ),
         )),

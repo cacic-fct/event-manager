@@ -145,8 +145,30 @@ describe('CurrentUserContextService', () => {
     expect(prisma.user.update).toHaveBeenCalledTimes(1);
     expect(prisma.accountUserMerge.findMany).toHaveBeenCalledTimes(1);
     expect(prisma.people.findMany).toHaveBeenCalledTimes(1);
-    await service.resolveCurrentUserContext(authenticatedUser, false, { requestContext });
-    expect(prisma.user.update).toHaveBeenCalledTimes(1);
+  });
+
+  it('resolves the merged person when another field starts after the in-flight lookup finishes', async () => {
+    const authenticatedUser = createAuthenticatedUser();
+    const user = createUserRecord();
+    const originalPerson = createPersonRecord({ userId: user.id, user });
+    const mergedUser = createUserRecord({ id: 'surviving-user' });
+    const mergedPerson = createPersonRecord({ id: 'surviving-person', userId: mergedUser.id, user: mergedUser });
+    const requestContext = {};
+
+    prisma.user.findUnique.mockResolvedValueOnce(user).mockResolvedValueOnce(mergedUser);
+    prisma.user.update.mockResolvedValueOnce(user).mockResolvedValueOnce(mergedUser);
+    prisma.people.findMany.mockResolvedValueOnce([originalPerson]).mockResolvedValueOnce([mergedPerson]);
+
+    await expect(service.resolveCurrentUserContext(authenticatedUser, false, { requestContext })).resolves.toEqual({
+      user,
+      person: originalPerson,
+    });
+
+    accountMergeService.resolveFinalUserId.mockResolvedValue(mergedUser.id);
+    await expect(service.resolveCurrentUserContext(authenticatedUser, false, { requestContext })).resolves.toEqual({
+      user: mergedUser,
+      person: mergedPerson,
+    });
   });
 
   it('keeps separate requests and non-cached operations fresh', async () => {

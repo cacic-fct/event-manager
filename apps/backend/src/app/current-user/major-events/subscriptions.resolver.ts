@@ -207,7 +207,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
 
     return this.majorEventSubscriptions.getCurrentUserMajorEventFeedItems(person.id, paymentInfoTableExists, {
       includeSelectedEvents: graphqlFieldRequested(info, ['selectedEvents']),
-      ...(majorEventId ? { majorEventId } : {}),
+      ...(majorEventId != null ? { majorEventId } : {}),
     });
   }
 

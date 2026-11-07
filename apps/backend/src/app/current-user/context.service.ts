@@ -68,14 +68,13 @@ export class CurrentUserContextService {
     const pending = requests.get(key);
     if (pending) return pending;
 
-    // Sibling history fields share both the in-flight lookup and its reconciliation work.
+    // Share concurrent work, but let later fields resolve any newly merged identity.
     const resolution = this.resolveUncachedCurrentUserContext(authenticatedUser, includeUserFallback, options);
     requests.set(key, resolution);
     try {
       return await resolution;
-    } catch (error) {
+    } finally {
       requests.delete(key);
-      throw error;
     }
   }
 

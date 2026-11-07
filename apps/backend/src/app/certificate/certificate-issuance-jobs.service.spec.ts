@@ -202,13 +202,14 @@ describe('CertificateIssuanceJobsService', () => {
       createNotifications: true,
       force: false,
       batchSize: 1,
+      issuanceRunId: 'run',
     });
     expect(prisma.certificateIssuanceRun.update).toHaveBeenCalledWith({
       where: { id: 'run' },
       data: expect.objectContaining({ status: 'COMPLETED', certificateCount: 1 }),
     });
     expect(prisma.certificate.count).toHaveBeenCalledWith({
-      where: { configId: 'config', deletedAt: null, revokedAt: null, issuedAt: { gte: expect.any(Date) } },
+      where: { issuanceRunId: 'run' },
     });
   });
 
@@ -243,13 +244,13 @@ describe('CertificateIssuanceJobsService', () => {
       1,
       'config',
       'admin',
-      expect.objectContaining({ notify: false, createNotifications: true }),
+      expect.objectContaining({ notify: false, createNotifications: true, issuanceRunId: 'run' }),
     );
     expect(issuing.issueMissedCertificates).toHaveBeenNthCalledWith(
       2,
       'config',
       'admin',
-      expect.objectContaining({ notify: false, createNotifications: true }),
+      expect.objectContaining({ notify: false, createNotifications: true, issuanceRunId: 'run' }),
     );
   });
 

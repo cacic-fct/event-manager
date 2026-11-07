@@ -96,8 +96,8 @@ export class CurrentUserEventAttendanceResolver {
         status: 'PRESENT',
         event: {
           deletedAt: null,
-          ...(majorEventId ? { majorEventId } : {}),
-          ...(eventGroupId ? { eventGroupId } : {}),
+          ...(majorEventId != null ? { majorEventId } : {}),
+          ...(eventGroupId != null ? { eventGroupId } : {}),
         },
       },
       select: CURRENT_USER_EVENT_ATTENDANCE_SELECT,

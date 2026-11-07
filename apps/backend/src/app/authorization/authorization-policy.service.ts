@@ -67,6 +67,8 @@ export type AccessibleEventGrantTargets = {
   eventGroupIds: Set<string>;
 };
 
+type ResolveGrantTarget = (permission: Permission) => Promise<ResolvedGrantTarget>;
+
 type ActiveGrant = {
   permission: string;
   scope: EventManagerPermissionScope;
@@ -109,6 +111,30 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
       return;
     }
 
+    const resolveTarget = this.createGrantTargetResolver(context);
+    await this.assertGrantedPermissions(user, requirements, context, resolveTarget);
+    await this.assertAudienceForTargets(requirements, resolveTarget, audienceContext.getStore());
+  }
+
+  /** Requires a compatible grant and reports whether the collection can be read globally. */
+  async assertCollectionPermission(user: AuthenticatedUser | undefined, permission: Permission): Promise<boolean> {
+    const requirements = this.normalizePermissionRequirements([permission]);
+    const context = { allowScopedCollection: true };
+    const grants = await this.assertGrantedPermissions(
+      user,
+      requirements,
+      context,
+      this.createGrantTargetResolver(context),
+    );
+    return this.isSuperAdmin(user) || grants.some((grant) => grant.scope === EventManagerPermissionScope.GLOBAL);
+  }
+
+  private async assertGrantedPermissions(
+    user: AuthenticatedUser | undefined,
+    requirements: readonly Permission[],
+    context: AuthorizationResourceContext,
+    resolveTarget: ResolveGrantTarget,
+  ): Promise<ActiveGrant[]> {
     if (!user || !this.hasEventManagerAccess(user)) {
       throw new ForbiddenException(`Missing required Keycloak role: ${EventManagerKeycloakRole.Access}.`);
     }
@@ -116,7 +142,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     const missing: string[] = [];
     const grants = this.isSuperAdmin(user) ? [] : await this.findActiveGrants(user.sub, requirements);
     for (const permission of requirements) {
-      if (!(await this.hasPermission(user, permission, context, grants))) {
+      if (!(await this.hasPermission(user, permission, context, grants, resolveTarget))) {
         missing.push(permission);
       }
     }
@@ -124,7 +150,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     if (missing.length > 0) {
       throw new ForbiddenException(`Missing Event Manager permission grants: ${missing.join(', ')}.`);
     }
-    await this.assertAudienceForPermissions(requirements, context);
+    return grants;
   }
 
   async assertAudienceForPermissions(
@@ -135,11 +161,26 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     if (!principal || principal.bypass) {
       return;
     }
+    await this.assertAudienceForTargets(
+      this.normalizePermissionRequirements(permissions),
+      this.createGrantTargetResolver(context),
+      principal,
+    );
+  }
+
+  private async assertAudienceForTargets(
+    permissions: readonly Permission[],
+    resolveTarget: ResolveGrantTarget,
+    principal: EventAudiencePrincipal | undefined,
+  ): Promise<void> {
+    if (!principal || principal.bypass) {
+      return;
+    }
     const eventIds = new Set<string>();
     const eventGroupIds = new Set<string>();
     const majorEventIds = new Set<string>();
-    for (const permission of this.normalizePermissionRequirements(permissions)) {
-      const targets = await this.resolveGrantTarget(permission, context);
+    for (const permission of permissions) {
+      const targets = await resolveTarget(permission);
       targets.eventIds.forEach((id) => eventIds.add(id));
       targets.eventGroupIds.forEach((id) => eventGroupIds.add(id));
       targets.majorEventIds.forEach((id) => majorEventIds.add(id));
@@ -475,6 +516,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     permission: Permission,
     context: AuthorizationResourceContext,
     resolvedGrants?: readonly ActiveGrant[],
+    resolveTarget: ResolveGrantTarget = this.createGrantTargetResolver(context),
   ): Promise<boolean> {
     if (this.isSuperAdmin(user)) {
       return true;
@@ -492,7 +534,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
       return false;
     }
 
-    const target = await this.resolveGrantTarget(permission, context);
+    const target = await resolveTarget(permission);
     if (context.allowScopedCollection && this.isEmptyGrantTarget(target)) {
       return compatibleGrants.some((grant) => grant.scope !== EventManagerPermissionScope.GLOBAL);
     }
@@ -512,8 +554,9 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     }
 
     const grants = await this.findActiveGrants(user.sub, permissions);
+    const resolveTarget = this.createGrantTargetResolver(context);
     for (const permission of permissions) {
-      if (await this.hasPermission(user, permission, context, grants)) {
+      if (await this.hasPermission(user, permission, context, grants, resolveTarget)) {
         return true;
       }
     }
@@ -551,9 +594,30 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     return findActiveRolePermissionScopes(this.prisma, userId, permissions);
   }
 
+  private createGrantTargetResolver(context: AuthorizationResourceContext): ResolveGrantTarget {
+    const targets = new Map<string, Promise<ResolvedGrantTarget>>();
+    return (permission) => {
+      const primaryResource =
+        context.genericId && context.primaryResource === parsePermission(permission).resource
+          ? context.primaryResource
+          : undefined;
+      const includeRevoked =
+        permission === Permission.Certificate.Reissue &&
+        (primaryResource === 'certificate' || Boolean(context.certificateId));
+      const key = `${primaryResource ?? ''}:${includeRevoked}`;
+      let target = targets.get(key);
+      if (!target) {
+        target = this.resolveGrantTarget(context, primaryResource, includeRevoked);
+        targets.set(key, target);
+      }
+      return target;
+    };
+  }
+
   private async resolveGrantTarget(
-    permission: Permission,
     context: AuthorizationResourceContext,
+    primaryResource: string | undefined,
+    includeRevoked: boolean,
   ): Promise<ResolvedGrantTarget> {
     const target: ResolvedGrantTarget = {
       eventIds: new Set(),
@@ -562,7 +626,11 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
       folderIds: new Set(),
     };
 
-    if (await this.addAuthoritativeResourceTarget(target, permission, context)) {
+    if (
+      primaryResource &&
+      context.genericId &&
+      (await this.addPrimaryResourceTarget(target, primaryResource, context.genericId, includeRevoked))
+    ) {
       return target;
     }
 
@@ -599,7 +667,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     }
 
     if (context.certificateId) {
-      await this.addCertificateTarget(target, context.certificateId, permission === Permission.Certificate.Reissue);
+      await this.addCertificateTarget(target, context.certificateId, includeRevoked);
     }
 
     if (context.eventFormId) {
@@ -673,28 +741,11 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     return target;
   }
 
-  private async addAuthoritativeResourceTarget(
-    target: ResolvedGrantTarget,
-    permission: Permission,
-    context: AuthorizationResourceContext,
-  ): Promise<boolean> {
-    if (!context.genericId || !context.primaryResource) {
-      return false;
-    }
-
-    const resource = parsePermission(permission).resource;
-    if (context.primaryResource !== resource) {
-      return false;
-    }
-
-    return this.addPrimaryResourceTarget(target, resource, context.genericId, permission);
-  }
-
   private async addPrimaryResourceTarget(
     target: ResolvedGrantTarget,
     resource: string,
     id: string,
-    permission: Permission,
+    includeRevoked: boolean,
   ): Promise<boolean> {
     switch (resource) {
       case 'event':
@@ -716,7 +767,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
         await this.addCertificateConfigTarget(target, id);
         return true;
       case 'certificate':
-        await this.addCertificateTarget(target, id, permission === Permission.Certificate.Reissue);
+        await this.addCertificateTarget(target, id, includeRevoked);
         return true;
       case 'event-form':
         await this.addEventFormTarget(target, id);

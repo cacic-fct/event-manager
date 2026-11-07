@@ -8,6 +8,8 @@ describe('CurrentUserEventAttendanceResolver', () => {
   it.each([
     ['major-1', undefined, { majorEventId: 'major-1' }],
     [undefined, 'group-1', { eventGroupId: 'group-1' }],
+    ['', undefined, { majorEventId: '' }],
+    [undefined, '', { eventGroupId: '' }],
   ] as const)('scopes attendance reads to the requested history target', async (majorEventId, eventGroupId, scope) => {
     const prisma = { eventAttendance: { findMany: jest.fn().mockResolvedValue([]) } };
     const { resolver } = createResolverWithDependencies(prisma);

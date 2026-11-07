@@ -378,6 +378,35 @@ describe('Attendances', () => {
     }
   });
 
+  it('times out a pending second attempt at the original 60-second deadline', async () => {
+    const { fixture, api, currentUserChanges } = await createFixture();
+    await settle(fixture);
+    fixture.destroy();
+    currentUserChanges.next();
+    vi.useFakeTimers();
+    try {
+      const firstResponse = new Subject<SubscriptionsFeed>();
+      const retryResponse = new Subject<SubscriptionsFeed>();
+      const request = vi.fn().mockReturnValueOnce(firstResponse).mockReturnValueOnce(retryResponse);
+      api.getSubscriptionsFeed.mockReturnValueOnce(defer(request));
+      const failed = vi.fn();
+      TestBed.inject(AttendanceFeedCacheService).load('user-1').subscribe({ error: failed });
+
+      await vi.advanceTimersByTimeAsync(45_000);
+      firstResponse.error(new HttpErrorResponse({ status: 504 }));
+      await vi.advanceTimersByTimeAsync(14_999);
+      expect(request).toHaveBeenCalledTimes(2);
+      expect(retryResponse.observed).toBe(true);
+      expect(failed).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1);
+      expect(failed).toHaveBeenCalledWith(expect.any(TimeoutError));
+      expect(retryResponse.observed).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('shows a recoverable error when the request fails without an offline cache', async () => {
     const { fixture } = await createFixture({ onlineFeedError: new Error('Internal request details') });
     await settle(fixture);
@@ -388,13 +417,18 @@ describe('Attendances', () => {
   });
 
   it.each([408, 504])('identifies an HTTP %s response as a timeout', async (status) => {
-    const { fixture, api, currentUserChanges } = await createFixture({ onlineFeedError: new TimeoutError() });
+    const { fixture, api, component, currentUserChanges } = await createFixture({
+      onlineFeedError: new Error('Initial request failed'),
+    });
     await settle(fixture);
     vi.useFakeTimers();
     try {
       api.getSubscriptionsFeed.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status })));
       currentUserChanges.next();
       fixture.detectChanges();
+      expect(api.getSubscriptionsFeed).toHaveBeenCalledTimes(2);
+      expect(component.feedState().status).toBe('loading');
+
       await vi.advanceTimersByTimeAsync(1_000);
       fixture.detectChanges();
 
