@@ -77,7 +77,7 @@ type Story = StoryObj<GroupArgs>;
 export const Subscribed: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('heading', { name: 'Meu certificado' })).toBeVisible();
+    await expect(await canvas.findByRole('heading', { name: 'Certificado' })).toBeVisible();
     await expect(canvas.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     await expect(canvas.queryByRole('heading', { name: 'Participe do grupo' })).not.toBeInTheDocument();
   },

@@ -619,7 +619,7 @@ export const UnifiedSubscribed: Story = {
   globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('heading', { name: 'Meu certificado' })).toBeVisible();
+    await expect(await canvas.findByRole('heading', { name: 'Certificado' })).toBeVisible();
     await expect(canvas.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     await expect(canvas.getByRole('button', { name: 'Cancelar inscrição' })).toBeEnabled();
     const subscription = canvas.getByRole('tab', { name: /^(Minha inscrição|Inscrição)$/ });

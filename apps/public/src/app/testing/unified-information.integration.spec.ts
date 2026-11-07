@@ -195,7 +195,7 @@ describe('unified information pages HTTP integration', () => {
     const { host, fixture } = await setup(Event);
     expect(host.querySelectorAll('h1')).toHaveLength(1);
     expect(host.querySelectorAll('[role="tab"]')).toHaveLength(2);
-    expect(host.textContent).toContain('Meu certificado');
+    expect(host.textContent).toContain('Certificado');
     expect(host.textContent).toContain('Orientações');
     expect(host.querySelector('.reference-information')).toBeNull();
     const cancellation = host.querySelector('.subscription-management');
@@ -209,7 +209,7 @@ describe('unified information pages HTTP integration', () => {
     await selectTab(fixture, 1);
     const general = host.querySelector('.mat-mdc-tab-body-active');
     expect(general?.textContent).toContain('Laboratório de informática');
-    expect(general?.textContent).not.toContain('Meu certificado');
+    expect(general?.textContent).not.toContain('Certificado');
     expect(host.querySelector('.reference-information')).not.toBeNull();
     await selectTab(fixture, 0);
     http.expectNone((request) => request.body?.query?.includes('query CurrentUserEventDetails'));
@@ -219,7 +219,7 @@ describe('unified information pages HTTP integration', () => {
   it('keeps guests on a public view without fetching private participation data', async () => {
     const { host, queries } = await setup(Event, { subscribed: false }, false);
     expect(host.textContent).toContain('Entrar para inscrever-se');
-    expect(host.textContent).not.toContain('Meu certificado');
+    expect(host.textContent).not.toContain('Certificado');
     expect(host.querySelector('[role="tablist"]')).toBeNull();
     expect(queries.some((query) => query.includes('query CurrentUserEventDetails'))).toBe(false);
   });
@@ -231,7 +231,7 @@ describe('unified information pages HTTP integration', () => {
     });
     expect(host.querySelectorAll('h1')).toHaveLength(1);
     expect(host.textContent).toContain('Enviar comprovante');
-    expect(host.textContent).toContain('Meu certificado');
+    expect(host.textContent).toContain('Certificado');
     expect(host.querySelector('section.program')).toBeNull();
     expect(host.querySelector('mat-expansion-panel')).toBeNull();
     expect(getMaterials).not.toHaveBeenCalled();
@@ -247,7 +247,7 @@ describe('unified information pages HTTP integration', () => {
     expect(host.textContent).toContain('Grupo de eventos');
     expect(host.querySelectorAll('h1')).toHaveLength(1);
     expect(host.querySelectorAll('section.program a')).toHaveLength(data.events.length);
-    expect(host.textContent).toContain('Meu certificado');
+    expect(host.textContent).toContain('Certificado');
   });
 
   it('omits empty materials and shows available group guidance in its own panel', async () => {
