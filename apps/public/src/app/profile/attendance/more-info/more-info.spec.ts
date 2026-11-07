@@ -227,7 +227,7 @@ describe('MoreInfo', () => {
       expect(host.querySelector('mat-toolbar > span')?.textContent?.trim()).toBe('Detalhes');
       expect(host.querySelector('mat-toolbar h1')).toBeNull();
       expect(host.querySelector('.detail-header h1')?.textContent?.trim()).toBe('Evento teste');
-      expect(host.textContent).toContain('Meu certificado');
+      expect(host.textContent).toContain('Certificado');
       expect(host.textContent).toContain('O certificado aguarda a liberação da organização.');
       expect(
         Array.from(host.querySelectorAll('button')).some(
