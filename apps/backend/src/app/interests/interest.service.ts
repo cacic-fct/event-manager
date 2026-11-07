@@ -1162,6 +1162,8 @@ export class EventInterestsService {
             events: {
               where: { AND: [PUBLIC_EVENT_WHERE] },
               select: { endDate: true },
+              orderBy: { endDate: 'desc' },
+              take: 1,
             },
           },
         });

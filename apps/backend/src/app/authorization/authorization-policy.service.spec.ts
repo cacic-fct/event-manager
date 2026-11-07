@@ -80,6 +80,24 @@ describe('AuthorizationPolicyService', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('loads grants once for a multi-permission assertion without reusing another permission grant', async () => {
+    const actor = user([EventManagerKeycloakRole.Access]);
+    const permissions = [Permission.Event.Read, Permission.Receipt.Read];
+    activeScopes.mockResolvedValue([
+      grant({ permission: Permission.Event.Read, scope: EventManagerPermissionScope.GLOBAL }),
+      grant({ permission: Permission.Receipt.Read, scope: EventManagerPermissionScope.GLOBAL }),
+    ]);
+    await expect(service.assertPermissions(actor, permissions)).resolves.toBeUndefined();
+    expect(activeScopes).toHaveBeenCalledTimes(1);
+    expect(activeScopes).toHaveBeenCalledWith(prisma, actor.sub, permissions);
+
+    activeScopes.mockResolvedValue([
+      grant({ permission: Permission.Event.Read, scope: EventManagerPermissionScope.GLOBAL }),
+    ]);
+    await expect(service.assertPermissions(actor, permissions)).rejects.toThrow(Permission.Receipt.Read);
+    expect(activeScopes).toHaveBeenCalledTimes(2);
+  });
+
   it('fails closed when required permission names are invalid', async () => {
     await expect(
       service.assertPermissions(user([EventManagerKeycloakRole.Access]), ['event#reed']),

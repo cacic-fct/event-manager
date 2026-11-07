@@ -10,7 +10,8 @@ import { AuthorizationPolicyService } from '../authorization/authorization-polic
 import { WorkspaceDashboardInsights } from './models';
 import { getCachedInsights, getCacheKey } from './insights/cache';
 import { CACHE_TTL_SECONDS } from './insights/constants';
-import { EVENT_INSIGHT_SELECT } from './insights/insight-event.select';
+import { CALENDAR_EVENT_SELECT, CONSISTENCY_EVENT_SELECT } from './insights/insight-event.select';
+import { loadLecturerEvidence } from './insights/lecturer-evidence';
 import { mapCalendarEvent } from './insights/calendar';
 import { buildInconsistencies } from './insights/inconsistencies';
 import { formatPermissions, resolveDashboardPermissions } from './insights/permissions';
@@ -299,7 +300,7 @@ export class DashboardInsightsService {
                 lt: sevenDaysFromTomorrow,
               },
             },
-            select: EVENT_INSIGHT_SELECT,
+            select: CALENDAR_EVENT_SELECT,
             orderBy: { startDate: 'asc' },
           })
         : Promise.resolve([]),
@@ -331,7 +332,7 @@ export class DashboardInsightsService {
                 },
               ],
             },
-            select: EVENT_INSIGHT_SELECT,
+            select: CONSISTENCY_EVENT_SELECT,
             orderBy: { startDate: 'asc' },
           })
         : Promise.resolve([]),
@@ -581,6 +582,8 @@ export class DashboardInsightsService {
       loadSportsDashboardRecords(this.prisma, canReadSports),
     ]);
 
+    const consistencyEventsWithEvidence = await loadLecturerEvidence(this.prisma, consistencyEvents);
+
     return {
       generatedAt: now,
       summary: {
@@ -660,7 +663,9 @@ export class DashboardInsightsService {
         ? [
             ...buildInconsistencies({
               now,
-              events: canReadSports ? consistencyEvents : consistencyEvents.filter((event) => !event.sportsMatch),
+              events: canReadSports
+                ? consistencyEventsWithEvidence
+                : consistencyEventsWithEvidence.filter((event) => !event.sportsMatch),
               majorEventsWithSubscriptionDates,
               singleEventGroups,
               mismatchingCertificateGroupEvents,
@@ -669,7 +674,9 @@ export class DashboardInsightsService {
             }),
             ...buildPublicationConsistencyWarnings({
               now,
-              events: canReadSports ? consistencyEvents : consistencyEvents.filter((event) => !event.sportsMatch),
+              events: canReadSports
+                ? consistencyEventsWithEvidence
+                : consistencyEventsWithEvidence.filter((event) => !event.sportsMatch),
               majorEvents: canReadSports
                 ? publicationMajorEvents
                 : publicationMajorEvents.map((majorEvent) => ({ ...majorEvent, sportsTournament: null })),

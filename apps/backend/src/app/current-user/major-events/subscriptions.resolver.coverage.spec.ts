@@ -153,6 +153,24 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     expect(harness.majorEventSubscriptions.getMajorEventSubscriptionEvents).toHaveBeenCalledWith('person-1', 'major-1');
   });
 
+  it('does not build an activity program for a subscription query that only needs its status', async () => {
+    const harness = createHarness();
+    harness.currentUserContext.resolveCurrentUserContext.mockResolvedValue({ person: { id: 'person-1' } });
+    harness.prisma.majorEventSubscription.findFirst.mockResolvedValue(subscriptionRecord(majorEventRecord()));
+    const result = await graphql({
+      schema: buildSchema('type Query { subscription: Subscription } type Subscription { id: ID! }'),
+      source: '{ subscription { id } }',
+      rootValue: {
+        subscription: (_args: unknown, _context: unknown, info: GraphQLResolveInfo) =>
+          harness.resolver.currentUserMajorEventSubscription('major-1', {}, info),
+      },
+    });
+    expect(result.errors).toBeUndefined();
+    expect(result.data?.subscription).toEqual({ id: 'subscription-1' });
+    expect(harness.majorEventSubscriptions.getMajorEventSubscriptionEvents).not.toHaveBeenCalled();
+    expect(harness.publicEvents.hasPaymentInfoTable).not.toHaveBeenCalled();
+  });
+
   it('returns null for a public major event with no current-user subscription', async () => {
     const harness = createHarness();
     harness.currentUserContext.resolveCurrentUserContext.mockResolvedValue({ person: { id: 'person-1' } });

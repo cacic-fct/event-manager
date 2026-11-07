@@ -114,8 +114,9 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     }
 
     const missing: string[] = [];
+    const grants = this.isSuperAdmin(user) ? [] : await this.findActiveGrants(user.sub, requirements);
     for (const permission of requirements) {
-      if (!(await this.hasPermission(user, permission, context))) {
+      if (!(await this.hasPermission(user, permission, context, grants))) {
         missing.push(permission);
       }
     }
@@ -473,13 +474,16 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     user: AuthenticatedUser,
     permission: Permission,
     context: AuthorizationResourceContext,
+    resolvedGrants?: readonly ActiveGrant[],
   ): Promise<boolean> {
     if (this.isSuperAdmin(user)) {
       return true;
     }
 
-    const grants = await this.findActiveGrants(user.sub, [permission]);
-    const compatibleGrants = grants.filter((grant) => isPermissionGrantScopeCompatible(permission, grant.scope));
+    const grants = resolvedGrants ?? (await this.findActiveGrants(user.sub, [permission]));
+    const compatibleGrants = grants.filter(
+      (grant) => grant.permission === permission && isPermissionGrantScopeCompatible(permission, grant.scope),
+    );
     if (compatibleGrants.some((grant) => grant.scope === EventManagerPermissionScope.GLOBAL)) {
       return true;
     }
@@ -500,12 +504,16 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     permissions: readonly Permission[],
     context: AuthorizationResourceContext,
   ): Promise<boolean> {
-    if (!user || !this.hasEventManagerAccess(user)) {
+    if (permissions.length === 0 || !user || !this.hasEventManagerAccess(user)) {
       return false;
     }
+    if (this.isSuperAdmin(user)) {
+      return true;
+    }
 
+    const grants = await this.findActiveGrants(user.sub, permissions);
     for (const permission of permissions) {
-      if (await this.hasPermission(user, permission, context)) {
+      if (await this.hasPermission(user, permission, context, grants)) {
         return true;
       }
     }

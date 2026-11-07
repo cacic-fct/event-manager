@@ -1,7 +1,8 @@
 import { ensureWorkspaceTierSubscriptionPolicy } from './tier-subscription-policy';
 import { TicketSubscriptionSyncService } from './ticket-subscription-sync.service';
 import { BadRequestException, Optional, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Info, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import type { GraphQLResolveInfo } from 'graphql';
 import { AuditLogEntityType, AuditLogOperation, Prisma, SubscriptionStatus } from '@prisma/client';
 import {
   WorkspaceEventSubscription,
@@ -18,6 +19,7 @@ import { RequirePermissions } from '../auth/decorators/require-permissions.decor
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
+import { graphqlFieldRequested } from '../common/graphql-field-requested';
 import { runSerializablePrismaTransaction } from '../common/serializable-prisma-transaction';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -212,6 +214,7 @@ export class EventSubscriptionsResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
     @Args('query', { type: () => String, nullable: true }) query?: string,
+    @Info() info?: GraphQLResolveInfo,
   ): Promise<WorkspaceEventSubscription[]> {
     const pagination = resolvePagination(skip, take);
     const personQuery = personSearchWhere(query);
@@ -225,11 +228,19 @@ export class EventSubscriptionsResolver {
         id: true,
         eventId: true,
         event: {
-          select: EVENT_SELECT,
+          select: {
+            ...EVENT_SELECT,
+            description: graphqlFieldRequested(info, ['event', 'description']),
+            shortDescription: graphqlFieldRequested(info, ['event', 'shortDescription']),
+            onlineAttendanceCode: graphqlFieldRequested(info, ['event', 'onlineAttendanceCode']),
+          },
         },
         personId: true,
         person: {
-          select: PERSON_SELECT,
+          select: {
+            ...PERSON_SELECT,
+            user: graphqlFieldRequested(info, ['person', 'user']),
+          },
         },
         eventGroupSubscriptionId: true,
         createdAt: true,
@@ -243,13 +254,15 @@ export class EventSubscriptionsResolver {
       take: pagination.take,
     });
 
-    const majorEventIds = [
-      ...new Set(
-        subscriptions
-          .map((subscription) => subscription.event.majorEventId)
-          .filter((majorEventId): majorEventId is string => Boolean(majorEventId)),
-      ),
-    ];
+    const majorEventIds = graphqlFieldRequested(info, ['majorEventSubscriptionId'])
+      ? [
+          ...new Set(
+            subscriptions
+              .map((subscription) => subscription.event.majorEventId)
+              .filter((majorEventId): majorEventId is string => Boolean(majorEventId)),
+          ),
+        ]
+      : [];
     const personIds = [...new Set(subscriptions.map((subscription) => subscription.personId))];
     const eventIds = [...new Set(subscriptions.map((subscription) => subscription.eventId))];
     const majorEventSubscriptionSelections =
@@ -289,7 +302,9 @@ export class EventSubscriptionsResolver {
         selection.subscription.id,
       ]),
     );
-    const lecturerPersonIds = await this.getLecturerPersonIds([eventId]);
+    const lecturerPersonIds = graphqlFieldRequested(info, ['isLecturerSubscription'])
+      ? await this.getLecturerPersonIds([eventId])
+      : new Set<string>();
     return subscriptions.map((subscription) => ({
       ...subscription,
       majorEventSubscriptionId: subscription.event.majorEventId

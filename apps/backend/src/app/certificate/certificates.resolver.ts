@@ -23,7 +23,7 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
-import { BadRequestException, ForbiddenException, UseGuards } from '@nestjs/common';
+import { BadRequestException, UseGuards } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { type Request } from 'express';
 import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -146,17 +146,14 @@ export class CertificatesResolver {
     await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.CertificateConfig.Read], {
       allowScopedCollection: true,
     });
+    const permissions = await this.authorizationPolicy.evaluateGlobalPermissions(this.getUser(context), [
+      Permission.CertificateConfig.Read,
+    ]);
+    if (!permissions.includes(Permission.CertificateConfig.Read)) {
+      return [];
+    }
     const pagination = resolvePagination(skip, take);
-    const folders = await this.configsService.listFolders(query, pagination.skip, pagination.take);
-    const user = this.getUser(context);
-    const accessibleFolders = await Promise.all(
-      folders.map(async (folder) => ({
-        folder,
-        canRead: await this.canAccessCertificateFolder(user, Permission.CertificateConfig.Read, folder.id),
-      })),
-    );
-
-    return accessibleFolders.filter((item) => item.canRead).map((item) => item.folder);
+    return this.configsService.listFolders(query, pagination.skip, pagination.take);
   }
 
   @Query(() => CertificateFolder, { name: 'certificateFolder' })
@@ -583,26 +580,6 @@ export class CertificatesResolver {
       scope: CertificateScope.OTHER,
       targetId: folderId,
     });
-  }
-
-  private async canAccessCertificateFolder(
-    user: AuthenticatedUser | undefined,
-    permission: Permission,
-    folderId: string,
-  ): Promise<boolean> {
-    try {
-      await this.authorizationPolicy.assertPermissions(user, [permission], {
-        folderId,
-        scope: CertificateScope.OTHER,
-        targetId: folderId,
-      });
-      return true;
-    } catch (error) {
-      if (!(error instanceof ForbiddenException)) {
-        throw error;
-      }
-      return false;
-    }
   }
 
   private getCertificateTargetId(

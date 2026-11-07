@@ -44,7 +44,7 @@ function fixture() {
       update: jest.fn().mockResolvedValue(run),
     },
     user: { findUnique: jest.fn().mockResolvedValue({ name: 'Admin', email: null }) },
-    certificate: { findMany: jest.fn().mockResolvedValue([{ id: 'certificate' }]) },
+    certificate: { count: jest.fn().mockResolvedValue(1) },
     certificateConfig: {
       findMany: jest.fn().mockResolvedValue([]),
       findUniqueOrThrow: jest.fn().mockResolvedValue(config),
@@ -81,7 +81,7 @@ describe('CertificateIssuanceJobsService', () => {
   it('avoids audit writes for an automatic sweep that changes no certificates', async () => {
     const { service, run, prisma, audit } = fixture();
     run.automatic = true;
-    prisma.certificate.findMany.mockResolvedValueOnce([]);
+    prisma.certificate.count.mockResolvedValueOnce(0);
     await service.requestIssuance({ configId: 'config' }, undefined, true);
     await service.process('run', true);
     expect(audit.record).not.toHaveBeenCalled();
@@ -206,6 +206,9 @@ describe('CertificateIssuanceJobsService', () => {
     expect(prisma.certificateIssuanceRun.update).toHaveBeenCalledWith({
       where: { id: 'run' },
       data: expect.objectContaining({ status: 'COMPLETED', certificateCount: 1 }),
+    });
+    expect(prisma.certificate.count).toHaveBeenCalledWith({
+      where: { configId: 'config', deletedAt: null, revokedAt: null, issuedAt: { gte: expect.any(Date) } },
     });
   });
 

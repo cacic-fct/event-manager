@@ -706,26 +706,27 @@ export class CalendarService {
   }
 
   private async disableStaleAdminCalendarFeeds(now: Date): Promise<number> {
-    const settings = await this.prisma.userAdminCalendarFeedSettings.findMany({
-      where: {
-        enabled: true,
-      },
-      select: {
-        userId: true,
-      },
-      orderBy: {
-        userId: 'asc',
-      },
-    });
-
+    const batchSize = 100;
+    let afterUserId: string | undefined;
     let disabledCount = 0;
-    for (const setting of settings) {
-      if (await hasCurrentAdminFeedTargets(this.prisma, setting.userId, now, 1)) {
-        continue;
+    for (;;) {
+      const settings = await this.prisma.userAdminCalendarFeedSettings.findMany({
+        where: { enabled: true, ...(afterUserId ? { userId: { gt: afterUserId } } : {}) },
+        select: { userId: true },
+        orderBy: { userId: 'asc' },
+        take: batchSize,
+      });
+      for (const setting of settings) {
+        if (await hasCurrentAdminFeedTargets(this.prisma, setting.userId, now, 1)) {
+          continue;
+        }
+        await this.disableAdminCalendarFeedWithoutTargets(setting.userId, now);
+        disabledCount += 1;
       }
-
-      await this.disableAdminCalendarFeedWithoutTargets(setting.userId, now);
-      disabledCount += 1;
+      if (settings.length < batchSize) {
+        break;
+      }
+      afterUserId = settings[settings.length - 1].userId;
     }
 
     return disabledCount;

@@ -18,7 +18,8 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Info, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import type { GraphQLResolveInfo } from 'graphql';
 import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { RequireRoles } from '../auth/decorators/require-roles.decorator';
@@ -27,6 +28,7 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { resolvePagination } from '../common/pagination';
+import { graphqlFieldRequested } from '../common/graphql-field-requested';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import {
@@ -92,6 +94,7 @@ export class PeopleResolver {
     @Args('hasIdentityDocument', { type: () => Boolean, nullable: true }) hasIdentityDocument?: boolean,
     @Args('hasAcademicId', { type: () => Boolean, nullable: true }) hasAcademicId?: boolean,
     @Args('lecturerSelfEditingBlocked', { type: () => Boolean, nullable: true }) lecturerSelfEditingBlocked?: boolean,
+    @Info() info?: GraphQLResolveInfo,
   ) {
     const pagination = resolvePagination(skip, take);
     const where: Prisma.PeopleWhereInput = {
@@ -189,8 +192,8 @@ export class PeopleResolver {
     const people = await this.prisma.people.findMany({
       where,
       include: {
-        user: true,
-        lecturerProfile: true,
+        user: graphqlFieldRequested(info, ['user']),
+        lecturerProfile: graphqlFieldRequested(info, ['lecturerProfile']),
       },
       orderBy: [{ name: 'asc' }, { id: 'asc' }],
       skip: prioritizedIds.length > 0 ? 0 : pagination.skip,
@@ -372,17 +375,17 @@ export class PeopleResolver {
 
   @Query(() => Person, { name: 'person' })
   @RequirePermissions(Permission.Person.Read)
-  async person(@Args('id', { type: () => String }) id: string) {
+  async person(@Args('id', { type: () => String }) id: string, @Info() info?: GraphQLResolveInfo) {
     const person = await this.prisma.people.findFirst({
       where: {
         id,
         deletedAt: null,
       },
       include: {
-        user: true,
-        attendances: true,
-        lectures: true,
-        lecturerProfile: true,
+        user: graphqlFieldRequested(info, ['user']),
+        attendances: graphqlFieldRequested(info, ['attendances']),
+        lectures: graphqlFieldRequested(info, ['lectures']),
+        lecturerProfile: graphqlFieldRequested(info, ['lecturerProfile']),
       },
     });
 

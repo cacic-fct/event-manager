@@ -1193,6 +1193,61 @@ describe('CalendarService', () => {
     expect(prisma.userAdminCalendarFeedSettings.update).not.toHaveBeenCalled();
   });
 
+  it('cursor-pages admin maintenance while earlier pages deactivate their feed rows', async () => {
+    const settings = Array.from({ length: 205 }, (_, index) => ({
+      userId: `user-${String(index).padStart(3, '0')}`,
+      enabled: true,
+    }));
+    const checkedUsers: string[] = [];
+    const prisma = createPrismaMock({
+      userAdminCalendarFeedSettings: {
+        findMany: jest.fn().mockImplementation(async (args: { take: number; where: { userId?: { gt: string } } }) => {
+          const after = args.where.userId?.gt;
+          return settings
+            .filter(({ enabled, userId }) => enabled && (!after || userId > after))
+            .slice(0, args.take)
+            .map(({ userId }) => ({ userId }));
+        }),
+        updateMany: jest.fn().mockImplementation(async (args: { where: { userId: string } }) => {
+          const setting = settings.find((entry) => entry.userId === args.where.userId);
+          if (setting) setting.enabled = false;
+          return { count: 1 };
+        }),
+      },
+    });
+    activeScopes.mockImplementation(async (_prisma, userId) => {
+      checkedUsers.push(userId ?? '');
+      return [];
+    });
+    const service = new CalendarService(prisma as never);
+    try {
+      await expect(service.runAdminCalendarFeedMaintenance()).resolves.toBe(205);
+      expect(checkedUsers).toEqual(settings.map((setting) => setting.userId));
+      expect(settings.every((setting) => !setting.enabled)).toBe(true);
+      expect(prisma.userAdminCalendarFeedSettings.findMany).toHaveBeenCalledTimes(3);
+      expect(prisma.userAdminCalendarFeedSettings.findMany).toHaveBeenNthCalledWith(2, {
+        where: { enabled: true, userId: { gt: 'user-099' } },
+        select: { userId: true },
+        orderBy: { userId: 'asc' },
+        take: 100,
+      });
+      expect(prisma.userAdminCalendarFeedSettings.findMany).toHaveBeenNthCalledWith(
+        3,
+        expect.objectContaining({
+          take: 100,
+          where: { enabled: true, userId: { gt: 'user-199' } },
+        }),
+      );
+    } finally {
+      activeScopes.mockImplementation(
+        (store) =>
+          (
+            store as unknown as { eventManagerPermissionGrant?: { findMany: () => Promise<[]> } }
+          ).eventManagerPermissionGrant?.findMany() ?? Promise.resolve([]),
+      );
+    }
+  });
+
   it('gets or creates shared super-admin feed settings with the stored feed path', async () => {
     const prisma = createPrismaMock({
       superAdminCalendarFeedSettings: {

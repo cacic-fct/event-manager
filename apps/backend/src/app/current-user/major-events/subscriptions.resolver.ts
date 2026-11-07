@@ -192,6 +192,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
   async currentUserMajorEventFeed(
     @Context() context: GraphqlContext,
     @Info() info?: GraphQLResolveInfo,
+    @Args('majorEventId', { type: () => String, nullable: true }) majorEventId?: string,
   ): Promise<CurrentUserMajorEventFeedItem[]> {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
     const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser, false, {
@@ -206,6 +207,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
 
     return this.majorEventSubscriptions.getCurrentUserMajorEventFeedItems(person.id, paymentInfoTableExists, {
       includeSelectedEvents: graphqlFieldRequested(info, ['selectedEvents']),
+      ...(majorEventId ? { majorEventId } : {}),
     });
   }
 
@@ -217,14 +219,18 @@ export class CurrentUserMajorEventSubscriptionsResolver {
   async currentUserMajorEventSubscription(
     @Args('majorEventId', { type: () => String }) majorEventId: string,
     @Context() context: GraphqlContext,
+    @Info() info?: GraphQLResolveInfo,
   ): Promise<CurrentUserMajorEventSubscription | null> {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
-    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser, false, {
+      requestContext: context,
+    });
     if (!person) {
       return null;
     }
 
-    const paymentInfoTableExists = await this.publicEvents.hasPaymentInfoTable();
+    const paymentInfoTableExists =
+      graphqlFieldRequested(info, ['majorEvent', 'paymentInfo']) && (await this.publicEvents.hasPaymentInfoTable());
     const subscription = await this.prisma.majorEventSubscription.findFirst({
       where: {
         majorEventId,
@@ -239,10 +245,11 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       return null;
     }
 
-    const { selectedEvents, notSubscribedEvents } = await this.majorEventSubscriptions.getMajorEventSubscriptionEvents(
-      person.id,
-      majorEventId,
-    );
+    const includeEvents =
+      graphqlFieldRequested(info, ['selectedEvents']) || graphqlFieldRequested(info, ['notSubscribedEvents']);
+    const { selectedEvents, notSubscribedEvents } = includeEvents
+      ? await this.majorEventSubscriptions.getMajorEventSubscriptionEvents(person.id, majorEventId)
+      : { selectedEvents: [], notSubscribedEvents: [] };
 
     return {
       id: subscription.id,

@@ -77,7 +77,11 @@ export class CurrentUserEventAttendanceResolver {
     name: 'currentUserEventAttendances',
   })
   @IncludePastParticipation()
-  async currentUserEventAttendances(@Context() context: GraphqlContext): Promise<CurrentUserEventAttendance[]> {
+  async currentUserEventAttendances(
+    @Context() context: GraphqlContext,
+    @Args('majorEventId', { type: () => String, nullable: true }) majorEventId?: string,
+    @Args('eventGroupId', { type: () => String, nullable: true }) eventGroupId?: string,
+  ): Promise<CurrentUserEventAttendance[]> {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
     const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser, false, {
       requestContext: context,
@@ -92,6 +96,8 @@ export class CurrentUserEventAttendanceResolver {
         status: 'PRESENT',
         event: {
           deletedAt: null,
+          ...(majorEventId ? { majorEventId } : {}),
+          ...(eventGroupId ? { eventGroupId } : {}),
         },
       },
       select: CURRENT_USER_EVENT_ATTENDANCE_SELECT,

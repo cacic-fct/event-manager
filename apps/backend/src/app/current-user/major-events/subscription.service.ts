@@ -504,8 +504,9 @@ export class CurrentUserMajorEventSubscriptionService {
   async getCurrentUserMajorEventFeedItems(
     personId: string,
     paymentInfoTableExists: boolean,
-    { includeSelectedEvents = true }: { includeSelectedEvents?: boolean } = {},
+    { includeSelectedEvents = true, majorEventId }: { includeSelectedEvents?: boolean; majorEventId?: string } = {},
   ): Promise<CurrentUserMajorEventFeedItem[]> {
+    const majorEventWhere = { ...PUBLIC_MAJOR_EVENT_WHERE, ...(majorEventId ? { id: majorEventId } : {}) };
     const [subscriptions, lecturerMajorEvents, certificates, attendanceMajorEvents, sportsMajorEvents, interests] =
       await Promise.all([
         this.prisma.majorEventSubscription.findMany({
@@ -513,7 +514,7 @@ export class CurrentUserMajorEventSubscriptionService {
             personId,
             deletedAt: null,
             majorEvent: {
-              ...PUBLIC_MAJOR_EVENT_WHERE,
+              ...majorEventWhere,
             },
           },
           select: this.getMajorEventSubscriptionSelect(paymentInfoTableExists),
@@ -527,7 +528,7 @@ export class CurrentUserMajorEventSubscriptionService {
             event: {
               deletedAt: null,
               majorEvent: {
-                ...PUBLIC_MAJOR_EVENT_WHERE,
+                ...majorEventWhere,
               },
             },
           },
@@ -555,7 +556,7 @@ export class CurrentUserMajorEventSubscriptionService {
               deletedAt: null,
               scope: CertificateScope.MAJOR_EVENT,
               majorEvent: {
-                ...PUBLIC_MAJOR_EVENT_WHERE,
+                ...majorEventWhere,
               },
             },
           },
@@ -580,7 +581,7 @@ export class CurrentUserMajorEventSubscriptionService {
             event: {
               deletedAt: null,
               majorEvent: {
-                ...PUBLIC_MAJOR_EVENT_WHERE,
+                ...majorEventWhere,
               },
             },
           },
@@ -603,7 +604,7 @@ export class CurrentUserMajorEventSubscriptionService {
             deletedAt: null,
             status: { not: SportsTournamentStatus.DRAFT },
             majorEvent: {
-              ...PUBLIC_MAJOR_EVENT_WHERE,
+              ...majorEventWhere,
             },
             OR: [
               {
@@ -677,9 +678,9 @@ export class CurrentUserMajorEventSubscriptionService {
             personId,
             deletedAt: null,
             OR: [
-              { majorEvent: { ...PUBLIC_MAJOR_EVENT_WHERE } },
-              { event: { majorEvent: { ...PUBLIC_MAJOR_EVENT_WHERE } } },
-              { eventGroup: { majorEvent: { ...PUBLIC_MAJOR_EVENT_WHERE } } },
+              { majorEvent: { ...majorEventWhere } },
+              { event: { majorEvent: { ...majorEventWhere } } },
+              { eventGroup: { majorEvent: { ...majorEventWhere } } },
             ],
           },
           select: {

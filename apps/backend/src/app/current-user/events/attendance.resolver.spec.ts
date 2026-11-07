@@ -5,6 +5,20 @@ import { CurrentUserEventAttendanceResolver } from './attendance.resolver';
 const { jest } = import.meta;
 
 describe('CurrentUserEventAttendanceResolver', () => {
+  it.each([
+    ['major-1', undefined, { majorEventId: 'major-1' }],
+    [undefined, 'group-1', { eventGroupId: 'group-1' }],
+  ] as const)('scopes attendance reads to the requested history target', async (majorEventId, eventGroupId, scope) => {
+    const prisma = { eventAttendance: { findMany: jest.fn().mockResolvedValue([]) } };
+    const { resolver } = createResolverWithDependencies(prisma);
+    await resolver.currentUserEventAttendances({}, majorEventId, eventGroupId);
+    expect(prisma.eventAttendance.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { personId: 'person-1', status: 'PRESENT', event: { deletedAt: null, ...scope } },
+      }),
+    );
+  });
+
   it('returns no current-user attendances when the account is not linked to a person', async () => {
     const prisma = {
       eventAttendance: {

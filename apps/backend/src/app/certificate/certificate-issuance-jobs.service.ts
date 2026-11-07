@@ -17,7 +17,6 @@ import type { DeferredInjection } from '../common/deferred-injection';
 import { CertificateAdministrationAudit } from './certificate-administration-audit';
 import { PrismaService } from '../prisma/prisma.service';
 import { buildBullMqJobId } from '../queues/bullmq-job-id';
-import { CERTIFICATE_SELECT } from './certificate.constants';
 import { CertificateEligibilityService } from './certificate-eligibility.service';
 import { CertificateIssuingService } from './certificate-issuing.service';
 
@@ -234,15 +233,14 @@ export class CertificateIssuanceJobsService implements OnModuleInit {
         });
         await this.prisma.$transaction(
           async (tx) => {
-            const certificates = await tx.certificate.findMany({
+            const certificateCount = await tx.certificate.count({
               where: { configId: run.configId, deletedAt: null, revokedAt: null, issuedAt: { gte: startedAt } },
-              select: CERTIFICATE_SELECT,
             });
             const completed = {
               ...run,
               status: 'COMPLETED' as const,
               completedAt: new Date(),
-              certificateCount: certificates.length,
+              certificateCount,
               error: null,
             };
             await tx.certificateIssuanceRun.update({
@@ -254,7 +252,7 @@ export class CertificateIssuanceJobsService implements OnModuleInit {
                 error: null,
               },
             });
-            if (!run.automatic || certificates.length > 0) await this.audit.recordRun(tx, completed);
+            if (!run.automatic || certificateCount > 0) await this.audit.recordRun(tx, completed);
           },
           { timeout: 60_000 },
         );

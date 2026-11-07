@@ -8,11 +8,12 @@ describe('graphqlFieldRequested', () => {
     type Event { id: ID!, paymentInfo: String }
   `);
 
-  async function selections(source: string) {
+  async function selections(source: string, variableValues?: Record<string, boolean>) {
     let captured: GraphQLResolveInfo | undefined;
     const result = await graphql({
       schema,
       source,
+      variableValues,
       rootValue: {
         feed: (_args: unknown, _context: unknown, info: GraphQLResolveInfo) => {
           captured = info;
@@ -46,5 +47,23 @@ describe('graphqlFieldRequested', () => {
 
   it('preserves the full projection for direct callers without GraphQL selection metadata', () => {
     expect(graphqlFieldRequested(undefined, ['selectedEvents'])).toBe(true);
+  });
+
+  it.each([false, true])('honors conditional fields and fragment spreads when included=%s', async (included) => {
+    const info = await selections(
+      `
+      query Conditional($included: Boolean!, $skipped: Boolean!) {
+        feed {
+          id
+          ...Activities @include(if: $included)
+          ... on Item @skip(if: $skipped) { majorEvent { paymentInfo } }
+        }
+      }
+      fragment Activities on Item { selectedEvents { id } }
+    `,
+      { included, skipped: !included },
+    );
+    expect(graphqlFieldRequested(info, ['selectedEvents'])).toBe(included);
+    expect(graphqlFieldRequested(info, ['majorEvent', 'paymentInfo'])).toBe(included);
   });
 });

@@ -21,6 +21,7 @@ import type { DeferredInjection } from '../common/deferred-injection';
 import { type GraphqlContext, PERSON_SELECT, type PersonRecord, USER_SELECT, type UserRecord } from './selects';
 
 type ResolvedCurrentUserContext = { user: UserRecord | null; person: PersonRecord | null };
+const LOGIN_ACTIVITY_UPDATE_INTERVAL_MS = 5 * 60_000;
 
 @Injectable()
 export class CurrentUserContextService {
@@ -401,7 +402,16 @@ export class CurrentUserContextService {
 
   private async backfillMatchedUser(user: UserRecord, authenticatedUser: AuthenticatedUser): Promise<UserRecord> {
     const data = this.authenticatedUserSync.buildUserUpdateData(user, authenticatedUser);
-    data.lastLoginAt = new Date();
+    const now = new Date();
+    const needsActivityUpdate =
+      !user.lastLoginAt || now.getTime() - user.lastLoginAt.getTime() >= LOGIN_ACTIVITY_UPDATE_INTERVAL_MS;
+    if (Object.keys(data).length === 0 && !needsActivityUpdate) {
+      return user;
+    }
+    // Actual sign-ins are recorded by the authentication service. Reads only refresh coarse activity.
+    if (needsActivityUpdate) {
+      data.lastLoginAt = now;
+    }
 
     return this.prisma.user.update({
       where: {

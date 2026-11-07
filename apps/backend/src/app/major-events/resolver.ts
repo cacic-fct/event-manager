@@ -9,7 +9,8 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, Inject, Logger, NotFoundException, Optional } from '@nestjs/common';
-import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Info, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { type GraphQLResolveInfo } from 'graphql';
 import { addDays, subDays } from 'date-fns';
 import {
   AuditLogEntityType,
@@ -26,6 +27,7 @@ import { eventContentAuditSnapshot } from '../events/event-content-audit';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
+import { graphqlFieldRequested } from '../common/graphql-field-requested';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { resolvePublicationActorId } from '../publishing/publishing-auth';
@@ -218,6 +220,7 @@ export class MajorEventsResolver {
     endDateFrom?: Date,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
+    @Info() info?: GraphQLResolveInfo,
   ) {
     const pagination = resolvePagination(skip, take);
     const where: Prisma.MajorEventWhereInput = {
@@ -281,7 +284,15 @@ export class MajorEventsResolver {
     const paymentInfoTableExists = await this.hasPaymentInfoTable();
     const majorEvents = await this.prisma.majorEvent.findMany({
       where,
-      select: this.getMajorEventSelect(paymentInfoTableExists),
+      select: {
+        ...this.getMajorEventSelect(paymentInfoTableExists),
+        description: graphqlFieldRequested(info, ['description']),
+        additionalPaymentInfo: graphqlFieldRequested(info, ['additionalPaymentInfo']),
+        paymentInfo:
+          paymentInfoTableExists && graphqlFieldRequested(info, ['paymentInfo'])
+            ? MAJOR_EVENT_WITH_PAYMENT_INFO_SELECT.paymentInfo
+            : false,
+      } satisfies Prisma.MajorEventSelect,
       orderBy: {
         startDate: 'desc',
       },

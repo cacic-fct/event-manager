@@ -1,4 +1,11 @@
-import { Kind, type GraphQLResolveInfo, type SelectionSetNode } from 'graphql';
+import {
+  getDirectiveValues,
+  GraphQLIncludeDirective,
+  GraphQLSkipDirective,
+  Kind,
+  type GraphQLResolveInfo,
+  type SelectionSetNode,
+} from 'graphql';
 
 /** Check schema field names, including selections reached through aliases and fragments. */
 export function graphqlFieldRequested(info: GraphQLResolveInfo | undefined, path: readonly string[]): boolean {
@@ -13,6 +20,12 @@ export function graphqlFieldRequested(info: GraphQLResolveInfo | undefined, path
     if (remaining.length === 0) return true;
     return (
       selectionSet?.selections.some((selection) => {
+        if (
+          getDirectiveValues(GraphQLSkipDirective, selection, info?.variableValues)?.['if'] === true ||
+          getDirectiveValues(GraphQLIncludeDirective, selection, info?.variableValues)?.['if'] === false
+        ) {
+          return false;
+        }
         if (selection.kind === Kind.FIELD) {
           return (
             selection.name.value === remaining[0] && includesField(selection.selectionSet, remaining.slice(1), visited)

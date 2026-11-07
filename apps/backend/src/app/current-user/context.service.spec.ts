@@ -200,6 +200,55 @@ describe('CurrentUserContextService', () => {
     expect(prisma.user.findUnique).toHaveBeenCalledTimes(2);
   });
 
+  it('avoids an unchanged profile write during the recent activity window', async () => {
+    const user = createUserRecord({ lastLoginAt: new Date() });
+    const person = createPersonRecord({ userId: user.id, user });
+    prisma.user.findUnique.mockResolvedValue(user);
+    prisma.people.findMany.mockResolvedValue([person]);
+
+    await expect(
+      service.resolveCurrentUserContext(
+        createAuthenticatedUser({
+          claims: { set_fullname: user.name },
+        }),
+      ),
+    ).resolves.toEqual({ user, person });
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('refreshes stale activity without requiring a profile change', async () => {
+    const now = Date.now();
+    const user = createUserRecord({ lastLoginAt: new Date(now - 5 * 60_000 - 1) });
+    const person = createPersonRecord({ userId: user.id, user });
+    prisma.user.findUnique.mockResolvedValue(user);
+    prisma.user.update.mockResolvedValue({ ...user, lastLoginAt: new Date(now) });
+    prisma.people.findMany.mockResolvedValue([person]);
+
+    await service.resolveCurrentUserContext(createAuthenticatedUser());
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: user.id },
+        data: { lastLoginAt: expect.any(Date) },
+      }),
+    );
+  });
+
+  it('synchronizes a changed profile immediately even when activity was refreshed recently', async () => {
+    const user = createUserRecord({ lastLoginAt: new Date() });
+    const person = createPersonRecord({ userId: user.id, user });
+    prisma.user.findUnique.mockResolvedValue(user);
+    prisma.user.update.mockResolvedValue({ ...user, name: 'Nome atualizado' });
+    prisma.people.findMany.mockResolvedValue([person]);
+
+    await service.resolveCurrentUserContext(createAuthenticatedUser({ claims: { set_fullname: 'Nome atualizado' } }));
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: user.id },
+        data: { name: 'Nome atualizado' },
+      }),
+    );
+  });
+
   it('allows internal profile sync to resolve a non-onboarded account update', async () => {
     const user = createUserRecord();
     const createdPerson = createPersonRecord({

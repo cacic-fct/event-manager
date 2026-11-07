@@ -7,6 +7,33 @@ import { resolvePriceTierEventPolicy } from './tier-event-policy';
 const { jest } = import.meta;
 
 describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
+  it('restricts every participation source when a single major event is requested', async () => {
+    const emptySource = () => ({ findMany: jest.fn().mockResolvedValue([]) });
+    const prisma = {
+      majorEventSubscription: emptySource(),
+      eventLecturer: emptySource(),
+      certificate: emptySource(),
+      eventAttendance: emptySource(),
+      sportsTournament: emptySource(),
+      eventInterest: emptySource(),
+    };
+    const feedService = new CurrentUserMajorEventSubscriptionService(prisma as never, {} as never);
+    await expect(
+      feedService.getCurrentUserMajorEventFeedItems('person-1', false, { majorEventId: 'major-1' }),
+    ).resolves.toEqual([]);
+    const scopedMajor = expect.objectContaining({ ...PUBLIC_MAJOR_EVENT_WHERE, id: 'major-1' });
+    expect(prisma.majorEventSubscription.findMany.mock.calls[0][0].where.majorEvent).toEqual(scopedMajor);
+    expect(prisma.eventLecturer.findMany.mock.calls[0][0].where.event.majorEvent).toEqual(scopedMajor);
+    expect(prisma.certificate.findMany.mock.calls[0][0].where.config.majorEvent).toEqual(scopedMajor);
+    expect(prisma.eventAttendance.findMany.mock.calls[0][0].where.event.majorEvent).toEqual(scopedMajor);
+    expect(prisma.sportsTournament.findMany.mock.calls[0][0].where.majorEvent).toEqual(scopedMajor);
+    expect(prisma.eventInterest.findMany.mock.calls[0][0].where.OR).toEqual([
+      { majorEvent: scopedMajor },
+      { event: { majorEvent: scopedMajor } },
+      { eventGroup: { majorEvent: scopedMajor } },
+    ]);
+  });
+
   let service: CurrentUserMajorEventSubscriptionService;
 
   beforeEach(() => {

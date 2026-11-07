@@ -28,6 +28,8 @@ describe('DashboardInsightsService generation', () => {
     prisma.mergeCandidate.count.mockResolvedValue(4);
     prisma.majorEventSubscription.count.mockResolvedValue(5);
     prisma.offlineEventAttendanceSubmission.count.mockResolvedValue(7);
+    prisma.eventSubscription.findMany.mockResolvedValue([{ eventId: 'bad-event', personId: 'person-1' }]);
+    prisma.eventAttendance.findMany.mockResolvedValue([{ eventId: 'bad-event', personId: 'person-1' }]);
     prisma.event.findMany
       .mockResolvedValueOnce([
         {
