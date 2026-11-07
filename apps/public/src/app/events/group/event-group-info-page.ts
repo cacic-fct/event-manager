@@ -6,10 +6,13 @@ import { AuthService } from '@cacic-fct/shared-angular';
 import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import type { DetailViewModel } from '@cacic-fct/shared-utils';
-import { EMPTY, catchError, combineLatest, expand, map, reduce, startWith, switchMap } from 'rxjs';
+import { EMPTY, catchError, combineLatest, expand, map, reduce, startWith, switchMap, timeout } from 'rxjs';
 import { EventApiService } from '../detail/event-api.service';
 import { MoreInfo } from '../../profile/attendance/more-info/more-info';
-import { EventInformationFallbackService } from '../../shared/event-information-fallback.service';
+import {
+  EVENT_INFORMATION_TIMEOUT_MS,
+  EventInformationFallbackService,
+} from '../../shared/event-information-fallback.service';
 import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
 import { NetworkStatusService } from '../../shared/network-status.service';
 import { NotFoundGraphqlError } from '../../shared/rate-limit-error';
@@ -27,10 +30,11 @@ import { EventGroupInfo } from './event-group-info';
         [events]="programEvents()"
         [backUrl]="backUrl()"
         [participationStatuses]="participationStatuses()"
-        [participationLoading]="!!workspace()?.loading()"
+        [participationPending]="participationPending()"
+        [participationLoading]="participationPending() || !!workspace()?.loading()"
         [isAuthenticated]="isAuthenticated()"
         [hasParticipation]="hasParticipation()">
-        @if (isAuthenticated() || !isOnline()) {
+        @if (showWorkspace()) {
           <app-more-info
             participationWorkspace
             [embedded]="true"
@@ -57,6 +61,10 @@ export class EventGroupInfoPage {
   readonly hasParticipation = signal(false);
   readonly participationDetail = signal<DetailViewModel | null>(null);
   protected readonly workspace = viewChild(MoreInfo);
+  protected readonly showWorkspace = computed(() => this.isAuthenticated() || !this.isOnline());
+  protected readonly participationPending = computed(
+    () => this.showWorkspace() && (this.workspace()?.initialDetailLoading() ?? true),
+  );
   readonly participationStatuses = computed(() =>
     Object.fromEntries((this.participationDetail()?.events ?? []).map((item) => [item.event.id, item])),
   );
@@ -75,10 +83,13 @@ export class EventGroupInfoPage {
           return EMPTY;
         }
         return this.api.listPublicEventGroupEvents(id).pipe(
+          timeout({ first: EVENT_INFORMATION_TIMEOUT_MS }),
           expand((events) => {
             const last = events.at(-1);
             return last && events.length === 100
-              ? this.api.listPublicEventGroupEvents(id, { id: last.id, startDate: last.startDate })
+              ? this.api
+                  .listPublicEventGroupEvents(id, { id: last.id, startDate: last.startDate })
+                  .pipe(timeout({ first: EVENT_INFORMATION_TIMEOUT_MS }))
               : EMPTY;
           }),
           reduce((all, page) => [...all, ...page], [] as PublicEvent[]),

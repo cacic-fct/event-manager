@@ -203,9 +203,29 @@ export class EventFormListingsService {
       includeReleasedResults: options.subscriptionFlowOnly !== true,
     });
     const eligible: EventFormModel[] = [];
+    // Forms on the same target often share an audience. Reuse the eligibility
+    // decision only within this person's listing, including every policy input.
+    const eligibilityByScope = new Map<string, boolean>();
     for (const form of forms) {
       const link = findLinkForTarget(form, input);
-      if (link && (await this.canListCurrentUserForm(person.id, form, link, { ...options, allowFutureSubscriber }))) {
+      if (!link) {
+        continue;
+      }
+      const scope = JSON.stringify([
+        link.targetType,
+        link.eventId,
+        link.majorEventId,
+        link.audiences,
+        link.priceTierIds ?? [],
+        link.insertInSubscriptionFlow,
+        arePublicResultsReleasedForLink(form, link),
+      ]);
+      let canList = eligibilityByScope.get(scope);
+      if (canList === undefined) {
+        canList = await this.canListCurrentUserForm(person.id, form, link, { ...options, allowFutureSubscriber });
+        eligibilityByScope.set(scope, canList);
+      }
+      if (canList) {
         eligible.push(toPublicEventFormModel(form, input));
       }
     }

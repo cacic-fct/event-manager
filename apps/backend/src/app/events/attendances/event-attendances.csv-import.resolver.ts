@@ -94,15 +94,20 @@ export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBa
       };
     }
 
-    const existingAttendances = await this.prisma.eventAttendance.findMany({
-      where: {
-        eventId: input.eventId,
-      },
-      select: {
-        personId: true,
-        status: true,
-      },
-    });
+    const matchedPersonIds = [...new Set([...personByValue.values()].map((person) => person.id))];
+    const existingAttendances =
+      matchedPersonIds.length === 0
+        ? []
+        : await this.prisma.eventAttendance.findMany({
+            where: {
+              eventId: input.eventId,
+              personId: { in: matchedPersonIds },
+            },
+            select: {
+              personId: true,
+              status: true,
+            },
+          });
     const presentPersonIds = new Set(
       existingAttendances
         .filter((attendance) => attendance.status === 'PRESENT')

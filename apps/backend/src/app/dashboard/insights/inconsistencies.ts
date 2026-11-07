@@ -1,7 +1,7 @@
 import { DashboardInconsistency } from '../models';
 import { formatEventLocation } from '@cacic-fct/shared-utils';
 import { DEFAULT_EMOJI, EIGHT_HOURS_MS, SUSPICIOUS_EARLIEST_DATE } from './constants';
-import { type InsightEvent } from './insight-event.select';
+import { type ConsistencyInsightEvent } from './insight-event.select';
 
 const MIN_DESCRIPTION_CHARACTERS = 48;
 const MIN_DESCRIPTION_WORDS = 6;
@@ -16,7 +16,7 @@ type SubscriptionDateTarget = {
 
 export function buildInconsistencies(input: {
   now: Date;
-  events: InsightEvent[];
+  events: ConsistencyInsightEvent[];
   majorEventsWithSubscriptionDates: {
     id: string;
     name: string;
@@ -50,8 +50,8 @@ export function buildInconsistencies(input: {
   }[];
 }): DashboardInconsistency[] {
   const inconsistencies: DashboardInconsistency[] = [];
-  const eventsByLecturer = new Map<string, InsightEvent[]>();
-  const eventsByPlace = new Map<string, InsightEvent[]>();
+  const eventsByLecturer = new Map<string, ConsistencyInsightEvent[]>();
+  const eventsByPlace = new Map<string, ConsistencyInsightEvent[]>();
 
   for (const group of input.singleEventGroups) {
     if (group.events.length === 1) {
@@ -325,11 +325,11 @@ export function buildInconsistencies(input: {
   return inconsistencies.slice(0, MAX_INCONSISTENCIES);
 }
 
-function sportsTargetId(event: InsightEvent): string | null {
+function sportsTargetId(event: ConsistencyInsightEvent): string | null {
   return event.majorEventId ?? event.sportsMatch?.category.tournament?.majorEventId ?? null;
 }
 
-function hasPlace(event: InsightEvent): boolean {
+function hasPlace(event: ConsistencyInsightEvent): boolean {
   return (
     event.isVirtual ||
     Boolean(normalizeText(formatEventLocation(event))) ||
@@ -337,7 +337,7 @@ function hasPlace(event: InsightEvent): boolean {
   );
 }
 
-function hasWeakDescription(event: InsightEvent): boolean {
+function hasWeakDescription(event: ConsistencyInsightEvent): boolean {
   const text = normalizeText(`${event.description ?? ''} ${event.shortDescription ?? ''}`);
   if (!text) {
     return true;
@@ -368,7 +368,7 @@ function describeSubscriptionDateIssue(target: SubscriptionDateTarget): string |
   return null;
 }
 
-function resolvePlaceConflictKey(event: InsightEvent): string | null {
+function resolvePlaceConflictKey(event: ConsistencyInsightEvent): string | null {
   if (event.isVirtual) return null;
   const locationDescription = normalizeText(formatEventLocation(event));
   if (locationDescription) {

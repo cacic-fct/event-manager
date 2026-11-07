@@ -24,6 +24,17 @@ describe('current-user participation detail events', () => {
     expect(audienceContext.getStore()).toBeUndefined();
   });
 
+  it('retains empty IDs as filters even when another scope is provided', async () => {
+    const prisma = { event: { findMany: jest.fn().mockResolvedValue([]) } };
+    const users = { requireCurrentPerson: jest.fn().mockResolvedValue({ id: 'person-1' }) };
+    const resolver = new CurrentUserParticipationEventsResolver(prisma as never, users as never);
+
+    await resolver.currentUserParticipationEvents({}, 'major-1', '');
+    expect(prisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ majorEventId: 'major-1', eventGroupId: '' }) }),
+    );
+  });
+
   it('requires a group or major-event scope before looking up people or events', async () => {
     const users = { requireCurrentPerson: jest.fn() };
     const resolver = new CurrentUserParticipationEventsResolver({} as never, users as never);

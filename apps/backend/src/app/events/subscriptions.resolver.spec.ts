@@ -4,9 +4,61 @@ import { Permission, getPermissionIncludedDataSummary } from '@cacic-fct/shared-
 import { SubscriptionStatus } from '@prisma/client';
 import { REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { EventSubscriptionsResolver } from './subscriptions.resolver';
+import { buildSchema, graphql, type GraphQLResolveInfo } from 'graphql';
 const { jest } = import.meta;
 
 describe('EventSubscriptionsResolver', () => {
+  it('skips unrequested content, user relations and derived lookups for small GraphQL subscription projections', async () => {
+    const prisma = {
+      eventSubscription: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'subscription-1',
+            eventId: 'event-1',
+            personId: 'person-1',
+            event: { majorEventId: 'major-1' },
+          },
+        ]),
+      },
+      majorEventSubscriptionEventSelection: { findMany: jest.fn() },
+      eventLecturer: { findMany: jest.fn() },
+    };
+    const resolver = new EventSubscriptionsResolver(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+    const result = await graphql({
+      schema: buildSchema('type Query { subscriptions: [Subscription!]! } type Subscription { id: ID! }'),
+      source: '{ subscriptions { id } }',
+      rootValue: {
+        subscriptions: (_args: unknown, _context: unknown, info: GraphQLResolveInfo) =>
+          resolver.workspaceEventSubscriptions('event-1', undefined, undefined, undefined, info),
+      },
+    });
+    expect(result.errors).toBeUndefined();
+    expect(result.data?.subscriptions).toEqual([{ id: 'subscription-1' }]);
+    expect(prisma.eventSubscription.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.objectContaining({
+          event: {
+            select: expect.objectContaining({
+              description: false,
+              shortDescription: false,
+              onlineAttendanceCode: false,
+              majorEventId: true,
+            }),
+          },
+          person: { select: expect.objectContaining({ user: false }) },
+        }),
+      }),
+    );
+    expect(prisma.majorEventSubscriptionEventSelection.findMany).not.toHaveBeenCalled();
+    expect(prisma.eventLecturer.findMany).not.toHaveBeenCalled();
+  });
+
   it('requires workflow read permissions without inheriting full person read access', () => {
     const requiredReadScopes = ['subscription#read', 'event#read', 'major-event#read'];
 
@@ -63,7 +115,7 @@ describe('EventSubscriptionsResolver', () => {
     );
   });
 
-  it('attaches major-event history only for selected event subscriptions', async () => {
+  it('returns major-event history and lecturer status when requested in GraphQL', async () => {
     const createdAt = new Date('2026-06-22T12:00:00.000Z');
     const subscriptions = [
       {
@@ -118,7 +170,7 @@ describe('EventSubscriptionsResolver', () => {
         ]),
       },
       eventLecturer: {
-        findMany: jest.fn().mockResolvedValue([]),
+        findMany: jest.fn().mockResolvedValue([{ personId: 'person-1' }]),
       },
     };
     const resolver = new EventSubscriptionsResolver(
@@ -129,15 +181,30 @@ describe('EventSubscriptionsResolver', () => {
       {} as never,
     );
 
-    await expect(resolver.workspaceEventSubscriptions('event-selected')).resolves.toEqual([
-      expect.objectContaining({
+    const result = await graphql({
+      schema: buildSchema(`
+        type Query { subscriptions: [Subscription!]! }
+        type Subscription { id: ID!, majorEventSubscriptionId: ID, isLecturerSubscription: Boolean! }
+      `),
+      source: '{ subscriptions { id majorEventSubscriptionId isLecturerSubscription } }',
+      rootValue: {
+        subscriptions: (_args: unknown, _context: unknown, info: GraphQLResolveInfo) =>
+          resolver.workspaceEventSubscriptions('event-selected', undefined, undefined, undefined, info),
+      },
+    });
+
+    expect(result.errors).toBeUndefined();
+    expect(result.data?.subscriptions).toEqual([
+      {
         id: 'event-subscription-selected',
         majorEventSubscriptionId: 'major-subscription-1',
-      }),
-      expect.objectContaining({
+        isLecturerSubscription: true,
+      },
+      {
         id: 'event-subscription-direct',
         majorEventSubscriptionId: null,
-      }),
+        isLecturerSubscription: false,
+      },
     ]);
 
     expect(prisma.majorEventSubscriptionEventSelection.findMany).toHaveBeenCalledWith(

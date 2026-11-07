@@ -1,9 +1,9 @@
 import { DashboardCalendarEvent } from '../models';
 import { formatEventLocation } from '@cacic-fct/shared-utils';
 import { TWO_HOURS_MS } from './constants';
-import { type InsightEvent } from './insight-event.select';
+import { type CalendarInsightEvent } from './insight-event.select';
 
-export function mapCalendarEvent(event: InsightEvent, now: Date): DashboardCalendarEvent {
+export function mapCalendarEvent(event: CalendarInsightEvent, now: Date): DashboardCalendarEvent {
   return {
     id: event.id,
     name: event.name,

@@ -88,8 +88,11 @@ describe('ticket purchase stock', () => {
           },
         ]),
       },
-      eventTicket: { findFirst: jest.fn().mockResolvedValue(null) },
-      ticketPurchase: { count: jest.fn().mockResolvedValue(reserved), findFirst: jest.fn().mockResolvedValue(null) },
+      eventTicket: { findMany: jest.fn().mockResolvedValue([]) },
+      ticketPurchase: {
+        groupBy: jest.fn().mockResolvedValue([{ ticketConfigId: 'config', _count: { _all: reserved } }]),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
     };
     const eligibility = {
       prepareIdentitySnapshot: jest.fn(),
@@ -101,8 +104,10 @@ describe('ticket purchase stock', () => {
   it.each([1, 2])('hides sold-out offers with %i reservations for one ticket', async (reserved) => {
     const { tx, service } = setup(1, reserved);
     await expect(service.listOffers(tx as never, 'person', 'major')).resolves.toEqual([]);
-    expect(tx.ticketPurchase.count).toHaveBeenCalledWith({
-      where: { ticketConfigId: 'config', status: { in: ['UNDER_REVIEW', 'APPROVED'] } },
+    expect(tx.ticketPurchase.groupBy).toHaveBeenCalledWith({
+      by: ['ticketConfigId'],
+      where: { ticketConfigId: { in: ['config'] }, status: { in: ['UNDER_REVIEW', 'APPROVED'] } },
+      _count: { _all: true },
     });
   });
 
@@ -114,7 +119,57 @@ describe('ticket purchase stock', () => {
   it('keeps unlimited sales available without counting reservations', async () => {
     const { tx, service } = setup(null, 1000);
     await expect(service.listOffers(tx as never, 'person', 'major')).resolves.toHaveLength(1);
-    expect(tx.ticketPurchase.count).not.toHaveBeenCalled();
+    expect(tx.ticketPurchase.groupBy).not.toHaveBeenCalled();
+  });
+
+  it('batches mixed offers while preserving stock, ownership, pending purchases, and expiration', async () => {
+    const { tx, service } = setup(2, 0);
+    const base = (await tx.ticketConfig.findMany())[0];
+    const configs = ['available', 'sold-out', 'owned', 'pending', 'unlimited', 'expired', 'free'].map((id) => ({
+      ...base,
+      id,
+      eventId: id,
+      purchaseLimit: id === 'unlimited' ? null : 2,
+      event: { ...base.event, id, endDate: new Date(Date.now() + (id === 'expired' ? -1 : 1) * 86_400_000) },
+      priceOptions: [{ ...base.priceOptions[0], amountCents: id === 'free' ? 0 : 1000 }],
+    }));
+    tx.ticketConfig.findMany.mockResolvedValue(configs);
+    tx.ticketPurchase.groupBy.mockResolvedValue([
+      { ticketConfigId: 'sold-out', _count: { _all: 2 } },
+      { ticketConfigId: 'available', _count: { _all: 1 } },
+    ]);
+    tx.eventTicket.findMany.mockResolvedValue([{ eventId: 'owned' }] as never);
+    tx.ticketPurchase.findMany.mockResolvedValue([{ ticketConfigId: 'pending' }] as never);
+
+    const offers = await service.listOffers(tx as never, 'person', 'major');
+
+    expect(offers.map((offer) => offer.eventId)).toEqual(['available', 'unlimited']);
+    expect(tx.ticketPurchase.groupBy).toHaveBeenCalledTimes(1);
+    expect(tx.ticketPurchase.groupBy).toHaveBeenCalledWith({
+      by: ['ticketConfigId'],
+      where: {
+        ticketConfigId: { in: ['available', 'sold-out', 'owned', 'pending'] },
+        status: { in: ['UNDER_REVIEW', 'APPROVED'] },
+      },
+      _count: { _all: true },
+    });
+    expect(tx.eventTicket.findMany).toHaveBeenCalledTimes(1);
+    expect(tx.ticketPurchase.findMany).toHaveBeenCalledTimes(1);
+    expect(tx.ticketConfig.findMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ enabled: true, purchaseEnabled: true }),
+      }),
+    );
+  });
+
+  it('does not query reservations or ownership when all offers have expired', async () => {
+    const { tx, service } = setup(1, 0);
+    const configs = await tx.ticketConfig.findMany();
+    configs[0].event.endDate = new Date(Date.now() - 86_400_000);
+    await expect(service.listOffers(tx as never, 'person', 'major')).resolves.toEqual([]);
+    expect(tx.ticketPurchase.groupBy).not.toHaveBeenCalled();
+    expect(tx.ticketPurchase.findMany).not.toHaveBeenCalled();
+    expect(tx.eventTicket.findMany).not.toHaveBeenCalled();
   });
 
   it.each([

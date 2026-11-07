@@ -67,7 +67,7 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
     const { publicEvents, service } = createService();
     const release = jest.fn();
     let resolvePayload!: () => void;
-    publicEvents.getPublicEventSubscriptionPagePayload.mockReturnValue(
+    publicEvents.getPublicMajorEventAvailability.mockReturnValue(
       new Promise((resolve) => {
         resolvePayload = () => {
           release();
@@ -76,13 +76,13 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
       }),
     );
     const subscription = service.stream({ headers: {} } as Request, ['major-1'], []).subscribe();
-    publicEvents.getPublicEventSubscriptionPagePayload.mockClear();
+    publicEvents.getPublicMajorEventAvailability.mockClear();
     const internals = service as unknown as {
       notifySubscribedMajorEvents: () => Promise<void>;
     };
     const first = internals.notifySubscribedMajorEvents();
     const second = internals.notifySubscribedMajorEvents();
-    expect(publicEvents.getPublicEventSubscriptionPagePayload).toHaveBeenCalledTimes(1);
+    expect(publicEvents.getPublicMajorEventAvailability).toHaveBeenCalledTimes(1);
     resolvePayload();
     await Promise.all([first, second]);
     expect(release).toHaveBeenCalledTimes(1);
@@ -358,7 +358,7 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
 
   it('emits major-event and event subscription snapshots and suppresses unchanged repeats', async () => {
     const { publicEvents, service } = createService();
-    publicEvents.getPublicEventSubscriptionPagePayload.mockResolvedValue({
+    publicEvents.getPublicMajorEventAvailability.mockResolvedValue({
       subscriptionSummaries: [
         {
           eventId: 'event-1',
@@ -436,7 +436,7 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
   it('evaluates subscription updates under each connected audience principal', async () => {
     const { publicEvents, service } = createService();
     let pollPhase = false;
-    publicEvents.getPublicEventSubscriptionPagePayload.mockImplementation(async () => {
+    publicEvents.getPublicMajorEventAvailability.mockImplementation(async () => {
       const principal = audienceContext.getStore();
       return {
         subscriptionSummaries: [
@@ -472,7 +472,7 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
 
     await notifyMajorEventSubscribers(service, 'major-1');
 
-    expect(publicEvents.getPublicEventSubscriptionPagePayload).toHaveBeenCalledTimes(4);
+    expect(publicEvents.getPublicMajorEventAvailability).toHaveBeenCalledTimes(4);
     expect(publicMessages.messages[0]).toEqual(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -606,7 +606,7 @@ function createService(audienceInvitations = { getEventInvitationFacts: jest.fn(
       },
     },
     publicEvents: {
-      getPublicEventSubscriptionPagePayload: jest.fn(),
+      getPublicMajorEventAvailability: jest.fn(),
       publicEventSubscriptionSummary: jest.fn(),
     },
   };

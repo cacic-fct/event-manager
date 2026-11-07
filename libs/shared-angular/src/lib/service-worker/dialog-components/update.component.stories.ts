@@ -1,7 +1,7 @@
 import { Component, effect, inject, input } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, within } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import { UpdateModalComponent } from './update.component';
 
 @Component({
@@ -45,7 +45,10 @@ type Story = StoryObj<UpdateStoryHost>;
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body);
-    await expect(canvas.getByText('Atualização do aplicativo')).toBeVisible();
+    const title = canvas.getByRole('heading', { name: 'Atualização do aplicativo' });
+    await expect(title).toBeVisible();
+    await waitFor(() => expect(title).toHaveFocus());
+    await expect(title).toHaveStyle({ outlineStyle: 'none' });
     await expect(canvas.getByRole('progressbar')).toBeVisible();
   },
 };

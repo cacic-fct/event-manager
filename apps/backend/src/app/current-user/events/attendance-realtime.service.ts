@@ -626,7 +626,7 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
   private async getMajorEventSubscriptionDeltaPayload(
     majorEventId: string,
   ): Promise<MajorEventSubscriptionChangedMessage['payload']> {
-    const page = await this.publicEvents.getPublicEventSubscriptionPagePayload(majorEventId);
+    const page = await this.publicEvents.getPublicMajorEventAvailability(majorEventId);
 
     return {
       subscriptionSummaries: page.subscriptionSummaries,

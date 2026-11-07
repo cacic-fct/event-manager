@@ -67,7 +67,9 @@ export class CurrentUserCertificatesResolver {
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserStandaloneCertificateFolder[]> {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
-    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser, false, {
+      requestContext: context,
+    });
     if (!person) {
       return [];
     }

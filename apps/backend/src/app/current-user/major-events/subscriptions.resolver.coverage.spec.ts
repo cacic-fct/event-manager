@@ -2,6 +2,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { AuditLogEntityType, AuditLogOperation, Prisma, SubscriptionStatus } from '@prisma/client';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
+import { buildSchema, graphql, type GraphQLResolveInfo } from 'graphql';
 import {
   CurrentUserMajorEventSubscriptionsResolver,
   majorEventIncludesEventRegistration,
@@ -93,7 +94,43 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
 
     await expect(harness.resolver.currentUserMajorEventFeed({ req: {} } as never)).resolves.toBe(feed);
 
-    expect(harness.majorEventSubscriptions.getCurrentUserMajorEventFeedItems).toHaveBeenCalledWith('person-1', false);
+    expect(harness.majorEventSubscriptions.getCurrentUserMajorEventFeedItems).toHaveBeenCalledWith('person-1', false, {
+      includeSelectedEvents: true,
+    });
+  });
+
+  it('passes through an empty major-event ID so the feed stays scoped', async () => {
+    const harness = createHarness();
+    harness.currentUserContext.resolveCurrentUserContext.mockResolvedValue({ person: { id: 'person-1' } });
+
+    harness.publicEvents.hasPaymentInfoTable.mockResolvedValue(false);
+
+    await harness.resolver.currentUserMajorEventFeed({}, undefined, '');
+
+    expect(harness.majorEventSubscriptions.getCurrentUserMajorEventFeedItems).toHaveBeenCalledWith('person-1', false, {
+      includeSelectedEvents: true,
+      majorEventId: '',
+    });
+  });
+
+  it('skips payment capability and selected-activity reads for the participation list query', async () => {
+    const harness = createHarness();
+    harness.currentUserContext.resolveCurrentUserContext.mockResolvedValue({ person: { id: 'person-1' } });
+    harness.majorEventSubscriptions.getCurrentUserMajorEventFeedItems.mockResolvedValue([]);
+    const result = await graphql({
+      schema: buildSchema('type Query { feed: [Item!]! } type Item { id: ID! }'),
+      source: '{ feed { id } }',
+      rootValue: {
+        feed: (_args: unknown, _context: unknown, info: GraphQLResolveInfo) =>
+          harness.resolver.currentUserMajorEventFeed({ req: {} } as never, info),
+      },
+    });
+
+    expect(result.errors).toBeUndefined();
+    expect(harness.publicEvents.hasPaymentInfoTable).not.toHaveBeenCalled();
+    expect(harness.majorEventSubscriptions.getCurrentUserMajorEventFeedItems).toHaveBeenCalledWith('person-1', false, {
+      includeSelectedEvents: false,
+    });
   });
 
   it('maps a current-user major-event subscription and selected-event projections', async () => {
@@ -128,6 +165,24 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     });
 
     expect(harness.majorEventSubscriptions.getMajorEventSubscriptionEvents).toHaveBeenCalledWith('person-1', 'major-1');
+  });
+
+  it('does not build an activity program for a subscription query that only needs its status', async () => {
+    const harness = createHarness();
+    harness.currentUserContext.resolveCurrentUserContext.mockResolvedValue({ person: { id: 'person-1' } });
+    harness.prisma.majorEventSubscription.findFirst.mockResolvedValue(subscriptionRecord(majorEventRecord()));
+    const result = await graphql({
+      schema: buildSchema('type Query { subscription: Subscription } type Subscription { id: ID! }'),
+      source: '{ subscription { id } }',
+      rootValue: {
+        subscription: (_args: unknown, _context: unknown, info: GraphQLResolveInfo) =>
+          harness.resolver.currentUserMajorEventSubscription('major-1', {}, info),
+      },
+    });
+    expect(result.errors).toBeUndefined();
+    expect(result.data?.subscription).toEqual({ id: 'subscription-1' });
+    expect(harness.majorEventSubscriptions.getMajorEventSubscriptionEvents).not.toHaveBeenCalled();
+    expect(harness.publicEvents.hasPaymentInfoTable).not.toHaveBeenCalled();
   });
 
   it('returns null for a public major event with no current-user subscription', async () => {

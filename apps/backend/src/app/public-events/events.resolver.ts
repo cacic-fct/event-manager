@@ -1,7 +1,8 @@
 import { formatEventLocation } from '@cacic-fct/shared-utils';
 import { getTierSelectableEventIds } from '@cacic-fct/shared-event-participation';
 import { IncludePastParticipation } from '../audiences/past-participation.decorator';
-import { Args, Context, Field, InputType, Int, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
+import { Args, Context, Field, Info, InputType, Int, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
+import type { GraphQLResolveInfo } from 'graphql';
 import { NotFoundException, UseGuards } from '@nestjs/common';
 import { startOfDay, subMonths } from 'date-fns';
 import { Prisma } from '@prisma/client';
@@ -11,6 +12,7 @@ import { audienceContext } from '../audiences/audience-context';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
+import { publicEventQuerySelect } from './public-event-query-select';
 import { RateLimit } from '../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
@@ -329,6 +331,7 @@ export class PublicEventsResolver {
       description: 'Continues the chronological program after the supplied start date and event ID.',
     })
     programAfter?: PublicEventProgramCursorInput,
+    @Info() info?: GraphQLResolveInfo,
   ) {
     const chronological = oldestFirst || Boolean(programAfter);
     const pagination = resolvePublicEventsPagination(skip, take);
@@ -394,7 +397,7 @@ export class PublicEventsResolver {
       where: {
         AND: whereParts,
       },
-      select: PUBLIC_EVENT_SELECT,
+      select: publicEventQuerySelect(info),
       orderBy: chronological ? [{ startDate: 'asc' }, { id: 'asc' }] : { startDate: 'desc' },
       skip: programAfter || prioritizedIds.length > 0 ? 0 : pagination.skip,
       take: prioritizedIds.length > 0 ? prioritizedIds.length : pagination.take,
@@ -442,6 +445,7 @@ export class PublicEventsResolver {
       description: 'Inclusive upper schedule boundary for calendar range loading.',
     })
     startDateUntil?: Date,
+    @Info() info?: GraphQLResolveInfo,
   ) {
     const minimumStartDate = startOfDay(subMonths(new Date(), PublicEventsResolver.calendarPastLimitMonths));
     const normalizedQuery = query?.trim();
@@ -496,7 +500,7 @@ export class PublicEventsResolver {
       where: {
         AND: whereParts,
       },
-      select: PUBLIC_EVENT_SELECT,
+      select: publicEventQuerySelect(info),
       orderBy: {
         startDate: 'asc',
       },
@@ -531,12 +535,13 @@ export class PublicEventsResolver {
       description: 'Public event identifier.',
     })
     id: string,
+    @Info() info?: GraphQLResolveInfo,
   ) {
     const event = await this.prisma.event.findFirst({
       where: {
         AND: [PUBLIC_EVENT_WHERE, { id }],
       },
-      select: PUBLIC_EVENT_SELECT,
+      select: publicEventQuerySelect(info),
     });
 
     if (!event) {
@@ -674,8 +679,34 @@ export class PublicEventsResolver {
     return this.getLecturerProfileLoader(context).load(event.id);
   }
 
-  async getPublicEventSubscriptionPagePayload(majorEventId: string): Promise<PublicMajorEventSubscriptionPage> {
-    return this.publicMajorEventSubscriptionPage(majorEventId);
+  async getPublicMajorEventAvailability(
+    majorEventId: string,
+  ): Promise<Pick<PublicMajorEventSubscriptionPage, 'subscriptionSummaries'>> {
+    const [majorEvent, events] = await Promise.all([
+      this.prisma.majorEvent.findFirst({
+        where: { ...PUBLIC_MAJOR_EVENT_WHERE, id: majorEventId },
+        select: { id: true },
+      }),
+      this.prisma.event.findMany({
+        where: {
+          AND: [
+            publicRegularSubscriptionEventWhere(new Date()),
+            { OR: [{ majorEventId }, { eventGroup: { majorEventId, deletedAt: null } }] },
+          ],
+        },
+        select: { id: true, slots: true, queueCount: true },
+        orderBy: { startDate: 'asc' },
+      }),
+    ]);
+    if (!majorEvent) {
+      throw new NotFoundException(`Major event ${majorEventId} was not found.`);
+    }
+    const counts = await this.countSubscribedPeopleByEventId(events.map((event) => event.id));
+    return {
+      subscriptionSummaries: events.map((event) =>
+        this.mapPublicEventSubscriptionSummary(event, counts.get(event.id) ?? 0),
+      ),
+    };
   }
 
   private getLecturerProfileLoader(context?: PublicEventsGraphqlContext): PublicEventLecturerProfileLoader {

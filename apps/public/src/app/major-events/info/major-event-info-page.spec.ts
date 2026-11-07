@@ -6,11 +6,14 @@ import { provideHttpClient } from '@angular/common/http';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import { createPublicEvent, createPublicMajorEvent } from '@cacic-fct/event-manager-public-testing';
-import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
+import { BehaviorSubject, NEVER, Subject, of, throwError } from 'rxjs';
 import { MajorEventSubscriptionApiService } from '../registration/subscription-api.service';
 import { MajorEventInfoApiService } from './major-event-info-api.service';
 import { MajorEventInfoPage } from './major-event-info-page';
-import { EventInformationFallbackService } from '../../shared/event-information-fallback.service';
+import {
+  EVENT_INFORMATION_TIMEOUT_MS,
+  EventInformationFallbackService,
+} from '../../shared/event-information-fallback.service';
 import { MoreInfo } from '../../profile/attendance/more-info/more-info';
 import { ParticipationWorkspaceStub } from '../../testing/participation-workspace.stub';
 
@@ -194,6 +197,41 @@ describe('MajorEventInfoPage', () => {
     fixture.detectChanges();
     expect(fixture.componentInstance.hasSubscription()).toBe(false);
     expect((fixture.nativeElement as HTMLElement).querySelector('mat-tab-group')).toBeNull();
+  });
+
+  it('reveals the public program after a subscription timeout and keeps it available during retry', () => {
+    vi.useFakeTimers();
+    try {
+      authenticated.set(true);
+      const retry = new Subject<null>();
+      getCurrentUserSubscription.mockReturnValueOnce(NEVER).mockReturnValueOnce(retry);
+      const fixture = TestBed.createComponent(MajorEventInfoPage);
+      fixture.detectChanges();
+      const host = fixture.nativeElement as HTMLElement;
+      expect(host.querySelector('#program-heading')).toBeNull();
+
+      vi.advanceTimersByTime(EVENT_INFORMATION_TIMEOUT_MS);
+      fixture.detectChanges();
+      expect(host.querySelector('#program-heading')).toBeTruthy();
+      expect(host.textContent).toContain('Não foi possível consultar sua inscrição agora.');
+      expect(host.textContent).not.toContain('Inscrever-se');
+
+      const retryButton = host.querySelector<HTMLButtonElement>('button[aria-describedby="subscription-feedback"]');
+      expect(retryButton).toBeTruthy();
+      retryButton?.click();
+      fixture.detectChanges();
+      expect(retryButton?.getAttribute('aria-disabled')).toBe('true');
+      retryButton?.click();
+      expect(getCurrentUserSubscription).toHaveBeenCalledTimes(2);
+      expect(host.querySelector('#program-heading')).toBeTruthy();
+
+      retry.next(null);
+      fixture.detectChanges();
+      expect(host.textContent).not.toContain('Não foi possível consultar sua inscrição agora.');
+      expect(host.querySelector('#program-heading')).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('loads subscription state when authentication arrives after the public page', () => {

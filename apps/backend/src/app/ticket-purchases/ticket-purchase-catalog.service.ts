@@ -78,35 +78,52 @@ export class TicketPurchaseCatalogService {
         include: { priceOptions: true, event: { include: { eventGroup: true, majorEvent: true } } },
         orderBy: { event: { startDate: 'asc' } },
       });
+      const now = new Date();
+      const candidates = configs.filter((config) => {
+        const expiresAt = config.expirationMode === 'CUSTOM' ? config.customExpiresAt : config.event.endDate;
+        const price = selectTicketPrice(config.priceOptions, tier?.id ?? null);
+        return expiresAt != null && expiresAt > now && price != null && price.amountCents > 0;
+      });
+      if (candidates.length === 0) {
+        return [];
+      }
+      const configIds = candidates.map((config) => config.id);
+      const limitedConfigIds = candidates.filter((config) => config.purchaseLimit != null).map((config) => config.id);
+      const [reservations, ownedTickets, pendingPurchases] = await Promise.all([
+        limitedConfigIds.length > 0
+          ? tx.ticketPurchase.groupBy({
+              by: ['ticketConfigId'],
+              where: { ticketConfigId: { in: limitedConfigIds }, status: { in: ['UNDER_REVIEW', 'APPROVED'] } },
+              _count: { _all: true },
+            })
+          : [],
+        tx.eventTicket.findMany({
+          where: {
+            eventId: { in: candidates.map((config) => config.eventId) },
+            holderPersonId: personId,
+            status: { in: ['ACTIVE', 'CONSUMED'] },
+          },
+          select: { eventId: true },
+        }),
+        tx.ticketPurchase.findMany({
+          where: { ticketConfigId: { in: configIds }, personId, status: { in: ['UNDER_REVIEW', 'APPROVED'] } },
+          select: { ticketConfigId: true },
+        }),
+      ]);
+      const reservedByConfig = new Map(reservations.map((entry) => [entry.ticketConfigId, entry._count._all]));
+      const ownedEventIds = new Set(ownedTickets.map((ticket) => ticket.eventId));
+      const pendingConfigIds = new Set(pendingPurchases.map((purchase) => purchase.ticketConfigId));
       const offers: TicketPurchaseOffer[] = [];
-      for (const config of configs) {
+      for (const config of candidates) {
         const expiresAt = config.expirationMode === 'CUSTOM' ? config.customExpiresAt : config.event.endDate;
         if (!expiresAt || expiresAt <= new Date()) {
           continue;
         }
-        if (config.purchaseLimit != null) {
-          const reserved = await tx.ticketPurchase.count({
-            where: { ticketConfigId: config.id, status: { in: ['UNDER_REVIEW', 'APPROVED'] } },
-          });
-          if (reserved >= config.purchaseLimit) {
-            continue;
-          }
-        }
-        const price = selectTicketPrice(config.priceOptions, tier?.id ?? null);
-        if (!price || price.amountCents <= 0) {
+        if (config.purchaseLimit != null && (reservedByConfig.get(config.id) ?? 0) >= config.purchaseLimit) {
           continue;
         }
-        const [owned, pendingPurchase] = await Promise.all([
-          tx.eventTicket.findFirst({
-            where: { eventId: config.eventId, holderPersonId: personId, status: { in: ['ACTIVE', 'CONSUMED'] } },
-            select: { id: true },
-          }),
-          tx.ticketPurchase.findFirst({
-            where: { ticketConfigId: config.id, personId, status: { in: ['UNDER_REVIEW', 'APPROVED'] } },
-            select: { id: true },
-          }),
-        ]);
-        if (owned || pendingPurchase) {
+        const price = selectTicketPrice(config.priceOptions, tier?.id ?? null);
+        if (!price || price.amountCents <= 0 || ownedEventIds.has(config.eventId) || pendingConfigIds.has(config.id)) {
           continue;
         }
         const identity = prepared
