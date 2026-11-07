@@ -44,6 +44,7 @@ test('uploads one PDF and displays the verification for the extracted code', asy
     });
   });
   await page.goto('/app/validate');
+  await waitForTurnstile(page);
   await page
     .locator('input[type="file"]')
     .setInputFiles({ name: 'arbitrary-name.pdf', mimeType: 'application/pdf', buffer });
@@ -55,6 +56,7 @@ test('uploads one PDF and displays the verification for the extracted code', asy
 test('shows an actionable error for a PDF without a certificate ID', async ({ page }) => {
   await page.route('**/api/certificates/validate/pdf', (route) => route.fulfill({ status: 422, json: {} }));
   await page.goto('/app/validate');
+  await waitForTurnstile(page);
   await page.locator('input[type="file"]').setInputFiles({
     name: 'other-document.pdf',
     mimeType: 'application/pdf',
@@ -106,6 +108,7 @@ async function preventSilentSso(page: Page): Promise<void> {
 async function mockTurnstile(page: Page): Promise<void> {
   await page.addInitScript(() => {
     const targetWindow = window as typeof window & {
+      __e2eTurnstileReady?: boolean;
       turnstile?: {
         render: (
           element: HTMLElement,
@@ -118,14 +121,25 @@ async function mockTurnstile(page: Page): Promise<void> {
       };
     };
 
+    targetWindow.__e2eTurnstileReady = false;
     targetWindow.turnstile = {
       render: (_element, options) => {
-        window.setTimeout(() => options.callback?.('e2e-turnstile-token'), 0);
+        window.setTimeout(() => {
+          options.callback?.('e2e-turnstile-token');
+          targetWindow.__e2eTurnstileReady = true;
+        }, 0);
         return 'e2e-turnstile-widget';
       },
       reset: () => undefined,
       remove: () => undefined,
     };
+  });
+}
+
+async function waitForTurnstile(page: Page): Promise<void> {
+  await page.waitForFunction(() => {
+    const targetWindow = window as typeof window & { __e2eTurnstileReady?: boolean };
+    return targetWindow.__e2eTurnstileReady === true;
   });
 }
 
