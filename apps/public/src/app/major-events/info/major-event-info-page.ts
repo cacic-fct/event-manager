@@ -18,10 +18,14 @@ import {
   startWith,
   switchMap,
   takeUntil,
+  timeout,
   timer,
 } from 'rxjs';
 import { MoreInfo } from '../../profile/attendance/more-info/more-info';
-import { EventInformationFallbackService } from '../../shared/event-information-fallback.service';
+import {
+  EVENT_INFORMATION_TIMEOUT_MS,
+  EventInformationFallbackService,
+} from '../../shared/event-information-fallback.service';
 import { NetworkStatusService } from '../../shared/network-status.service';
 import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
 import { routePageErrorStatus } from '../../shared/route-error-handling';
@@ -35,7 +39,8 @@ import {
 import { majorEventInfoLinks, majorEventRegistrationInfo } from './major-event-info-policy';
 
 type SubscriptionState =
-  | { status: 'loading' | 'error' }
+  | { status: 'loading' }
+  | { status: 'error'; retrying: boolean }
   | { status: 'ready'; subscription: CurrentUserMajorEventSubscription | null };
 
 @Component({
@@ -50,6 +55,9 @@ type SubscriptionState =
         [links]="links()"
         [programLoading]="programLoading()"
         [participationLoading]="participationLoading()"
+        [participationPending]="participationPending()"
+        [subscriptionError]="subscriptionState().status === 'error'"
+        [subscriptionRetrying]="subscriptionRetrying()"
         [programError]="programError()"
         [programHasMore]="programHasMore()"
         [programPages]="programPages()"
@@ -59,9 +67,10 @@ type SubscriptionState =
         [hasParticipation]="hasParticipation()"
         [hasSubscription]="hasSubscription()"
         (loginRequested)="login()"
+        (retrySubscription)="retrySubscription()"
         (retryProgram)="loadProgram()"
         (loadMoreProgram)="loadProgram()">
-        @if (isAuthenticated() || !isOnline()) {
+        @if (showWorkspace()) {
           <app-more-info
             participationWorkspace
             [embedded]="true"
@@ -90,9 +99,15 @@ export class MajorEventInfoPage {
     this.browser ? timer(0, 30_000).pipe(map(() => Date.now())) : of(Date.now()),
     { initialValue: Date.now() },
   );
-  private readonly subscriptionState = signal<SubscriptionState>({ status: 'loading' });
+  protected readonly subscriptionState = signal<SubscriptionState>({ status: 'loading' });
+  private readonly subscriptionRetries = new Subject<boolean>();
   readonly isAuthenticated = this.auth.isAuthenticated;
   readonly isOnline = inject(NetworkStatusService).isOnline;
+  protected readonly showWorkspace = computed(() => this.isAuthenticated() || !this.isOnline());
+  protected readonly subscriptionRetrying = computed(() => {
+    const state = this.subscriptionState();
+    return state.status === 'error' && state.retrying;
+  });
   readonly hasParticipation = signal(false);
   readonly participationDetail = signal<DetailViewModel | null>(null);
   readonly hasSubscription = computed(() => {
@@ -123,8 +138,13 @@ export class MajorEventInfoPage {
   readonly events = signal<PublicEvent[]>([]);
   readonly programLoading = signal(false);
   private readonly workspace = viewChild(MoreInfo);
+  protected readonly participationPending = computed(
+    () =>
+      (this.isAuthenticated() && this.subscriptionState().status === 'loading') ||
+      (!this.hasSubscription() && this.showWorkspace() && (this.workspace()?.initialDetailLoading() ?? true)),
+  );
   protected readonly participationLoading = computed(
-    () => (this.isAuthenticated() && this.subscriptionState().status === 'loading') || !!this.workspace()?.loading(),
+    () => this.participationPending() || this.subscriptionRetrying() || !!this.workspace()?.loading(),
   );
   readonly programError = signal(false);
   readonly programHasMore = signal(false);
@@ -145,7 +165,6 @@ export class MajorEventInfoPage {
     if (authenticated && state.status === 'error') {
       return {
         title: 'Sua inscrição',
-        description: 'Não foi possível consultar sua inscrição agora.',
         action: { label: 'Ver minhas participações', route: ['/profile', 'attendances'] },
       };
     }
@@ -173,6 +192,7 @@ export class MajorEventInfoPage {
           this.programError.set(false);
           return this.api.getProgram(event.id, this.programAfter).pipe(
             takeUntil(this.programReset),
+            timeout({ first: EVENT_INFORMATION_TIMEOUT_MS }),
             catchError(() => {
               this.programError.set(true);
               this.programLoading.set(false);
@@ -222,6 +242,7 @@ export class MajorEventInfoPage {
             return EMPTY;
           }
           return this.api.getMajorEvent(id).pipe(
+            timeout({ first: EVENT_INFORMATION_TIMEOUT_MS }),
             catchError((error: unknown) =>
               this.informationFallback.majorEvent(id, error).pipe(
                 map(({ event, details }) => {
@@ -249,15 +270,28 @@ export class MajorEventInfoPage {
           if (!event || !authenticated) {
             return of<SubscriptionState>({ status: 'ready', subscription: null });
           }
-          return this.subscriptionsApi.getCurrentUserSubscription(event.id).pipe(
-            map((subscription): SubscriptionState => ({ status: 'ready', subscription })),
-            catchError(() => of<SubscriptionState>({ status: 'error' })),
-            startWith<SubscriptionState>({ status: 'loading' }),
+          return this.subscriptionRetries.pipe(
+            startWith(false),
+            switchMap((retrying) =>
+              this.subscriptionsApi.getCurrentUserSubscription(event.id).pipe(
+                timeout({ first: EVENT_INFORMATION_TIMEOUT_MS }),
+                map((subscription): SubscriptionState => ({ status: 'ready', subscription })),
+                catchError(() => of<SubscriptionState>({ status: 'error', retrying: false })),
+                startWith<SubscriptionState>(retrying ? { status: 'error', retrying } : { status: 'loading' }),
+              ),
+            ),
           );
         }),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((state) => this.subscriptionState.set(state));
+  }
+
+  retrySubscription(): void {
+    const state = this.subscriptionState();
+    if (state.status === 'error' && !state.retrying) {
+      this.subscriptionRetries.next(true);
+    }
   }
 
   loadProgram(): void {

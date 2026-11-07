@@ -29,7 +29,7 @@
     <ng-content select="[participationWorkspace]" />
   </div>
 
-  @if (!hasParticipation()) {
+  @if (!participationPending() && !hasParticipation()) {
   <section class="registration" aria-labelledby="group-registration-heading">
     <div>
       <h2 id="group-registration-heading">Participe do grupo</h2>
@@ -39,8 +39,7 @@
       }
     </div>
   </section>
-  }
-
+  } @if (!participationPending()) {
   <section class="program" aria-labelledby="group-program-heading" [attr.aria-busy]="loading()">
     <h2 id="group-program-heading">Eventos do grupo</h2>
     @for (day of programDays(); track day.id) {
@@ -68,4 +67,5 @@
     <p class="feedback">Nenhum evento publicado neste grupo.</p>
     }
   </section>
+  }
 </main>

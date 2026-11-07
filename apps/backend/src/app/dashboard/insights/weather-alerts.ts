@@ -1,12 +1,12 @@
 import { DashboardWeatherAlert } from '../models';
 import { WeatherService } from '../../weather/weather.service';
 import { UNFAVORABLE_WEATHER_CODES } from './constants';
-import { type InsightEvent } from './insight-event.select';
+import { type CalendarInsightEvent } from './insight-event.select';
 import { isFuture } from 'date-fns';
 
 export async function buildWeatherAlerts(
   weatherService: WeatherService,
-  events: InsightEvent[],
+  events: CalendarInsightEvent[],
 ): Promise<DashboardWeatherAlert[]> {
   const weatherEvents = events.filter(
     (event) => event.latitude != null && event.longitude != null && isFuture(event.startDate),

@@ -23,8 +23,9 @@ describe('CurrentUserSubscriptionFeedResolver', () => {
     resolveCurrentUserContext.mockResolvedValue({ person: { id: 'person-1' } });
     getCurrentUserSubscriptionFeed.mockResolvedValue(feed);
 
-    await expect(createResolver().currentUserSubscriptionFeed({} as never)).resolves.toBe(feed);
-    expect(resolveCurrentUserContext).toHaveBeenCalledWith(authenticatedUser);
+    const context = {};
+    await expect(createResolver().currentUserSubscriptionFeed(context)).resolves.toBe(feed);
+    expect(resolveCurrentUserContext).toHaveBeenCalledWith(authenticatedUser, false, { requestContext: context });
     expect(getCurrentUserSubscriptionFeed).toHaveBeenCalledWith('person-1');
   });
 

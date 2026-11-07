@@ -93,3 +93,36 @@ export const EVENT_INSIGHT_SELECT = {
 export type InsightEvent = Prisma.EventGetPayload<{
   select: typeof EVENT_INSIGHT_SELECT;
 }>;
+
+// Keep the full selector available for existing consumers and fixtures.
+export const CALENDAR_EVENT_SELECT = {
+  id: true,
+  name: true,
+  emoji: true,
+  type: true,
+  startDate: true,
+  endDate: true,
+  locationName: true,
+  locationDescription: true,
+  isVirtual: true,
+  latitude: true,
+  longitude: true,
+  majorEvent: { select: { name: true } },
+  eventGroup: { select: { name: true } },
+  allowSubscription: true,
+  subscriptionStartDate: true,
+  subscriptionEndDate: true,
+  slots: true,
+  shouldCollectAttendance: true,
+  _count: EVENT_INSIGHT_SELECT._count,
+} satisfies Prisma.EventSelect;
+
+export const CONSISTENCY_EVENT_SELECT = {
+  ...EVENT_INSIGHT_SELECT,
+  subscriptions: false,
+  attendances: false,
+  _count: false,
+} satisfies Prisma.EventSelect;
+
+export type CalendarInsightEvent = Prisma.EventGetPayload<{ select: typeof CALENDAR_EVENT_SELECT }>;
+export type ConsistencyInsightEvent = Omit<InsightEvent, '_count'>;

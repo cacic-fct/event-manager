@@ -49,6 +49,7 @@ import {
   switchMap,
   take,
   tap,
+  timeout,
   timer,
 } from 'rxjs';
 import { EventApiService, EventPageData } from './event-api.service';
@@ -78,7 +79,10 @@ import { PublicPrizeDrawApiService } from '../../prize-draws/prize-draw-api.serv
 import { RealtimeInvalidationService } from '../../shared/realtime-invalidation.service';
 import { MoreInfo } from '../../profile/attendance/more-info/more-info';
 import { EventDetailHeading } from '../../shared/event-detail-heading';
-import { EventInformationFallbackService } from '../../shared/event-information-fallback.service';
+import {
+  EVENT_INFORMATION_TIMEOUT_MS,
+  EventInformationFallbackService,
+} from '../../shared/event-information-fallback.service';
 import { InterestToggle } from '../../interests/interest-toggle';
 
 type EventPageState = { status: 'loading' } | { status: 'ready'; data: EventPageData };
@@ -836,6 +840,7 @@ export class Event {
       switchMap(([routeParams, authenticated]) => {
         if (routeParams.previewToken) {
           return this.api.getPreviewEventPageData(routeParams.previewToken).pipe(
+            timeout({ first: EVENT_INFORMATION_TIMEOUT_MS }),
             map(
               (data): EventPageState => ({
                 status: 'ready',
@@ -857,6 +862,7 @@ export class Event {
         }
 
         return this.api.getEventPageData(eventId, authenticated).pipe(
+          timeout({ first: EVENT_INFORMATION_TIMEOUT_MS }),
           catchError((error: unknown) => this.informationFallback.eventPage(eventId, error)),
           map(
             (data): EventPageState => ({

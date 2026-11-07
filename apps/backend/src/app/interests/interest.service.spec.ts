@@ -2,11 +2,48 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { SubscriptionStatus } from '@prisma/client';
 import { EventInterestsService } from './interest.service';
+import { PUBLIC_EVENT_WHERE } from '../public-events/models';
 const { jest } = import.meta;
 
 const fixtureNow = Date.now();
 
 describe('EventInterestsService', () => {
+  it('gets group interest expiry from only the latest visible event', async () => {
+    const prisma = automaticInterestPrisma('EVENT_GROUP');
+    const latestEnd = new Date(fixtureNow + 3 * 24 * 60 * 60_000);
+    prisma.eventGroup.findFirst.mockResolvedValue({
+      interestEnabled: true,
+      events: [{ endDate: latestEnd }],
+    });
+
+    const state = await serviceFor(prisma).getCurrentUserInterestState('person-1', 'EVENT_GROUP', 'group-1');
+
+    expect(state.endsAt).toEqual(latestEnd);
+    expect(prisma.eventGroup.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: {
+          interestEnabled: true,
+          events: {
+            where: { AND: [PUBLIC_EVENT_WHERE] },
+            select: { endDate: true },
+            orderBy: { endDate: 'desc' },
+            take: 1,
+          },
+        },
+      }),
+    );
+  });
+
+  it.each([null, { interestEnabled: true, events: [] }])(
+    'keeps missing or empty groups unavailable: %s',
+    async (group) => {
+      const prisma = automaticInterestPrisma('EVENT_GROUP');
+      prisma.eventGroup.findFirst.mockResolvedValue(group);
+      await expect(
+        serviceFor(prisma).getCurrentUserInterestState('person-1', 'EVENT_GROUP', 'group-1'),
+      ).rejects.toThrow('O alvo do interesse não foi encontrado.');
+    },
+  );
   describe.each(['EVENT', 'EVENT_GROUP'] as const)('automatic registration for %s interests', (targetType) => {
     it('recognizes an activity added after the major registration without selection rows', async () => {
       const prisma = automaticInterestPrisma(targetType);

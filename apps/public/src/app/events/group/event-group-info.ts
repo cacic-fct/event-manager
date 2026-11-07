@@ -31,6 +31,7 @@ export class EventGroupInfo {
   readonly hasParticipation = input(false);
   readonly participationStatuses = input<Record<string, ParticipationEventStatus>>({});
   readonly participationLoading = input(false);
+  readonly participationPending = input(false);
   readonly loading = input(false);
   readonly error = input(false);
   readonly retry = output<void>();

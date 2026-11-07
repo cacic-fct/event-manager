@@ -556,9 +556,20 @@ export class CertificateIssuingService {
     issuedById?: string,
     options: CertificateUpsertOptions = {},
   ): Promise<{ certificate: CertificateRecord; shouldNotify: boolean }> {
+    const { issuanceRunId } = options;
+    if (issuanceRunId && (!options.prisma || options.prisma === this.prisma)) {
+      return this.prisma.$transaction((tx) =>
+        this.upsertCertificateForRecipientResult(config, recipient, issuedById, { ...options, prisma: tx }),
+      );
+    }
+
     const shouldNotifyNow =
       (options.notify ?? true) && (options.prisma === undefined || options.prisma === this.prisma);
     const prisma = options.prisma ?? this.prisma;
+    if (issuanceRunId) {
+      // Check attribution under the same recipient lock used for issuance and revocation.
+      await lockCertificateRecipient(prisma, config.id, recipient.person.id);
+    }
     const existingCertificate = await prisma.certificate.findUnique({
       where: {
         personId_configId: {
@@ -566,8 +577,11 @@ export class CertificateIssuingService {
           configId: config.id,
         },
       },
-      select: CERTIFICATE_SELECT,
+      select: { ...CERTIFICATE_SELECT, ...(issuanceRunId ? { issuanceRunId: true } : {}) },
     });
+    if (existingCertificate && issuanceRunId && existingCertificate.issuanceRunId === issuanceRunId) {
+      return { certificate: existingCertificate, shouldNotify: false };
+    }
     const { restore } = options;
     if (
       restore &&
@@ -599,6 +613,7 @@ export class CertificateIssuingService {
 
     if (!existingCertificate) {
       const createCertificate = async (client: CertificateWriteClient) => {
+        if (!issuanceRunId) await lockCertificateRecipient(client, config.id, recipient.person.id);
         await this.prepareRecipientWrite(client, config, recipient.person.id, issuedById);
         const certificate = await client.certificate.create({
           data: {
@@ -608,6 +623,7 @@ export class CertificateIssuingService {
             certificateTemplateId: config.certificateTemplateId,
             issuedById: issuedById ?? null,
             issuedAt,
+            ...(issuanceRunId ? { issuanceRunId } : {}),
           },
           select: CERTIFICATE_SELECT,
         });
@@ -635,6 +651,7 @@ export class CertificateIssuingService {
     }
 
     const updateCertificate = async (client: CertificateWriteClient) => {
+      if (!issuanceRunId) await lockCertificateRecipient(client, config.id, recipient.person.id);
       await this.prepareRecipientWrite(client, config, recipient.person.id, issuedById);
       const certificate = await client.certificate.update({
         where: {
@@ -656,6 +673,7 @@ export class CertificateIssuingService {
           certificateTemplateId: config.certificateTemplateId,
           issuedById: issuedById ?? null,
           issuedAt,
+          ...(issuanceRunId ? { issuanceRunId } : {}),
           deletedAt: null,
           ...(restore ? { revokedAt: null, revokedById: null, revocationReason: null } : {}),
         },
@@ -690,7 +708,6 @@ export class CertificateIssuingService {
     personId: string,
     actorId?: string,
   ) {
-    await lockCertificateRecipient(client, config.id, personId);
     if (isManualCertificateIssuedTo(config.issuedTo as CertificateIssuedTo)) {
       const membership = await client.certificateManualRecipient.findUnique({
         where: { configId_personId: { configId: config.id, personId } },

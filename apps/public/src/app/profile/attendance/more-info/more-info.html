@@ -14,9 +14,11 @@
 }
 
 <div class="detail-page" [class.embedded]="embedded()" [class.flat-sections]="flatSections()">
-  @if (currentState.status === 'loading') {
+  @if (currentState.status === 'loading') { @if (embedded()) {
+  <p class="participation-loading" role="status">Consultando sua participação…</p>
+  } @if (!embedded() || flatSections() || !initialDetailLoading()) {
   <ng-container [ngTemplateOutlet]="projectedActions" />
-  } @else if (currentState.status === 'empty') {
+  } } @else if (currentState.status === 'empty') {
   <ng-container [ngTemplateOutlet]="projectedActions" />
   } @else if (currentState.status === 'error') {
   <section role="alert" aria-label="Participação indisponível">

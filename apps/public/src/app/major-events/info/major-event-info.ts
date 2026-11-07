@@ -71,12 +71,16 @@ export class MajorEventInfo {
   readonly links = input<MajorEventInfoLink[]>([]);
   readonly programLoading = input(false);
   readonly participationLoading = input(false);
+  readonly participationPending = input(false);
+  readonly subscriptionError = input(false);
+  readonly subscriptionRetrying = input(false);
   readonly programError = input(false);
   readonly programHasMore = input(false);
   readonly programPages = input(0);
   readonly initialProgramDay = input<string | null>(null);
   readonly now = input(Date.now());
   readonly loginRequested = output<void>();
+  readonly retrySubscription = output<void>();
   readonly retryProgram = output<void>();
   readonly loadMoreProgram = output<void>();
 

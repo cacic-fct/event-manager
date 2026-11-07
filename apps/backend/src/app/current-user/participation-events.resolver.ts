@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
-import { Args, Context, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Info, Query, Resolver } from '@nestjs/graphql';
+import type { GraphQLResolveInfo } from 'graphql';
 import {
   ANONYMOUS_AUDIENCE,
   audienceContext,
@@ -8,7 +9,8 @@ import {
 } from '../audiences/audience-context';
 import { IncludePastParticipation } from '../audiences/past-participation.decorator';
 import { PrismaService } from '../prisma/prisma.service';
-import { PUBLIC_EVENT_SELECT, PUBLIC_EVENT_WHERE, PublicEvent } from '../public-events/models';
+import { PUBLIC_EVENT_WHERE, PublicEvent } from '../public-events/models';
+import { publicEventQuerySelect } from '../public-events/public-event-query-select';
 import { CurrentUserContextService } from './context.service';
 import { type GraphqlContext } from './selects';
 
@@ -29,8 +31,9 @@ export class CurrentUserParticipationEventsResolver {
     @Context() context: GraphqlContext,
     @Args('majorEventId', { type: () => String, nullable: true }) majorEventId?: string,
     @Args('eventGroupId', { type: () => String, nullable: true }) eventGroupId?: string,
+    @Info() info?: GraphQLResolveInfo,
   ) {
-    if (!majorEventId && !eventGroupId) {
+    if (majorEventId == null && eventGroupId == null) {
       throw new BadRequestException('Choose a group or major event for participation history.');
     }
     const person = await this.currentUser.requireCurrentPerson(context);
@@ -44,11 +47,11 @@ export class CurrentUserParticipationEventsResolver {
       this.prisma.event.findMany({
         where: {
           deletedAt: null,
-          ...(majorEventId ? { majorEventId } : {}),
-          ...(eventGroupId ? { eventGroupId } : {}),
+          ...(majorEventId != null ? { majorEventId } : {}),
+          ...(eventGroupId != null ? { eventGroupId } : {}),
           OR: [{ AND: [PUBLIC_EVENT_WHERE, eventAudienceWhere(current)] }, pastEventParticipationWhere(principal)],
         },
-        select: PUBLIC_EVENT_SELECT,
+        select: publicEventQuerySelect(info),
         orderBy: [{ startDate: 'desc' }, { id: 'asc' }],
         take: 1000,
       }),

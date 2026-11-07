@@ -3,6 +3,7 @@ import { ForbiddenException } from '@nestjs/common';
 import { CertificateScope, EventManagerPermissionScope } from '@prisma/client';
 import { EVENT_MANAGER_PERMISSION_CATALOG, EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import type { AuthorizationPolicyService } from './authorization-policy.service';
 const { jest } = import.meta;
 
@@ -78,6 +79,24 @@ describe('AuthorizationPolicyService', () => {
     await expect(
       service.assertPermissions(user([EventManagerKeycloakRole.Access]), [Permission.Event.Read]),
     ).resolves.toBeUndefined();
+  });
+
+  it('loads grants once for a multi-permission assertion without reusing another permission grant', async () => {
+    const actor = user([EventManagerKeycloakRole.Access]);
+    const permissions = [Permission.Event.Read, Permission.Receipt.Read];
+    activeScopes.mockResolvedValue([
+      grant({ permission: Permission.Event.Read, scope: EventManagerPermissionScope.GLOBAL }),
+      grant({ permission: Permission.Receipt.Read, scope: EventManagerPermissionScope.GLOBAL }),
+    ]);
+    await expect(service.assertPermissions(actor, permissions)).resolves.toBeUndefined();
+    expect(activeScopes).toHaveBeenCalledTimes(1);
+    expect(activeScopes).toHaveBeenCalledWith(prisma, actor.sub, permissions);
+
+    activeScopes.mockResolvedValue([
+      grant({ permission: Permission.Event.Read, scope: EventManagerPermissionScope.GLOBAL }),
+    ]);
+    await expect(service.assertPermissions(actor, permissions)).rejects.toThrow(Permission.Receipt.Read);
+    expect(activeScopes).toHaveBeenCalledTimes(2);
   });
 
   it('fails closed when required permission names are invalid', async () => {
@@ -243,6 +262,34 @@ describe('AuthorizationPolicyService', () => {
         sportsTournamentId: 'tournament-1',
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('resolves the source tournament once for all grants and the audience check', async () => {
+    const permissions = [
+      Permission.SportsCategory.Read,
+      Permission.SportsTeam.Read,
+      Permission.SportsRegistration.Read,
+      Permission.SportsOfficial.Read,
+    ];
+    activeScopes.mockResolvedValue(
+      permissions.map((permission) =>
+        grant({ permission, scope: EventManagerPermissionScope.MAJOR_EVENT, majorEventId: 'major-1' }),
+      ),
+    );
+    prisma.sportsTournament.findUnique.mockResolvedValue({ majorEventId: 'major-1' });
+    const count = jest.fn().mockResolvedValue(1);
+    const policy = new AuthorizationPolicyServiceClass({ ...prisma, majorEvent: { count } } as never);
+
+    await expect(
+      audienceContext.run(ANONYMOUS_AUDIENCE, () =>
+        policy.assertPermissions(user([EventManagerKeycloakRole.Access]), permissions, {
+          sportsTournamentId: 'source',
+        }),
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(prisma.sportsTournament.findUnique).toHaveBeenCalledTimes(1);
+    expect(count).toHaveBeenCalledTimes(1);
   });
 
   it('denies scoped grants when the operation has no matching target', async () => {

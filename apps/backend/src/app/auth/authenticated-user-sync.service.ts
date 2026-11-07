@@ -71,7 +71,7 @@ export class AuthenticatedUserSyncService {
     const profile = this.getInferredProfile(authenticatedUser);
     const data: UserClaimSyncUpdateData = {};
 
-    if (profile.fullname) {
+    if (profile.fullname && profile.fullname !== user.name) {
       data.name = profile.fullname;
     }
     if (!user.identityDocument && profile.identityDocument) {
@@ -138,6 +138,7 @@ export class AuthenticatedUserSyncService {
 }
 
 export type UserClaimSyncRecord = {
+  name?: string;
   identityDocument: string | null;
   academicId: string | null;
   unespRole: string[];

@@ -2,9 +2,70 @@ import { audienceContext } from '../audiences/audience-context';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { MajorEventsResolver } from './resolver';
+import { Kind, parse, type GraphQLResolveInfo } from 'graphql';
 const { jest } = import.meta;
 
 describe('MajorEventsResolver', () => {
+  it.each([
+    ['query { majorEvents { id name } }', false],
+    [
+      `query { majorEvents { id ...Details } }
+      fragment Details on MajorEvent { text: description additionalPaymentInfo paymentInfo { id } }`,
+      true,
+    ],
+  ])('only hydrates requested list detail fields: %s', async (query, requested) => {
+    const { resolver, prisma } = createResolver({ paymentInfoTableExists: true });
+    prisma.majorEvent.findMany.mockResolvedValue([]);
+    const document = parse(query);
+    const operation = document.definitions.find((definition) => definition.kind === Kind.OPERATION_DEFINITION);
+    const field = operation?.selectionSet.selections[0];
+    if (!field || field.kind !== Kind.FIELD) throw new Error('Expected majorEvents field');
+    const fragments = Object.fromEntries(
+      document.definitions
+        .filter((definition) => definition.kind === Kind.FRAGMENT_DEFINITION)
+        .map((definition) => [definition.name.value, definition]),
+    );
+    const info = { fieldNodes: [field], fragments } as unknown as GraphQLResolveInfo;
+
+    await resolver.majorEvents(
+      context() as never,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      info,
+    );
+
+    expect(prisma.majorEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.objectContaining({
+          description: requested,
+          additionalPaymentInfo: requested,
+          paymentInfo: requested ? expect.any(Object) : false,
+          majorEventPrices: expect.any(Object),
+        }),
+      }),
+    );
+  });
+
+  it('retains full list projections for direct callers without GraphQL info', async () => {
+    const { resolver, prisma } = createResolver({ paymentInfoTableExists: true });
+    prisma.majorEvent.findMany.mockResolvedValue([]);
+
+    await resolver.majorEvents(context() as never);
+
+    expect(prisma.majorEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.objectContaining({
+          description: true,
+          additionalPaymentInfo: true,
+          paymentInfo: expect.any(Object),
+        }),
+      }),
+    );
+  });
   it('blocks tier deletion when ticket policies or offers reference a removed tier', async () => {
     const { resolver, tx } = createResolver();
     tx.priceTier.findMany.mockResolvedValue([{ id: 'tier-used' }]);

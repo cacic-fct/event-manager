@@ -8,10 +8,12 @@ import {
   type EventGroupDetails,
   type MajorEventDetails,
 } from '@cacic-fct/shared-utils';
-import { catchError, defer, map, of, switchMap, throwError } from 'rxjs';
+import { catchError, defer, map, of, switchMap, throwError, timeout } from 'rxjs';
 import type { EventPageData } from '../events/detail/event-api.service';
 import { AttendancesApiService } from '../profile/attendance/attendances-api.service';
 import { NetworkStatusService } from './network-status.service';
+
+export const EVENT_INFORMATION_TIMEOUT_MS = 15_000;
 
 /** Keeps historical and saved participation readable when the public catalog is unavailable. */
 @Service()
@@ -26,7 +28,7 @@ export class EventInformationFallbackService {
       switchMap((saved) => {
         if (saved?.eventType === 'event') return of(saved.details);
         return this.network.isOnline() && this.auth.user()?.sub
-          ? this.api.getEventDetails(eventId)
+          ? this.api.getEventDetails(eventId).pipe(timeout({ first: EVENT_INFORMATION_TIMEOUT_MS }))
           : throwError(() => originalError);
       }),
       map((details: EventDetails): EventPageData => {
@@ -53,7 +55,7 @@ export class EventInformationFallbackService {
       switchMap((saved) => {
         if (saved?.eventType === 'major-event') return of(saved.details);
         return this.network.isOnline() && this.auth.user()?.sub
-          ? this.api.getMajorEventDetails(majorEventId)
+          ? this.api.getMajorEventDetails(majorEventId).pipe(timeout({ first: EVENT_INFORMATION_TIMEOUT_MS }))
           : throwError(() => originalError);
       }),
       map((details: MajorEventDetails) => {
@@ -69,7 +71,7 @@ export class EventInformationFallbackService {
       switchMap((saved) => {
         if (saved?.eventType === 'event-group') return of(saved.details);
         return this.network.isOnline() && this.auth.user()?.sub
-          ? this.api.getEventGroupDetails(eventGroupId)
+          ? this.api.getEventGroupDetails(eventGroupId).pipe(timeout({ first: EVENT_INFORMATION_TIMEOUT_MS }))
           : throwError(() => originalError);
       }),
       map((details: EventGroupDetails) => {

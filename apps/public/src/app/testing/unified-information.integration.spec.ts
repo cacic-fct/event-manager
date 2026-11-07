@@ -2,7 +2,7 @@ import './observer-mocks';
 import { signal, type Type } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting, type TestRequest } from '@angular/common/http/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
@@ -35,6 +35,7 @@ describe('unified information pages HTTP integration', () => {
     options: ParticipationInformationOptions = {},
     authenticated = true,
     queryParams: Record<string, string> = {},
+    holdQuery?: string,
   ) {
     const data = createParticipationInformationFixture(options);
     const getMaterials = vi.fn(async () => ({ links: [], updatedAt: null }));
@@ -81,26 +82,105 @@ describe('unified information pages HTTP integration', () => {
     http = TestBed.inject(HttpTestingController);
     const fixture = TestBed.createComponent(component);
     const queries: string[] = [];
+    const heldRequests: TestRequest[] = [];
+    let holding = Boolean(holdQuery);
     fixture.detectChanges();
+    function flush(request: TestRequest) {
+      request.flush({
+        data: participationInformationGraphqlData(
+          request.request.body.query,
+          request.request.body.variables ?? {},
+          data,
+        ),
+      });
+    }
     async function settleRequests() {
       for (let pass = 0; pass < 8; pass++) {
         await fixture.whenStable();
         for (const request of http.match('/api/graphql')) {
           queries.push(request.request.body.query);
-          request.flush({
-            data: participationInformationGraphqlData(
-              request.request.body.query,
-              request.request.body.variables ?? {},
-              data,
-            ),
-          });
+          if (holding && request.request.body.query.includes(`query ${holdQuery}(`)) {
+            heldRequests.push(request);
+          } else {
+            flush(request);
+          }
         }
         fixture.detectChanges();
       }
     }
     await settleRequests();
-    return { fixture, data, host: fixture.nativeElement as HTMLElement, queries, getMaterials, settleRequests };
+    async function releaseRequests() {
+      expect(heldRequests).toHaveLength(1);
+      holding = false;
+      heldRequests.splice(0).forEach(flush);
+      fixture.detectChanges();
+      await settleRequests();
+    }
+    return {
+      fixture,
+      data,
+      host: fixture.nativeElement as HTMLElement,
+      queries,
+      getMaterials,
+      settleRequests,
+      releaseRequests,
+    };
   }
+
+  it('keeps the public major-event program hidden until the subscription check resolves', async () => {
+    const { host, releaseRequests } = await setup(
+      MajorEventInfoPage,
+      { targetType: 'major-event' },
+      true,
+      {},
+      'CurrentUserMajorEventSubscription',
+    );
+    expect(host.querySelector('h1')).toBeTruthy();
+    expect(host.textContent).toContain('Consultando sua participação…');
+    expect(host.querySelector('#program-heading')).toBeNull();
+    expect(host.querySelector('[role="tablist"]')).toBeNull();
+
+    await releaseRequests();
+    expect(host.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain('Minha inscrição');
+    expect(host.querySelector('#program-heading')).toBeNull();
+  });
+
+  it('waits for group participation before showing the activity list and registration guidance', async () => {
+    const { host, releaseRequests } = await setup(
+      EventGroupInfoPage,
+      { targetType: 'event-group' },
+      true,
+      {},
+      'CurrentUserEventGroupDetails',
+    );
+    expect(host.querySelector('h1')).toBeTruthy();
+    expect(host.textContent).toContain('Consultando sua participação…');
+    expect(host.querySelector('#group-program-heading')).toBeNull();
+    expect(host.querySelector('#group-registration-heading')).toBeNull();
+
+    await releaseRequests();
+    expect(host.querySelector('#group-program-heading')).toBeTruthy();
+    expect(host.querySelector('#workspace-heading')).toBeTruthy();
+    expect(host.querySelector('#group-registration-heading')).toBeNull();
+  });
+
+  it('waits for certificate-only participation before inserting public event information below it', async () => {
+    const { host, releaseRequests } = await setup(
+      Event,
+      { subscribed: false, issuedCertificate: true },
+      true,
+      {},
+      'CurrentUserEventDetails',
+    );
+    expect(host.querySelector('h1')).toBeTruthy();
+    expect(host.textContent).toContain('Consultando sua participação…');
+    expect(host.querySelector('.detail-section')).toBeNull();
+
+    await releaseRequests();
+    expect(host.querySelector('#certificate-heading')).toBeTruthy();
+    expect(host.querySelector('.detail-section')).toBeTruthy();
+    expect(host.querySelector('[role="tablist"]')).toBeNull();
+  });
 
   async function selectTab<T>(fixture: ComponentFixture<T>, index: number) {
     const tabs = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('[role="tab"]');

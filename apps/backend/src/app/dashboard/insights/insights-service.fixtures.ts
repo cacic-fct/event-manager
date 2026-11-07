@@ -63,6 +63,12 @@ export function createPrismaMock() {
       count: jest.fn(),
       findMany: jest.fn().mockResolvedValue([]),
     },
+    eventSubscription: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    eventAttendance: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
     majorEvent: {
       count: jest.fn(),
       findMany: jest.fn().mockResolvedValue([]),

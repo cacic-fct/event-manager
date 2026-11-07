@@ -625,7 +625,7 @@ describe('EventFormsService', () => {
         where: expect.objectContaining({
           publicationState: PublicationState.PUBLISHED,
         }),
-        include: expect.any(Object),
+        select: expect.objectContaining({ id: true, name: true, responseMode: true, links: expect.any(Object) }),
         take: 100,
       }),
     );
@@ -1041,6 +1041,86 @@ describe('EventFormsService', () => {
         }),
       }),
     );
+  });
+
+  it('reuses form eligibility per listing without mixing audiences or retaining decisions across requests', async () => {
+    const subscriberForm = formRecord({ links: [linkRecord({ audiences: [EventFormAudience.SUBSCRIBERS] })] });
+    const attendeeForm = formRecord({ links: [linkRecord({ audiences: [EventFormAudience.ATTENDEES] })] });
+    prisma.eventForm.findMany.mockResolvedValue([
+      { ...subscriberForm, id: 'subscriber-1' },
+      { ...attendeeForm, id: 'attendee-1' },
+      { ...subscriberForm, id: 'subscriber-2' },
+      { ...attendeeForm, id: 'attendee-2' },
+    ]);
+    prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
+    const target = { targetType: EventFormTargetType.EVENT, eventId: 'event-1' };
+
+    const forms = await service.listCurrentUserForms(context, target);
+
+    expect(forms.map((form) => form.id)).toEqual(['subscriber-1', 'subscriber-2']);
+    expect(prisma.eventSubscription.findFirst).toHaveBeenCalledTimes(2);
+    expect(prisma.eventAttendance.findFirst).toHaveBeenCalledTimes(2);
+
+    prisma.eventSubscription.findFirst.mockResolvedValue(null);
+    await expect(service.listCurrentUserForms(context, target)).resolves.toEqual([]);
+    expect(prisma.eventSubscription.findFirst).toHaveBeenCalledTimes(4);
+  });
+
+  it('keeps released-result eligibility separate from unreleased forms in the same listing', async () => {
+    const links = [linkRecord({ audiences: [EventFormAudience.SUBSCRIBERS] })];
+    prisma.eventForm.findMany.mockResolvedValue([
+      { ...formRecord({ links }), id: 'unreleased' },
+      { ...formRecord({ links, resultsPublic: true, resultsLive: true }), id: 'released' },
+      { ...formRecord({ links }), id: 'unreleased-2' },
+    ]);
+    prisma.eventAttendance.findFirst.mockResolvedValue({ eventId: 'event-1' });
+
+    const forms = await service.listCurrentUserForms(context, {
+      targetType: EventFormTargetType.EVENT,
+      eventId: 'event-1',
+    });
+
+    expect(forms.map((form) => form.id)).toEqual(['released']);
+  });
+
+  it('does not reuse eligibility between different price-tier restrictions', async () => {
+    const majorLink = {
+      targetType: EventFormTargetType.MAJOR_EVENT,
+      majorEventId: 'major-1',
+      audiences: [EventFormAudience.SUBSCRIBERS],
+    };
+    prisma.eventForm.findMany.mockResolvedValue([
+      { ...formRecord({ links: [linkRecord(majorLink)] }), id: 'unrestricted' },
+      { ...formRecord({ links: [linkRecord({ ...majorLink, priceTierIds: ['tier-1'] })] }), id: 'restricted' },
+      { ...formRecord({ links: [linkRecord(majorLink)] }), id: 'unrestricted-2' },
+    ]);
+    prisma.majorEventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1', paymentTier: 'Professor' });
+    prisma.priceTier.findMany.mockResolvedValue([{ name: 'Estudante' }]);
+
+    const forms = await service.listCurrentUserForms(context, {
+      targetType: EventFormTargetType.MAJOR_EVENT,
+      majorEventId: 'major-1',
+    });
+
+    expect(forms.map((form) => form.id)).toEqual(['unrestricted', 'unrestricted-2']);
+    expect(prisma.priceTier.findMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps future-subscriber eligibility scoped to subscription-flow links', async () => {
+    prisma.event.findFirst.mockResolvedValue({ id: 'event-1' });
+    prisma.eventForm.findMany.mockResolvedValue([
+      { ...formRecord({ insertInSubscriptionFlow: true }), id: 'flow' },
+      { ...formRecord({ insertInSubscriptionFlow: false }), id: 'regular' },
+      { ...formRecord({ insertInSubscriptionFlow: true }), id: 'flow-2' },
+    ]);
+
+    const forms = await service.listCurrentUserForms(
+      context,
+      { targetType: EventFormTargetType.EVENT, eventId: 'event-1' },
+      { subscriptionFlowOnly: true },
+    );
+
+    expect(forms.map((form) => form.id)).toEqual(['flow', 'flow-2']);
   });
 
   it('redacts response counts from current-user form listings until results are released', async () => {
@@ -2103,6 +2183,9 @@ function createPrisma() {
       count: jest.fn(),
       findFirst: jest.fn(),
       findMany: jest.fn(),
+    },
+    priceTier: {
+      findMany: jest.fn().mockResolvedValue([]),
     },
     majorEventSubscriptionEventSelection: {
       findFirst: jest.fn(),

@@ -33,6 +33,9 @@ describe('AttendancesApiService uncovered operations', () => {
       (request) =>
         request.url === '/api/graphql' && String(request.body?.query).includes('CurrentUserMajorEventDetails'),
     );
+    expect(detailsRequest.request.body.query).toContain('currentUserEventAttendances(majorEventId: $majorEventId)');
+    expect(detailsRequest.request.body.query).not.toContain('selectedEvents {');
+    expect(detailsRequest.request.body.query).not.toContain('notSubscribedEvents {');
     expect(detailsRequest.request.body.variables).toEqual({ majorEventId: 'major-1' });
     detailsRequest.flush({
       data: {
@@ -67,7 +70,8 @@ describe('AttendancesApiService uncovered operations', () => {
       (request) =>
         request.url === '/api/graphql' && String(request.body?.query).includes('CurrentUserMajorEventFeedItem'),
     );
-    expect(feedRequest.request.body.variables).toBeUndefined();
+    expect(feedRequest.request.body.variables).toEqual({ majorEventId: 'major-1' });
+    expect(feedRequest.request.body.query).toContain('currentUserMajorEventFeed(majorEventId: $majorEventId)');
     feedRequest.flush({
       data: {
         currentUserMajorEventFeed: [

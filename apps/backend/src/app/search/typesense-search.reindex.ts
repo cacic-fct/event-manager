@@ -39,6 +39,24 @@ type ReindexPage = {
   skip?: number;
 };
 
+async function upsertSearchDocumentsInBatches<T extends { id: string }>(
+  loadRecords: (page: Pick<ReindexPage, 'orderBy' | 'take'>, afterId: string | undefined) => Promise<T[]>,
+  upsertRecord: (record: T) => Promise<void>,
+): Promise<void> {
+  const concurrency = 4;
+  let afterId: string | undefined;
+  for (;;) {
+    const records = await loadRecords({ orderBy: { id: 'asc' }, take: SEARCH_REINDEX_BATCH_SIZE }, afterId);
+    for (let offset = 0; offset < records.length; offset += concurrency) {
+      await Promise.all(records.slice(offset, offset + concurrency).map(upsertRecord));
+    }
+    if (records.length < SEARCH_REINDEX_BATCH_SIZE) {
+      return;
+    }
+    afterId = records[records.length - 1].id;
+  }
+}
+
 async function replaceSearchDocumentsInBatches<T extends { id: string }>(input: {
   client: TypesenseClient | null;
   logger: Logger;
@@ -211,16 +229,15 @@ export async function reindexEventSearchDocuments(input: {
     return;
   }
 
-  const events = await input.prisma.event.findMany({
-    where: {
-      ...input.where,
-      deletedAt: null,
-    },
-    select: EVENT_SEARCH_SELECT,
-  });
-
-  await Promise.all(
-    events.map((event) =>
+  const where = { ...input.where, deletedAt: null };
+  await upsertSearchDocumentsInBatches(
+    (page, afterId) =>
+      input.prisma.event.findMany({
+        where: afterId ? { AND: [where, { id: { gt: afterId } }] } : where,
+        select: EVENT_SEARCH_SELECT,
+        ...page,
+      }),
+    (event) =>
       upsertTypesenseDocument<EventSearchDocument>({
         client: input.client,
         logger: input.logger,
@@ -228,7 +245,6 @@ export async function reindexEventSearchDocuments(input: {
         document: toEventSearchDocument(event),
         throwOnError: input.throwOnError,
       }),
-    ),
   );
 }
 
@@ -243,18 +259,21 @@ export async function reindexEventGroupSearchDocuments(input: {
     if (input.throwOnError) throw new Error('Typesense is unavailable; could not reindex event groups.');
     return;
   }
-  const groups = await input.prisma.eventGroup.findMany({
-    where: { ...input.where, deletedAt: null },
-    select: {
-      id: true,
-      name: true,
-      emoji: true,
-      majorEventId: true,
-      majorEvent: { select: { name: true, deletedAt: true } },
-    },
-  });
-  await Promise.all(
-    groups.map((group) =>
+  const where = { ...input.where, deletedAt: null };
+  await upsertSearchDocumentsInBatches(
+    (page, afterId) =>
+      input.prisma.eventGroup.findMany({
+        where: afterId ? { AND: [where, { id: { gt: afterId } }] } : where,
+        select: {
+          id: true,
+          name: true,
+          emoji: true,
+          majorEventId: true,
+          majorEvent: { select: { name: true, deletedAt: true } },
+        },
+        ...page,
+      }),
+    (group) =>
       upsertTypesenseDocument<EventGroupSearchDocument>({
         client: input.client,
         logger: input.logger,
@@ -268,7 +287,6 @@ export async function reindexEventGroupSearchDocuments(input: {
           majorEventName: group.majorEvent?.deletedAt ? undefined : group.majorEvent?.name,
         },
       }),
-    ),
   );
 }
 

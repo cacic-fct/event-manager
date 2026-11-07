@@ -68,7 +68,31 @@ export async function notifyDueAvailableEventFormLinks(
         },
       },
     },
-    include: eventFormInclude,
+    select: {
+      id: true,
+      name: true,
+      responseMode: true,
+      links: {
+        where: { deletedAt: null },
+        select: {
+          id: true,
+          targetType: true,
+          eventId: true,
+          majorEventId: true,
+          audiences: true,
+          insertInSubscriptionFlow: true,
+          requiredInSubscriptionFlow: true,
+          notifyOnPublish: true,
+          lastNotifiedAt: true,
+          availableFrom: true,
+          availableUntil: true,
+          event: { select: { name: true, endDate: true } },
+          majorEvent: { select: { name: true, endDate: true } },
+          priceTiers: { select: { priceTier: { select: { name: true } } } },
+        },
+        orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
+      },
+    },
     take: 100,
     orderBy: [{ publishedAt: 'asc' }, { updatedAt: 'asc' }],
   });
@@ -179,6 +203,9 @@ async function publishEventFormNowIfClaimed(
   return published;
 }
 
-function notifyEligiblePeople(formNotifications: EventFormNotificationService, form: EventFormRecord): Promise<number> {
+function notifyEligiblePeople(
+  formNotifications: EventFormNotificationService,
+  form: Parameters<EventFormNotificationService['notifyEligiblePeople']>[0],
+): Promise<number> {
   return formNotifications.notifyEligiblePeople(form);
 }

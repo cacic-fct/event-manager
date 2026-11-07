@@ -1,5 +1,5 @@
 import { ICalEventClass, ICalEventTransparency } from 'ical-generator';
-import { BadRequestException, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { subHours, subYears } from 'date-fns';
 import { PrismaService } from '../prisma/prisma.service';
 import { PUBLIC_EVENT_WHERE } from '../public-events/models';
@@ -55,6 +55,7 @@ import {
 
 @Injectable()
 export class CalendarService {
+  private readonly logger = new Logger(CalendarService.name);
   private readonly calendarFeedKeyPepper = readCalendarFeedKeyPepper();
 
   constructor(
@@ -675,8 +676,8 @@ export class CalendarService {
     });
   }
 
-  private async disableAdminCalendarFeedWithoutTargets(userId: string, now: Date): Promise<void> {
-    await this.prisma.userAdminCalendarFeedSettings.updateMany({
+  private async disableAdminCalendarFeedWithoutTargets(userId: string, now: Date): Promise<number> {
+    const result = await this.prisma.userAdminCalendarFeedSettings.updateMany({
       where: {
         userId,
         enabled: true,
@@ -688,6 +689,7 @@ export class CalendarService {
         lastCheckedAt: now,
       },
     });
+    return result.count;
   }
 
   private async disableAdminCalendarFeedForStaleAccess(userId: string, now: Date): Promise<void> {
@@ -706,26 +708,30 @@ export class CalendarService {
   }
 
   private async disableStaleAdminCalendarFeeds(now: Date): Promise<number> {
-    const settings = await this.prisma.userAdminCalendarFeedSettings.findMany({
-      where: {
-        enabled: true,
-      },
-      select: {
-        userId: true,
-      },
-      orderBy: {
-        userId: 'asc',
-      },
-    });
-
+    const batchSize = 100;
+    let afterUserId: string | undefined;
     let disabledCount = 0;
-    for (const setting of settings) {
-      if (await hasCurrentAdminFeedTargets(this.prisma, setting.userId, now, 1)) {
-        continue;
+    for (;;) {
+      const settings = await this.prisma.userAdminCalendarFeedSettings.findMany({
+        where: { enabled: true, ...(afterUserId ? { userId: { gt: afterUserId } } : {}) },
+        select: { userId: true },
+        orderBy: { userId: 'asc' },
+        take: batchSize,
+      });
+      for (const setting of settings) {
+        try {
+          if (await hasCurrentAdminFeedTargets(this.prisma, setting.userId, now, 1)) {
+            continue;
+          }
+          disabledCount += await this.disableAdminCalendarFeedWithoutTargets(setting.userId, now);
+        } catch (error) {
+          this.logger.warn(`Could not check or disable the admin calendar feed for user ${setting.userId}.`, error);
+        }
       }
-
-      await this.disableAdminCalendarFeedWithoutTargets(setting.userId, now);
-      disabledCount += 1;
+      if (settings.length < batchSize) {
+        break;
+      }
+      afterUserId = settings[settings.length - 1].userId;
     }
 
     return disabledCount;

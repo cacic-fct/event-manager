@@ -110,6 +110,8 @@ describe('typesense reindex helpers', () => {
     expect(prisma.event.findMany).toHaveBeenCalledWith({
       where: { majorEventId: 'major-1', deletedAt: null },
       select: expect.objectContaining({ id: true, majorEvent: expect.any(Object) }),
+      orderBy: { id: 'asc' },
+      take: SEARCH_REINDEX_BATCH_SIZE,
     });
     expect(client.documents.upsert).toHaveBeenCalledWith(expect.objectContaining({ id: 'event-1' }));
   });
@@ -138,6 +140,8 @@ describe('typesense reindex helpers', () => {
     expect(prisma.eventGroup.findMany).toHaveBeenCalledWith({
       where: { majorEventId: 'major-1', deletedAt: null },
       select: expect.objectContaining({ id: true, majorEvent: expect.any(Object) }),
+      orderBy: { id: 'asc' },
+      take: SEARCH_REINDEX_BATCH_SIZE,
     });
     expect(client.documents.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -145,6 +149,73 @@ describe('typesense reindex helpers', () => {
         majorEventName: 'Semana atualizada',
       }),
     );
+  });
+
+  it.each(['event', 'eventGroup'] as const)(
+    'cursor-batches changed %s records and bounds indexing concurrency',
+    async (model) => {
+      const client = createClientMock();
+      const prisma = createPrismaMock();
+      const firstPage = Array.from({ length: SEARCH_REINDEX_BATCH_SIZE }, (_, index) => ({
+        id: `record-${String(index).padStart(4, '0')}`,
+        name: 'Evento',
+        startDate: new Date(),
+        endDate: new Date(),
+        majorEvent: null,
+      }));
+      const lastPage = [{ ...firstPage[0], id: 'record-last' }];
+      prisma[model].findMany.mockResolvedValueOnce(firstPage).mockResolvedValueOnce(lastPage);
+      let active = 0;
+      let maximum = 0;
+      client.documents.upsert.mockImplementation(async () => {
+        active += 1;
+        maximum = Math.max(maximum, active);
+        await Promise.resolve();
+        active -= 1;
+        return {};
+      });
+      const reindex = model === 'event' ? reindexEventSearchDocuments : reindexEventGroupSearchDocuments;
+      await reindex({
+        client: client.instance as never,
+        prisma: prisma as never,
+        logger: { error: jest.fn() } as never,
+        where: { majorEventId: 'major' },
+        throwOnError: true,
+      });
+      expect(prisma[model].findMany).toHaveBeenCalledTimes(2);
+      expect(prisma[model].findMany).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          where: {
+            AND: [{ majorEventId: 'major', deletedAt: null }, { id: { gt: firstPage[firstPage.length - 1].id } }],
+          },
+          orderBy: { id: 'asc' },
+          take: SEARCH_REINDEX_BATCH_SIZE,
+        }),
+      );
+      expect(client.documents.upsert).toHaveBeenCalledTimes(SEARCH_REINDEX_BATCH_SIZE + 1);
+      expect(maximum).toBeLessThanOrEqual(4);
+      expect(maximum).toBeGreaterThan(1);
+      expect(client.documents.upsert).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'record-last' }));
+    },
+  );
+
+  it.each(['event', 'eventGroup'] as const)('propagates changed %s indexing failures when requested', async (model) => {
+    const client = createClientMock();
+    const prisma = createPrismaMock({
+      [model]: [{ id: 'record', name: 'Evento', startDate: new Date(), endDate: new Date() }],
+    });
+    const error = new Error('index unavailable');
+    client.documents.upsert.mockRejectedValue(error);
+    const reindex = model === 'event' ? reindexEventSearchDocuments : reindexEventGroupSearchDocuments;
+    const input = {
+      client: client.instance as never,
+      prisma: prisma as never,
+      logger: { error: jest.fn() } as never,
+      where: { majorEventId: 'major' },
+    };
+    await expect(reindex({ ...input, throwOnError: true })).rejects.toBe(error);
+    await expect(reindex(input)).resolves.toBeUndefined();
   });
 
   it('imports audit-log entries in cursor batches', async () => {
