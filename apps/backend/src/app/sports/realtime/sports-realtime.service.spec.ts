@@ -71,6 +71,7 @@ describe('SportsRealtimeService', () => {
     };
     const service = new SportsRealtimeService(redis as never, replay as never);
     await service.onModuleInit();
+    expect(subscriber.on).toHaveBeenCalledWith('error', expect.any(Function));
     const received: MessageEvent[] = [];
     const subscription = service.watch('sports-match:match-1').subscribe((event) => received.push(event));
 

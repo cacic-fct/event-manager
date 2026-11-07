@@ -73,6 +73,7 @@ describe('PrizeDrawRealtimeService', () => {
   it('accepts valid subscriber messages, ignores malformed payloads, and closes the duplicate on destroy', async () => {
     const context = createContext();
     await context.service.onModuleInit();
+    expect(context.subscriber.on).toHaveBeenCalledWith('error', expect.any(Function));
     const scope = context.service.scope('draw', 'draw-1');
     const values: unknown[] = [];
     const subscription = context.service.watch(scope).subscribe((value) => values.push(value));
