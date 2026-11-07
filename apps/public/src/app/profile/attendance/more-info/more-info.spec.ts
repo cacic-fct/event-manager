@@ -10,6 +10,7 @@ import { NEVER, Subject, of, throwError } from 'rxjs';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { PublicDatabaseProvider } from '@cacic-fct/public-indexed-db';
 import type { DetailViewModel } from '@cacic-fct/shared-utils';
+import { EVENT_INFORMATION_TIMEOUT_MS } from '../../../shared/event-information-fallback.service';
 import { NetworkStatusService } from '../../../shared/network-status.service';
 import { PublicPrizeDrawApiService } from '../../../prize-draws/prize-draw-api.service';
 import { AttendancesApiService } from '../attendances-api.service';
@@ -90,6 +91,32 @@ describe('MoreInfo', () => {
   });
 
   afterEach(() => httpTesting.verify());
+
+  it('ends the initial loading state on timeout and keeps it settled during a manual retry', async () => {
+    vi.useFakeTimers();
+    try {
+      const getEventDetails = vi.spyOn(TestBed.inject(AttendancesApiService), 'getEventDetails').mockReturnValue(NEVER);
+      fixture.componentRef.setInput('embedded', true);
+      fixture.detectChanges();
+      routeParams.next(convertToParamMap({ eventType: 'event', eventId: 'event-1' }));
+      fixture.detectChanges();
+      expect(component.initialDetailLoading()).toBe(true);
+
+      await vi.advanceTimersByTimeAsync(EVENT_INFORMATION_TIMEOUT_MS);
+      fixture.detectChanges();
+      expect(component.detailState().status).toBe('error');
+      expect(component.initialDetailLoading()).toBe(false);
+
+      component.retryParticipation();
+      fixture.detectChanges();
+      expect(getEventDetails).toHaveBeenCalledTimes(2);
+      expect(component.detailState().status).toBe('loading');
+      expect(component.initialDetailLoading()).toBe(false);
+      fixture.destroy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 
   it.each([false, true])(
     'renders certificate availability independently of issuance setting %s',

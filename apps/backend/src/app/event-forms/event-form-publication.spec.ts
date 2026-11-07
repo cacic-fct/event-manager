@@ -236,7 +236,31 @@ describe('event form publication and service support helpers', () => {
             }),
           },
         }),
-        include: expect.any(Object),
+        select: {
+          id: true,
+          name: true,
+          responseMode: true,
+          links: {
+            where: { deletedAt: null },
+            select: {
+              id: true,
+              targetType: true,
+              eventId: true,
+              majorEventId: true,
+              audiences: true,
+              insertInSubscriptionFlow: true,
+              requiredInSubscriptionFlow: true,
+              notifyOnPublish: true,
+              lastNotifiedAt: true,
+              availableFrom: true,
+              availableUntil: true,
+              event: { select: { name: true, endDate: true } },
+              majorEvent: { select: { name: true, endDate: true } },
+              priceTiers: { select: { priceTier: { select: { name: true } } } },
+            },
+            orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
+          },
+        },
       }),
     );
   });

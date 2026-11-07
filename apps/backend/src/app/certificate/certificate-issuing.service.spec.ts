@@ -693,6 +693,55 @@ describe('CertificateIssuingService', () => {
     expect(notifications.notifyCertificateAvailable).not.toHaveBeenCalled();
   });
 
+  it.each(['create', 'update'] as const)('attributes a queued %s once across forced retries', async (operation) => {
+    const recipient = { person: mappedCertificateRecord.person, events: [] };
+    const initialCertificate =
+      operation === 'create' ? null : { ...mappedCertificateRecord, issuanceRunId: 'earlier-run' };
+    const tx = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
+      certificate: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValueOnce(initialCertificate)
+          .mockResolvedValueOnce({ ...mappedCertificateRecord, issuanceRunId: 'run-1' }),
+        create: jest.fn().mockResolvedValue(mappedCertificateRecord),
+        update: jest.fn().mockResolvedValue(mappedCertificateRecord),
+      },
+    };
+    const prisma = {
+      certificate: { findMany: jest.fn().mockResolvedValue(initialCertificate ? [initialCertificate] : []) },
+      $transaction: jest.fn((callback: (client: typeof tx) => unknown) => callback(tx)),
+    };
+    const validation = { normalizeRequiredId: jest.fn().mockReturnValue(mappedCertificateRecord.config.id) };
+    const eligibility = {
+      getConfigById: jest.fn().mockResolvedValue(mappedCertificateRecord.config),
+      resolveEligibleRecipients: jest.fn().mockResolvedValue([recipient]),
+    };
+    const notificationJobs = { createPendingOutbox: jest.fn().mockResolvedValue(undefined) };
+    const service = new CertificateIssuingService(
+      prisma as never,
+      validation as never,
+      eligibility as never,
+      undefined,
+      undefined,
+      notificationJobs as never,
+    );
+    const options = { force: true, issuanceRunId: 'run-1', notify: false };
+
+    await service.issueMissedCertificates(mappedCertificateRecord.config.id, undefined, options);
+    await service.issueMissedCertificates(mappedCertificateRecord.config.id, undefined, options);
+
+    expect(tx.certificate[operation]).toHaveBeenCalledTimes(1);
+    expect(tx.certificate[operation]).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ issuanceRunId: 'run-1' }) }),
+    );
+    expect(notificationJobs.createPendingOutbox).toHaveBeenCalledTimes(1);
+    expect(notificationJobs.createPendingOutbox).toHaveBeenCalledWith(mappedCertificateRecord, tx);
+    expect(tx.$executeRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.certificate.findUnique.mock.invocationCallOrder[0],
+    );
+  });
+
   it('updates soft-deleted certificates when rendered data or template changed', async () => {
     const notifications = {
       mapPersonToRecipient: jest.fn().mockReturnValue({ subscriberId: 'user-1' }),

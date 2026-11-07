@@ -1,6 +1,13 @@
-import { EVENT_INSIGHT_SELECT } from './insight-event.select';
+import { CALENDAR_EVENT_SELECT, CONSISTENCY_EVENT_SELECT, EVENT_INSIGHT_SELECT } from './insight-event.select';
 
 describe('EVENT_INSIGHT_SELECT', () => {
+  it('keeps calendar counts without hydrating audience evidence and omits counts from consistency reads', () => {
+    expect(CALENDAR_EVENT_SELECT._count).toEqual(EVENT_INSIGHT_SELECT._count);
+    expect(CALENDAR_EVENT_SELECT).not.toHaveProperty('subscriptions');
+    expect(CALENDAR_EVENT_SELECT).not.toHaveProperty('attendances');
+    expect(CALENDAR_EVENT_SELECT).not.toHaveProperty('lecturers');
+    expect(CONSISTENCY_EVENT_SELECT).toMatchObject({ subscriptions: false, attendances: false, _count: false });
+  });
   it('selects the event fields and relations required by dashboard insights', () => {
     expect(EVENT_INSIGHT_SELECT).toMatchObject({
       id: true,

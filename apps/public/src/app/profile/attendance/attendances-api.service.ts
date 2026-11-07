@@ -327,12 +327,6 @@ export class AttendancesApiService {
               majorEvent {
                 ${PUBLIC_MAJOR_EVENT_PROFILE_FIELDS}
               }
-              selectedEvents {
-                ${PUBLIC_ATTENDANCE_EVENT_FIELDS}
-              }
-              notSubscribedEvents {
-                ${PUBLIC_ATTENDANCE_EVENT_FIELDS}
-              }
             }
             currentUserMajorEventEventSubscriptions(majorEventId: $majorEventId) {
               eventId
@@ -342,7 +336,7 @@ export class AttendancesApiService {
                 ${PUBLIC_ATTENDANCE_EVENT_FIELDS}
               }
             }
-            currentUserEventAttendances {
+            currentUserEventAttendances(majorEventId: $majorEventId) {
               eventId
               attendedAt
             }
@@ -470,7 +464,7 @@ export class AttendancesApiService {
                 ${PUBLIC_ATTENDANCE_EVENT_FIELDS}
               }
             }
-            currentUserEventAttendances {
+            currentUserEventAttendances(eventGroupId: $eventGroupId) {
               eventId
               attendedAt
             }
@@ -751,8 +745,8 @@ export class AttendancesApiService {
       currentUserMajorEventFeed: CurrentUserMajorEventFeedItem[];
     }>(
       `
-        query CurrentUserMajorEventFeedItem {
-          currentUserMajorEventFeed {
+        query CurrentUserMajorEventFeedItem($majorEventId: String!) {
+          currentUserMajorEventFeed(majorEventId: $majorEventId) {
             id
             majorEventId
             subscriptionStatus
@@ -776,6 +770,7 @@ export class AttendancesApiService {
           }
         }
       `,
+      { majorEventId },
     ).pipe(map((data) => data.currentUserMajorEventFeed.find((item) => item.majorEventId === majorEventId) ?? null));
   }
 

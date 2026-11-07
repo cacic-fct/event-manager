@@ -23,6 +23,52 @@ describe('EventAttendanceCsvImportResolver', () => {
     );
   });
 
+  it('only reads attendance evidence for matched CSV people in a large event', async () => {
+    prisma.event.findFirst.mockResolvedValue({ id: 'event-1' });
+    prisma.people.findMany.mockResolvedValue([personMatch({ id: 'matched', email: 'ada@example.com' })]);
+    const unrelatedAttendances = Array.from({ length: 10_000 }, (_, index) => ({
+      personId: `unrelated-${index}`,
+      status: 'PRESENT',
+    }));
+    prisma.eventAttendance.findMany.mockImplementation(({ where }) =>
+      [...unrelatedAttendances, { personId: 'matched', status: 'PRESENT' }].filter((attendance) =>
+        where.personId.in.includes(attendance.personId),
+      ),
+    );
+
+    const result = await resolver.importEventAttendancesFromCsv(
+      {
+        eventId: 'event-1',
+        selectedHeader: 'email',
+        csvContent: 'email\nada@example.com',
+      },
+      {} as never,
+    );
+
+    expect(result).toMatchObject({ createdCount: 0, duplicateCount: 1, failedCount: 0 });
+    expect(prisma.eventAttendance.findMany).toHaveBeenCalledWith({
+      where: { eventId: 'event-1', personId: { in: ['matched'] } },
+      select: { personId: true, status: true },
+    });
+  });
+
+  it('skips attendance reads when no CSV people match', async () => {
+    prisma.event.findFirst.mockResolvedValue({ id: 'event-1' });
+    prisma.people.findMany.mockResolvedValue([]);
+
+    const result = await resolver.importEventAttendancesFromCsv(
+      {
+        eventId: 'event-1',
+        selectedHeader: 'email',
+        csvContent: 'email\nmissing@example.com',
+      },
+      {} as never,
+    );
+
+    expect(result).toMatchObject({ createdCount: 0, duplicateCount: 0, failedCount: 1 });
+    expect(prisma.eventAttendance.findMany).not.toHaveBeenCalled();
+  });
+
   it('imports CSV attendances by inferred email match type', async () => {
     prisma.event.findFirst.mockResolvedValue({ id: 'event-1' });
     prisma.people.findMany.mockResolvedValue([

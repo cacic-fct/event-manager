@@ -115,6 +115,11 @@ describe('WeatherService', () => {
       }),
     );
 
+    expect(prisma.event.findFirst).toHaveBeenLastCalledWith({
+      where: { AND: [PUBLIC_EVENT_WHERE, { id: 'event-1' }] },
+      select: { id: true, startDate: true, latitude: true, longitude: true },
+    });
+
     const forecastRequest = (global.fetch as jest.Mock).mock.calls[0] as [unknown, RequestInit];
     const forecastUrl = String(forecastRequest[0]);
     const forecastOptions = forecastRequest[1];
@@ -228,6 +233,30 @@ describe('WeatherService', () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
+  it('refreshes the same forecast using only the weather event projection', async () => {
+    prisma.event.findFirst.mockResolvedValue({
+      id: 'event-1',
+      startDate: new Date('2026-05-22T12:00:00.000Z'),
+      latitude: -22.1,
+      longitude: -51.4,
+    });
+
+    await expect(service.refreshEventWeatherById('event-1')).resolves.toEqual(
+      expect.objectContaining({
+        eventId: 'event-1',
+        temperature: 22,
+        weatherCode: 61,
+        summary: 'Chuva leve',
+        materialIcon: 'rainy',
+        forecastTime: new Date('2026-05-22T12:00:00.000Z'),
+      }),
+    );
+    expect(prisma.event.findFirst).toHaveBeenCalledWith({
+      where: { AND: [PUBLIC_EVENT_WHERE, { id: 'event-1' }] },
+      select: { id: true, startDate: true, latitude: true, longitude: true },
+    });
+  });
+
   it('schedules upcoming event refreshes and the recurring scan job', async () => {
     const event = weatherEventFixture({ startDate: new Date('2026-05-25T12:00:00.000Z') });
     prisma.event.findMany.mockResolvedValue([event]);
@@ -247,6 +276,7 @@ describe('WeatherService', () => {
           ],
         },
         orderBy: { startDate: 'asc' },
+        select: { id: true, startDate: true, latitude: true, longitude: true },
       }),
     );
     expect(queue.upsertJobScheduler).toHaveBeenCalledWith(

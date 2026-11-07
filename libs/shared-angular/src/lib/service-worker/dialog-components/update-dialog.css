@@ -13,6 +13,10 @@
   display: none;
 }
 
+:host(lib-update-modal) .dialog-title:focus {
+  outline: none;
+}
+
 .dialog-title mat-icon {
   flex: none;
   color: var(--mat-sys-primary);

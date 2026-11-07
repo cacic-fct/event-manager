@@ -1065,6 +1065,64 @@ describe('ConfigurationTransferAdapter', () => {
     expect(exported.issues).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'event-form' })]));
   });
 
+  it('exports ticket configurations with one option query and their original event scopes', async () => {
+    const events = ['one', 'two', 'denied'].map((id) => ({
+      id,
+      eventGroupId: 'group-1',
+      majorEventId: id === 'one' ? 'direct-major' : null,
+      eventGroup: { majorEventId: 'group-major' },
+    }));
+    const ticketOptions = ['two', 'one', 'denied', 'one-extra'].map((id) => ({
+      id: `option-${id}`,
+      ticketConfigId: `ticket-${id === 'one-extra' ? 'one' : id}`,
+      label: id,
+      amountCents: 100,
+    }));
+    const authorization = {
+      assertPermissions: jest.fn(async (_actor, _permissions, scope) => {
+        if (scope.eventId === 'denied') throw new ForbiddenException();
+      }),
+    };
+    const tx = {
+      authorization,
+      event: { findMany: jest.fn().mockResolvedValue(events), findFirst: jest.fn() },
+      eventForm: { findMany: jest.fn().mockResolvedValue([]) },
+      eventFormLink: { findMany: jest.fn().mockResolvedValue([]) },
+      certificateConfig: { findMany: jest.fn().mockResolvedValue([]) },
+      ticketConfig: {
+        findMany: jest.fn().mockResolvedValue(events.map(({ id }) => ({ id: `ticket-${id}`, eventId: id }))),
+      },
+      ticketPriceOption: { findMany: jest.fn().mockResolvedValue(ticketOptions) },
+    };
+    const context = createContext(tx, []);
+    const exported = await createAdapter(tx).exportTarget(
+      { kind: 'group', id: 'group-1' },
+      { includeDescendants: true, includeConfiguration: true, includeSubscriptions: false, includeAttendances: false },
+      context,
+    );
+
+    expect(exported.resources.map(({ id }) => id)).toEqual([
+      'ticket-one',
+      'option-one',
+      'option-one-extra',
+      'ticket-two',
+      'option-two',
+    ]);
+    expect(exported.issues.map(({ kind }) => kind)).toEqual(['ticket-config', 'ticket-price-option']);
+    expect(tx.ticketPriceOption.findMany).toHaveBeenCalledTimes(1);
+    expect(tx.ticketPriceOption.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { ticketConfigId: { in: ['ticket-one', 'ticket-two', 'ticket-denied'] } },
+      }),
+    );
+    expect(tx.event.findFirst).not.toHaveBeenCalled();
+    expect(authorization.assertPermissions.mock.calls.map(([, , scope]) => scope)).toEqual([
+      ...Array.from({ length: 3 }, () => ({ eventId: 'one', eventGroupId: 'group-1', majorEventId: 'direct-major' })),
+      ...Array.from({ length: 2 }, () => ({ eventId: 'two', eventGroupId: 'group-1', majorEventId: 'group-major' })),
+      ...Array.from({ length: 2 }, () => ({ eventId: 'denied', eventGroupId: 'group-1', majorEventId: 'group-major' })),
+    ]);
+  });
+
   it('does not disclose denied form IDs or image warnings in export issues', async () => {
     const form = {
       id: 'private-form-id',

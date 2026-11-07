@@ -127,6 +127,150 @@ describe('CurrentUserContextService', () => {
     },
   );
 
+  it('shares one account lookup, login write, and reconciliation across concurrent history fields', async () => {
+    const authenticatedUser = createAuthenticatedUser();
+    const user = createUserRecord();
+    const person = createPersonRecord({ userId: user.id, user });
+    prisma.user.findUnique.mockResolvedValue(user);
+    prisma.user.update.mockResolvedValue(user);
+    prisma.people.findMany.mockResolvedValue([person]);
+    const requestContext = {};
+
+    const results = await Promise.all(
+      Array.from({ length: 4 }, () => service.resolveCurrentUserContext(authenticatedUser, false, { requestContext })),
+    );
+
+    expect(results).toEqual(Array.from({ length: 4 }, () => ({ user, person })));
+    expect(prisma.user.findUnique).toHaveBeenCalledTimes(1);
+    expect(prisma.user.update).toHaveBeenCalledTimes(1);
+    expect(prisma.accountUserMerge.findMany).toHaveBeenCalledTimes(1);
+    expect(prisma.people.findMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('resolves the merged person when another field starts after the in-flight lookup finishes', async () => {
+    const authenticatedUser = createAuthenticatedUser();
+    const user = createUserRecord();
+    const originalPerson = createPersonRecord({ userId: user.id, user });
+    const mergedUser = createUserRecord({ id: 'surviving-user' });
+    const mergedPerson = createPersonRecord({ id: 'surviving-person', userId: mergedUser.id, user: mergedUser });
+    const requestContext = {};
+
+    prisma.user.findUnique.mockResolvedValueOnce(user).mockResolvedValueOnce(mergedUser);
+    prisma.user.update.mockResolvedValueOnce(user).mockResolvedValueOnce(mergedUser);
+    prisma.people.findMany.mockResolvedValueOnce([originalPerson]).mockResolvedValueOnce([mergedPerson]);
+
+    await expect(service.resolveCurrentUserContext(authenticatedUser, false, { requestContext })).resolves.toEqual({
+      user,
+      person: originalPerson,
+    });
+
+    accountMergeService.resolveFinalUserId.mockResolvedValue(mergedUser.id);
+    await expect(service.resolveCurrentUserContext(authenticatedUser, false, { requestContext })).resolves.toEqual({
+      user: mergedUser,
+      person: mergedPerson,
+    });
+  });
+
+  it('keeps separate requests and non-cached operations fresh', async () => {
+    const authenticatedUser = createAuthenticatedUser();
+    const user = createUserRecord();
+    const person = createPersonRecord({ userId: user.id, user });
+    prisma.user.findUnique.mockResolvedValue(user);
+    prisma.user.update.mockResolvedValue(user);
+    prisma.people.findMany.mockResolvedValue([person]);
+
+    await service.resolveCurrentUserContext(authenticatedUser, false, { requestContext: {} });
+    await service.resolveCurrentUserContext(authenticatedUser, false, { requestContext: {} });
+    await service.resolveCurrentUserContext(authenticatedUser);
+    expect(prisma.user.update).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not reuse account resolutions between different users within a context', async () => {
+    const requestContext = {};
+    const user = createUserRecord();
+    const otherUser = createUserRecord({ id: 'other-user' });
+    const person = createPersonRecord({ userId: user.id, user });
+    const otherPerson = createPersonRecord({ id: 'other-person', userId: otherUser.id, user: otherUser });
+    prisma.user.findUnique.mockResolvedValueOnce(user).mockResolvedValueOnce(otherUser);
+    prisma.user.update.mockResolvedValueOnce(user).mockResolvedValueOnce(otherUser);
+    prisma.people.findMany.mockResolvedValueOnce([person]).mockResolvedValueOnce([otherPerson]);
+
+    await expect(
+      service.resolveCurrentUserContext(createAuthenticatedUser(), false, { requestContext }),
+    ).resolves.toEqual({ user, person });
+    await expect(
+      service.resolveCurrentUserContext(createAuthenticatedUser({ sub: otherUser.id }), false, { requestContext }),
+    ).resolves.toEqual({ user: otherUser, person: otherPerson });
+    expect(prisma.user.update).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retain failed account lookups in the request cache', async () => {
+    const authenticatedUser = createAuthenticatedUser();
+    const requestContext = {};
+    const failure = new Error('Temporary lookup failure');
+    const user = createUserRecord();
+    const person = createPersonRecord({ userId: user.id, user });
+    prisma.user.findUnique.mockRejectedValueOnce(failure).mockResolvedValue(user);
+    prisma.user.update.mockResolvedValue(user);
+    prisma.people.findMany.mockResolvedValue([person]);
+
+    await expect(service.resolveCurrentUserContext(authenticatedUser, false, { requestContext })).rejects.toBe(failure);
+    await expect(service.resolveCurrentUserContext(authenticatedUser, false, { requestContext })).resolves.toEqual({
+      user,
+      person,
+    });
+    expect(prisma.user.findUnique).toHaveBeenCalledTimes(2);
+  });
+
+  it('avoids an unchanged profile write during the recent activity window', async () => {
+    const user = createUserRecord({ lastLoginAt: new Date() });
+    const person = createPersonRecord({ userId: user.id, user });
+    prisma.user.findUnique.mockResolvedValue(user);
+    prisma.people.findMany.mockResolvedValue([person]);
+
+    await expect(
+      service.resolveCurrentUserContext(
+        createAuthenticatedUser({
+          claims: { set_fullname: user.name },
+        }),
+      ),
+    ).resolves.toEqual({ user, person });
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('refreshes stale activity without requiring a profile change', async () => {
+    const now = Date.now();
+    const user = createUserRecord({ lastLoginAt: new Date(now - 5 * 60_000 - 1) });
+    const person = createPersonRecord({ userId: user.id, user });
+    prisma.user.findUnique.mockResolvedValue(user);
+    prisma.user.update.mockResolvedValue({ ...user, lastLoginAt: new Date(now) });
+    prisma.people.findMany.mockResolvedValue([person]);
+
+    await service.resolveCurrentUserContext(createAuthenticatedUser());
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: user.id },
+        data: { lastLoginAt: expect.any(Date) },
+      }),
+    );
+  });
+
+  it('synchronizes a changed profile immediately even when activity was refreshed recently', async () => {
+    const user = createUserRecord({ lastLoginAt: new Date() });
+    const person = createPersonRecord({ userId: user.id, user });
+    prisma.user.findUnique.mockResolvedValue(user);
+    prisma.user.update.mockResolvedValue({ ...user, name: 'Nome atualizado' });
+    prisma.people.findMany.mockResolvedValue([person]);
+
+    await service.resolveCurrentUserContext(createAuthenticatedUser({ claims: { set_fullname: 'Nome atualizado' } }));
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: user.id },
+        data: { name: 'Nome atualizado' },
+      }),
+    );
+  });
+
   it('allows internal profile sync to resolve a non-onboarded account update', async () => {
     const user = createUserRecord();
     const createdPerson = createPersonRecord({

@@ -104,18 +104,18 @@ export class EventSubscriptionSyncService {
       throw new BadRequestException(`Some selected events are not available: ${missingEventIds.join(', ')}.`);
     }
 
-    for (const event of events) {
-      if (event.slots == null) {
-        continue;
-      }
-
-      const activeSubscriptionsCount = await tx.eventSubscription.count({
-        where: {
-          eventId: event.id,
-          deletedAt: null,
-        },
-      });
-      if (activeSubscriptionsCount >= event.slots) {
+    const limitedEvents = events.filter((event): event is { id: string; slots: number } => event.slots != null);
+    if (limitedEvents.length === 0) {
+      return;
+    }
+    const counts = await tx.eventSubscription.groupBy({
+      by: ['eventId'],
+      where: { eventId: { in: limitedEvents.map((event) => event.id) }, deletedAt: null },
+      _count: { _all: true },
+    });
+    const activeCounts = new Map(counts.map((count) => [count.eventId, count._count._all]));
+    for (const event of limitedEvents) {
+      if ((activeCounts.get(event.id) ?? 0) >= event.slots) {
         throw new BadRequestException(`Event ${event.id} has no available slots for subscription.`);
       }
     }

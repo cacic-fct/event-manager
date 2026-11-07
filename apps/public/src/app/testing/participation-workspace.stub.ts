@@ -1,9 +1,14 @@
-import { Component, input, output } from '@angular/core';
+import { Component, forwardRef, input, output, signal } from '@angular/core';
 import type { DetailViewModel } from '@cacic-fct/shared-utils';
 import type { EventTargetType } from '@cacic-fct/event-manager-public-contracts';
+import { MoreInfo } from '../profile/attendance/more-info/more-info';
 
 /** Public-page unit tests isolate the independently tested participation loader. */
-@Component({ selector: 'app-more-info', template: '<ng-content />' })
+@Component({
+  selector: 'app-more-info',
+  template: '<ng-content />',
+  providers: [{ provide: MoreInfo, useExisting: forwardRef(() => ParticipationWorkspaceStub) }],
+})
 export class ParticipationWorkspaceStub {
   readonly embedded = input(false);
   readonly flatSections = input(false);
@@ -12,4 +17,6 @@ export class ParticipationWorkspaceStub {
   readonly targetType = input<EventTargetType | null>(null);
   readonly targetId = input<string | null>(null);
   readonly refreshKey = input(0);
+  readonly loading = signal(false);
+  readonly initialDetailLoading = signal(false);
 }

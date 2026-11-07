@@ -213,6 +213,8 @@ export class CurrentUserSubscriptionFeedService {
           personId,
           status: 'PRESENT',
           event: {
+            // Major-event attendance is handled by the major-event feed. Avoid hydrating it again here.
+            majorEventId: null,
             AND: [PUBLIC_EVENT_WHERE],
           },
         },

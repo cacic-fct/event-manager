@@ -7,6 +7,33 @@ import { resolvePriceTierEventPolicy } from './tier-event-policy';
 const { jest } = import.meta;
 
 describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
+  it.each(['major-1', ''])('restricts every participation source for major-event ID %p', async (majorEventId) => {
+    const emptySource = () => ({ findMany: jest.fn().mockResolvedValue([]) });
+    const prisma = {
+      majorEventSubscription: emptySource(),
+      eventLecturer: emptySource(),
+      certificate: emptySource(),
+      eventAttendance: emptySource(),
+      sportsTournament: emptySource(),
+      eventInterest: emptySource(),
+    };
+    const feedService = new CurrentUserMajorEventSubscriptionService(prisma as never, {} as never);
+    await expect(feedService.getCurrentUserMajorEventFeedItems('person-1', false, { majorEventId })).resolves.toEqual(
+      [],
+    );
+    const scopedMajor = expect.objectContaining({ ...PUBLIC_MAJOR_EVENT_WHERE, id: majorEventId });
+    expect(prisma.majorEventSubscription.findMany.mock.calls[0][0].where.majorEvent).toEqual(scopedMajor);
+    expect(prisma.eventLecturer.findMany.mock.calls[0][0].where.event.majorEvent).toEqual(scopedMajor);
+    expect(prisma.certificate.findMany.mock.calls[0][0].where.config.majorEvent).toEqual(scopedMajor);
+    expect(prisma.eventAttendance.findMany.mock.calls[0][0].where.event.majorEvent).toEqual(scopedMajor);
+    expect(prisma.sportsTournament.findMany.mock.calls[0][0].where.majorEvent).toEqual(scopedMajor);
+    expect(prisma.eventInterest.findMany.mock.calls[0][0].where.OR).toEqual([
+      { majorEvent: scopedMajor },
+      { event: { majorEvent: scopedMajor } },
+      { eventGroup: { majorEvent: scopedMajor } },
+    ]);
+  });
+
   let service: CurrentUserMajorEventSubscriptionService;
 
   beforeEach(() => {
@@ -449,6 +476,56 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
         startDate: 'asc',
       },
     });
+  });
+
+  it('loads selected activities only when requested while preserving subscribed feed items', async () => {
+    const majorEvent = {
+      id: 'major-1',
+      startDate: new Date(publicFixtureDateFromNow(-2)),
+      endDate: new Date(publicFixtureDateFromNow(-1)),
+    };
+    const prisma = {
+      majorEventSubscription: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'subscription-1',
+            majorEventId: majorEvent.id,
+            majorEvent,
+            subscriptionStatus: SubscriptionStatus.CONFIRMED,
+          },
+        ]),
+      },
+      eventLecturer: { findMany: jest.fn().mockResolvedValue([]) },
+      certificate: { findMany: jest.fn().mockResolvedValue([]) },
+      eventAttendance: { findMany: jest.fn().mockResolvedValue([]) },
+      sportsTournament: { findMany: jest.fn().mockResolvedValue([]) },
+      eventInterest: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    service = new CurrentUserMajorEventSubscriptionService(
+      prisma as never,
+      { mapPublicMajorEvent: (item: unknown) => item } as never,
+    );
+    const selectedEvents = [{ id: 'selected-activity' }];
+    const loadSelected = jest
+      .spyOn(service, 'getSelectedEventsByMajorEvent')
+      .mockResolvedValue(new Map([[majorEvent.id, selectedEvents as never]]));
+
+    const summary = await service.getCurrentUserMajorEventFeedItems('person-1', false, {
+      includeSelectedEvents: false,
+    });
+    expect(summary).toEqual([
+      expect.objectContaining({
+        id: 'subscription-1',
+        majorEvent,
+        selectedEvents: [],
+        participation: expect.objectContaining({ isSubscribed: true }),
+      }),
+    ]);
+    expect(loadSelected).not.toHaveBeenCalled();
+
+    const complete = await service.getCurrentUserMajorEventFeedItems('person-1', false);
+    expect(loadSelected).toHaveBeenCalledWith('person-1', ['major-1']);
+    expect(complete[0].selectedEvents).toEqual(selectedEvents);
   });
 
   it('adds attendance-only major events to the feed', async () => {

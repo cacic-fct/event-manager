@@ -701,10 +701,16 @@ export class ConfigurationTransferAdapter implements DataTransferAdapter {
       scope.eventIds.length > 0
         ? await context.tx.event.findMany({
             where: { id: { in: scope.eventIds }, deletedAt: null },
-            select: { id: true },
+            select: {
+              id: true,
+              eventGroupId: true,
+              majorEventId: true,
+              eventGroup: { select: { majorEventId: true } },
+            },
           })
         : [];
     const eventIds = events.map(({ id }) => id);
+    const eventScopes = new Map(events.map((event) => [event.id, persistedEventScope(event)]));
 
     const pushIfReadable = async (
       resource: TransferResource,
@@ -807,14 +813,25 @@ export class ConfigurationTransferAdapter implements DataTransferAdapter {
       eventIds.length > 0
         ? await context.tx.ticketConfig.findMany({ where: { eventId: { in: eventIds } }, select: TICKET_SELECT })
         : [];
+    const ticketConfigIds = tickets.map(({ id }) => id);
+    const ticketOptions =
+      ticketConfigIds.length > 0
+        ? await context.tx.ticketPriceOption.findMany({
+            where: { ticketConfigId: { in: ticketConfigIds } },
+            select: OPTION_SELECT,
+          })
+        : [];
+    const optionsByTicketConfigId = new Map<string, typeof ticketOptions>();
+    for (const option of ticketOptions) {
+      const options = optionsByTicketConfigId.get(option.ticketConfigId) ?? [];
+      options.push(option);
+      optionsByTicketConfigId.set(option.ticketConfigId, options);
+    }
     for (const config of tickets) {
-      const authScope = await this.scopeForEvent(context.tx, config.eventId, context.document);
+      const authScope =
+        eventScopes.get(config.eventId) ?? (await this.scopeForEvent(context.tx, config.eventId, context.document));
       await pushIfReadable(ticketResource(config), Permission.TicketConfig.Read, authScope);
-      const optionsForConfig = await context.tx.ticketPriceOption.findMany({
-        where: { ticketConfigId: config.id },
-        select: OPTION_SELECT,
-      });
-      for (const option of optionsForConfig) {
+      for (const option of optionsByTicketConfigId.get(config.id) ?? []) {
         await pushIfReadable(optionResource(option), Permission.TicketConfig.Read, authScope);
       }
     }
@@ -882,13 +899,7 @@ export class ConfigurationTransferAdapter implements DataTransferAdapter {
         (proposedGroup ? asId(dataOf(proposedGroup)['majorEventId']) : null);
       return { eventId, ...(eventGroupId ? { eventGroupId } : {}), ...(majorEventId ? { majorEventId } : {}) };
     }
-    return {
-      eventId,
-      ...(event.eventGroupId ? { eventGroupId: event.eventGroupId } : {}),
-      ...((event.majorEventId ?? event.eventGroup?.majorEventId)
-        ? { majorEventId: event.majorEventId ?? event.eventGroup?.majorEventId ?? undefined }
-        : {}),
-    };
+    return persistedEventScope(event);
   }
 
   /**
@@ -2656,6 +2667,20 @@ function writePermission(kind: TransferResourceKind, action: TransferWriteAction
 
 function dataOf(resource: TransferResource): Record<string, unknown> {
   return resource.data as Record<string, unknown>;
+}
+
+function persistedEventScope(event: {
+  id: string;
+  eventGroupId: string | null;
+  majorEventId: string | null;
+  eventGroup: { majorEventId: string | null } | null;
+}): TransferAuthorizationScope {
+  const majorEventId = event.majorEventId ?? event.eventGroup?.majorEventId;
+  return {
+    eventId: event.id,
+    ...(event.eventGroupId ? { eventGroupId: event.eventGroupId } : {}),
+    ...(majorEventId ? { majorEventId } : {}),
+  };
 }
 
 function resourceFromData(

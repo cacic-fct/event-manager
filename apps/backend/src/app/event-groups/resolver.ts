@@ -7,7 +7,7 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { Args, Context, Int, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
+import { Args, Context, Info, Int, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
 import { AuditLogEntityType, AuditLogOperation, CertificateScope, Prisma } from '@prisma/client';
 import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
 import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -33,6 +33,8 @@ import {
   type AudienceChange,
 } from '../audiences/audience-input';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
+import type { GraphQLResolveInfo } from 'graphql';
+import { RequestSportsCategoryMembership } from './sports-category-membership.loader';
 import { eventGroupBelongsToMajorEventWhere } from './major-event-membership';
 
 type GraphqlContext = {
@@ -77,6 +79,8 @@ const EVENT_GROUP_CLONE_SOURCE_SELECT = {
 
 @Resolver(() => EventGroup)
 export class EventGroupsResolver {
+  private readonly sportsCategoryMembership = new RequestSportsCategoryMembership();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly typesenseSearch: TypesenseSearchService,
@@ -106,7 +110,14 @@ export class EventGroupsResolver {
   ) {}
 
   @ResolveField(() => Boolean)
-  async isSportsCategory(@Parent() group: { id: string }): Promise<boolean> {
+  async isSportsCategory(
+    @Parent() group: { id: string },
+    @Context() context?: GraphqlContext,
+    @Info() info?: GraphQLResolveInfo,
+  ): Promise<boolean> {
+    if (context && info?.operation.operation === 'query') {
+      return this.sportsCategoryMembership.load(this.prisma, context, group.id);
+    }
     return Boolean(
       await this.prisma.sportsCategory.findFirst({
         where: { eventGroupId: group.id, deletedAt: null },

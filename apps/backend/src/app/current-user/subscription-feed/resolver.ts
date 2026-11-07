@@ -20,7 +20,9 @@ export class CurrentUserSubscriptionFeedResolver {
   @IncludePastParticipation()
   async currentUserSubscriptionFeed(@Context() context: GraphqlContext): Promise<CurrentUserSubscriptionFeed> {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
-    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser, false, {
+      requestContext: context,
+    });
     if (!person) {
       return {
         items: [],

@@ -1,10 +1,56 @@
 import { PublicEventsResolver } from './events.resolver';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { PUBLIC_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE, PUBLIC_MAP_EVENT_SELECT, publicMapEventWhere } from './models';
-import { createPublicMajorEventRecord } from './testing/public-event-record.fixtures';
+import { createPublicEventRecord, createPublicMajorEventRecord } from './testing/public-event-record.fixtures';
 const { jest } = import.meta;
 
 describe('PublicEventsResolver lecturer profiles', () => {
+  it('uses a narrow realtime availability projection with the same results as the full registration page', async () => {
+    const now = new Date();
+    jest.useFakeTimers().setSystemTime(now);
+    const events = [
+      { ...createPublicEventRecord({ id: 'limited' }), slots: 2, queueCount: 3 },
+      { ...createPublicEventRecord({ id: 'full' }), slots: 1, queueCount: 0 },
+      { ...createPublicEventRecord({ id: 'unlimited' }), slots: null, queueCount: 0 },
+    ];
+    const prisma = {
+      majorEvent: { findFirst: jest.fn().mockResolvedValue(createPublicMajorEventRecord()) },
+      event: { findMany: jest.fn().mockResolvedValue(events) },
+      eventSubscription: {
+        groupBy: jest.fn().mockResolvedValue([
+          { eventId: 'limited', _count: { personId: 1 } },
+          { eventId: 'full', _count: { personId: 2 } },
+        ]),
+      },
+    };
+    const resolver = new PublicEventsResolver(prisma as never, {} as never);
+    const full = await resolver.publicMajorEventSubscriptionPage('major-1');
+    const narrow = await resolver.getPublicMajorEventAvailability('major-1');
+    expect(narrow.subscriptionSummaries).toEqual(full.subscriptionSummaries);
+    expect(narrow.subscriptionSummaries).toEqual([
+      { eventId: 'limited', availableSlots: 1, hasAvailableSlots: true, projectedQueuePosition: 4 },
+      { eventId: 'full', availableSlots: 0, hasAvailableSlots: false, projectedQueuePosition: 1 },
+      { eventId: 'unlimited', availableSlots: null, hasAvailableSlots: true, projectedQueuePosition: 1 },
+    ]);
+    expect(prisma.event.findMany.mock.calls[1][0].where).toEqual(prisma.event.findMany.mock.calls[0][0].where);
+    expect(prisma.event.findMany.mock.calls[1][0].select).toEqual({ id: true, slots: true, queueCount: true });
+    expect(prisma.majorEvent.findFirst).toHaveBeenLastCalledWith({
+      where: { ...PUBLIC_MAJOR_EVENT_WHERE, id: 'major-1' },
+      select: { id: true },
+    });
+  });
+
+  it('rejects availability for an inaccessible major event without counting subscriptions', async () => {
+    const prisma = {
+      majorEvent: { findFirst: jest.fn().mockResolvedValue(null) },
+      event: { findMany: jest.fn().mockResolvedValue([]) },
+      eventSubscription: { groupBy: jest.fn() },
+    };
+    const resolver = new PublicEventsResolver(prisma as never, {} as never);
+    await expect(resolver.getPublicMajorEventAvailability('hidden')).rejects.toThrow('was not found');
+    expect(prisma.eventSubscription.groupBy).not.toHaveBeenCalled();
+  });
+
   it('reuses the public catalog for a chronological major-event program without signup or retention filters', async () => {
     const events = [{ id: 'past-or-non-subscribable-activity' }];
     const prisma = { event: { findMany: jest.fn().mockResolvedValue(events) } };

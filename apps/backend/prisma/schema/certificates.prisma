@@ -156,6 +156,9 @@ model Certificate {
 
   notificationOutbox CertificateNotificationOutbox[]
 
+  issuanceRunId String?
+  issuanceRun   CertificateIssuanceRun? @relation(fields: [issuanceRunId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -169,6 +172,7 @@ model Certificate {
   @@unique([personId, configId])
   @@index([personId])
   @@index([configId])
+  @@index([issuanceRunId])
   @@index([lgpdDeletionRequestId])
   @@map("certificates")
 }
@@ -201,6 +205,7 @@ model CertificateIssuanceRun {
   startedAt DateTime?
   completedAt DateTime?
   certificateCount Int @default(0)
+  certificates Certificate[]
   error String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

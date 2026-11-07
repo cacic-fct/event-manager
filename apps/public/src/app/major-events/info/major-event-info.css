@@ -76,9 +76,17 @@ h2 {
   padding-top: 0;
 }
 
+.participation-loading {
+  margin-top: 24px;
+}
+
+.participation-loading,
+.participation-description {
+  color: var(--mat-sys-on-surface-variant);
+}
+
 .participation-description {
   margin-top: 8px;
-  color: var(--mat-sys-on-surface-variant);
 }
 
 .participation-facts {

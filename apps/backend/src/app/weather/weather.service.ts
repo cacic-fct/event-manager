@@ -4,15 +4,20 @@ import Redis from 'ioredis';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
-import { PUBLIC_EVENT_SELECT, PUBLIC_EVENT_WHERE } from '../public-events/models';
+import { PUBLIC_EVENT_WHERE } from '../public-events/models';
 import { ANONYMOUS_AUDIENCE, audienceContext, type EventAudiencePrincipal } from '../audiences/audience-context';
 import { PublicEventWeather } from './models';
 import { addDays, differenceInCalendarDays, isFuture } from 'date-fns';
 import { buildBullMqJobId } from '../queues/bullmq-job-id';
 
-type WeatherEvent = Prisma.EventGetPayload<{
-  select: typeof PUBLIC_EVENT_SELECT;
-}>;
+const WEATHER_EVENT_SELECT = {
+  id: true,
+  startDate: true,
+  latitude: true,
+  longitude: true,
+} satisfies Prisma.EventSelect;
+
+type WeatherEvent = Prisma.EventGetPayload<{ select: typeof WEATHER_EVENT_SELECT }>;
 
 interface OpenMeteoResponse {
   hourly?: {
@@ -110,7 +115,7 @@ export class WeatherService {
           },
         ],
       },
-      select: PUBLIC_EVENT_SELECT,
+      select: WEATHER_EVENT_SELECT,
       orderBy: {
         startDate: 'asc',
       },
@@ -174,7 +179,7 @@ export class WeatherService {
       where: {
         AND: [PUBLIC_EVENT_WHERE, { id: eventId }],
       },
-      select: PUBLIC_EVENT_SELECT,
+      select: WEATHER_EVENT_SELECT,
     });
   }
 

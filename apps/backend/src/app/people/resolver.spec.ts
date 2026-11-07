@@ -8,9 +8,69 @@ import {
 } from '@nestjs/common';
 import { EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
 import { PeopleResolver } from './resolver';
+import { buildSchema, graphql, type GraphQLResolveInfo } from 'graphql';
 const { jest } = import.meta;
 
 describe('PeopleResolver', () => {
+  const projectionSchema = buildSchema(`
+    type Query { person: Person, people: [Person!]! }
+    type Person { id: ID!, user: User, lecturerProfile: Profile, attendances: [History!], lectures: [History!] }
+    type User { id: ID, unespRole: [String!] }
+    type Profile { id: ID }
+    type History { eventId: ID }
+  `);
+
+  async function executeProjection(source: string) {
+    const prisma = createPrisma();
+    prisma.people.findFirst.mockResolvedValue(person());
+    prisma.people.findMany.mockResolvedValue([person()]);
+    const resolver = createResolver(prisma);
+    const result = await graphql({
+      schema: projectionSchema,
+      source,
+      rootValue: {
+        person: (_args: unknown, _context: unknown, info: GraphQLResolveInfo) => resolver.person('person-1', info),
+        people: (_args: unknown, _context: unknown, info: GraphQLResolveInfo) => {
+          const args: Parameters<PeopleResolver['people']> = [];
+          args[16] = info;
+          return resolver.people(...args);
+        },
+      },
+    });
+    expect(result.errors).toBeUndefined();
+    return prisma;
+  }
+
+  it('does not hydrate historical participations for an ordinary person detail query', async () => {
+    const prisma = await executeProjection('{ person { id user { id } lecturerProfile { id } } }');
+    expect(prisma.people.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: { user: true, lecturerProfile: true, attendances: false, lectures: false },
+      }),
+    );
+  });
+
+  it('preserves explicitly requested history relations through aliases and fragments', async () => {
+    const prisma = await executeProjection(`
+      { person { id ...HistoryFields } }
+      fragment HistoryFields on Person { history: attendances { eventId } lectures { eventId } }
+    `);
+    expect(prisma.people.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: { user: false, lecturerProfile: false, attendances: true, lectures: true },
+      }),
+    );
+  });
+
+  it('skips lecturer profiles for people autocomplete queries while retaining user roles', async () => {
+    const prisma = await executeProjection('{ people { id user { unespRole } } }');
+    expect(prisma.people.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: { user: true, lecturerProfile: false },
+      }),
+    );
+  });
+
   it('filters people by active permission grants and lecturer profile presence', async () => {
     const prisma = createPrisma();
     const authorizationPolicy = createAuthorizationPolicy();

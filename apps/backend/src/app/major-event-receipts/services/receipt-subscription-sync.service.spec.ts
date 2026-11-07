@@ -88,7 +88,7 @@ describe('EventSubscriptionSyncService', () => {
         findMany: jest.fn().mockResolvedValue([]),
         updateMany: jest.fn(),
         createMany: jest.fn(),
-        count: jest.fn().mockResolvedValue(1),
+        groupBy: jest.fn().mockResolvedValue([{ eventId: 'event-1', _count: { _all: 1 } }]),
       },
       event: {
         findMany: jest.fn().mockResolvedValue([{ id: 'event-1', slots: 1 }]),

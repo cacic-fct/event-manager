@@ -20,9 +20,13 @@ import { reassignTicketUserRelations } from '../tickets/ticket-merge-relations';
 import type { DeferredInjection } from '../common/deferred-injection';
 import { type GraphqlContext, PERSON_SELECT, type PersonRecord, USER_SELECT, type UserRecord } from './selects';
 
+type ResolvedCurrentUserContext = { user: UserRecord | null; person: PersonRecord | null };
+const LOGIN_ACTIVITY_UPDATE_INTERVAL_MS = 5 * 60_000;
+
 @Injectable()
 export class CurrentUserContextService {
   private readonly logger = new Logger(CurrentUserContextService.name);
+  private readonly requestContexts = new WeakMap<GraphqlContext, Map<string, Promise<ResolvedCurrentUserContext>>>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -46,11 +50,39 @@ export class CurrentUserContextService {
     authenticatedUser: AuthenticatedUser,
     includeUserFallback = false,
     options: ResolveCurrentUserContextOptions = {},
-  ): Promise<{ user: UserRecord | null; person: PersonRecord | null }> {
+  ): Promise<ResolvedCurrentUserContext> {
     if (!options.allowNonOnboarded) {
       assertUserOnboarded(authenticatedUser);
     }
 
+    if (!options.requestContext) {
+      return this.resolveUncachedCurrentUserContext(authenticatedUser, includeUserFallback, options);
+    }
+
+    let requests = this.requestContexts.get(options.requestContext);
+    if (!requests) {
+      requests = new Map();
+      this.requestContexts.set(options.requestContext, requests);
+    }
+    const key = JSON.stringify([authenticatedUser.sub, includeUserFallback, options.allowNonOnboarded === true]);
+    const pending = requests.get(key);
+    if (pending) return pending;
+
+    // Share concurrent work, but let later fields resolve any newly merged identity.
+    const resolution = this.resolveUncachedCurrentUserContext(authenticatedUser, includeUserFallback, options);
+    requests.set(key, resolution);
+    try {
+      return await resolution;
+    } finally {
+      requests.delete(key);
+    }
+  }
+
+  private async resolveUncachedCurrentUserContext(
+    authenticatedUser: AuthenticatedUser,
+    includeUserFallback: boolean,
+    options: ResolveCurrentUserContextOptions,
+  ): Promise<ResolvedCurrentUserContext> {
     const effectiveUser = await this.resolveMergedAuthenticatedUser(authenticatedUser);
     const user = await this.resolveCurrentUser(effectiveUser);
     if (user && user.id === effectiveUser.sub) {
@@ -369,7 +401,16 @@ export class CurrentUserContextService {
 
   private async backfillMatchedUser(user: UserRecord, authenticatedUser: AuthenticatedUser): Promise<UserRecord> {
     const data = this.authenticatedUserSync.buildUserUpdateData(user, authenticatedUser);
-    data.lastLoginAt = new Date();
+    const now = new Date();
+    const needsActivityUpdate =
+      !user.lastLoginAt || now.getTime() - user.lastLoginAt.getTime() >= LOGIN_ACTIVITY_UPDATE_INTERVAL_MS;
+    if (Object.keys(data).length === 0 && !needsActivityUpdate) {
+      return user;
+    }
+    // Actual sign-ins are recorded by the authentication service. Reads only refresh coarse activity.
+    if (needsActivityUpdate) {
+      data.lastLoginAt = now;
+    }
 
     return this.prisma.user.update({
       where: {
@@ -552,4 +593,6 @@ export type AuthenticatedProfileUpdateInput = {
 
 type ResolveCurrentUserContextOptions = {
   allowNonOnboarded?: boolean;
+  /** Opt in only for sibling query fields; mutations and profile sync need fresh state. */
+  requestContext?: GraphqlContext;
 };
