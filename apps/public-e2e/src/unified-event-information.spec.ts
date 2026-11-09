@@ -6,7 +6,7 @@ test('the unified event page keeps participation tools and its return destinatio
   await page.goto(`/app/event/${data.targetId}?returnUrl=%2Fprofile%2Fattendances`);
   await expect(page).toHaveURL(new RegExp(`/app/event/${data.targetId}\\?returnUrl=`));
   await expect(page.getByRole('heading', { name: data.events[0].name, exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Certificado' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Certificado', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
   await expect(page.getByRole('tab', { name: 'Minha inscrição', exact: true })).toHaveAttribute(
     'aria-selected',
@@ -22,7 +22,7 @@ test('the unified event page keeps participation tools and its return destinatio
   await expect(page.getByRole('heading', { name: 'Informações', exact: true })).toBeHidden();
   await page.getByRole('tab', { name: 'Sobre o evento', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Informações', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Certificado' })).toBeHidden();
+  await expect(page.getByRole('heading', { name: 'Certificado', exact: true })).toBeHidden();
   await page.getByRole('tab', { name: 'Minha inscrição', exact: true }).click();
   await expect(cancellation).toBeVisible();
 });
@@ -31,7 +31,7 @@ test('the unified major-event page keeps payment tools and a working day filter'
   const data = await mockInformation(page, { targetType: 'major-event', subscriptionStatus: 'WAITING_RECEIPT_UPLOAD' });
   await page.goto(`/app/major-event/${data.targetId}?returnUrl=%2Fprofile%2Fattendances`);
   await expect(page).toHaveURL(new RegExp(`/app/major-event/${data.targetId}\\?returnUrl=`));
-  await expect(page.getByRole('heading', { name: 'Certificado' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Certificado', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Materiais', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Orientações', exact: true })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Enviar comprovante', exact: true }).first()).toHaveAttribute(
@@ -113,7 +113,7 @@ test('a non-subscribed visitor can read the page without requesting private work
   await page.goto(`/app/event/${data.targetId}`);
   await expect(page.getByRole('heading', { name: data.events[0].name, exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Entrar para inscrever-se' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Certificado' })).toBeHidden();
+  await expect(page.getByRole('heading', { name: 'Certificado', exact: true })).toBeHidden();
   await expect(page.getByRole('tablist')).toHaveCount(0);
   expect(data.queries.some((query) => query.includes('query CurrentUserEventDetails'))).toBe(false);
 });
@@ -129,7 +129,7 @@ test('mobile details keep primary tools and long activity names within the viewp
   await page.setViewportSize({ width: 390, height: 844 });
   const data = await mockInformation(page, { targetType: 'event-group', eventCount: 4 });
   await page.goto(`/app/event-group/${data.targetId}`);
-  await expect(page.getByRole('heading', { name: 'Certificado' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Certificado', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
@@ -141,7 +141,7 @@ test('non-subscribed people can discover a group without a participation record'
   await expect(page.getByRole('heading', { name: 'Eventos do grupo' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Ver opções de inscrição' })).toHaveCount(0);
   await expect(page.locator('section.program').getByRole('link')).toHaveCount(3);
-  await expect(page.getByRole('heading', { name: 'Certificado' })).toBeHidden();
+  await expect(page.getByRole('heading', { name: 'Certificado', exact: true })).toBeHidden();
 });
 
 test('closing registration does not hide a previously issued certificate', async ({ page }) => {
@@ -169,7 +169,7 @@ test('a participant can recover from a temporary failure without leaving the eve
   await expect(page.getByRole('heading', { name: data.events[0].name, exact: true })).toBeVisible();
   await expect(page.getByText('Não foi possível consultar sua participação agora.')).toBeVisible();
   await page.getByRole('button', { name: 'Tentar novamente' }).click();
-  await expect(page.getByRole('heading', { name: 'Certificado' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Certificado', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Cancelar inscrição' })).toBeVisible();
   await expect(page.getByText('Não foi possível consultar sua participação agora.')).toBeHidden();
 });
