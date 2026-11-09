@@ -697,16 +697,17 @@
                   </span>
                   @if (certificate.revokedAt) {
                     @if (canEditSelectedTarget() && permissions.has(Permission.Certificate.Reissue)) {
-                      <button
-                        matListItemMeta
-                        mat-button
-                        type="button"
-                        [attr.aria-label]="
-                          'Permitir emissão para ' + certificate.person.name + ' — ' + certificate.config.name
-                        "
-                        (click)="allowCertificateIssuance(certificate, certificatesHeading)">
-                        Permitir emissão
-                      </button>
+                      <div matListItemMeta>
+                        <button
+                          matButton="text"
+                          type="button"
+                          [attr.aria-label]="
+                            'Permitir emissão para ' + certificate.person.name + ' — ' + certificate.config.name
+                          "
+                          (click)="allowCertificateIssuance(certificate, certificatesHeading)">
+                          Permitir emissão
+                        </button>
+                      </div>
                     }
                   } @else {
                     <button
