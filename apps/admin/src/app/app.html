@@ -1,4 +1,6 @@
 <router-outlet></router-outlet>
 @defer (when cookieBannerEnabled()) {
 <app-cookie-banner [config]="cookieBannerConfig" />
+} @error {
+<p class="cookie-banner-load-error" role="status">Não foi possível carregar o aviso de cookies.</p>
 }

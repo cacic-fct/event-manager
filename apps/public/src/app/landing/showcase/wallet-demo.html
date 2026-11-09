@@ -54,6 +54,8 @@
             label="Código da credencial" />
           } @placeholder {
           <div class="wallet-card__barcode-placeholder" aria-hidden="true"></div>
+          } @error {
+          <p role="status">Código da credencial indisponível.</p>
           }
           <p>Apresente seu código para confirmar presença.</p>
         </section>
@@ -72,6 +74,8 @@
             label="Código do bilhete" />
           } @placeholder {
           <div class="wallet-card__barcode-placeholder" aria-hidden="true"></div>
+          } @error {
+          <p role="status">Código do bilhete indisponível.</p>
           } @if (isSelectedCard('ticket')) {
           <div class="ticket-actions">
             <p>Apresente este código para utilizar o bilhete.</p>

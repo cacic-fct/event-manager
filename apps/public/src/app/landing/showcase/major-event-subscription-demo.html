@@ -24,6 +24,8 @@
       [title]="event.location" />
     } @placeholder {
     <div class="map-placeholder"><mat-icon aria-hidden="true">map</mat-icon>Carregando mapa.</div>
+    } @error {
+    <p role="status">Não foi possível carregar o mapa da demonstração.</p>
     }
   </div>
   } @else {

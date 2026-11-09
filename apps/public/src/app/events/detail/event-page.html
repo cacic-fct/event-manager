@@ -319,6 +319,8 @@
           <mat-icon aria-hidden="true">place</mat-icon>
           Carregando mapa...
         </div>
+        } @error {
+        <p role="status">Não foi possível carregar o mapa.</p>
         } }
       </section>
       } @if (data.weather; as weather) {

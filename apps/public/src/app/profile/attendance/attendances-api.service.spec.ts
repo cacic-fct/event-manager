@@ -57,6 +57,93 @@ describe('AttendancesApiService', () => {
     );
   });
 
+  it('keeps a confirmed event registration when the certificate lookup fails', async () => {
+    const event = eventFixture('event-1', 'Oficina');
+    const subscription = { eventId: event.id, event, createdAt: event.startDate };
+    const result = firstValueFrom(service.getEventDetails(event.id));
+
+    flushGraphql('CurrentUserEventDetails', {
+      currentUserEventSubscription: subscription,
+      currentUserEventAttendance: null,
+    });
+    flushGraphql('CurrentUserOrganizerInfo', { currentUserOrganizerInfo: null });
+    flushGraphql('PublicEventForAttendanceDetails', { publicEvent: event });
+    httpTesting
+      .expectOne((request) => request.body.query.includes('query CurrentUserCertificates'))
+      .flush(null, {
+        status: 503,
+        statusText: 'Service Unavailable',
+      });
+
+    await expect(result).resolves.toMatchObject({ subscription });
+  });
+
+  it('bounds stalled supplemental requests without canceling the core detail lookup', async () => {
+    vi.useFakeTimers();
+    try {
+      const event = eventFixture('event-1', 'Oficina');
+      const subscription = { eventId: event.id, event, createdAt: event.startDate };
+      const result = firstValueFrom(service.getEventDetails(event.id));
+      const details = httpTesting.expectOne((request) => request.body.query.includes('query CurrentUserEventDetails'));
+      const supplements = httpTesting.match('/api/graphql');
+      expect(supplements).toHaveLength(3);
+
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(supplements.every((request) => request.cancelled)).toBe(true);
+      expect(details.cancelled).toBe(false);
+      details.flush({ data: { currentUserEventSubscription: subscription, currentUserEventAttendance: null } });
+
+      await expect(result).resolves.toMatchObject({ subscription });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps group attendance when the certificate lookup fails', async () => {
+    const event = {
+      ...eventFixture('event-1', 'Oficina'),
+      eventGroupId: 'group-1',
+      eventGroup: { id: 'group-1', name: 'Grupo', emoji: '🎓' },
+    };
+    const attendance = { eventId: event.id, attendedAt: event.endDate };
+    const result = firstValueFrom(service.getEventGroupDetails('group-1'));
+
+    flushGraphql('CurrentUserEventGroupDetails', {
+      currentUserEventGroupSubscription: null,
+      currentUserEventAttendances: [attendance],
+      publicEvents: [event],
+    });
+    flushGraphql('CurrentUserOrganizerInfo', { currentUserOrganizerInfo: null });
+    httpTesting
+      .expectOne((request) => request.body.query.includes('query CurrentUserCertificates'))
+      .flush(null, {
+        status: 503,
+        statusText: 'Service Unavailable',
+      });
+
+    await expect(result).resolves.toMatchObject({ eventGroup: event.eventGroup, attendances: [attendance] });
+  });
+
+  it('keeps a certificate lookup failure when it could be the only evidence of participation', async () => {
+    const event = eventFixture('event-1', 'Oficina');
+    const result = firstValueFrom(service.getEventDetails(event.id));
+
+    flushGraphql('CurrentUserEventDetails', {
+      currentUserEventSubscription: null,
+      currentUserEventAttendance: null,
+    });
+    flushGraphql('CurrentUserOrganizerInfo', { currentUserOrganizerInfo: null });
+    flushGraphql('PublicEventForAttendanceDetails', { publicEvent: event });
+    httpTesting
+      .expectOne((request) => request.body.query.includes('query CurrentUserCertificates'))
+      .flush(null, {
+        status: 503,
+        statusText: 'Service Unavailable',
+      });
+
+    await expect(result).rejects.toMatchObject({ status: 503 });
+  });
+
   it('maps the mixed subscription feed into the public profile model', async () => {
     const responsePromise = firstValueFrom(service.getSubscriptionsFeed());
 

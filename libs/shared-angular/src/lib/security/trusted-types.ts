@@ -1,11 +1,13 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Service, PLATFORM_ID, inject, makeEnvironmentProviders, provideEnvironmentInitializer } from '@angular/core';
 
+const CLOUDFLARE_TURNSTILE_SCRIPT_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
 const EXTERNAL_SCRIPT_URLS = new Set([
   'https://a.cacic.com.br/b.js',
   'https://a.cacic.com.br/recorder.js',
-  'https://challenges.cloudflare.com/turnstile/v0/api.js',
+  CLOUDFLARE_TURNSTILE_SCRIPT_URL,
 ]);
+const CLOUDFLARE_TURNSTILE_RELOAD_URL_PREFIX = `${CLOUDFLARE_TURNSTILE_SCRIPT_URL}?_upgrade=true&_cb=`;
 const PUBLIC_SERVICE_WORKER_PATH = '/app/cacic-public-worker.js';
 
 const EXTERNAL_SCRIPT_POLICY_NAME = 'cacic#external-script';
@@ -42,11 +44,22 @@ function assertTrustedEmptyHtml(value: string): string {
 export function assertTrustedExternalScriptUrl(value: string): string {
   const url = new URL(value);
 
-  if (!EXTERNAL_SCRIPT_URLS.has(url.href)) {
+  if (!EXTERNAL_SCRIPT_URLS.has(url.href) && !isTrustedTurnstileReloadUrl(value)) {
     throw new Error(`External script URL is not approved by the Trusted Types policy: ${url.href}`);
   }
 
   return url.href;
+}
+
+function isTrustedTurnstileReloadUrl(value: string): boolean {
+  if (!value.startsWith(CLOUDFLARE_TURNSTILE_RELOAD_URL_PREFIX)) {
+    return false;
+  }
+
+  const cacheBuster = value.slice(CLOUDFLARE_TURNSTILE_RELOAD_URL_PREFIX.length);
+
+  // Cloudflare appends a 13-digit timestamp when reloading its approved API script.
+  return cacheBuster.length === 13 && /^\d{13}$/.test(cacheBuster);
 }
 
 /**

@@ -148,6 +148,37 @@ describe('AttendancesApiService uncovered operations', () => {
     await expect(failure).resolves.toBeNull();
   });
 
+  it('keeps major-event attendance when the feed lookup fails', async () => {
+    const majorEvent = majorEventFixture();
+    const event = createPublicEvent({ id: 'attended-event', majorEventId: majorEvent.id, majorEvent });
+    const attendance = { eventId: event.id, attendedAt: event.endDate };
+    const result = firstValueFrom(service.getMajorEventDetails(majorEvent.id));
+
+    http
+      .expectOne((request) => request.body.query.includes('query CurrentUserMajorEventDetails'))
+      .flush({
+        data: {
+          currentUserMajorEventSubscription: null,
+          currentUserMajorEventEventSubscriptions: [],
+          currentUserEventAttendances: [attendance],
+          publicEvents: [event],
+        },
+      });
+    http
+      .expectOne((request) => request.body.query.includes('query CurrentUserOrganizerInfo'))
+      .flush({
+        data: { currentUserOrganizerInfo: null },
+      });
+    http
+      .expectOne((request) => request.body.query.includes('query CurrentUserMajorEventFeedItem'))
+      .flush(null, {
+        status: 503,
+        statusText: 'Service Unavailable',
+      });
+
+    await expect(result).resolves.toMatchObject({ majorEvent, attendances: [attendance] });
+  });
+
   it('loads and updates the current-user lecturer profile with exact mutation input', async () => {
     const profile = {
       id: 'profile-1',

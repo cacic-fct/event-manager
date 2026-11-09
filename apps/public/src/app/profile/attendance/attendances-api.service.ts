@@ -29,7 +29,7 @@ import type {
   SubscribedItem,
   SubscriptionsFeed,
 } from '@cacic-fct/shared-utils';
-import { EMPTY, Observable, catchError, expand, forkJoin, from, map, mergeMap, of, reduce } from 'rxjs';
+import { EMPTY, Observable, catchError, expand, forkJoin, from, map, mergeMap, of, reduce, timeout } from 'rxjs';
 import { graphqlError } from '../../shared/rate-limit-error';
 
 export type {
@@ -153,6 +153,8 @@ const CERTIFICATE_FIELDS = `
     name
   }
 `;
+
+const PARTICIPATION_SUPPLEMENT_TIMEOUT_MS = 5_000;
 
 const LECTURER_PROFILE_FIELDS = `
   id
@@ -347,12 +349,26 @@ export class AttendancesApiService {
         `,
         { majorEventId },
       ),
-      feedItem: this.getMajorEventFeedItem(majorEventId),
+      feed: this.loadParticipationSupplement(this.getMajorEventFeedItem(majorEventId)),
       organizerInfo: this.getOrganizerInfo('major-event', majorEventId),
     }).pipe(
-      map(({ details, feedItem, organizerInfo }) => {
+      map(({ details, feed, organizerInfo }) => {
         const publicEvents = details.publicEvents ?? [];
         const targetEventIds = new Set(publicEvents.map((event) => event.id));
+        const attendances = details.currentUserEventAttendances.filter((attendance) =>
+          targetEventIds.has(attendance.eventId),
+        );
+        const feedItem = feed.value;
+        let majorEvent = feedItem?.majorEvent ?? null;
+        if ('error' in feed && !details.currentUserMajorEventSubscription) {
+          majorEvent =
+            publicEvents.find((event) => event.majorEvent)?.majorEvent ??
+            organizerInfo?.events.find(({ event }) => event.majorEvent)?.event.majorEvent ??
+            null;
+          if (!majorEvent || (attendances.length === 0 && !organizerInfo)) {
+            throw feed.error;
+          }
+        }
 
         return {
           subscription: this.withDerivedNotSubscribedEvents(
@@ -360,14 +376,12 @@ export class AttendancesApiService {
             details.currentUserMajorEventEventSubscriptions ?? [],
             publicEvents,
           ),
-          majorEvent: feedItem?.majorEvent ?? null,
+          majorEvent,
           events: publicEvents,
           hasIssuedCertificate: feedItem?.participation.hasIssuedCertificate ?? false,
           isLecturer: Boolean(feedItem?.participation.isLecturer || organizerInfo),
           sportsRepresentativeTeams: feedItem?.sportsRepresentativeTeams ?? [],
-          attendances: details.currentUserEventAttendances.filter((attendance) =>
-            targetEventIds.has(attendance.eventId),
-          ),
+          attendances,
         };
       }),
     );
@@ -418,9 +432,12 @@ export class AttendancesApiService {
         `,
         { eventId },
       ),
-      certificates: this.getCurrentUserCertificates('EVENT', eventId),
+      certificates: this.loadParticipationSupplement(this.getCurrentUserCertificates('EVENT', eventId)),
       organizerInfo: this.getOrganizerInfo('event', eventId),
-      publicEvent: this.getPublicEvent(eventId).pipe(catchError(() => of(null))),
+      publicEvent: this.getPublicEvent(eventId).pipe(
+        timeout({ first: PARTICIPATION_SUPPLEMENT_TIMEOUT_MS }),
+        catchError(() => of(null)),
+      ),
     }).pipe(
       map(({ details, certificates, organizerInfo, publicEvent }) => {
         const subscription = this.isStandaloneEvent(details.currentUserEventSubscription?.event)
@@ -432,13 +449,18 @@ export class AttendancesApiService {
           organizerEvent,
         );
         const detailEvent = subscription?.event ?? fallbackEvent;
+        const attendance = detailEvent ? details.currentUserEventAttendance : null;
+        const isLecturer = Boolean(organizerInfo && detailEvent);
+        if ('error' in certificates && !subscription && !attendance && !isLecturer) {
+          throw certificates.error;
+        }
 
         return {
           subscription,
           event: subscription ? null : fallbackEvent,
-          hasIssuedCertificate: certificates.length > 0,
-          isLecturer: Boolean(organizerInfo && detailEvent),
-          attendance: detailEvent ? details.currentUserEventAttendance : null,
+          hasIssuedCertificate: Boolean(certificates.value?.length),
+          isLecturer,
+          attendance,
         };
       }),
     );
@@ -475,7 +497,7 @@ export class AttendancesApiService {
         `,
         { eventGroupId },
       ),
-      certificates: this.getCurrentUserCertificates('EVENT_GROUP', eventGroupId),
+      certificates: this.loadParticipationSupplement(this.getCurrentUserCertificates('EVENT_GROUP', eventGroupId)),
       organizerInfo: this.getOrganizerInfo('event-group', eventGroupId),
     }).pipe(
       map(({ details, certificates, organizerInfo }) => {
@@ -488,23 +510,32 @@ export class AttendancesApiService {
         const fallbackEvents = this.resolveStandaloneEvents(details.publicEvents ?? [], organizerEvents);
         const targetEvents = subscription?.events ?? fallbackEvents;
         const targetEventIds = new Set(targetEvents.map((event) => event.id));
+        const eventGroup = subscription ? null : (fallbackEvents[0]?.eventGroup ?? null);
+        const attendances = details.currentUserEventAttendances.filter((attendance) =>
+          targetEventIds.has(attendance.eventId),
+        );
+        const isLecturer = Boolean(organizerInfo && (subscription || fallbackEvents.length > 0));
+        if ('error' in certificates && !subscription && !(eventGroup && (attendances.length > 0 || isLecturer))) {
+          throw certificates.error;
+        }
 
         return {
           subscription,
-          eventGroup: subscription ? null : (fallbackEvents[0]?.eventGroup ?? null),
+          eventGroup,
           events: subscription ? [] : fallbackEvents,
-          hasIssuedCertificate: certificates.length > 0,
-          isLecturer: Boolean(organizerInfo && (subscription || fallbackEvents.length > 0)),
-          attendances: details.currentUserEventAttendances.filter((attendance) =>
-            targetEventIds.has(attendance.eventId),
-          ),
+          hasIssuedCertificate: Boolean(certificates.value?.length),
+          isLecturer,
+          attendances,
         };
       }),
     );
   }
 
   getOrganizerInfo(targetType: EventTargetType, targetId: string): Observable<OrganizerInfo | null> {
-    return this.getOrganizerInfoStrict(targetType, targetId).pipe(catchError(() => of(null)));
+    return this.getOrganizerInfoStrict(targetType, targetId).pipe(
+      timeout({ first: PARTICIPATION_SUPPLEMENT_TIMEOUT_MS }),
+      catchError(() => of(null)),
+    );
   }
 
   getOrganizerInfoStrict(targetType: EventTargetType, targetId: string): Observable<OrganizerInfo | null> {
@@ -842,6 +873,15 @@ export class AttendancesApiService {
 
         return response.data;
       }),
+    );
+  }
+
+  // A failed supplement only blocks the detail when it could contain the sole evidence of participation.
+  private loadParticipationSupplement<T>(request: Observable<T>) {
+    return request.pipe(
+      timeout({ first: PARTICIPATION_SUPPLEMENT_TIMEOUT_MS }),
+      map((value) => ({ value })),
+      catchError((error: unknown) => of({ value: null, error })),
     );
   }
 

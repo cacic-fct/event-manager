@@ -11,29 +11,43 @@
   <app-landing-role-demo />
   } @placeholder {
   <div class="demo-content"><p>Carregando equipe.</p></div>
+  } @error {
+  <div class="demo-content"><p role="status">Não foi possível carregar a demonstração.</p></div>
   } } @case ('audit') { @defer (on immediate) {
   <app-landing-audit-log-demo />
   } @placeholder {
   <div class="demo-content"><p>Carregando histórico.</p></div>
+  } @error {
+  <div class="demo-content"><p role="status">Não foi possível carregar a demonstração.</p></div>
   } } @case ('dashboard') { @defer (on immediate) {
   <app-landing-dashboard-demo (openFeature)="feature.set($event)" />
   } @placeholder {
   <div class="demo-content"><p>Carregando painel.</p></div>
+  } @error {
+  <div class="demo-content"><p role="status">Não foi possível carregar a demonstração.</p></div>
   } } @case ('events') { @defer (on immediate) {
   <app-landing-registration-demo [organizer]="true" />
   } @placeholder {
   <div class="demo-content"><p>Carregando eventos.</p></div>
+  } @error {
+  <div class="demo-content"><p role="status">Não foi possível carregar a demonstração.</p></div>
   } } @case ('attendance') { @defer (on immediate) {
   <app-landing-attendance-demo (exit)="feature.set('dashboard')" />
   } @placeholder {
   <div class="demo-content"><p>Carregando chamada oral.</p></div>
+  } @error {
+  <div class="demo-content"><p role="status">Não foi possível carregar a demonstração.</p></div>
   } } @case ('certificates') { @defer (on immediate) {
   <app-landing-certificate-demo />
   } @placeholder {
   <div class="demo-content"><p>Carregando certificados.</p></div>
+  } @error {
+  <div class="demo-content"><p role="status">Não foi possível carregar a demonstração.</p></div>
   } } @case ('draws') { @defer (on immediate) {
   <app-landing-prize-draw-demo />
   } @placeholder {
   <div class="demo-content"><p>Carregando sorteio.</p></div>
+  } @error {
+  <div class="demo-content"><p role="status">Não foi possível carregar a demonstração.</p></div>
   } } }
 </app-landing-showcase-stage>

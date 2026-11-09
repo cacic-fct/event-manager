@@ -272,6 +272,7 @@ export class FormResultsComponent implements AfterViewInit, OnDestroy {
       chart.setOption({
         color: [primaryColor],
         tooltip: {
+          renderMode: 'richText',
           trigger: 'axis',
           axisPointer: { type: 'shadow' },
         },
