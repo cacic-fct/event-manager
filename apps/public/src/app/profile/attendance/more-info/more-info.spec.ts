@@ -197,11 +197,7 @@ describe('MoreInfo', () => {
           },
         },
       });
-      certificatesRequest.flush({
-        data: {
-          currentUserCertificates: [],
-        },
-      });
+      certificatesRequest.flush(null, { status: 503, statusText: 'Service Unavailable' });
       organizerRequest.flush({
         data: {
           currentUserOrganizerInfo: null,
