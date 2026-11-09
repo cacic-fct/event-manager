@@ -11,7 +11,8 @@ import {
 } from '@angular/core';
 import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
-import { provideRouter, RouteReuseStrategy, Router, TitleStrategy } from '@angular/router';
+import { provideRouter, RouteReuseStrategy, Router, TitleStrategy, withNavigationErrorHandler } from '@angular/router';
+import { offerChunkLoadRetry } from '@cacic-fct/shared-angular/errors';
 import { appRoutes } from './app.routes';
 import { provideClientHydration, withNoIncrementalHydration } from '@angular/platform-browser';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
@@ -122,7 +123,7 @@ export const appConfig: ApplicationConfig = {
     { provide: PUBLIC_FEATURE_FLAG_CONFIG, useValue: publicFeatureFlagConfig },
     provideClientHydration(withNoIncrementalHydration()),
     provideBrowserGlobalErrorListeners(),
-    provideRouter(appRoutes),
+    provideRouter(appRoutes, withNavigationErrorHandler(offerChunkLoadRetry)),
     { provide: TitleStrategy, useClass: PageTitleStrategy },
     provideHttpClient(withInterceptors([authInterceptor, publicMapCacheInvalidationInterceptor])),
     provideInterruptionFlow(DefaultRedirectOnTabEntryService),

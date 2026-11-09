@@ -17,6 +17,12 @@ describe('assertTrustedExternalScriptUrl', () => {
     );
   });
 
+  it('accepts Cloudflare Turnstile reload URLs with its timestamp cache buster', () => {
+    const reloadUrl = `https://challenges.cloudflare.com/turnstile/v0/api.js?_upgrade=true&_cb=${Date.now()}`;
+
+    expect(assertTrustedExternalScriptUrl(reloadUrl)).toBe(reloadUrl);
+  });
+
   it('rejects a different path, origin, or protocol', () => {
     expect(() => assertTrustedExternalScriptUrl('https://a.cacic.com.br/other.js')).toThrow(
       'External script URL is not approved',
@@ -27,6 +33,22 @@ describe('assertTrustedExternalScriptUrl', () => {
     expect(() => assertTrustedExternalScriptUrl('http://a.cacic.com.br/b.js')).toThrow(
       'External script URL is not approved',
     );
+  });
+
+  it('rejects Turnstile reload URLs with unapproved query parameters or values', () => {
+    const cacheBuster = String(Date.now());
+
+    for (const url of [
+      `https://challenges.cloudflare.com/turnstile/v0/api.js?_upgrade=false&_cb=${cacheBuster}`,
+      `https://challenges.cloudflare.com/turnstile/v0/api.js?_upgrade=true&_cb=not-a-timestamp`,
+      `https://challenges.cloudflare.com/turnstile/v0/api.js?_upgrade=true&_cb=0${cacheBuster}`,
+      `https://challenges.cloudflare.com/turnstile/other.js?_upgrade=true&_cb=${cacheBuster}`,
+      `https://challenges.cloudflare.com/turnstile/v0/api.js?_cb=${cacheBuster}&_upgrade=true`,
+      `https://challenges.cloudflare.com/turnstile/v0/api.js?_upgrade=true&_cb=${cacheBuster}&extra=true`,
+      `https://challenges.cloudflare.com/turnstile/v0/api.js?_upgrade=true&_cb=${cacheBuster}&_cb=${cacheBuster}`,
+    ]) {
+      expect(() => assertTrustedExternalScriptUrl(url)).toThrow('External script URL is not approved');
+    }
   });
 });
 
@@ -185,6 +207,8 @@ describe('CacicTrustedTypesService', () => {
     expect(rules.createScriptURL(`blob:${location.origin}/openlayers-worker`)).toBe(
       `blob:${location.origin}/openlayers-worker`,
     );
+    const turnstileReloadUrl = `https://challenges.cloudflare.com/turnstile/v0/api.js?_upgrade=true&_cb=${Date.now()}`;
+    expect(rules.createScriptURL(turnstileReloadUrl)).toBe(turnstileReloadUrl);
     expect(() => rules.createScriptURL('https://example.com/worker.js')).toThrow('Worker blob URL is not approved');
   });
 

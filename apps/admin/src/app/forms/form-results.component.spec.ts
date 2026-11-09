@@ -90,6 +90,7 @@ describe('FormResultsComponent', () => {
     expect(echartsMock.setOption).toHaveBeenCalledWith(
       expect.objectContaining({
         color: [expect.not.stringContaining('light-dark(')],
+        tooltip: expect.objectContaining({ renderMode: 'richText', trigger: 'axis' }),
         series: [
           expect.objectContaining({
             itemStyle: expect.objectContaining({ color: expect.not.stringContaining('light-dark(') }),

@@ -40,7 +40,7 @@ Para atualizar certificados existentes, use **Reemitir agora**. Os IDs são pres
 
 O agendamento é opcional. Em **Quando emitir**, escolha **Agendar**, informe a data e a hora e confirme a emissão ou reemissão. A execução começa a partir desse horário, conforme a disponibilidade da fila. É possível cancelar enquanto o processamento não tiver começado. Se editar o conteúdo ou o público da configuração depois de agendar, cancele e faça um novo agendamento; solicitações com uma configuração alterada não são executadas.
 
-A opção **Notificar somente os destinatários ao concluir** controla as notificações dessa emissão. As notificações são preparadas apenas depois que todo o lote termina com sucesso e somente para certificados novos ou atualizados. A revisão automática mantém a escolha da última emissão concluída. Uma falha parcial não envia a notificação de conclusão; o sistema tenta novamente e preserva o histórico de auditoria.
+A opção **Notificar somente os destinatários ao concluir** controla as notificações dessa emissão. As notificações são preparadas apenas depois que todo o lote termina com sucesso e somente para certificados novos ou atualizados. Uma falha parcial não envia a notificação de conclusão; o sistema tenta novamente e preserva o histórico de auditoria.
 
 ## Destinatários manuais
 
@@ -56,7 +56,7 @@ Para desfazer uma revogação administrativa, use **Remover revogação e reemit
 
 ## Revisão automática e auditoria
 
-Por padrão, a cada seis horas, o sistema revisa configurações ativas que já emitiram certificados ou concluíram uma publicação, incluindo as manuais. A revisão inclui pessoas que passaram a ser elegíveis, atualiza os dados dos certificados e invalida certificados que perderam a elegibilidade. Configurações novas ainda não publicadas não são emitidas por essa revisão.
+Por padrão, a cada seis horas, o sistema revisa configurações ativas que já emitiram certificados ou concluíram uma publicação, incluindo as manuais. A revisão inclui pessoas que passaram a ser elegíveis, atualiza os dados dos certificados e invalida certificados que perderam a elegibilidade. A revisão automática não envia notificações aos destinatários. Configurações novas ainda não publicadas não são emitidas por essa revisão.
 
 O intervalo pode ser configurado com `CERTIFICATE_RECONCILIATION_INTERVAL_HOURS` (de 1 a 168 horas). Os lotes gravam um destinatário por vez; solicitações explícitas têm prioridade sobre a recuperação automática. Passagens automáticas sem alterações não geram entradas na auditoria.
 

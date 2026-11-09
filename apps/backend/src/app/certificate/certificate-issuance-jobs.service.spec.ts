@@ -225,6 +225,29 @@ describe('CertificateIssuanceJobsService', () => {
     );
   });
 
+  it.each(['PENDING', 'PROCESSING'] as const)(
+    'issues certificates silently for a legacy %s automatic run',
+    async (status) => {
+      const { service, run, issuing, prisma } = fixture();
+      run.status = status;
+      run.automatic = true;
+      run.requestedById = null;
+      run.notifyRecipients = true;
+
+      await service.process(run.id, true);
+
+      expect(issuing.issueMissedCertificates).toHaveBeenCalledWith(
+        'config',
+        undefined,
+        expect.objectContaining({ notify: false, createNotifications: false, issuanceRunId: run.id }),
+      );
+      expect(prisma.certificateIssuanceRun.update).toHaveBeenCalledWith({
+        where: { id: run.id },
+        data: expect.objectContaining({ status: 'COMPLETED', certificateCount: 1 }),
+      });
+    },
+  );
+
   it('preserves notification intent creation on retryable and terminal partial failures', async () => {
     const { service, issuing, prisma, run } = fixture();
     const failure = new Error('batch failed');
@@ -265,15 +288,11 @@ describe('CertificateIssuanceJobsService', () => {
     });
   });
 
-  it('reconciles previously published manual and automatic configurations while preserving the last notification choice', async () => {
-    const { service, prisma } = fixture();
-    prisma.certificateConfig.findMany.mockResolvedValueOnce([
-      { id: 'automatic', issuanceRuns: [{ notifyRecipients: false }] },
-      { id: 'manual', issuanceRuns: [] },
-    ]);
-    const request = jest.spyOn(service, 'requestIssuance').mockResolvedValue({} as never);
+  it('reconciles previously published configurations without inheriting a notification choice', async () => {
+    const { service, config, prisma } = fixture();
+    prisma.certificateConfig.findMany.mockResolvedValueOnce([{ id: config.id }]);
     await service.reconcileEligibility();
-    const where = prisma.certificateConfig.findMany.mock.calls[0][0].where;
+    const { where, select } = prisma.certificateConfig.findMany.mock.calls[0][0];
     expect(where).toEqual(
       expect.objectContaining({
         isActive: true,
@@ -283,8 +302,10 @@ describe('CertificateIssuanceJobsService', () => {
       }),
     );
     expect(where).not.toHaveProperty('issuedTo');
-    expect(request).toHaveBeenCalledWith({ configId: 'automatic', notifyRecipients: false }, undefined, true);
-    expect(request).toHaveBeenCalledWith({ configId: 'manual', notifyRecipients: true }, undefined, true);
+    expect(select).toEqual({ id: true });
+    expect(prisma.certificateIssuanceRun.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ configId: config.id, automatic: true, notifyRecipients: false }),
+    });
   });
 
   it('recovers private-scope pending jobs and closes stalled jobs that BullMQ has permanently failed', async () => {

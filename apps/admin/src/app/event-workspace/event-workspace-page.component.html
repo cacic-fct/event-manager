@@ -74,16 +74,22 @@
             @case ('event') {
               @defer (on immediate) {
                 <app-workspace-events-tab />
+              } @error {
+                <p role="status">Não foi possível carregar as configurações.</p>
               }
             }
             @case ('group') {
               @defer (on immediate) {
                 <app-workspace-event-groups-tab />
+              } @error {
+                <p role="status">Não foi possível carregar as configurações.</p>
               }
             }
             @case ('major-event') {
               @defer (on immediate) {
                 <app-workspace-major-events-tab />
+              } @error {
+                <p role="status">Não foi possível carregar as configurações.</p>
               }
             }
           }

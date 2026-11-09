@@ -89,6 +89,20 @@ describe('App', () => {
     expect((fixture.nativeElement as HTMLElement).querySelector('app-cookie-banner')).toBeNull();
   });
 
+  it('shows a status message if the cookie banner cannot load', async () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const [cookieBannerBlock] = await fixture.getDeferBlocks();
+
+    await cookieBannerBlock.render(DeferBlockState.Error);
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('[role="status"]')?.textContent?.trim()).toBe(
+      'Não foi possível carregar o aviso de cookies.',
+    );
+    expect(compiled.querySelector('router-outlet')).not.toBeNull();
+  });
+
   it('does not reject local cookie acceptance when backend sync fails', async () => {
     acceptCookieBanner.mockReturnValue(of(false));
     const fixture = TestBed.createComponent(App);

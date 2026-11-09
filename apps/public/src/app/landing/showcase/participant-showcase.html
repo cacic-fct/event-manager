@@ -11,6 +11,8 @@
   <app-landing-receipt-demo (back)="dayView.set('agenda')" (receiptSubmitted)="receiptPending.set(false)" />
   } @placeholder {
   <div class="demo-content"><p>Carregando pagamento.</p></div>
+  } @error {
+  <div class="demo-content"><p role="status">Não foi possível carregar a demonstração.</p></div>
   } } @else {
   <div class="demo-content demo-enter day-demo">
     <h4>Boa tarde, Marina.</h4>
@@ -72,18 +74,26 @@
   <app-landing-major-event-subscription-demo [initialEventId]="previewEventId()" />
   } @placeholder {
   <div class="demo-content"><p>Carregando eventos.</p></div>
+  } @error {
+  <div class="demo-content"><p role="status">Não foi possível carregar a demonstração.</p></div>
   } } @case ('wallet') { @defer (on immediate) {
   <app-landing-wallet-demo [initialView]="walletView()" />
   } @placeholder {
   <div class="demo-content"><p>Carregando carteira.</p></div>
+  } @error {
+  <div class="demo-content"><p role="status">Não foi possível carregar a demonstração.</p></div>
   } } @case ('notifications') { @defer (on immediate) {
   <app-landing-notifications-demo (openDestination)="openNotification($event)" />
   } @placeholder {
   <div class="demo-content"><p>Carregando notificações.</p></div>
+  } @error {
+  <div class="demo-content"><p role="status">Não foi possível carregar a demonstração.</p></div>
   } } @case ('history') { @defer (on immediate) {
   <app-landing-participation-history-demo [initialParticipation]="historyParticipation()" />
   } @placeholder {
   <div class="demo-content"><p>Carregando participações.</p></div>
+  } @error {
+  <div class="demo-content"><p role="status">Não foi possível carregar a demonstração.</p></div>
   } } @case ('attendance') {
   <div class="demo-content demo-enter attendance-demo">
     <span class="attendance-symbol">

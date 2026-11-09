@@ -9,7 +9,8 @@ import {
 } from '@angular/core';
 import { isPlatformBrowser, registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withNavigationErrorHandler } from '@angular/router';
+import { offerChunkLoadRetry } from '@cacic-fct/shared-angular/errors';
 import { appRoutes } from './app.routes';
 import { provideClientHydration } from '@angular/platform-browser';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
@@ -56,7 +57,7 @@ export const appConfig: ApplicationConfig = {
     provideClientHydration(),
     provideBrowserGlobalErrorListeners(),
     provideHttpClient(withInterceptors([requestActivityInterceptor, authInterceptor])),
-    provideRouter(appRoutes),
+    provideRouter(appRoutes, withNavigationErrorHandler(offerChunkLoadRetry)),
     provideCacicAccountPrivacy({
       ...CACIC_ACCOUNT_PRIVACY_OPT_OUT_CONFIG,
       apiBaseUrl: accountPrivacyApiBaseUrl,

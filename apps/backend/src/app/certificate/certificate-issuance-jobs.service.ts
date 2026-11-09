@@ -95,7 +95,7 @@ export class CertificateIssuanceJobsService implements OnModuleInit {
             configId: config.id,
             scheduledAt,
             reissue: input.reissue ?? false,
-            notifyRecipients: input.notifyRecipients ?? true,
+            notifyRecipients: !automatic && (input.notifyRecipients ?? true),
             requestedById,
             configUpdatedAt: config.updatedAt,
             automatic,
@@ -164,15 +164,7 @@ export class CertificateIssuanceJobsService implements OnModuleInit {
             issuanceRuns: { none: { status: { in: [...ACTIVE_STATUSES] } } },
             OR: [{ certificates: { some: {} } }, { issuanceRuns: { some: { status: 'COMPLETED' } } }],
           },
-          select: {
-            id: true,
-            issuanceRuns: {
-              where: { status: 'COMPLETED', automatic: false },
-              orderBy: { createdAt: 'desc' },
-              take: 1,
-              select: { notifyRecipients: true },
-            },
-          },
+          select: { id: true },
           orderBy: { id: 'asc' },
           ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
           take: PAGE_SIZE,
@@ -180,14 +172,7 @@ export class CertificateIssuanceJobsService implements OnModuleInit {
         if (configs.length === 0) return;
         for (const config of configs) {
           try {
-            await this.requestIssuance(
-              {
-                configId: config.id,
-                notifyRecipients: config.issuanceRuns[0]?.notifyRecipients ?? true,
-              },
-              undefined,
-              true,
-            );
+            await this.requestIssuance({ configId: config.id }, undefined, true);
           } catch (error: unknown) {
             if (!(error instanceof ConflictException)) {
               this.logger.warn(`Could not reconcile certificate configuration ${config.id}.`, error);
@@ -225,9 +210,11 @@ export class CertificateIssuanceJobsService implements OnModuleInit {
         ) {
           throw new UnrecoverableError('A configuração foi alterada ou desativada. Solicite uma nova emissão.');
         }
+        // The outbox scheduler delivers notification intents, even from partially failed runs.
+        // Older automatic runs may have been saved with notifications enabled.
         await this.issuing.issueMissedCertificates(run.configId, run.requestedById ?? undefined, {
           notify: false,
-          createNotifications: run.notifyRecipients,
+          createNotifications: !run.automatic && run.notifyRecipients,
           force: run.reissue,
           batchSize: 1,
           issuanceRunId: run.id,
@@ -257,8 +244,6 @@ export class CertificateIssuanceJobsService implements OnModuleInit {
           },
           { timeout: 60_000 },
         );
-        // Each certificate write commits its notification intent atomically.
-        // The outbox scheduler also delivers certificates from partially failed runs.
       } catch (error: unknown) {
         const failed = {
           ...run,
