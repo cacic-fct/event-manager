@@ -30,7 +30,6 @@ export const LGPD_EVENT_SUBSCRIPTION_SELECT = {
   personId: true,
   eventGroupSubscriptionId: true,
   createdAt: true,
-  createdByMethod: true,
   deletedAt: true,
 } satisfies Prisma.EventSubscriptionSelect;
 
@@ -39,7 +38,6 @@ export const LGPD_EVENT_GROUP_SUBSCRIPTION_SELECT = {
   eventGroupId: true,
   personId: true,
   createdAt: true,
-  createdByMethod: true,
   deletedAt: true,
   eventSubscriptions: {
     select: {
@@ -65,7 +63,6 @@ export const LGPD_MAJOR_EVENT_SUBSCRIPTION_SELECT = {
   receiptRejectionReason: true,
   receiptValidatedAt: true,
   createdAt: true,
-  createdByMethod: true,
   updatedAt: true,
   deletedAt: true,
   selectedEvents: {
@@ -83,12 +80,6 @@ export const LGPD_EVENT_DRAFT_SELECT = {
   id: true,
   sourceEventId: true,
   name: true,
-  createdById: true,
-  createdByName: true,
-  createdByEmail: true,
-  updatedById: true,
-  updatedByName: true,
-  updatedByEmail: true,
   createdAt: true,
   updatedAt: true,
   expiresAt: true,
@@ -97,41 +88,9 @@ export const LGPD_EVENT_DRAFT_SELECT = {
 export const LGPD_EVENT_ATTENDANCE_SELECT = {
   personId: true,
   eventId: true,
-  category: true,
   attendedAt: true,
   createdAt: true,
-  createdByMethod: true,
-  collectedLatitude: true,
-  collectedLongitude: true,
-  collectedAccuracyMeters: true,
 } satisfies Prisma.EventAttendanceSelect;
-
-export const LGPD_OFFLINE_ATTENDANCE_SUBMISSION_SELECT = {
-  id: true,
-  clientId: true,
-  eventId: true,
-  personId: true,
-  status: true,
-  createdByMethod: true,
-  scannerCode: true,
-  manualValue: true,
-  collectedAt: true,
-  authorUserId: true,
-  authorName: true,
-  authorEmail: true,
-  submittedById: true,
-  submittedAt: true,
-  stagedReason: true,
-  resolutionError: true,
-  collectedLatitude: true,
-  collectedLongitude: true,
-  collectedAccuracyMeters: true,
-  committedAt: true,
-  committedById: true,
-  rejectedAt: true,
-  rejectedById: true,
-  rejectionReason: true,
-} satisfies Prisma.OfflineEventAttendanceSubmissionSelect;
 
 export const LGPD_EVENT_LECTURER_SELECT = {
   eventId: true,
@@ -144,19 +103,8 @@ export const LGPD_PRIZE_DRAW_MANUAL_ENTRY_SELECT = {
   drawId: true,
   personId: true,
   name: true,
-  weight: true,
   createdAt: true,
-  updatedAt: true,
 } satisfies Prisma.PrizeDrawManualEntrySelect;
-
-export const LGPD_PRIZE_DRAW_WEIGHT_OVERRIDE_SELECT = {
-  id: true,
-  drawId: true,
-  personId: true,
-  weight: true,
-  createdAt: true,
-  updatedAt: true,
-} satisfies Prisma.PrizeDrawWeightOverrideSelect;
 
 export const LGPD_PRIZE_DRAW_EXCLUSION_SELECT = {
   id: true,
@@ -170,8 +118,6 @@ export const LGPD_PRIZE_DRAW_FROZEN_ENTRY_SELECT = {
   drawId: true,
   personId: true,
   displayName: true,
-  weight: true,
-  sources: true,
   createdAt: true,
 } satisfies Prisma.PrizeDrawFrozenEntrySelect;
 
@@ -180,8 +126,6 @@ export const LGPD_PRIZE_DRAW_SPIN_ENTRY_SELECT = {
   spinId: true,
   personId: true,
   displayName: true,
-  weight: true,
-  sources: true,
   winner: true,
   createdAt: true,
 } satisfies Prisma.PrizeDrawSpinEntrySelect;
@@ -192,7 +136,6 @@ export const LGPD_PRIZE_DRAW_WIN_SELECT = {
   sequence: true,
   winnerPersonId: true,
   winnerDisplayName: true,
-  winnerWeight: true,
   drawnAt: true,
   undoneAt: true,
 } satisfies Prisma.PrizeDrawSpinSelect;
@@ -200,12 +143,7 @@ export const LGPD_PRIZE_DRAW_WIN_SELECT = {
 export const LGPD_CERTIFICATE_SELECT = {
   id: true,
   personId: true,
-  configId: true,
-  renderedData: true,
   issuedAt: true,
-  certificateTemplateId: true,
-  createdAt: true,
-  updatedAt: true,
   deletedAt: true,
 } satisfies Prisma.CertificateSelect;
 
@@ -215,36 +153,9 @@ export const LGPD_MAJOR_EVENT_RECEIPT_SELECT = {
   majorEventId: true,
   personId: true,
   fileName: true,
-  mimeType: true,
-  sizeBytes: true,
-  expiresAt: true,
   uploadedAt: true,
   processingStatus: true,
-  processedAt: true,
-  processingError: true,
-  ocrText: true,
-  expectedAmountCents: true,
-  matchedAmountCents: true,
-  amountMatched: true,
-  matchedAmountText: true,
-  nameMatched: true,
-  matchedNameText: true,
-  createdAt: true,
-  updatedAt: true,
 } satisfies Prisma.MajorEventReceiptSelect;
-
-export const LGPD_RECEIPT_VALIDATION_ACTION_SELECT = {
-  id: true,
-  subscriptionId: true,
-  receiptId: true,
-  action: true,
-  previousStatus: true,
-  nextStatus: true,
-  previousRejectionReason: true,
-  nextRejectionReason: true,
-  createdAt: true,
-  undoneAt: true,
-} satisfies Prisma.MajorEventReceiptValidationActionSelect;
 
 export const LGPD_PEOPLE_MERGE_OPERATION_SELECT = {
   id: true,
@@ -255,18 +166,6 @@ export const LGPD_PEOPLE_MERGE_OPERATION_SELECT = {
   rolledBackAt: true,
   createdAt: true,
 } satisfies Prisma.PeopleMergeOperationSelect;
-
-export const LGPD_MERGE_CANDIDATE_SELECT = {
-  id: true,
-  personAId: true,
-  personBId: true,
-  score: true,
-  matchMethod: true,
-  matchValue: true,
-  status: true,
-  createdAt: true,
-  updatedAt: true,
-} satisfies Prisma.MergeCandidateSelect;
 
 export const LGPD_ACCOUNT_USER_MERGE_SELECT = {
   oldUserId: true,
@@ -282,18 +181,11 @@ export const LGPD_EXTERNAL_ACCOUNT_MERGE_OPERATION_SELECT = {
   newUserId: true,
   occurredAt: true,
   status: true,
-  result: true,
   peopleMergeOperationId: true,
-  errorMessage: true,
-  attemptCount: true,
   rolledBackAt: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.ExternalAccountMergeOperationSelect;
-
-export type LgpdOfflineSubmission = Prisma.OfflineEventAttendanceSubmissionGetPayload<{
-  select: typeof LGPD_OFFLINE_ATTENDANCE_SUBMISSION_SELECT;
-}>;
 
 export const LGPD_LECTURER_PROFILE_SELECT = {
   id: true,
@@ -306,7 +198,5 @@ export const LGPD_LECTURER_PROFILE_SELECT = {
   whatsapp: true,
   linkedin: true,
   createdAt: true,
-  createdById: true,
   updatedAt: true,
-  updatedById: true,
 } satisfies Prisma.LecturerProfileSelect;

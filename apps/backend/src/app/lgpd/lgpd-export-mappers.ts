@@ -1,5 +1,4 @@
-import { parseScannerUserId } from './lgpd-offline-submissions';
-import { type DataSubjectResolution, type LgpdOfflineSubmission, type LgpdResolvedPerson } from './lgpd-records';
+import { type LgpdResolvedPerson } from './lgpd-records';
 
 export function mapPersonForExport(person: LgpdResolvedPerson) {
   return {
@@ -51,51 +50,6 @@ export function selectForExport(record: object, select: object): Record<string, 
   }
 
   return result;
-}
-
-export function mapOfflineSubmissionForExport(
-  submission: LgpdOfflineSubmission,
-  dataSubject: DataSubjectResolution,
-): Record<string, unknown> {
-  const userIds = new Set(dataSubject.userIds);
-  const emails = new Set(dataSubject.emails.map((email) => email.toLowerCase()));
-  const scannerUserId = submission.scannerCode ? parseScannerUserId(submission.scannerCode) : null;
-  const scannerMatchesSubject = scannerUserId == null || userIds.has(scannerUserId);
-  const authorMatchesSubject =
-    (submission.authorUserId != null && userIds.has(submission.authorUserId)) ||
-    (submission.authorEmail != null && emails.has(submission.authorEmail.toLowerCase()));
-
-  return {
-    id: submission.id,
-    clientId: submission.clientId,
-    eventId: submission.eventId,
-    personId: submission.personId,
-    status: submission.status,
-    createdByMethod: submission.createdByMethod,
-    scannerCode: scannerMatchesSubject ? submission.scannerCode : null,
-    manualValue: submission.manualValue,
-    collectedAt: submission.collectedAt,
-    authorUserId: authorMatchesSubject ? submission.authorUserId : null,
-    authorName: authorMatchesSubject ? submission.authorName : null,
-    authorEmail: authorMatchesSubject ? submission.authorEmail : null,
-    submittedById: userIds.has(submission.submittedById) ? submission.submittedById : null,
-    submittedBySubject: userIds.has(submission.submittedById),
-    submittedAt: submission.submittedAt,
-    stagedReason: submission.stagedReason,
-    resolutionError: submission.resolutionError,
-    collectedLatitude: submission.collectedLatitude,
-    collectedLongitude: submission.collectedLongitude,
-    collectedAccuracyMeters: submission.collectedAccuracyMeters,
-    committedAt: submission.committedAt,
-    committedById:
-      submission.committedById != null && userIds.has(submission.committedById) ? submission.committedById : null,
-    committedBySubject: submission.committedById != null && userIds.has(submission.committedById),
-    rejectedAt: submission.rejectedAt,
-    rejectedById:
-      submission.rejectedById != null && userIds.has(submission.rejectedById) ? submission.rejectedById : null,
-    rejectedBySubject: submission.rejectedById != null && userIds.has(submission.rejectedById),
-    rejectionReason: submission.rejectionReason,
-  };
 }
 
 function hasNestedSelect(value: unknown): value is { select: object } {
