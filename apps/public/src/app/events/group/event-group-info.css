@@ -63,32 +63,6 @@ h2 {
   color: var(--mat-sys-on-surface-variant);
 }
 
-.certificate-rules {
-  margin-top: 20px;
-}
-
-.certificate-rules summary {
-  width: fit-content;
-  padding-block: 10px;
-  cursor: pointer;
-  font: var(--mat-sys-title-small);
-}
-
-.certificate-rules summary:focus-visible {
-  outline: 2px solid var(--mat-sys-primary);
-  outline-offset: 4px;
-}
-
-.certificate-rules ul {
-  padding-left: 20px;
-  max-width: 72ch;
-  color: var(--mat-sys-on-surface-variant);
-}
-
-.certificate-rules li + li {
-  margin-top: 8px;
-}
-
 @media (min-width: 800px) {
   .group-page {
     padding: 24px 32px 64px;

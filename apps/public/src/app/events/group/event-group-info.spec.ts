@@ -22,7 +22,7 @@ describe('EventGroupInfo', () => {
     );
   });
 
-  it('avoids claiming a total workload or certificate rules when their data is incomplete', () => {
+  it('avoids claiming a total workload when event data is incomplete', () => {
     const fixture = TestBed.createComponent(EventGroupInfo);
     fixture.componentRef.setInput('group', { ...data.eventGroup, shouldIssueCertificate: undefined });
     fixture.componentRef.setInput(
@@ -32,24 +32,6 @@ describe('EventGroupInfo', () => {
     fixture.detectChanges();
     const host = fixture.nativeElement as HTMLElement;
     expect(host.textContent).not.toContain('Carga horária total');
-    expect(host.querySelector('#group-certificates-heading')).toBeNull();
-  });
-
-  it('keeps certificate rules in a disclosure beside the group context', () => {
-    const fixture = TestBed.createComponent(EventGroupInfo);
-    fixture.componentRef.setInput('group', {
-      ...data.eventGroup,
-      shouldIssueCertificate: true,
-      shouldIssueCertificateForEachEvent: true,
-    });
-    fixture.componentRef.setInput('events', data.events);
-    fixture.detectChanges();
-    const host = fixture.nativeElement as HTMLElement;
-    const disclosure = host.querySelector<HTMLDetailsElement>('details.certificate-rules');
-    expect(disclosure?.open).toBe(false);
-    expect(disclosure?.querySelector('summary')?.textContent).toBe('Certificados');
-    expect(disclosure?.textContent).toContain('Há emissão de certificado por evento.');
-    expect(disclosure?.nextElementSibling?.classList.contains('participation-workspace')).toBe(true);
   });
 
   it('prioritizes the existing participation over a second registration invitation', () => {

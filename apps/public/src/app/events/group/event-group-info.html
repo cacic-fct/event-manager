@@ -14,17 +14,6 @@
     }
   </app-event-detail-heading>
 
-  @if (certificateRules().length) {
-  <details class="certificate-rules">
-    <summary id="group-certificates-heading">Certificados</summary>
-    <ul>
-      @for (rule of certificateRules(); track rule) {
-      <li>{{ rule }}</li>
-      }
-    </ul>
-  </details>
-  }
-
   <div class="participation-workspace">
     <ng-content select="[participationWorkspace]" />
   </div>
