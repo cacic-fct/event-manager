@@ -411,6 +411,7 @@ function createNotification(overrides: Partial<Notification>): Notification {
   return {
     id: 'notification-1',
     createdAt: new Date().toISOString(),
+    body: '',
     isRead: false,
     isArchived: false,
     ...overrides,
