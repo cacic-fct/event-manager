@@ -1,4 +1,5 @@
 import type { Preference } from '@novu/js';
+import { notificationWorkflowIcon } from './notification-topic-icons';
 
 type PreferenceCategory = 'channels' | 'events' | 'draws' | 'other';
 
@@ -28,31 +29,31 @@ const WORKFLOW_PRESENTATION: Readonly<Record<string, WorkflowPresentation>> = {
   'online-attendance-available': {
     title: 'Presença online',
     description: 'Quando a confirmação abrir.',
-    icon: 'online_prediction',
+    icon: notificationWorkflowIcon('online-attendance-available') ?? 'online_prediction',
     category: 'events',
   },
   'event-form-available': {
     title: 'Formulários',
     description: 'Novos formulários para responder.',
-    icon: 'assignment',
+    icon: notificationWorkflowIcon('event-form-available') ?? 'assignment',
     category: 'events',
   },
   'certificate-available': {
     title: 'Certificados',
     description: 'Prontos para baixar.',
-    icon: 'workspace_premium',
+    icon: notificationWorkflowIcon('certificate-available') ?? 'workspace_premium',
     category: 'events',
   },
   'prize-draw-winner': {
     title: 'Prêmios',
     description: 'Quando você ganhar um sorteio.',
-    icon: 'emoji_events',
+    icon: notificationWorkflowIcon('prize-draw-winner') ?? 'emoji_events',
     category: 'draws',
   },
   'prize-draw-undone': {
     title: 'Sorteios desfeitos',
     description: 'Quando seu resultado for desfeito.',
-    icon: 'undo',
+    icon: notificationWorkflowIcon('prize-draw-undone') ?? 'undo',
     category: 'draws',
   },
 };

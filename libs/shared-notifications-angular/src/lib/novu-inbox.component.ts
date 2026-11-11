@@ -21,6 +21,7 @@ import { filter, firstValueFrom } from 'rxjs';
 import { NovuListNotificationsArgs, NovuNotificationsService } from './novu-notifications.service';
 import { NovuPushPermissionDialogComponent } from './novu-push-permission-dialog.component';
 import { isRequiredNotificationPreference, notificationPreferenceGroups } from './notification-preferences';
+import { notificationTopicIcon } from './notification-topic-icons';
 
 type InboxTab = 'inbox' | 'unread' | 'archived' | 'preferences';
 type NotificationRedirectResult = 'opened' | 'failed' | 'invalid' | 'none';
@@ -210,7 +211,7 @@ export class NovuInboxComponent {
     if (notification.isArchived) {
       return 'archive';
     }
-    return notification.isRead ? 'notifications' : 'notifications_unread';
+    return notificationTopicIcon(notification) ?? (notification.isRead ? 'notifications' : 'notifications_unread');
   }
 
   protected channelBlockedByGlobal(preference: Preference, channel: 'in_app' | 'push'): boolean {

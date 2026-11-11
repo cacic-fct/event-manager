@@ -26,16 +26,35 @@ type NotificationsTabStoryArgs = {
   empty: boolean;
 };
 
+const notificationExamples = [
+  {
+    workflow: 'major-event-subscription-status-changed',
+    name: 'Estado da inscrição',
+    subject: 'Inscrição confirmada',
+  },
+  {
+    workflow: 'ticket-transfer',
+    name: 'Transferência de bilhete',
+    subject: 'Pedido de transferência',
+  },
+  {
+    workflow: 'certificate-available',
+    name: 'Certificado disponível',
+    subject: 'Certificado disponível',
+  },
+  {
+    workflow: 'online-attendance-available',
+    name: 'Presença on-line',
+    subject: 'Presença disponível',
+  },
+];
+
 function notification(index: number, unreadCount: number): MutableNotification {
+  const example = notificationExamples[index % notificationExamples.length];
   return {
     id: `public-notification-${index + 1}`,
     transactionId: `public-transaction-${index + 1}`,
-    subject: faker.helpers.arrayElement([
-      'Inscrição confirmada',
-      'Comprovante em análise',
-      'Certificado disponível',
-      'Presença registrada',
-    ]),
+    subject: example.subject,
     body: faker.lorem.sentence(),
     isRead: index >= unreadCount,
     isSeen: index >= unreadCount,
@@ -46,13 +65,13 @@ function notification(index: number, unreadCount: number): MutableNotification {
     firstSeenAt: null,
     archivedAt: null,
     channelType: 'in_app',
-    tags: ['storybook'],
+    tags: [example.workflow],
     severity: index === 0 ? 'high' : 'medium',
     redirect: { url: '/profile/attendances', target: '_self' },
     workflow: {
-      id: 'public-story-workflow',
-      name: 'Atualizações do participante',
-      identifier: 'public-story-workflow',
+      id: example.workflow,
+      name: example.name,
+      identifier: example.workflow,
     },
     primaryAction: index % 2 === 0 ? { label: 'Ver detalhes', redirect: { url: '/profile/attendances' } } : undefined,
   } as unknown as MutableNotification;
