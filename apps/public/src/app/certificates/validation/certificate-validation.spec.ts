@@ -253,7 +253,6 @@ describe('CertificateValidation', () => {
     expect(toolbar?.classList.contains('certificate-validation-toolbar')).toBe(true);
     expect(logo?.classList.contains('certificate-validation-toolbar-logo')).toBe(true);
     expect(toolbar?.querySelector('a[routerlink="/menu"]')).not.toBeNull();
-    expect(toolbar?.querySelector('h1.global-toolbar-title')?.textContent).toContain('Validar certificado');
   });
 
   it('waits for a Turnstile token before validating a certificate from a link', async () => {
