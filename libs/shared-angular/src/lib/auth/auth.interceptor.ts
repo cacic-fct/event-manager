@@ -1,4 +1,4 @@
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, isPlatformServer } from '@angular/common';
 import {
   HttpErrorResponse,
   HttpEvent,
@@ -17,6 +17,10 @@ export const authInterceptor: HttpInterceptorFn = (
 ): Observable<HttpEvent<unknown>> => {
   const authService = inject(AuthService);
   const platformId = inject(PLATFORM_ID);
+
+  if (isPlatformServer(platformId) && req.url.startsWith('/api/')) {
+    return next(req.clone({ setHeaders: { 'Accept-Encoding': 'identity' } }));
+  }
 
   if (!isPlatformBrowser(platformId) || shouldSkipRefresh(req)) {
     return next(req);

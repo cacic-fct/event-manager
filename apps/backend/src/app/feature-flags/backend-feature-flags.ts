@@ -68,6 +68,7 @@ export class BackendFeatureFlagService implements OnModuleInit, OnModuleDestroy 
         environment: process.env.NODE_ENV ?? 'development',
         refreshInterval: 60,
         disableMetrics: true,
+        customHeaders: { 'Accept-Encoding': 'identity' },
         storageProvider: new InMemoryStorageProvider(),
       });
       client.on('error', (error: unknown) => {

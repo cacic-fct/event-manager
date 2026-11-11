@@ -6,11 +6,13 @@ const { jest } = import.meta;
 const sendMock = jest.fn();
 const uploadDoneMock = jest.fn();
 const destroyMock = jest.fn();
+const addMiddlewareMock = jest.fn();
 
 jestEsm.unstable_mockModule('@aws-sdk/client-s3', () => ({
   S3Client: jest.fn().mockImplementation(() => ({
     send: sendMock,
     destroy: destroyMock,
+    middlewareStack: { add: addMiddlewareMock },
   })),
   GetObjectCommand: jest.fn().mockImplementation((input) => ({ kind: 'GetObjectCommand', input })),
   DeleteObjectCommand: jest.fn().mockImplementation((input) => ({ kind: 'DeleteObjectCommand', input })),
@@ -53,6 +55,22 @@ describe('S3Service', () => {
     expect(service.generateFileKey('lgpd', 'user-1', 'document.pdf', new Date('2026-05-21T12:34:56.789Z'))).toBe(
       'lgpd/user-1/2026-05-21T12-34-56-789Z-document.pdf',
     );
+  });
+
+  it('requests uncompressed S3 responses before signing the request', async () => {
+    new S3Service(configServiceMock() as never);
+
+    expect(addMiddlewareMock).toHaveBeenCalledWith(expect.any(Function), {
+      name: 'preferUncompressedS3Responses',
+      step: 'build',
+    });
+    const [middleware] = addMiddlewareMock.mock.calls[0];
+    const request = { headers: { 'content-encoding': 'gzip' } };
+    const next = jest.fn();
+    await middleware(next)({ request });
+    expect(next).toHaveBeenCalledWith({
+      request: { headers: { 'content-encoding': 'gzip', 'accept-encoding': 'identity' } },
+    });
   });
 
   it('fails storage operations when S3 configuration is incomplete', async () => {

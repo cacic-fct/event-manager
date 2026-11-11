@@ -34,6 +34,7 @@ describe('NovuNotificationsService', () => {
     { response: { ok: false, status: 409 }, outcome: 'unknown' },
     { response: { ok: true, json: async () => ({ acknowledged: false, status: 'error' }) }, outcome: 'rejected' },
     { response: { ok: true, json: async () => ({}) }, outcome: 'unknown' },
+    { response: { ok: true, json: async () => ({ acknowledged: 'false' }) }, outcome: 'unknown' },
     {
       response: {
         ok: true,
@@ -311,6 +312,8 @@ describe('NovuNotificationsService', () => {
         method: 'POST',
         headers: {
           Authorization: 'ApiKey secret',
+          Accept: 'application/json',
+          'Accept-Encoding': 'identity',
           'Content-Type': 'application/json',
         },
       }),
@@ -367,6 +370,8 @@ describe('NovuNotificationsService', () => {
         method: 'POST',
         headers: {
           Authorization: 'ApiKey secret',
+          Accept: 'application/json',
+          'Accept-Encoding': 'identity',
           'Content-Type': 'application/json',
         },
       }),
@@ -430,6 +435,8 @@ describe('NovuNotificationsService', () => {
         method: 'POST',
         headers: {
           Authorization: 'ApiKey secret',
+          Accept: 'application/json',
+          'Accept-Encoding': 'identity',
           'Content-Type': 'application/json',
         },
       }),
@@ -639,6 +646,8 @@ describe('NovuNotificationsService', () => {
         method: 'POST',
         headers: {
           Authorization: 'ApiKey secret',
+          Accept: 'application/json',
+          'Accept-Encoding': 'identity',
           'Content-Type': 'application/json',
         },
       }),
@@ -793,7 +802,10 @@ describe('NovuNotificationsService', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       'https://novu.example.com/v1/events/trigger/winner%20%2F%20transaction',
-      expect.objectContaining({ method: 'DELETE' }),
+      expect.objectContaining({
+        method: 'DELETE',
+        headers: { Authorization: 'ApiKey secret', 'Accept-Encoding': 'identity' },
+      }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       3,

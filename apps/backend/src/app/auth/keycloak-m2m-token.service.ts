@@ -2,12 +2,9 @@ import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { DEFAULT_KEYCLOAK_DEV_REALM_URL, DEFAULT_KEYCLOAK_REALM_URL } from './auth.constants';
+import { isRecord } from './keycloak-claims.utils';
 import { summarizeKeycloakFailure } from './keycloak-error-logging';
-
-type ClientCredentialsTokenResponse = {
-  access_token?: unknown;
-  expires_in?: unknown;
-};
+import { keycloakFormHeaders, keycloakJsonResponse } from './keycloak-http';
 
 type ClientCredentialsTokenOptions = {
   audience?: string;
@@ -86,28 +83,24 @@ export class KeycloakM2mTokenService {
     }
 
     try {
-      const { data } = await axios.post<ClientCredentialsTokenResponse>(
-        `${this.realmUrl}/protocol/openid-connect/token`,
-        payload.toString(),
-        {
-          headers: {
-            'content-type': 'application/x-www-form-urlencoded',
-          },
-          timeout: this.requestTimeoutMs,
-        },
-      );
+      const { data } = await axios.post<unknown>(`${this.realmUrl}/protocol/openid-connect/token`, payload.toString(), {
+        ...keycloakJsonResponse,
+        headers: keycloakFormHeaders,
+        timeout: this.requestTimeoutMs,
+      });
 
-      if (typeof data.access_token !== 'string' || !data.access_token) {
+      if (!isRecord(data) || typeof data['access_token'] !== 'string' || !data['access_token']) {
         throw new ServiceUnavailableException('Keycloak M2M token response did not include an access token.');
       }
 
-      const expiresInSeconds = typeof data.expires_in === 'number' && data.expires_in > 0 ? data.expires_in : 300;
+      const expiresIn = data['expires_in'];
+      const expiresInSeconds = typeof expiresIn === 'number' && expiresIn > 0 ? expiresIn : 300;
       this.cachedTokens.set(cacheKey, {
-        token: data.access_token,
+        token: data['access_token'],
         expiresAt: Date.now() + expiresInSeconds * 1000,
       });
 
-      return data.access_token;
+      return data['access_token'];
     } catch (error) {
       if (error instanceof ServiceUnavailableException) {
         throw error;

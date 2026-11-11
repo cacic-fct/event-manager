@@ -28,6 +28,7 @@ import {
 import { type AuthSession, type CachedUser, type TokenClaims, type TokenResponse } from './keycloak-auth.types';
 import { AuthenticatedUserSyncService } from './authenticated-user-sync.service';
 import { summarizeKeycloakFailure } from './keycloak-error-logging';
+import { keycloakFormHeaders, keycloakJsonHeaders, keycloakJsonResponse } from './keycloak-http';
 
 type MachineToMachinePrincipalOptions = {
   requiredRoles?: string[];
@@ -776,9 +777,7 @@ export class KeycloakAuthService {
 
     try {
       const response = await fetch(jwksUrl, {
-        headers: {
-          accept: 'application/json',
-        },
+        headers: keycloakJsonHeaders,
         signal: controller.signal,
       });
 
@@ -956,6 +955,7 @@ export class KeycloakAuthService {
     try {
       const response = await Promise.race([
         axios.post<T>(endpoint, body, {
+          ...keycloakJsonResponse,
           headers,
           timeout: this.keycloakRequestTimeoutMs,
           signal: controller.signal,
@@ -985,11 +985,8 @@ export class KeycloakAuthService {
     return isRecord(responseData) && readStringClaim(responseData, 'error') === 'invalid_grant';
   }
 
-  private createFormHeaders(extraHeaders?: Record<string, string>): Record<string, string> {
-    return {
-      'content-type': 'application/x-www-form-urlencoded',
-      ...extraHeaders,
-    };
+  private createFormHeaders(): Record<string, string> {
+    return { ...keycloakFormHeaders };
   }
 
   private addClientAuthentication(payload: URLSearchParams, headers: Record<string, string>): void {

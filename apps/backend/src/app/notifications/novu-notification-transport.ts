@@ -60,6 +60,8 @@ export class NovuNotificationTransport {
         method: 'POST',
         headers: {
           Authorization: `ApiKey ${secretKey}`,
+          Accept: 'application/json',
+          'Accept-Encoding': 'identity',
           'Content-Type': 'application/json',
           ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
         },
@@ -74,7 +76,7 @@ export class NovuNotificationTransport {
       }
 
       const result = (await response.json()) as NovuTriggerResponse;
-      if (!result.acknowledged) {
+      if (result.acknowledged !== true) {
         this.logger.warn(`Novu trigger was not acknowledged: ${result.status} ${result.error?.join(', ') ?? ''}`);
         return result.acknowledged === false ? 'rejected' : 'unknown';
       }
@@ -102,7 +104,7 @@ export class NovuNotificationTransport {
     try {
       const response = await fetch(`${this.apiUrl()}${path}`, {
         method: 'DELETE',
-        headers: { Authorization: `ApiKey ${secretKey}` },
+        headers: { Authorization: `ApiKey ${secretKey}`, 'Accept-Encoding': 'identity' },
         signal: controller.signal,
       });
       if (response.ok || response.status === 404) {

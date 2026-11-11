@@ -46,6 +46,7 @@ export class AnalyticsService {
       response = await fetch(target.envelopeUrl, {
         method: 'POST',
         headers: {
+          'Accept-Encoding': 'identity',
           'Content-Type': contentType ?? 'application/x-sentry-envelope',
         },
         body: new Uint8Array(body),

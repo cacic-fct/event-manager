@@ -63,6 +63,7 @@ describe('typesense search client helpers', () => {
       apiKey: 'secret',
       nodes: [{ host: 'search.example.com', port: 443, protocol: 'https' }],
       connectionTimeoutSeconds: 5,
+      additionalHeaders: { 'Accept-Encoding': 'identity' },
     });
 
     expect(buildTypesenseClient({ enabled: false, logger: logger as never })).toBeNull();
@@ -85,6 +86,7 @@ describe('typesense search client helpers', () => {
       apiKey: 'secret',
       nodes: [{ host: 'search.example.com', port: 443, protocol: 'https' }],
       connectionTimeoutSeconds: 5,
+      additionalHeaders: { 'Accept-Encoding': 'identity' },
     });
   });
 

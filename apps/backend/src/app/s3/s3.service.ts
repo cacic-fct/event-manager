@@ -67,6 +67,14 @@ export class S3Service implements OnModuleDestroy {
       },
       forcePathStyle: true, // Required for SeaweedFS S3 API
     });
+    this.s3Client.middlewareStack.add(
+      (next) => async (args) => {
+        const request = args.request as { headers: Record<string, string> };
+        request.headers['accept-encoding'] = 'identity';
+        return next(args);
+      },
+      { name: 'preferUncompressedS3Responses', step: 'build' },
+    );
 
     this.logger.log(`S3Service initialized with endpoint: ${endpoint}, bucket: ${bucketName}`);
   }

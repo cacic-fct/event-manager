@@ -65,6 +65,7 @@ describe('AnalyticsService', () => {
     expect(fetchMock).toHaveBeenCalledWith(SENTRY_TUNNEL_TARGETS.admin.envelopeUrl, {
       method: 'POST',
       headers: {
+        'Accept-Encoding': 'identity',
         'Content-Type': 'text/plain',
       },
       body: new Uint8Array(envelope),
@@ -92,6 +93,7 @@ describe('AnalyticsService', () => {
       SENTRY_TUNNEL_TARGETS.public.envelopeUrl,
       expect.objectContaining({
         headers: {
+          'Accept-Encoding': 'identity',
           'Content-Type': 'application/x-sentry-envelope',
         },
       }),

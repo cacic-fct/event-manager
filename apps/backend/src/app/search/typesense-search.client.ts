@@ -30,6 +30,7 @@ export function buildTypesenseClient(input: {
     apiKey,
     nodes: [urlConfig],
     connectionTimeoutSeconds: 5,
+    additionalHeaders: { 'Accept-Encoding': 'identity' },
   });
 }
 
