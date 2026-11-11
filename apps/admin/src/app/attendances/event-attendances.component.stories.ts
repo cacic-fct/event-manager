@@ -58,7 +58,7 @@ export const DenseOperations: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText('100 registros')).toBeVisible();
-    await expect(canvas.getByText('30 pendência(s)')).toBeVisible();
+    await expect(canvas.getByText('30 pendências')).toBeVisible();
     await expect(canvas.getByText('20 explícitas e 20 implícitas')).toBeVisible();
   },
 };
@@ -103,7 +103,7 @@ export const OfflineReconciliationOnly: Story = {
   globals: { network: 'offline' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText('12 pendência(s)')).toBeVisible();
+    await expect(canvas.getByText('12 pendências')).toBeVisible();
     await expect(canvas.getAllByRole('button', { name: 'Inspecionar presença off-line' })).toHaveLength(12);
   },
 };

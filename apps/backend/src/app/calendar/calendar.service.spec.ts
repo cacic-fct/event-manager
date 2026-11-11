@@ -157,7 +157,7 @@ describe('CalendarService', () => {
     expect(download.fileName).toBe('trilha-de-typescript.ics');
     expect(download.content).toContain('UID:event-group-group-1@eventos.cacic.com.br');
     expect(download.content).toContain('SUMMARY:Trilha de TypeScript');
-    expect(download.content).toContain('DESCRIPTION:Grupo de eventos com 2 evento(s).');
+    expect(download.content).toContain('DESCRIPTION:Grupo de eventos com 2 eventos.');
     expect(download.content).toContain('DTSTART:20260701T130000Z');
     expect(download.content).toContain('DTEND:20260702T160000Z');
     expect(download.content).not.toContain('SUMMARY:Oficina de TypeScript');
@@ -208,7 +208,7 @@ describe('CalendarService', () => {
 
     const download = await service.buildPublicEventCalendar('event-1', 'https://eventos.cacic.com.br');
 
-    expect(download.content).toContain('DESCRIPTION:Grupo de eventos com 1000+ evento(s).');
+    expect(download.content).toContain('DESCRIPTION:Grupo de eventos com 1000+ eventos.');
     expect(download.content).toContain('DTEND:20260801T150000Z');
     expect(download.content).not.toContain('DTEND:20260901T150000Z');
     expect(prisma.event.findFirst).toHaveBeenCalledWith(
@@ -946,7 +946,7 @@ describe('CalendarService', () => {
     expect(download.content).toContain('SUMMARY:Reunião interna');
     expect(download.content).toContain('SUMMARY:Trilha de oficinas');
     expect(download.content).toContain('SUMMARY:Congresso CACiC');
-    expect(download.content).toContain('DESCRIPTION:Grupo de eventos com 3 evento(s).');
+    expect(download.content).toContain('DESCRIPTION:Grupo de eventos com 3 eventos.');
     expect(download.content).toContain('DTSTART:20260601T130000Z');
     expect(download.content).toContain('DTEND:20260902T150000Z');
     expect(unfoldedContent).toContain(

@@ -84,7 +84,8 @@
     <p role="status" aria-live="polite">
       {{ statusLabel(run) }}
       @if (run.status === 'COMPLETED') {
-        {{ run.certificateCount }} certificado(s) emitido(s) ou atualizado(s).
+        {{ run.certificateCount }}
+        {{ run.certificateCount === 1 ? 'certificado emitido ou atualizado' : 'certificados emitidos ou atualizados' }}.
       }
       @if (run.completedAt) {
         {{ run.completedAt | date: 'short' }}

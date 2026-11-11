@@ -824,7 +824,9 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
         return;
       }
       if (after.attempts !== before.attempts) {
-        throw new Error(`Ticket reconciliation deferred after ${after.attempts} attempt(s).`);
+        throw new Error(
+          `Ticket reconciliation deferred after ${after.attempts} attempt${after.attempts === 1 ? '' : 's'}.`,
+        );
       }
       if (`${after.phase}:${after.cursor ?? ''}` === state) {
         throw new Error(`Ticket reconciliation did not advance from ${state}.`);

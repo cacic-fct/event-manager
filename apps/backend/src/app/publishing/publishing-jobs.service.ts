@@ -208,7 +208,7 @@ export class PublicationJobsService {
   async cleanupStaleEventDrafts(): Promise<void> {
     const deletedCount = await this.eventDrafts.cleanupStaleDrafts();
     if (deletedCount > 0) {
-      this.logger.log(`Deleted ${deletedCount} stale event draft(s).`);
+      this.logger.log(`Deleted ${deletedCount} stale event draft${deletedCount === 1 ? '' : 's'}.`);
     }
   }
 

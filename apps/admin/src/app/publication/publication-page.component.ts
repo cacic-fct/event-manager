@@ -554,7 +554,10 @@ export class PublicationPageComponent {
     selected: PublicationNode,
     scheduledPublishAt: string | null,
   ): ConfirmationDialogData {
-    const scope = selected.childCount > 0 ? `${selected.childCount} item(ns) vinculado(s)` : 'itens vinculados';
+    const scope =
+      selected.childCount === 0
+        ? 'nenhum item vinculado'
+        : `${selected.childCount} ${selected.childCount === 1 ? 'item vinculado' : 'itens vinculados'}`;
 
     switch (operation) {
       case 'SCHEDULE_BUNDLE':

@@ -94,7 +94,7 @@ describe('subscription tier policy', () => {
     };
 
     expect(automaticSelectionLimitViolations(majorEvent, automaticEvents, tier)).toEqual([
-      'A inscrição automática inclui 2 minicurso(s), acima do limite desta modalidade de 1.',
+      'A inscrição automática inclui 2 minicursos, acima do limite desta modalidade de 1.',
     ]);
     expect(
       automaticSelectionLimitViolations(majorEvent, automaticEvents, {

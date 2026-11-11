@@ -394,7 +394,7 @@ export class AttendanceAnalyticsService {
             : AttendanceReviewFlagSeverity.WARNING,
         dedupeKey: `offline-backlog:${event.id}`,
         title: 'Fila off-line acumulada',
-        summary: `${pendingOffline.length} envio(s) aguardam reconciliação; o mais antigo está pendente há ${oldestAgeMinutes} min.`,
+        summary: `${pendingOffline.length} ${pendingOffline.length === 1 ? 'envio aguarda' : 'envios aguardam'} reconciliação; o mais antigo está pendente há ${oldestAgeMinutes} min.`,
         details: { count: pendingOffline.length, oldestAgeMinutes },
       });
     }

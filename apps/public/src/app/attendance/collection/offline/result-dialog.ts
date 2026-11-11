@@ -18,10 +18,16 @@ export interface AttendanceOfflineSyncResultDialogData {
     <h2 mat-dialog-title>Sincronização de presenças off-line</h2>
     <div mat-dialog-content>
       @if (data.createdCount > 0) {
-        <p>{{ data.createdCount }} presença(s) registrada(s) no servidor.</p>
+        <p>
+          {{ data.createdCount }}
+          {{ data.createdCount === 1 ? 'presença registrada' : 'presenças registradas' }} no servidor.
+        </p>
       }
       @if (data.stagedCount > 0) {
-        <p>{{ data.stagedCount }} presença(s) enviada(s) para revisão administrativa.</p>
+        <p>
+          {{ data.stagedCount }}
+          {{ data.stagedCount === 1 ? 'presença enviada' : 'presenças enviadas' }} para revisão administrativa.
+        </p>
       }
       @if (data.failedItems.length > 0) {
         <p>Algumas presenças não foram enviadas depois de novas tentativas:</p>

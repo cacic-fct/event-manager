@@ -41,9 +41,12 @@ export async function deleteReceiptObjects(
   });
 
   if (failedObjectKeys.length > 0) {
+    const failedCount = failedObjectKeys.length;
+    const deletionLabel = failedCount === 1 ? 'deletion' : 'deletions';
+    const objectLabel = failedCount === 1 ? 'object' : 'objects';
     logger.warn(
-      `LGPD receipt cleanup completed with ${failedObjectKeys.length} failed object deletion(s): ${failedObjectKeys.join(', ')}`,
+      `LGPD receipt cleanup completed with ${failedCount} failed object ${deletionLabel}: ${failedObjectKeys.join(', ')}`,
     );
-    throw new Error(`Failed to delete LGPD receipt object(s): ${failedObjectKeys.join(', ')}`);
+    throw new Error(`Failed to delete LGPD receipt ${objectLabel}: ${failedObjectKeys.join(', ')}`);
   }
 }

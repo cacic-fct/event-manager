@@ -93,8 +93,8 @@ type Story = StoryObj<OfflineResultStoryArgs>;
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText('3 presença(s) registrada(s) no servidor.')).toBeVisible();
-    await expect(canvas.getByText('1 presença(s) enviada(s) para revisão administrativa.')).toBeVisible();
+    await expect(canvas.getByText('3 presenças registradas no servidor.')).toBeVisible();
+    await expect(canvas.getByText('1 presença enviada para revisão administrativa.')).toBeVisible();
   },
 };
 

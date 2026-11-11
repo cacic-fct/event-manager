@@ -67,7 +67,9 @@
               off-line continuam na fila de reconciliação.
             </p>
           </div>
-          <mat-chip>{{ data.reviewItems.length }} pendência(s)</mat-chip>
+          <mat-chip>
+            {{ data.reviewItems.length }} {{ data.reviewItems.length === 1 ? 'pendência' : 'pendências' }}
+          </mat-chip>
         </div>
 
         @if (actionError()) {
@@ -228,7 +230,7 @@
           <h2>Distribuição das coletas</h2>
           <p>Mapa de calor do período em foco, agregado em células aproximadas de 11 metros.</p>
         </div>
-        <span>{{ data.heatmapPoints.length }} área(s)</span>
+        <span>{{ data.heatmapPoints.length }} {{ data.heatmapPoints.length === 1 ? 'área' : 'áreas' }}</span>
       </div>
       <app-attendance-heatmap
         [points]="data.heatmapPoints"

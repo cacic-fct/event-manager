@@ -19,6 +19,11 @@ const CATEGORY_LABELS = {
   uncategorized: { singular: 'outro evento', plural: 'outros eventos' },
 };
 
+export function subscriptionCategoryLabel(category: SubscriptionEventCategory, count: number): string {
+  const labels = CATEGORY_LABELS[category];
+  return count === 1 ? labels.singular : labels.plural;
+}
+
 /** Use the shared domain policy so public selection matches server authorization. */
 export function selectableEventIds(
   events: readonly PublicEvent[],
@@ -69,14 +74,13 @@ export function automaticSelectionLimitViolations(
   }
 
   const limits = categoryLimits(majorEvent, tier);
-  const labels = { course: 'minicurso(s)', lecture: 'palestra(s)', uncategorized: 'outro(s) evento(s)' };
   const scope = tier?.customizeSubscriptionLimits === true ? 'desta modalidade' : 'geral';
   const violations: string[] = [];
   for (const category of ['course', 'lecture', 'uncategorized'] as const) {
     const limit = limits[category];
     if (limit !== null && counts[category] > limit) {
       violations.push(
-        `A inscrição automática inclui ${counts[category]} ${labels[category]}, acima do limite ${scope} de ${limit}.`,
+        `A inscrição automática inclui ${counts[category]} ${subscriptionCategoryLabel(category, counts[category])}, acima do limite ${scope} de ${limit}.`,
       );
     }
   }
