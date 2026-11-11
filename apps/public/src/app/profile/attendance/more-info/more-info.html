@@ -32,11 +32,12 @@
     <p class="type-label">{{ detail.typeLabel }}</p>
   </app-event-detail-heading>
   } @let showParticipation = detail.targetType !== 'major-event' || detail.isSubscribed || attendedEvents().length > 0;
+  @let showParticipationHeading = hasSubscription() || attendedEvents().length > 0;
   <div
     [class.participation-workspace]="showParticipation"
-    [attr.role]="showParticipation ? 'region' : null"
-    [attr.aria-labelledby]="showParticipation ? 'workspace-heading' : null">
-    @if (showParticipation) {
+    [attr.role]="showParticipationHeading ? 'region' : null"
+    [attr.aria-labelledby]="showParticipationHeading ? 'workspace-heading' : null">
+    @if (showParticipationHeading) {
     <div class="workspace-heading">
       <h2 id="workspace-heading">Sua participação</h2>
 

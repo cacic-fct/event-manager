@@ -9,7 +9,7 @@
     <button mat-button type="button" (click)="load()">Tentar novamente</button>
   } @else if (editable()) {
     <p>Compartilhe slides, leituras e outros links com os inscritos. Eles não receberão notificações.</p>
-    <p>A liberação programada acompanha o término do evento. Se ele já terminou, o link fica disponível ao salvar.</p>
+    <p>A liberação programada acontece no término do evento.</p>
     <form (submit)="$event.preventDefault(); save()">
       @for (link of model().links; track $index; let index = $index) {
         <fieldset [disabled]="saving()">

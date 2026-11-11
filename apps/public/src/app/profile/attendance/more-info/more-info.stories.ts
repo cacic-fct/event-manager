@@ -213,6 +213,10 @@ export const WithCertificates: Story = {
   args: { hasIssuedCertificate: true, certificateCount: 6 },
 };
 
+export const CertificateOnly: Story = {
+  args: { isSubscribed: false, hasAttendance: false, hasIssuedCertificate: true },
+};
+
 export const EventGroupWithCertificates: Story = {
   args: { targetType: 'event-group', hasIssuedCertificate: true, certificateCount: 2 },
 };
