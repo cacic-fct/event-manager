@@ -213,7 +213,7 @@ describe('PublicationJobsService', () => {
     await service.cleanupStaleEventDrafts();
 
     expect(eventDrafts.cleanupStaleDrafts).toHaveBeenCalledWith();
-    expect(loggerLog).toHaveBeenCalledWith('Deleted 3 stale event draft(s).');
+    expect(loggerLog).toHaveBeenCalledWith('Deleted 3 stale event drafts.');
   });
 
   it('bounds reconciliation concurrency and coalesces derived refreshes', async () => {

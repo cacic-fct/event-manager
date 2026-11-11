@@ -299,7 +299,11 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
       animationDuration: 260,
       aria: { enabled: true },
       // HTML tooltips violate Trusted Types and interrupt the brush event before the filter updates.
-      tooltip: { renderMode: 'richText', trigger: 'axis', valueFormatter: (value) => `${value} presença(s)` },
+      tooltip: {
+        renderMode: 'richText',
+        trigger: 'axis',
+        valueFormatter: (value) => `${value} ${Number(value) === 1 ? 'presença' : 'presenças'}`,
+      },
       brush: {
         xAxisIndex: 0,
         brushType: 'lineX',

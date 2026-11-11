@@ -527,7 +527,7 @@ export class AttendancesService {
           width: 'min(28rem, 94vw)',
           data: {
             title: 'Aprovar presenças off-line',
-            message: `Aprovar ${submissions.length} presença(s) off-line em revisão?`,
+            message: `Aprovar ${submissions.length} ${submissions.length === 1 ? 'presença' : 'presenças'} off-line em revisão?`,
             confirmLabel: 'Aprovar',
           },
         })
@@ -582,7 +582,7 @@ export class AttendancesService {
           width: 'min(28rem, 94vw)',
           data: {
             title: 'Rejeitar presenças off-line',
-            message: `Rejeitar ${submissions.length} presença(s) off-line em revisão?`,
+            message: `Rejeitar ${submissions.length} ${submissions.length === 1 ? 'presença' : 'presenças'} off-line em revisão?`,
             confirmLabel: 'Rejeitar',
           },
         })
@@ -709,8 +709,9 @@ export class AttendancesService {
       failures.push(...results.filter((result) => !result.success));
     }
     if (failures.length > 0) {
+      const failureCount = failures.length;
       this.snackbar.open(
-        `${failures.length} presença(s) não foram processadas. Tente novamente apenas os itens informados.`,
+        `${failureCount} ${failureCount === 1 ? 'presença não foi processada' : 'presenças não foram processadas'}. Tente novamente apenas os itens informados.`,
         'Fechar',
         { duration: 6000 },
       );

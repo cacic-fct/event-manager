@@ -323,8 +323,9 @@ export class AdminOralAttendancePageComponent implements OnInit, OnDestroy {
       this.pending.set(new Map(items.map((item) => [item.personId, item])));
       this.persistPending();
       if (recoveredFromAnotherUser.length) {
+        const recoveredCount = recoveredFromAnotherUser.length;
         this.snackbar.open(
-          `${recoveredFromAnotherUser.length} decisão(ões) salvas por outra conta serão enviadas pela conta atual se ela tiver permissão.`,
+          `${recoveredCount} ${recoveredCount === 1 ? 'decisão salva por outra conta será enviada' : 'decisões salvas por outra conta serão enviadas'} pela conta atual se ela tiver permissão.`,
           'Fechar',
           { duration: 8000 },
         );

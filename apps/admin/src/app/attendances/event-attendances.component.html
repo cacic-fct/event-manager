@@ -119,7 +119,10 @@
           <div class="surface-heading">
             <div>
               <h3>Presenças off-line em revisão</h3>
-              <span>{{ workspace.offlineAttendanceSubmissions().length }} pendência(s)</span>
+              <span>
+                {{ workspace.offlineAttendanceSubmissions().length }}
+                {{ workspace.offlineAttendanceSubmissions().length === 1 ? 'pendência' : 'pendências' }}
+              </span>
             </div>
             @if (canEditSelectedEventAttendances()) {
               <div class="panel-actions">

@@ -35,7 +35,7 @@ describe('LgpdService receipt cleanup', () => {
 
     await expect(
       deleteReceiptObjects(s3, logger, ['receipts/duplicate.png', 'receipts/duplicate.png']),
-    ).rejects.toThrow('Failed to delete LGPD receipt object(s): receipts/duplicate.png');
+    ).rejects.toThrow('Failed to delete LGPD receipt object: receipts/duplicate.png');
 
     expect(s3.deleteFile).toHaveBeenCalledTimes(1);
     expect(s3.deleteFile).toHaveBeenCalledWith('receipts/duplicate.png');
@@ -43,7 +43,7 @@ describe('LgpdService receipt cleanup', () => {
       'Failed to delete LGPD receipt object receipts/duplicate.png: access denied',
     );
     expect(logger.warn).toHaveBeenCalledWith(
-      'LGPD receipt cleanup completed with 1 failed object deletion(s): receipts/duplicate.png',
+      'LGPD receipt cleanup completed with 1 failed object deletion: receipts/duplicate.png',
     );
   });
 

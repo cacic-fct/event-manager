@@ -74,6 +74,10 @@
     opacity var(--workspace-nav-transition);
 }
 
+:host ::ng-deep .nav-item lib-novu-notification-badge .mat-badge-content {
+  z-index: 1;
+}
+
 .sidenav.nav-mode-full .nav-label,
 .sidenav.nav-mode-auto:hover .nav-label,
 .sidenav.nav-mode-auto:has(:focus-visible) .nav-label {

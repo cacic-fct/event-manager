@@ -498,8 +498,10 @@
                             multiple
                             (selectionChange)="workspace.updateTierAllowedEventIds($index, $event.value)">
                             <mat-select-trigger>
-                              {{ workspace.tierEventTargetSelection(tier.controls.allowedEventIds.value).length }}
-                              opção(ões) selecionada(s)
+                              @let selectionCount =
+                                workspace.tierEventTargetSelection(tier.controls.allowedEventIds.value).length;
+                              {{ selectionCount }}
+                              {{ selectionCount === 1 ? 'opção selecionada' : 'opções selecionadas' }}
                             </mat-select-trigger>
                             @for (target of workspace.priceTierEventTargets(); track target.id) {
                               <mat-option [value]="target.id">
@@ -518,9 +520,17 @@
                           </mat-hint>
                         </mat-form-field>
                         @if (workspace.unavailableTierEventCount(tier.controls.allowedEventIds.value) > 0) {
+                          @let unavailableCount =
+                            workspace.unavailableTierEventCount(tier.controls.allowedEventIds.value);
                           <p class="span-2" role="status">
-                            {{ workspace.unavailableTierEventCount(tier.controls.allowedEventIds.value) }} atividade(s)
-                            salva(s) não corresponde(m) a uma opção atual nem a um grupo completo e será(ão) mantida(s).
+                            {{ unavailableCount }}
+                            {{
+                              unavailableCount === 1
+                                ? 'atividade salva não corresponde'
+                                : 'atividades salvas não correspondem'
+                            }}
+                            a uma opção atual nem a um grupo completo e
+                            {{ unavailableCount === 1 ? 'será mantida' : 'serão mantidas' }}.
                             <button mat-button type="button" (click)="workspace.removeUnavailableTierEventIds($index)">
                               Remover seleções indisponíveis
                             </button>

@@ -52,6 +52,7 @@ describe('TypesenseSearchService', () => {
         },
       ],
       connectionTimeoutSeconds: 5,
+      additionalHeaders: { 'Accept-Encoding': 'identity' },
     });
   });
 
@@ -75,6 +76,7 @@ describe('TypesenseSearchService', () => {
         },
       ],
       connectionTimeoutSeconds: 5,
+      additionalHeaders: { 'Accept-Encoding': 'identity' },
     });
   });
 

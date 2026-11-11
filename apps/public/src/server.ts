@@ -242,6 +242,8 @@ async function getPublicEventSitemapPage(page: number): Promise<PublicEventSitem
   const response = await fetch(sitemapGraphqlUrl, {
     method: 'POST',
     headers: {
+      accept: 'application/json',
+      'accept-encoding': 'identity',
       'content-type': 'application/json',
     },
     body: JSON.stringify({

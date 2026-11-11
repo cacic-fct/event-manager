@@ -2,15 +2,32 @@ import { signal } from '@angular/core';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { expect, userEvent, within } from 'storybook/test';
-import type { Notification } from '@novu/js';
+import { SeverityLevelEnum, type Notification } from '@novu/js';
 import { NovuNotificationsService } from '@cacic-fct/shared-notifications-angular/service';
 import { NotificationsPageComponent } from './notifications-page.component';
 
 type StoryArgs = { count: number; configured: boolean; failActions: boolean };
 let activeArgs: StoryArgs = { count: 3, configured: true, failActions: false };
-type InboxFixture = Pick<Notification, 'id' | 'subject' | 'body' | 'createdAt' | 'isRead' | 'isArchived'>;
+type InboxFixture = Pick<Notification, 'id' | 'subject' | 'body' | 'createdAt' | 'isRead' | 'isArchived' | 'workflow'>;
 const items = signal<InboxFixture[]>([]);
 const configured = signal(true);
+const notificationExamples = [
+  {
+    workflow: 'major-event-subscription-status-changed',
+    name: 'Estado da inscrição',
+    subject: 'Inscrições aguardando conferência',
+  },
+  {
+    workflow: 'certificate-available',
+    name: 'Certificado disponível',
+    subject: 'Certificado disponível',
+  },
+  {
+    workflow: 'ticket-transfer',
+    name: 'Transferência de bilhete',
+    subject: 'Novo pedido de transferência',
+  },
+];
 const change = async (id: string | null, patch: Partial<InboxFixture>) => {
   if (activeArgs.failActions) {
     throw new Error('Falha simulada');
@@ -67,14 +84,24 @@ const meta: Meta<StoryArgs> = {
     activeArgs = args;
     configured.set(args.configured);
     items.set(
-      Array.from({ length: args.count }, (_, index) => ({
-        id: `notification-${index}`,
-        subject: index === 0 ? 'Inscrições aguardando conferência' : 'Atualização de atividade',
-        body: 'Consulte os registros do evento e acompanhe as pendências da equipe.',
-        createdAt: new Date(Date.now() - index * 3_600_000).toISOString(),
-        isRead: index > 0,
-        isArchived: false,
-      })),
+      Array.from({ length: args.count }, (_, index) => {
+        const example = notificationExamples[index % notificationExamples.length];
+        return {
+          id: `notification-${index}`,
+          subject: example.subject,
+          body: 'Consulte as informações e acompanhe as pendências da equipe.',
+          createdAt: new Date(Date.now() - index * 3_600_000).toISOString(),
+          isRead: index > 0,
+          isArchived: false,
+          workflow: {
+            id: example.workflow,
+            name: example.name,
+            identifier: example.workflow,
+            critical: false,
+            severity: SeverityLevelEnum.MEDIUM,
+          },
+        };
+      }),
     );
     return { props: {} };
   },

@@ -46,8 +46,11 @@ describe('KeycloakM2mTokenService', () => {
       expect.any(String),
       expect.objectContaining({
         headers: {
+          accept: 'application/json',
+          'accept-encoding': 'identity',
           'content-type': 'application/x-www-form-urlencoded',
         },
+        responseType: 'json',
         timeout: 5_000,
       }),
     );

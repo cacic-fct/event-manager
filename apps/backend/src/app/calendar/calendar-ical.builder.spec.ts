@@ -72,7 +72,7 @@ describe('calendar iCal builder', () => {
         summary: 'Trilha de oficinas',
         start: new Date('2026-07-01T13:00:00.000Z'),
         end: new Date('2026-07-02T16:00:00.000Z'),
-        description: 'Grupo de eventos com 2 evento(s).',
+        description: 'Grupo de eventos com 2 eventos.',
       }),
     );
   });

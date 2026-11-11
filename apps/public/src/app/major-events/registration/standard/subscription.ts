@@ -27,6 +27,7 @@ import {
   automaticSelectionLimitViolations,
   categoryLimits,
   selectableEventIds as getSelectableEventIds,
+  subscriptionCategoryLabel,
   subscriptionTierRuleSummaries,
 } from '../tier/subscription-tier-policy';
 import { MajorEventSubscriptionRealtimeDelta, MajorEventSubscriptionRealtimeService } from '../realtime.service';
@@ -791,12 +792,11 @@ export class MajorEventSubscription {
         this.uncategorizedCount() +
         newEvents.filter((item) => item.type !== 'MINICURSO' && item.type !== 'PALESTRA').length,
     };
-    const labels = { course: 'minicurso(s)', lecture: 'palestra(s)', uncategorized: 'outro(s) evento(s)' };
     const scope = this.policyPriceTier()?.customizeSubscriptionLimits === true ? 'nesta modalidade' : 'geral';
     for (const category of ['course', 'lecture', 'uncategorized'] as const) {
       const limit = this.effectiveCategoryLimits()[category];
       if (limit !== null && counts[category] > limit) {
-        return `Limite ${scope} de ${limit} ${labels[category]}.`;
+        return `Limite ${scope} de ${limit} ${subscriptionCategoryLabel(category, limit)}.`;
       }
     }
 

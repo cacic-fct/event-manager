@@ -69,9 +69,13 @@ export class MergeCandidatesService {
       const touchedCandidates = await firstValueFrom(this.api.scanMergeCandidates());
       await this.refreshMergeCandidates();
       if (showNotification) {
-        this.snackbar.open(`${touchedCandidates} par(es) de possíveis duplicidades verificados.`, 'Fechar', {
-          duration: 2500,
-        });
+        this.snackbar.open(
+          `${touchedCandidates} ${touchedCandidates === 1 ? 'par de possíveis duplicidades verificado' : 'pares de possíveis duplicidades verificados'}.`,
+          'Fechar',
+          {
+            duration: 2500,
+          },
+        );
       }
     } catch (error) {
       this.feedback.error(error, 'Não foi possível verificar duplicidades.');

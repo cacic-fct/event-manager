@@ -31,7 +31,8 @@ export function summarizeKeycloakFailure(error: unknown): KeycloakFailureSummary
     const status = error.response?.status;
     const statusText = normalizeLogValue(error.response?.statusText);
     const statusSummary = `status=${status ?? 'none'}${statusText ? ` ${statusText}` : ''}`;
-    const responseSummary = summarizeKeycloakResponseData(error.response?.data);
+    const invalidJson = error.cause instanceof SyntaxError;
+    const responseSummary = invalidJson ? null : summarizeKeycloakResponseData(error.response?.data);
     const segments = [statusSummary];
     const dedupeSegments = [`status=${status ?? 'none'}`];
 
@@ -46,7 +47,10 @@ export function summarizeKeycloakFailure(error: unknown): KeycloakFailureSummary
       dedupeSegments.push(`axiosCode=${code}`);
     }
 
-    if (!responseSummary && error.message) {
+    if (invalidJson) {
+      segments.push('message=Invalid JSON response');
+      dedupeSegments.push('message=Invalid JSON response');
+    } else if (!responseSummary && error.message) {
       const message = sanitizeLogValue(error.message);
       segments.push(`message=${message}`);
       dedupeSegments.push(`message=${message}`);

@@ -1113,9 +1113,13 @@ export class CertificatesService {
 
     try {
       const issued = await firstValueFrom(this.api.issueMissedCertificates(selectedConfig.id));
-      this.snackbar.open(`${issued.length} certificado(s) processado(s).`, 'Fechar', {
-        duration: 2500,
-      });
+      this.snackbar.open(
+        `${issued.length} ${issued.length === 1 ? 'certificado processado' : 'certificados processados'}.`,
+        'Fechar',
+        {
+          duration: 2500,
+        },
+      );
       await this.loadCertificates();
     } catch (error) {
       this.feedback.error(error, 'Não foi possível emitir os certificados.');

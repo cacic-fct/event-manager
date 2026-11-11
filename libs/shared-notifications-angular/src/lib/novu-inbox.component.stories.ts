@@ -37,6 +37,28 @@ type MutablePreference = Preference & {
   channels: ChannelPreference;
 };
 
+const notificationExamples = [
+  {
+    workflow: 'major-event-subscription-status-changed',
+    name: 'Estado da inscrição',
+    subject: 'Inscrição confirmada',
+  },
+  { workflow: 'certificate-available', name: 'Certificado disponível', subject: 'Certificado disponível' },
+  { workflow: 'event-form-available', name: 'Formulário disponível', subject: 'Formulário pendente' },
+  { workflow: 'online-attendance-available', name: 'Presença on-line', subject: 'Presença disponível' },
+  { workflow: 'ticket-transfer', name: 'Transferência de bilhete', subject: 'Novo pedido de transferência' },
+  { workflow: 'prize-draw-winner', name: 'Resultado de sorteio', subject: 'Você ganhou um sorteio' },
+  { workflow: 'audience-invitation', name: 'Convite para atividade', subject: 'Convite para atividade' },
+  { workflow: 'event-manual-notification', name: 'Aviso da organização', subject: 'Aviso da organização' },
+  { workflow: 'event-subscriber-information', name: 'Informações do evento', subject: 'Informações disponíveis' },
+  {
+    workflow: 'offline-attendance-review-queued',
+    name: 'Revisão de presença off-line',
+    subject: 'Presença off-line para revisar',
+  },
+  { workflow: 'prize-draw-undone', name: 'Sorteio desfeito', subject: 'Resultado do sorteio desfeito' },
+];
+
 const subscriber: Subscriber = {
   subscriberId: 'storybook-user',
   email: 'storybook@example.com',
@@ -54,13 +76,8 @@ function createNotification(
 ): MutableNotification {
   const isUnread = index < options.unreadCount;
   const id = `notification-${index + 1}`;
-  const subject = faker.helpers.arrayElement([
-    'Inscrição confirmada',
-    'Pagamento recebido',
-    'Inscrição em análise',
-    'Atualização da inscrição',
-    'Documento pendente',
-  ]);
+  const example = notificationExamples[index % notificationExamples.length];
+  const subject = example.subject;
   const body = options.richBodies
     ? `<strong>${faker.company.name()}</strong> ${faker.lorem.sentence()} <em>${faker.lorem.words(3)}</em>.`
     : faker.lorem.sentence();
@@ -80,7 +97,7 @@ function createNotification(
     archivedAt: null,
     avatar: options.showImages && index % 3 === 0 ? faker.image.avatar() : undefined,
     channelType: 'in_app',
-    tags: ['major-event-subscription'],
+    tags: [example.workflow],
     redirect: {
       url: `/profile/attendances/major-${index + 1}`,
       target: '_self',
@@ -91,9 +108,9 @@ function createNotification(
         : undefined,
     secondaryAction: index % 4 === 0 ? { label: 'Ver evento' } : undefined,
     workflow: {
-      id: 'major-event-subscription-status-changed',
-      name: 'Estado da inscrição',
-      identifier: 'major-event-subscription-status-changed',
+      id: example.workflow,
+      name: example.name,
+      identifier: example.workflow,
     },
     severity: index % 5 === 0 ? 'high' : 'medium',
     read: async () => {

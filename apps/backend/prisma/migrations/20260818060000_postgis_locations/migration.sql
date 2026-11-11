@@ -36,9 +36,10 @@ BEGIN
   LIMIT 1;
 
   IF FOUND THEN
-    RAISE EXCEPTION '% contains % invalid coordinate pair(s); correct them before enabling PostGIS',
+    RAISE EXCEPTION '% contains % invalid coordinate pair%s; correct them before enabling PostGIS',
       invalid_coordinates.source,
-      invalid_coordinates.invalid_count;
+      invalid_coordinates.invalid_count,
+      CASE WHEN invalid_coordinates.invalid_count = 1 THEN '' ELSE 's' END;
   END IF;
 END $$;
 

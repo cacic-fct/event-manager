@@ -100,7 +100,7 @@ describe('MergeCandidatesService', () => {
 
     expect(api.scanMergeCandidates).toHaveBeenCalledOnce();
     expect(api.listMergeCandidates).toHaveBeenCalledOnce();
-    expect(snackBar.open).toHaveBeenCalledWith('4 par(es) de possíveis duplicidades verificados.', 'Fechar', {
+    expect(snackBar.open).toHaveBeenCalledWith('4 pares de possíveis duplicidades verificados.', 'Fechar', {
       duration: 2500,
     });
 

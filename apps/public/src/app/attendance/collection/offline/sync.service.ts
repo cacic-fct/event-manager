@@ -207,7 +207,7 @@ export class AttendanceOfflineSyncService {
 
     if (failedCount > 0 && this.isCurrentRun(userId, generation)) {
       this.snackbar.open(
-        `${failedCount} decisão(ões) da chamada oral continuam salvas e serão tentadas novamente.`,
+        `${failedCount} ${failedCount === 1 ? 'decisão da chamada oral continua salva e será tentada' : 'decisões da chamada oral continuam salvas e serão tentadas'} novamente.`,
         'Fechar',
         { duration: 6000 },
       );
@@ -442,7 +442,7 @@ export class AttendanceOfflineSyncService {
     }
 
     this.lastReminderAt = now;
-    const message = `${count} presença(s) aguardando envio. Sincronize quando houver conexão.`;
+    const message = `${count} ${count === 1 ? 'presença está' : 'presenças estão'} aguardando envio. Sincronize quando houver conexão.`;
     if (await this.showServiceWorkerNotification(message)) {
       return;
     }

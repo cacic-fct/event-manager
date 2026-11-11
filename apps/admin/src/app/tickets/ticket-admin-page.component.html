@@ -52,7 +52,10 @@
                 <span>{{ config.enabled ? 'Emissão ativa' : 'Emissão desativada' }}</span>
                 @if (config.purchaseEnabled) {
                   <span>Compra adicional disponível.</span>
-                  <span>{{ config.priceOptions.length }} opção(ões) de preço.</span>
+                  <span>
+                    {{ config.priceOptions.length }}
+                    {{ config.priceOptions.length === 1 ? 'opção' : 'opções' }} de preço.
+                  </span>
                 }
               </div>
               <a mat-stroked-button [routerLink]="['/tickets', 'event', config.eventId]">

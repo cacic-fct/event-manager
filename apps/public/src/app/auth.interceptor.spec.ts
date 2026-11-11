@@ -1,8 +1,31 @@
 import { HttpClient, HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AuthRefreshResult, AuthService, authInterceptor } from '@cacic-fct/shared-angular';
 import { firstValueFrom, of, throwError } from 'rxjs';
+
+describe('authInterceptor on the server', () => {
+  it('requests uncompressed responses for the app API during SSR', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([authInterceptor])),
+        provideHttpClientTesting(),
+        { provide: PLATFORM_ID, useValue: 'server' },
+        { provide: AuthService, useValue: {} },
+      ],
+    });
+
+    const http = TestBed.inject(HttpClient);
+    const httpTesting = TestBed.inject(HttpTestingController);
+    const response = firstValueFrom(http.get('/api/private'));
+    const request = httpTesting.expectOne('/api/private');
+    expect(request.request.headers.get('Accept-Encoding')).toBe('identity');
+    request.flush({ ok: true });
+    await expect(response).resolves.toEqual({ ok: true });
+    httpTesting.verify();
+  });
+});
 
 describe('authInterceptor', () => {
   const refreshResult: AuthRefreshResult = {
@@ -46,7 +69,9 @@ describe('authInterceptor', () => {
   it('refreshes once and retries same-origin API requests that return 401', async () => {
     const response = firstValueFrom(http.get<{ ok: true }>('/api/private'));
 
-    httpTesting.expectOne('/api/private').flush({ message: 'expired' }, { status: 401, statusText: 'Unauthorized' });
+    const request = httpTesting.expectOne('/api/private');
+    expect(request.request.headers.has('Accept-Encoding')).toBe(false);
+    request.flush({ message: 'expired' }, { status: 401, statusText: 'Unauthorized' });
     httpTesting.expectOne('/api/private').flush({ ok: true });
 
     await expect(response).resolves.toEqual({ ok: true });
