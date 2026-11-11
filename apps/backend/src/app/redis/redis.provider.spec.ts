@@ -1,7 +1,7 @@
 import { jest as jestEsm } from '@jest/globals';
 import { once } from 'node:events';
 import { createHash } from 'node:crypto';
-import type { FactoryProvider } from '@nestjs/common';
+import { Logger, type FactoryProvider } from '@nestjs/common';
 import type Redis from 'ioredis';
 import type { RateLimitPolicy } from '../rate-limit/rate-limit.policies';
 import type { ManagedRedisClient } from './redis.provider';
@@ -9,11 +9,16 @@ const { jest } = import.meta;
 
 const mockRedisConstructor = jest.fn();
 const mockRedisDisconnect = jest.fn();
+const mockRedisOn = jest.fn<(event: string, listener: (error: Error) => void) => void>();
 
 jestEsm.unstable_mockModule('ioredis', () => ({
   default: class MockRedis {
     constructor(options: unknown) {
       mockRedisConstructor(options);
+    }
+
+    on(event: string, listener: (error: Error) => void): void {
+      mockRedisOn(event, listener);
     }
 
     disconnect(): void {
@@ -46,6 +51,7 @@ describe('redisProvider e2e in-memory infrastructure', () => {
     jest.restoreAllMocks();
     mockRedisConstructor.mockClear();
     mockRedisDisconnect.mockClear();
+    mockRedisOn.mockClear();
 
     if (originalFlag === undefined) {
       delete process.env.BACKEND_E2E_IN_MEMORY_INFRA;
@@ -279,6 +285,15 @@ describe('redisProvider e2e in-memory infrastructure', () => {
 
     (client as ManagedRedisClient).onModuleDestroy();
     expect(mockRedisDisconnect).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports connection errors through the Nest logger', () => {
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    new ManagedRedisClientClass();
+
+    expect(mockRedisOn).toHaveBeenCalledWith('error', expect.any(Function));
+    mockRedisOn.mock.calls[0]?.[1](new Error('connect ETIMEDOUT'));
+    expect(warn).toHaveBeenCalledWith('Redis connection error: connect ETIMEDOUT');
   });
 
   it('parses Redis connection URLs for managed infrastructure', () => {

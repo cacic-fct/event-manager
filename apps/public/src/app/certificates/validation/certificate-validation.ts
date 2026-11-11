@@ -1,6 +1,24 @@
-import { Component, DestroyRef, inject, PLATFORM_ID, signal, viewChild } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  DestroyRef,
+  ElementRef,
+  inject,
+  Injector,
+  PLATFORM_ID,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormField, form, required, submit as submitSignalForm, validate } from '@angular/forms/signals';
+import {
+  FormField,
+  form,
+  readonly as readonlyField,
+  required,
+  submit as submitSignalForm,
+  validate,
+} from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -9,12 +27,14 @@ import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import type {
-  PublicCertificateValidation,
-  PublicCertificateValidationEvent,
+import {
+  PUBLIC_CERTIFICATE_PDF_MAX_BYTES,
+  type PublicCertificateValidation,
+  type PublicCertificateValidationEvent,
+  type PublicCertificateVerification,
 } from '@cacic-fct/event-manager-public-contracts';
 import { TURNSTILE_ACTIONS, formatCreditMinutes, formatDateRange, formatDateTime } from '@cacic-fct/shared-utils';
-import { Subscription, combineLatest, distinctUntilChanged, finalize, map } from 'rxjs';
+import { Subscription, combineLatest, distinctUntilChanged, finalize, map, timeout, timer } from 'rxjs';
 import { CertificateFileDownloadService } from '../../shared/certificate-file-download.service';
 import { EmojiService } from '../../shared/emoji.service';
 import { CertificateValidationApiService } from './certificate-validation-api.service';
@@ -26,20 +46,27 @@ import {
   CacicLogoComponent,
   CloudflareTurnstileComponent,
 } from '@cacic-fct/shared-angular';
-import { isPlatformBrowser } from '@angular/common';
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
-import { RateLimitError, createRateLimitCooldown } from '../../shared/rate-limit-error';
+import { RateLimitError, createRateLimitCooldown, rateLimitFromHttpError } from '../../shared/rate-limit-error';
 
 type ValidationState =
   | { status: 'idle' }
-  | { status: 'challenge'; certificateId: string; source: ValidationSource }
-  | { status: 'loading' }
+  | { status: 'challenge'; certificateId?: string; source: ValidationSource }
+  | { status: 'loading'; source?: 'pdf' }
   | { status: 'ready'; certificate: PublicCertificateValidation }
+  | { status: 'revoked'; revokedAt: string }
+  | { status: 'not-found' }
   | { status: 'error'; message: string };
 
-type ValidationSource = 'link' | 'manual' | 'scan';
+type CodeValidationSource = 'link' | 'manual' | 'scan';
+type ValidationSource = CodeValidationSource | 'pdf';
+type ValidationLookup = { certificateId: string; source: CodeValidationSource } | { file: File; source: 'pdf' };
+
+const PDF_SIZE_ERROR = `Selecione um arquivo PDF de até ${PUBLIC_CERTIFICATE_PDF_MAX_BYTES / (1024 * 1024)} MB.`;
 
 @Component({
   selector: 'app-certificate-validation',
@@ -73,6 +100,14 @@ export class CertificateValidation {
   readonly emoji = inject(EmojiService);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly document = inject(DOCUMENT);
+  private readonly injector = inject(Injector);
+  private readonly lookupInput = viewChild<ElementRef<HTMLInputElement>>('lookupInput');
+  private readonly lookupShortcut = viewChild('lookupShortcut', { read: ElementRef<HTMLButtonElement> });
+  private readonly lookupSection = viewChild<ElementRef<HTMLElement>>('lookupSection');
+  readonly lookupExpanded = signal(false);
+  private readonly previewSection = viewChild<ElementRef<HTMLElement>>('previewSection');
+  private readonly downloadAction = viewChild('downloadAction', { read: ElementRef<HTMLButtonElement> });
   private readonly turnstileWidget = viewChild(CloudflareTurnstileComponent);
   private readonly validationCooldown = createRateLimitCooldown(this.destroyRef);
   private readonly downloadCooldown = createRateLimitCooldown(this.destroyRef);
@@ -80,8 +115,14 @@ export class CertificateValidation {
   private platformId = inject(PLATFORM_ID);
   private activeValidation: Subscription | null = null;
   private activeDownload: Subscription | null = null;
-  private pendingCertificateId: string | null = null;
-  private nextValidationSource: ValidationSource | null = null;
+  private activePreview: Subscription | null = null;
+  private previewTimer: Subscription | null = null;
+  readonly previewState = signal<'available' | 'loading' | 'ready' | 'hidden'>('available');
+  readonly previewUrl = signal<string | null>(null);
+  readonly previewExpanded = signal(false);
+  readonly previewToken = signal<string | null>(null);
+  private pendingLookup: ValidationLookup | null = null;
+  private nextValidationSource: CodeValidationSource | null = null;
   private currentRouteCertificateId: string | null = null;
   public isDarkSignal = signal(false);
   private readonly notFoundCertificateId = signal<string | null>(null);
@@ -91,6 +132,7 @@ export class CertificateValidation {
   });
   readonly validationForm = form(this.certificateLookupModel, (path) => {
     required(path.certificateId, { message: 'Informe o código do certificado.' });
+    readonlyField(path.certificateId, () => this.readingPdf());
     validate(path.certificateId, ({ value }) => {
       const notFoundCertificateId = this.notFoundCertificateId();
       if (notFoundCertificateId && value().trim() === notFoundCertificateId) {
@@ -104,12 +146,20 @@ export class CertificateValidation {
     });
   });
   readonly state = signal<ValidationState>({ status: 'idle' });
+  readonly readingPdf = computed(() => {
+    const state = this.state();
+    return state.status === 'loading' && state.source === 'pdf';
+  });
+  readonly pdfError = signal('');
   readonly downloading = signal(false);
   readonly downloadError = signal<string | null>(null);
   readonly turnstileAction = TURNSTILE_ACTIONS.certificateValidation;
   readonly turnstileToken = signal<string | null>(null);
   readonly validationCooldownSeconds = this.validationCooldown.seconds;
   readonly downloadCooldownSeconds = this.downloadCooldown.seconds;
+  readonly pdfUploadUnavailable = computed(
+    () => this.state().status === 'loading' || this.validationCooldownSeconds() > 0,
+  );
 
   constructor() {
     combineLatest([this.route.paramMap, this.route.queryParamMap])
@@ -126,13 +176,15 @@ export class CertificateValidation {
         takeUntilDestroyed(),
       )
       .subscribe(({ certificateId, invalidId }) => {
+        this.pdfError.set('');
         this.resetDownload();
+        this.resetPreview();
         this.currentRouteCertificateId = certificateId;
         this.syncInput(certificateId, invalidId);
 
         if (!certificateId) {
           this.cancelPendingValidation();
-          this.state.set({ status: 'idle' });
+          this.state.set(invalidId ? { status: 'not-found' } : { status: 'idle' });
           return;
         }
 
@@ -140,16 +192,17 @@ export class CertificateValidation {
         const certificate = this.validationState.get(certificateId);
         if (certificate && source === 'link') {
           this.cancelPendingValidation();
-          this.state.set({ status: 'ready', certificate });
+          this.applyVerification(certificate);
           return;
         }
 
-        this.queueValidation(certificateId, source);
+        this.queueValidation({ certificateId, source });
       });
 
     this.destroyRef.onDestroy(() => {
       this.activeValidation?.unsubscribe();
       this.activeDownload?.unsubscribe();
+      this.resetPreview();
     });
 
     if (isPlatformBrowser(this.platformId) && window.matchMedia) {
@@ -169,7 +222,22 @@ export class CertificateValidation {
     }
   }
 
-  submit(source: ValidationSource = 'manual'): void {
+  openLookup(): void {
+    this.lookupExpanded.set(true);
+    afterNextRender(
+      () => {
+        this.lookupInput()?.nativeElement.focus();
+        this.lookupInput()?.nativeElement.select();
+      },
+      { injector: this.injector },
+    );
+  }
+
+  submit(source: CodeValidationSource = 'manual'): void {
+    if (this.readingPdf()) {
+      return;
+    }
+
     const certificateId = this.certificateLookupModel().certificateId.trim();
     if (this.validationCooldownSeconds() > 0) {
       this.state.set({
@@ -185,7 +253,7 @@ export class CertificateValidation {
     }
 
     if (certificateId === this.currentRouteCertificateId) {
-      this.queueValidation(certificateId, source);
+      this.queueValidation({ certificateId, source });
       return;
     }
 
@@ -196,6 +264,27 @@ export class CertificateValidation {
     void this.router.navigate(['/validate'], {
       queryParams: { certificateId },
     });
+  }
+
+  selectCertificatePdf(input: HTMLInputElement): void {
+    const files = Array.from(input.files ?? []);
+    // Reset the picker so the same file can be selected again after an error.
+    input.value = '';
+    if (files.length === 0 || this.pdfUploadUnavailable() || !isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    if (files.length !== 1) {
+      this.pdfError.set('Selecione um único arquivo PDF.');
+      return;
+    }
+    const [file] = files;
+    if (file.size > PUBLIC_CERTIFICATE_PDF_MAX_BYTES) {
+      this.pdfError.set(PDF_SIZE_ERROR);
+      return;
+    }
+
+    this.queueValidation({ file, source: 'pdf' });
   }
 
   download(certificate: PublicCertificateValidation): void {
@@ -234,6 +323,87 @@ export class CertificateValidation {
       });
   }
 
+  togglePreview(certificate: PublicCertificateValidation): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+    if (this.previewState() === 'loading') {
+      this.resetPreview();
+      return;
+    }
+    if (this.previewState() !== 'available') {
+      this.previewExpanded.update((expanded) => !expanded);
+      return;
+    }
+    this.previewExpanded.set(true);
+    this.previewState.set('loading');
+    this.requestPreview(certificate.id, 0);
+  }
+
+  hidePreview(): void {
+    if (this.previewSection()?.nativeElement.contains(this.document.activeElement)) {
+      this.downloadAction()?.nativeElement.focus();
+    }
+    this.resetPreview();
+    this.previewState.set('hidden');
+  }
+
+  private requestPreview(certificateId: string, attempt: number): void {
+    const token = this.previewToken();
+    if (!token) {
+      this.hidePreview();
+      return;
+    }
+    this.activePreview = this.api
+      .requestPreview(certificateId, token)
+      .pipe(timeout({ first: 4000 }), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (preview) => {
+          if (!preview) {
+            this.hidePreview();
+          } else if (!preview.imagePath && attempt < 9) {
+            this.previewTimer = timer(2000)
+              .pipe(takeUntilDestroyed(this.destroyRef))
+              .subscribe(() => this.requestPreview(certificateId, attempt + 1));
+          } else if (preview.imagePath === `/api/certificates/validate/${encodeURIComponent(certificateId)}/preview`) {
+            this.loadPreviewImage(preview.imagePath, token);
+          } else {
+            this.hidePreview();
+          }
+        },
+        error: () => this.hidePreview(),
+      });
+  }
+
+  private loadPreviewImage(imagePath: string, token: string): void {
+    this.activePreview = this.api
+      .previewCertificate(imagePath, token)
+      .pipe(timeout({ first: 4000 }), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          if (response.status !== 200 || !response.body?.size || response.body.type !== 'image/avif') {
+            this.hidePreview();
+            return;
+          }
+          this.previewUrl.set(URL.createObjectURL(response.body));
+          this.previewState.set('ready');
+        },
+        error: () => this.hidePreview(),
+      });
+  }
+
+  private resetPreview(): void {
+    this.activePreview?.unsubscribe();
+    this.previewTimer?.unsubscribe();
+    const url = this.previewUrl();
+    if (url) {
+      URL.revokeObjectURL(url);
+    }
+    this.previewUrl.set(null);
+    this.previewExpanded.set(false);
+    this.previewState.set('available');
+  }
+
   public scanCode(): void {
     const dialogRef = this.dialog.open(AztecScannerDialogComponent, {
       width: 'min(560px, 96vw)',
@@ -266,7 +436,7 @@ export class CertificateValidation {
   onTurnstileTokenChange(token: string | null): void {
     this.turnstileToken.set(token);
 
-    if (!token || !this.pendingCertificateId) {
+    if (!token || !this.pendingLookup) {
       return;
     }
 
@@ -324,8 +494,8 @@ export class CertificateValidation {
       return 'Código escaneado. Conclua a verificação para validar.';
     }
 
-    if (source === 'link') {
-      return 'Conclua a verificação para validar.';
+    if (source === 'pdf') {
+      return 'PDF selecionado. Conclua a verificação para validar.';
     }
 
     return 'Conclua a verificação para validar.';
@@ -338,27 +508,25 @@ export class CertificateValidation {
       .some((error) => error.kind === kind);
   }
 
-  private queueValidation(certificateId: string, source: ValidationSource): void {
-    const normalizedCertificateId = this.normalizeId(certificateId);
-    if (!normalizedCertificateId) {
-      this.cancelPendingValidation();
-      this.state.set({ status: 'idle' });
-      return;
-    }
-
+  private queueValidation(lookup: ValidationLookup): void {
     this.cancelPendingValidation();
     this.resetDownload();
+    this.resetPreview();
     this.notFoundCertificateId.set(null);
-    this.pendingCertificateId = normalizedCertificateId;
-    this.validationState.clear(normalizedCertificateId);
+    this.previewToken.set(null);
+    this.pdfError.set('');
+    this.pendingLookup = lookup;
+    if (lookup.source !== 'pdf') {
+      this.validationState.clear(lookup.certificateId);
+    }
 
     const turnstileToken = this.turnstileToken();
     if (!turnstileToken) {
-      this.state.set({
-        status: 'challenge',
-        certificateId: normalizedCertificateId,
-        source,
-      });
+      this.state.set(
+        lookup.source === 'pdf'
+          ? { status: 'challenge', source: 'pdf' }
+          : { status: 'challenge', certificateId: lookup.certificateId, source: lookup.source },
+      );
       return;
     }
 
@@ -366,16 +534,21 @@ export class CertificateValidation {
   }
 
   private validatePendingCertificate(turnstileToken: string): void {
-    const certificateId = this.pendingCertificateId;
-    if (!certificateId) {
+    const lookup = this.pendingLookup;
+    if (!lookup) {
       return;
     }
 
-    this.pendingCertificateId = null;
+    this.pendingLookup = null;
     this.activeValidation?.unsubscribe();
-    this.state.set({ status: 'loading' });
-    this.activeValidation = this.api
-      .validateCertificate(certificateId, turnstileToken)
+    this.state.set(lookup.source === 'pdf' ? { status: 'loading', source: 'pdf' } : { status: 'loading' });
+    const verificationRequest =
+      lookup.source === 'pdf'
+        ? this.api.validateCertificatePdf(lookup.file, turnstileToken)
+        : this.api
+            .validateCertificate(lookup.certificateId, turnstileToken)
+            .pipe(map((verification) => ({ certificateId: lookup.certificateId, ...verification })));
+    this.activeValidation = verificationRequest
       .pipe(
         finalize(() => {
           this.turnstileToken.set(null);
@@ -384,25 +557,31 @@ export class CertificateValidation {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: (certificate) => {
-          if (!certificate) {
-            this.notFoundCertificateId.set(certificateId);
-            this.state.set({
-              status: 'error',
-              message: 'Certificado não encontrado.',
-            });
-            return;
+        next: ({ certificateId, ...verification }) => {
+          if (lookup.source === 'pdf') {
+            this.validationState.clear(certificateId);
+            this.validationForm.certificateId().value.set(certificateId);
           }
-
-          this.validationState.set(certificateId, certificate);
-          this.state.set({
-            status: 'ready',
-            certificate,
-          });
+          if (!verification.certificate && !verification.revokedAt) {
+            this.notFoundCertificateId.set(certificateId);
+          } else {
+            this.validationState.set(certificateId, verification);
+          }
+          this.applyVerification(verification);
+          if (lookup.source === 'pdf' && certificateId !== this.currentRouteCertificateId) {
+            const queryParams =
+              verification.certificate || verification.revokedAt ? { certificateId } : { invalidId: certificateId };
+            void this.router.navigate(['/validate'], { queryParams });
+          }
         },
         error: (error: unknown) => {
-          if (error instanceof RateLimitError) {
-            this.validationCooldown.start(error.retryAfterSeconds);
+          const rateLimit = error instanceof RateLimitError ? error : rateLimitFromHttpError(error);
+          if (rateLimit) {
+            this.validationCooldown.start(rateLimit.retryAfterSeconds);
+          }
+          if (lookup.source === 'pdf' && this.showPdfFileError(error)) {
+            this.state.set({ status: 'idle' });
+            return;
           }
           this.state.set({
             status: 'error',
@@ -412,8 +591,24 @@ export class CertificateValidation {
       });
   }
 
+  private applyVerification(verification: PublicCertificateVerification): void {
+    const restoreLookupFocus = this.lookupSection()?.nativeElement.contains(this.document.activeElement);
+    this.lookupExpanded.set(false);
+    this.previewToken.set(verification.previewToken);
+    if (verification.revokedAt) {
+      this.state.set({ status: 'revoked', revokedAt: verification.revokedAt });
+    } else if (verification.certificate) {
+      this.state.set({ status: 'ready', certificate: verification.certificate });
+      if (restoreLookupFocus) {
+        afterNextRender(() => this.lookupShortcut()?.nativeElement.focus(), { injector: this.injector });
+      }
+    } else {
+      this.state.set({ status: 'not-found' });
+    }
+  }
+
   private cancelPendingValidation(): void {
-    this.pendingCertificateId = null;
+    this.pendingLookup = null;
     this.activeValidation?.unsubscribe();
     this.activeValidation = null;
   }
@@ -425,7 +620,7 @@ export class CertificateValidation {
     this.downloadError.set(null);
   }
 
-  private consumeNextValidationSource(): ValidationSource {
+  private consumeNextValidationSource(): CodeValidationSource {
     const source = this.nextValidationSource ?? 'link';
     this.nextValidationSource = null;
     return source;
@@ -443,7 +638,12 @@ export class CertificateValidation {
   }
 
   private getErrorMessage(error: unknown): string {
-    const message = error instanceof Error ? error.message : '';
+    const message =
+      error instanceof HttpErrorResponse && typeof error.error?.message === 'string'
+        ? error.error.message
+        : error instanceof Error
+          ? error.message
+          : '';
     if (message.includes('Too Many Requests') || message.includes('ThrottlerException')) {
       return 'Muitas tentativas. Aguarde um instante e tente novamente.';
     }
@@ -460,7 +660,24 @@ export class CertificateValidation {
       return 'Não foi possível confirmar a verificação anti-spam. Tente novamente.';
     }
 
-    return message || 'Não foi possível validar o certificado.';
+    return 'Não foi possível consultar o registro do certificado.';
+  }
+
+  private showPdfFileError(error: unknown): boolean {
+    if (!(error instanceof HttpErrorResponse)) {
+      return false;
+    }
+    const message = typeof error.error?.message === 'string' ? error.error.message : '';
+    if (error.status === 422) {
+      this.pdfError.set('Não foi possível identificar um único código no PDF. Digite o código ou escaneie o QR code.');
+    } else if (error.status === 413) {
+      this.pdfError.set(PDF_SIZE_ERROR);
+    } else if (error.status === 415 || (error.status === 400 && !message.startsWith('Turnstile'))) {
+      this.pdfError.set('Não foi possível ler o arquivo. Selecione o PDF original ou digite o código do certificado.');
+    } else {
+      return false;
+    }
+    return true;
   }
 
   private getDownloadErrorMessage(error: unknown): string {

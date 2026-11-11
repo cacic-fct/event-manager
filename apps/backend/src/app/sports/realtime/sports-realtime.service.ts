@@ -56,6 +56,9 @@ export class SportsRealtimeService implements OnModuleInit, OnModuleDestroy {
 
     const subscriber = redisWithDuplicate.duplicate();
     this.subscriber = subscriber;
+    subscriber.on('error', (error: Error) => {
+      this.logger.warn(`Redis subscription connection error: ${error.message}`);
+    });
     await subscriber.subscribe(SPORTS_REDIS_CHANNEL);
     subscriber.on('message', (_channel, payload) => {
       const envelope = this.parseEnvelope(payload);

@@ -18,6 +18,8 @@ jestEsm.unstable_mockModule('@aws-sdk/client-s3', () => ({
   DeleteObjectCommand: jest.fn().mockImplementation((input) => ({ kind: 'DeleteObjectCommand', input })),
   HeadObjectCommand: jest.fn().mockImplementation((input) => ({ kind: 'HeadObjectCommand', input })),
   ListObjectsV2Command: jest.fn().mockImplementation((input) => ({ kind: 'ListObjectsV2Command', input })),
+  PutObjectCommand: jest.fn().mockImplementation((input) => ({ kind: 'PutObjectCommand', input })),
+  GetBucketVersioningCommand: jest.fn().mockImplementation((input) => ({ kind: 'GetBucketVersioningCommand', input })),
 }));
 
 jestEsm.unstable_mockModule('@aws-sdk/lib-storage', () => ({
@@ -179,6 +181,7 @@ describe('S3Service', () => {
           Key: 'files/remove.txt',
         },
       }),
+      { abortSignal: undefined },
     );
 
     sendMock.mockRejectedValueOnce(new Error('access denied'));

@@ -30,6 +30,20 @@ describe('detail view model', () => {
     expect(detail?.certificateIssuanceEnabled).toBe(true);
   });
 
+  it('formats an event whose end time crosses UTC midnight', () => {
+    const startDate = new Date();
+    startDate.setUTCHours(23, 30, 0, 0);
+    const lateEvent = event('late', startDate.toISOString());
+    const detail = buildEventDetail({
+      subscription: null,
+      event: lateEvent,
+      attendance: null,
+      hasIssuedCertificate: true,
+    });
+
+    expect(detail?.events[0]?.event.endDate).toBe(new Date(startDate.getTime() + 60 * 60 * 1000).toISOString());
+  });
+
   it('builds grouped event details with sorted events, certificate targets, and attendance summary', () => {
     const group = eventGroup({
       shouldIssueCertificate: true,
@@ -195,8 +209,8 @@ function majorEvent(overrides: Partial<PublicMajorEvent> = {}): PublicMajorEvent
 }
 
 function addOneHour(value: string): string {
-  const [date, time] = value.split('T');
-  const hour = Number(time.slice(0, 2)) + 1;
+  const date = new Date(value);
+  date.setTime(date.getTime() + 60 * 60 * 1000);
 
-  return `${date}T${String(hour).padStart(2, '0')}${time.slice(2)}`;
+  return date.toISOString();
 }

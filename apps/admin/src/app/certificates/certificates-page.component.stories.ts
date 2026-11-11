@@ -477,7 +477,13 @@ export const RevocationWorkspace: Story = {
     await userEvent.click(await canvas.findByRole('button', action));
     const dialog = await page.findByRole('dialog', { name: 'Permitir emissão novamente' });
     await expect(within(dialog).getByText(/continuará inválido/)).toBeVisible();
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Permitir emissão' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+    await expect(restoreRevokedCertificate).not.toHaveBeenCalled();
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+
+    await userEvent.click(await canvas.findByRole('button', action));
+    const reopenedDialog = await page.findByRole('dialog', { name: 'Permitir emissão novamente' });
+    await userEvent.click(within(reopenedDialog).getByRole('button', { name: 'Permitir emissão' }));
     await expect(restoreRevokedCertificate).toHaveBeenCalledWith(revokedCertificateId);
     await waitFor(async () => {
       await expect(canvas.queryByText('Ana Souza', { exact: true })).not.toBeInTheDocument();
