@@ -60,16 +60,4 @@ export class EventGroupInfo {
     const remainder = minutes % 60;
     return [hours ? `${hours}h` : '', remainder ? `${remainder}min` : ''].filter(Boolean).join(' ');
   });
-  readonly certificateRules = computed(() => {
-    const group = this.group();
-    if (group.shouldIssueCertificate === false) return ['Este grupo não prevê emissão de certificado.'];
-    if (group.shouldIssueCertificate !== true) return [];
-    const rules = ['Este grupo prevê emissão de certificado, conforme os critérios de participação.'];
-    if (group.shouldIssueCertificateForEachEvent === true) rules.push('Há emissão de certificado por evento.');
-    if (group.shouldIssuePartialCertificate === true)
-      rules.push('O grupo permite certificado de participação parcial.');
-    if (group.shouldIssueCertificateForNonSubscribedAttendees === false)
-      rules.push('A inscrição é necessária para receber o certificado.');
-    return rules;
-  });
 }
