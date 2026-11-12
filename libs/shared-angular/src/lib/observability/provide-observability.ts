@@ -28,6 +28,7 @@ import {
 } from '../security/trusted-types';
 import { CACIC_OBSERVABILITY_REPLAY_IS_DEVELOPMENT } from './replay-development-mode.token';
 import { filterCacicSentryLog } from './sentry-log-filter';
+import { PRODUCT_ANALYTICS_CONFIG, type ProductAnalyticsConfig } from './product-analytics.service';
 
 export type CacicObservabilityConfig = {
   analytics: {
@@ -232,6 +233,14 @@ export function provideCacicObservability(config: CacicObservabilityConfig) {
 
   if (config.analytics.websiteId) {
     providers.push(
+      {
+        provide: PRODUCT_ANALYTICS_CONFIG,
+        useValue: {
+          websiteId: config.analytics.websiteId,
+          sendUrl: new URL('/api/send', config.analytics.src ?? DEFAULT_UMAMI_ANALYTICS_SRC),
+          domains: config.analytics.domains,
+        } satisfies ProductAnalyticsConfig,
+      },
       provideUmamiWithFactory(() => ({
         websiteId: config.analytics.websiteId,
         src: trustedExternalScriptUrl(analyticsScriptUrl),

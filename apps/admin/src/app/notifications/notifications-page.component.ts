@@ -4,7 +4,7 @@ import { NovuInboxComponent } from '@cacic-fct/shared-notifications-angular/inbo
 @Component({
   selector: 'app-workspace-notifications-tab',
   imports: [NovuInboxComponent],
-  template: ` <lib-novu-inbox title="Caixa de entrada" [markReadOnOpen]="false" [showUnreadFilter]="true" /> `,
+  template: ` <lib-novu-inbox title="Caixa de entrada" appBasePath="/admin" [showUnreadFilter]="true" /> `,
   styleUrl: './notifications-page.component.scss',
 })
 export class NotificationsPageComponent {}

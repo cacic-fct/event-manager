@@ -116,7 +116,8 @@
       "@cacic-fct/backend/http-app": ["./apps/backend/src/app/bootstrap/backend-http-app.ts"],
       "@cacic-fct/admin/testing": ["./apps/admin/src/app/testing/admin-entity-fixtures.ts"],
       "@cacic-fct/backend/ticketing-testing": ["./apps/backend/src/app/tickets/testing/ticketing-e2e-support.ts"],
-      "@cacic-fct/shared-livestream": ["./libs/shared-livestream/src/index.ts"]
+      "@cacic-fct/shared-livestream": ["./libs/shared-livestream/src/index.ts"],
+      "@cacic-fct/shared-analytics": ["./libs/shared-analytics/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

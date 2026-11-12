@@ -41,6 +41,7 @@ import {
   loadPreviousPage,
   pageVariables,
   resetPagination,
+  WORKSPACE_LIST_PAGE_SIZE,
 } from '../pagination/list-pagination';
 import { buildPeopleCandidateLookupFilters } from '../people/people-lookup';
 import {
@@ -110,6 +111,8 @@ export class CertificatesService {
   private readonly permissions = inject(PermissionsService);
   private targetSearchRequestGeneration = 0;
   private routeSelectionGeneration = 0;
+  private certificatesRequestGeneration = 0;
+  private certificatesPersonName = '';
 
   readonly issuableEvents = signal<Event[]>([]);
   readonly issuableEventGroups = signal<EventGroup[]>([]);
@@ -163,6 +166,9 @@ export class CertificatesService {
   readonly selectedCertificateConfig = signal<CertificateConfig | null>(null);
   readonly certificates = signal<Certificate[]>([]);
   readonly certificatesPagination = createWorkspaceListPagination();
+  readonly certificatesPersonQuery = signal('');
+  readonly certificatesTotal = signal(0);
+  readonly certificatesLoadState = signal<'loading' | 'ready' | 'error'>('loading');
   readonly personSearchResults = signal<Person[]>([]);
   readonly isImportingPeopleCsv = signal(false);
   readonly issuanceRuns = signal<CertificateIssuanceRun[]>([]);
@@ -402,7 +408,7 @@ export class CertificatesService {
     this.availablePaymentTiers.set([]);
     this.selectedCertificateConfig.set(null);
     this.certificateConfigs.set([]);
-    this.certificates.set([]);
+    this.resetCertificatesList();
     this.personSearchResults.set([]);
     this.resetFolderForm();
     this.resetCertificateConfigForm();
@@ -518,7 +524,7 @@ export class CertificatesService {
     this.selectedCertificateConfig.set(null);
     this.resetCertificateConfigForm();
     resetPagination(this.certificateConfigsPagination);
-    resetPagination(this.certificatesPagination);
+    this.resetCertificatesList();
     await Promise.all([
       this.loadCertificateConfigs(),
       this.loadCertificates(),
@@ -624,10 +630,9 @@ export class CertificatesService {
     this.availablePaymentTiers.set([]);
     this.selectedCertificateConfig.set(null);
     this.certificateConfigs.set([]);
-    this.certificates.set([]);
+    this.resetCertificatesList();
     this.resetFolderForm();
     resetPagination(this.certificateConfigsPagination);
-    resetPagination(this.certificatesPagination);
     this.personSearchResults.set([]);
     this.resetCertificateConfigForm();
     this.captureEditorBaseline();
@@ -1265,40 +1270,76 @@ export class CertificatesService {
     return firstValueFrom(dialogRef.afterClosed());
   }
 
-  private async loadCertificates(): Promise<void> {
+  async filterCertificatesByPerson(personName: string): Promise<void> {
+    if (personName === this.certificatesPersonName) {
+      return;
+    }
+    this.certificatesPersonName = personName;
+    await this.loadCertificates(0);
+  }
+
+  async loadCertificates(pageIndex = this.certificatesPagination.pageIndex()): Promise<void> {
     const selectedTarget = this.selectedTarget();
     if (!selectedTarget) {
-      this.certificates.set([]);
       return;
     }
 
-    const scope = this.targetFiltersForm.controls.scope.value as WorkspaceCertificateScope;
-    const configId = this.selectedCertificateConfig()?.id;
-    const pageIndex = this.certificatesPagination.pageIndex();
-    const certificates = await firstValueFrom(
-      this.api.listCertificates(scope, selectedTarget.id, {
-        configId,
-        includeRevoked: true,
-        ...pageVariables(pageIndex),
-      }),
-    );
-    if (
-      this.selectedTarget()?.id !== selectedTarget.id ||
-      this.targetFiltersForm.controls.scope.value !== scope ||
-      this.selectedCertificateConfig()?.id !== configId ||
-      this.certificatesPagination.pageIndex() !== pageIndex
-    ) {
-      return;
+    const scope = this.targetFiltersForm.controls.scope.value;
+    const requestGeneration = ++this.certificatesRequestGeneration;
+    this.certificatesLoadState.set('loading');
+    try {
+      const { items, totalCount } = await firstValueFrom(
+        this.api.listCertificatePage(scope, selectedTarget.id, {
+          configId: this.selectedCertificateConfig()?.id,
+          includeRevoked: true,
+          personName: this.certificatesPersonName || undefined,
+          ...pageVariables(pageIndex),
+        }),
+      );
+      if (
+        requestGeneration !== this.certificatesRequestGeneration ||
+        scope !== this.targetFiltersForm.controls.scope.value
+      ) {
+        return;
+      }
+
+      const lastPageIndex = Math.max(0, Math.ceil(totalCount / WORKSPACE_LIST_PAGE_SIZE) - 1);
+      if (pageIndex > lastPageIndex) {
+        await this.loadCertificates(lastPageIndex);
+        return;
+      }
+      this.certificatesPagination.pageIndex.set(pageIndex);
+      this.certificates.set(applyPagedResult(items, this.certificatesPagination));
+      this.certificatesTotal.set(totalCount);
+      this.certificatesLoadState.set('ready');
+    } catch {
+      if (requestGeneration === this.certificatesRequestGeneration) {
+        this.certificatesPagination.pageIndex.set(pageIndex);
+        this.certificatesLoadState.set('error');
+      }
     }
-    this.certificates.set(applyPagedResult(certificates, this.certificatesPagination));
   }
 
   async previousCertificatesPage(): Promise<void> {
-    await loadPreviousPage(this.certificatesPagination, () => this.loadCertificates());
+    if (this.certificatesLoadState() === 'ready' && this.certificatesPagination.hasPreviousPage()) {
+      await this.loadCertificates(this.certificatesPagination.pageIndex() - 1);
+    }
   }
 
   async nextCertificatesPage(): Promise<void> {
-    await loadNextPage(this.certificatesPagination, () => this.loadCertificates());
+    if (this.certificatesLoadState() === 'ready' && this.certificatesPagination.hasNextPage()) {
+      await this.loadCertificates(this.certificatesPagination.pageIndex() + 1);
+    }
+  }
+
+  private resetCertificatesList(): void {
+    this.certificatesRequestGeneration++;
+    this.certificatesPersonName = '';
+    this.certificatesPersonQuery.set('');
+    this.certificates.set([]);
+    this.certificatesTotal.set(0);
+    this.certificatesLoadState.set('loading');
+    resetPagination(this.certificatesPagination);
   }
 
   private buildCertificateConfigPayload(targetId: string, raw = this.certificateConfigModel()): CertificateConfigInput {

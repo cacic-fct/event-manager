@@ -12,7 +12,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { CalendarPreferencesStorageService, PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import { getEventTypeLabel } from '@cacic-fct/shared-utils';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService, CacicProductAnalyticsService } from '@cacic-fct/shared-angular';
 import { addDays, isAfter, isBefore, startOfDay, startOfWeek, subDays, subMonths } from 'date-fns';
 import {
   Observable,
@@ -50,6 +50,12 @@ interface CalendarFilterValue {
 
 type CalendarSubscriptionFilter = 'ALL' | 'SUBSCRIBED';
 
+type CalendarLoadResult = {
+  events: PublicEvent[];
+  subscribedEventIds: ReadonlySet<string>;
+  source: 'network' | 'cache';
+};
+
 @Component({
   selector: 'app-calendar',
   imports: [
@@ -71,6 +77,7 @@ type CalendarSubscriptionFilter = 'ALL' | 'SUBSCRIBED';
 export class Calendar {
   private readonly api = inject(CalendarApiService);
   private readonly auth = inject(AuthService);
+  private readonly productAnalytics = inject(CacicProductAnalyticsService);
   private readonly calendarPreferences = inject(CalendarPreferencesStorageService);
   private readonly featureFlags = inject(PublicFeatureFlagService);
   private readonly destroyRef = inject(DestroyRef);
@@ -167,8 +174,9 @@ export class Calendar {
   }
 
   setViewMode(mode: string): void {
-    if (mode === 'list' || mode === 'week') {
+    if ((mode === 'list' || mode === 'week') && mode !== this.viewMode()) {
       this.viewMode.set(mode);
+      this.productAnalytics.record('calendar_view_changed', { view: mode });
     }
   }
 
@@ -217,30 +225,38 @@ export class Calendar {
   }
 
   private createCalendarState(): Observable<CalendarState> {
+    let lastReportedQuery = '';
     return combineLatest([
       this.filterChanges(),
       toObservable(this.listStartDate),
       toObservable(this.refreshCounter),
       toObservable(this.isAuthenticated),
     ]).pipe(
-      switchMap(([filters, startDate, , isAuthenticated]) =>
-        this.loadEvents(filters, startDate, isAuthenticated).pipe(
-          map(
-            ({ events, subscribedEventIds }) =>
-              ({
-                status: 'ready',
-                events,
-                subscribedEventIds,
-              }) satisfies CalendarState,
-          ),
+      switchMap(([filters, startDate, , isAuthenticated]) => {
+        const query = filters.query.trim().toLocaleLowerCase('pt-BR');
+        if (!query) {
+          lastReportedQuery = '';
+        }
+
+        return this.loadEvents(filters, startDate, isAuthenticated).pipe(
+          map(({ events, subscribedEventIds, source }) => {
+            if (query && query !== lastReportedQuery) {
+              lastReportedQuery = query;
+              this.productAnalytics.record('calendar_search_completed', {
+                result: events.length ? 'matches' : 'empty',
+                source,
+              });
+            }
+            return { status: 'ready', events, subscribedEventIds } satisfies CalendarState;
+          }),
           catchError((error: unknown) =>
             of({
               status: 'error',
               message: error instanceof Error ? error.message : 'Não foi possível carregar o calendário.',
             } satisfies CalendarState),
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 
@@ -248,13 +264,13 @@ export class Calendar {
     filters: CalendarFilterValue,
     startDate: Date,
     isAuthenticated: boolean,
-  ): Observable<{ events: PublicEvent[]; subscribedEventIds: ReadonlySet<string> }> {
+  ): Observable<CalendarLoadResult> {
     const query = filters.query.trim();
     const startDateFrom = startDate.toISOString();
 
     if (!this.networkStatus.isOnline()) {
       return from(this.getCachedCalendarEvents(filters, startDateFrom)).pipe(
-        map((events) => ({ events, subscribedEventIds: new Set<string>() })),
+        map((events) => ({ events, subscribedEventIds: new Set<string>(), source: 'cache' as const })),
       );
     }
 
@@ -277,6 +293,7 @@ export class Calendar {
           map(() => ({
             events: this.filterSubscribedEvents(calendarEvents, filters.subscription, subscribedEventIds),
             subscribedEventIds,
+            source: 'network' as const,
           })),
         );
       }),
@@ -284,7 +301,7 @@ export class Calendar {
         isAuthenticated
           ? throwError(() => error)
           : from(this.getCachedCalendarEvents(filters, startDateFrom)).pipe(
-              map((events) => ({ events, subscribedEventIds: new Set<string>() })),
+              map((events) => ({ events, subscribedEventIds: new Set<string>(), source: 'cache' as const })),
             ),
       ),
     );

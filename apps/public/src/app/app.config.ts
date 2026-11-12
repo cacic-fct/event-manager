@@ -1,3 +1,4 @@
+import { UMAMI_BROWSER_WEBSITE_IDS } from '@cacic-fct/shared-analytics';
 import { initializeMaterialSymbols } from '@cacic-fct/shared-angular/material/icons';
 import {
   ApplicationConfig,
@@ -140,7 +141,7 @@ export const appConfig: ApplicationConfig = {
     }),
     provideCacicObservability({
       analytics: {
-        websiteId: 'df6b1fa8-7566-4cb0-8dff-279d15cc0b5d',
+        websiteId: UMAMI_BROWSER_WEBSITE_IDS.public,
         domains: ['eventos.cacic.com.br'],
         isEnabled: isAccountAnalyticsEnabled,
         replay: {

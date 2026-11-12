@@ -1,9 +1,11 @@
 import { HealthService } from './health.service';
 const { jest } = import.meta;
 
+const analytics = { recordReadiness: jest.fn() } as never;
+
 describe('HealthService', () => {
   it('keeps liveness independent from external dependencies', () => {
-    const service = new HealthService({} as never, {} as never);
+    const service = new HealthService({} as never, {} as never, analytics);
 
     expect(service.live()).toEqual({ status: 'ok' });
   });
@@ -11,7 +13,7 @@ describe('HealthService', () => {
   it('reports ready only when PostgreSQL and Redis respond', async () => {
     const prisma = { $queryRaw: jest.fn().mockResolvedValue([{ '?column?': 1 }]) };
     const redis = { ping: jest.fn().mockResolvedValue('PONG') };
-    const service = new HealthService(prisma as never, redis as never);
+    const service = new HealthService(prisma as never, redis as never, analytics);
 
     await expect(service.ready()).resolves.toEqual({
       status: 'ok',
@@ -33,7 +35,7 @@ describe('HealthService', () => {
     const redis = {
       ping: jest.fn().mockImplementation(() => (redisError ? Promise.reject(redisError) : Promise.resolve('PONG'))),
     };
-    const service = new HealthService(prisma as never, redis as never);
+    const service = new HealthService(prisma as never, redis as never, analytics);
 
     await expect(service.ready()).rejects.toMatchObject({
       response: {

@@ -44,9 +44,6 @@ describe('LgpdService data export', () => {
   it('exports merged source and target identities when the request uses the final user id', async () => {
     const { prisma, service } = context;
     prisma.eventSubscription.findMany.mockResolvedValue([{ id: 'moved-subscription' }]);
-    prisma.offlineEventAttendanceSubmission.findMany.mockResolvedValue([
-      { id: 'offline-submission-1', personId: 'source-person', authorUserId: 'old-user' },
-    ]);
     prisma.eventDraft.findMany.mockResolvedValue([
       {
         id: 'draft-1',
@@ -71,19 +68,8 @@ describe('LgpdService data export', () => {
         ocrText: 'Pagamento PIX de R$ 50,00',
       },
     ]);
-    prisma.majorEventReceiptValidationAction.findMany.mockResolvedValueOnce([
-      {
-        id: 'action-1',
-        subscriptionId: 'subscription-1',
-        receiptId: 'receipt-1',
-        nextRejectionReason: null,
-      },
-    ]);
     prisma.prizeDrawManualEntry.findMany.mockResolvedValue([
       { id: 'manual-1', drawId: 'draw-1', personId: 'source-person' },
-    ]);
-    prisma.prizeDrawWeightOverride.findMany.mockResolvedValue([
-      { drawId: 'draw-1', personId: 'source-person', weight: 3 },
     ]);
     prisma.prizeDrawExcludedPerson.findMany.mockResolvedValue([{ drawId: 'draw-1', personId: 'target-person' }]);
     prisma.prizeDrawFrozenEntry.findMany.mockResolvedValue([
@@ -138,15 +124,6 @@ describe('LgpdService data export', () => {
           expect.objectContaining({
             id: 'receipt-1',
             personId: 'source-person',
-            ocrText: 'Pagamento PIX de R$ 50,00',
-          }),
-        ],
-        receiptValidationActions: [
-          expect.objectContaining({
-            id: 'action-1',
-            subscriptionId: 'subscription-1',
-            receiptId: 'receipt-1',
-            nextRejectionReason: null,
           }),
         ],
       }),
@@ -157,16 +134,11 @@ describe('LgpdService data export', () => {
       records: [
         expect.objectContaining({
           id: 'draft-1',
-          createdById: 'old-user',
-          createdByEmail: 'old@example.com',
-          updatedById: 'new-user',
-          updatedByEmail: 'new@example.com',
         }),
       ],
     });
     expect(result.prizeDraws).toEqual({
       manualEntries: [expect.objectContaining({ id: 'manual-1', personId: 'source-person' })],
-      weightOverrides: [expect.objectContaining({ drawId: 'draw-1', weight: 3 })],
       exclusions: [expect.objectContaining({ personId: 'target-person' })],
       frozenEntries: [expect.objectContaining({ id: 'frozen-1' })],
       spinEntries: [expect.objectContaining({ id: 'entry-1' })],
@@ -174,7 +146,6 @@ describe('LgpdService data export', () => {
     });
     for (const delegate of [
       prisma.prizeDrawManualEntry,
-      prisma.prizeDrawWeightOverride,
       prisma.prizeDrawExcludedPerson,
       prisma.prizeDrawFrozenEntry,
       prisma.prizeDrawSpinEntry,
@@ -186,23 +157,6 @@ describe('LgpdService data export', () => {
     expect(prisma.prizeDrawSpin.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { winnerPersonId: { in: ['source-person', 'target-person'] } } }),
     );
-    expect(result.attendances).toEqual(
-      expect.objectContaining({
-        records: expect.any(Array),
-        offlineSubmissions: [
-          expect.objectContaining({
-            id: 'offline-submission-1',
-            personId: 'source-person',
-            authorUserId: 'old-user',
-            submittedById: null,
-          }),
-        ],
-      }),
-    );
-    const exportedOfflineSubmissions = (result.attendances as { offlineSubmissions: Record<string, unknown>[] })
-      .offlineSubmissions;
-    expect(exportedOfflineSubmissions[0]).not.toHaveProperty('event');
-    expect(exportedOfflineSubmissions[0]).not.toHaveProperty('person');
     expect(result).not.toHaveProperty('auditHistory');
     expect(prisma.eventDraft.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -214,14 +168,6 @@ describe('LgpdService data export', () => {
             { updatedByEmail: { equals: 'new@example.com', mode: 'insensitive' } },
           ]),
         },
-        select: expect.objectContaining({
-          createdById: true,
-          createdByName: true,
-          createdByEmail: true,
-          updatedById: true,
-          updatedByName: true,
-          updatedByEmail: true,
-        }),
       }),
     );
     expect(prisma.eventSubscription.findMany).toHaveBeenCalledWith(
@@ -242,37 +188,110 @@ describe('LgpdService data export', () => {
         }),
       }),
     );
+    expect(exportedReceipts[0]).not.toHaveProperty('ocrText');
+    expect(result.receipts).not.toHaveProperty('receiptValidationActions');
+    expect(result.prizeDraws).not.toHaveProperty('weightOverrides');
+    expect(prisma.prizeDrawWeightOverride.findMany).not.toHaveBeenCalled();
+    expect(prisma.offlineEventAttendanceSubmission.findMany).not.toHaveBeenCalled();
     const receiptSelect = prisma.majorEventReceipt.findMany.mock.calls[0]?.[0]?.select;
     expect(receiptSelect).not.toHaveProperty('objectKey');
     expect(receiptSelect).not.toHaveProperty('subscription');
     expect(receiptSelect).not.toHaveProperty('validationActions');
     expect(prisma.auditLogEntry.findMany).not.toHaveBeenCalled();
-    expect(prisma.offlineEventAttendanceSubmission.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: {
-          OR: expect.arrayContaining([
-            { personId: { in: expect.arrayContaining(['source-person', 'target-person']) } },
-            { authorUserId: { in: expect.arrayContaining(['old-user', 'new-user']) } },
-            { submittedById: { in: expect.arrayContaining(['old-user', 'new-user']) } },
-            {
-              manualValue: {
-                in: expect.arrayContaining([
-                  'old@example.com',
-                  '+55 18 99999-0000',
-                  '18999990000',
-                  '(18) 99999-0000',
-                  '52998224725',
-                ]),
-                mode: 'insensitive',
-              },
-            },
-          ]),
+  });
+
+  it('exports only selected personal participation, certificate, draw and receipt fields', async () => {
+    const { prisma, service } = context;
+    prisma.eventAttendance.findMany.mockResolvedValue([
+      {
+        eventId: 'event-1',
+        personId: 'source-person',
+        category: 'OTHER',
+        createdByMethod: 'SCANNER',
+        collectedLatitude: 1,
+        collectedLongitude: 2,
+        collectedAccuracyMeters: 3,
+      },
+    ]);
+    prisma.certificate.findMany.mockResolvedValue([
+      {
+        id: 'certificate-1',
+        personId: 'source-person',
+        issuedAt: new Date(),
+        renderedData: { templateData: { content: 'internal template' } },
+        configId: 'config-1',
+      },
+    ]);
+    prisma.prizeDrawSpinEntry.findMany.mockResolvedValue([
+      {
+        id: 'entry-1',
+        personId: 'source-person',
+        winner: true,
+        weight: 5,
+        sources: ['internal'],
+      },
+    ]);
+    prisma.majorEventReceipt.findMany.mockResolvedValue([
+      {
+        id: 'receipt-1',
+        personId: 'source-person',
+        processingStatus: 'COMPLETED',
+        ocrText: 'third-party bank details',
+        processingError: 'internal error',
+      },
+    ]);
+
+    const result = await service.collectUserData({ userId: 'new-user' });
+    const attendance = (result.attendances as { records: Record<string, unknown>[] }).records[0];
+    const certificate = (result.certificates as { records: Record<string, unknown>[] }).records[0];
+    const entry = (result.prizeDraws as { spinEntries: Record<string, unknown>[] }).spinEntries[0];
+    const receipt = (result.receipts as { majorEventReceipts: Record<string, unknown>[] }).majorEventReceipts[0];
+    expect(attendance).toEqual(expect.objectContaining({ eventId: 'event-1', personId: 'source-person' }));
+    for (const field of [
+      'category',
+      'createdByMethod',
+      'collectedLatitude',
+      'collectedLongitude',
+      'collectedAccuracyMeters',
+    ]) {
+      expect(attendance).not.toHaveProperty(field);
+      expect(prisma.eventAttendance.findMany.mock.calls[0][0].select).not.toHaveProperty(field);
+    }
+    expect(certificate).toEqual(expect.objectContaining({ id: 'certificate-1', personId: 'source-person' }));
+    expect(certificate).not.toHaveProperty('renderedData');
+    expect(prisma.certificate.findMany.mock.calls[0][0].select).not.toHaveProperty('renderedData');
+    expect(entry).toEqual(expect.objectContaining({ id: 'entry-1', winner: true }));
+    expect(entry).not.toHaveProperty('weight');
+    expect(entry).not.toHaveProperty('sources');
+    expect(receipt).toEqual(expect.objectContaining({ id: 'receipt-1', processingStatus: 'COMPLETED' }));
+    expect(receipt).not.toHaveProperty('ocrText');
+    expect(receipt).not.toHaveProperty('processingError');
+  });
+
+  it('excludes certificate event details from the query and export', async () => {
+    const { prisma, service } = context;
+    const issuedAt = new Date();
+    prisma.certificate.findMany.mockResolvedValue([
+      {
+        id: 'certificate-1',
+        personId: 'source-person',
+        issuedAt,
+        deletedAt: null,
+        renderedData: {
+          events: [{ name: 'Event name', startDate: new Date(), credits: 8 }],
+          target: { name: 'Event group', credits: 12 },
         },
-      }),
-    );
-    expect(prisma.majorEventReceiptValidationAction.findMany).toHaveBeenCalledWith(
+      },
+    ]);
+
+    const result = await service.collectUserData({ userId: 'new-user' });
+
+    expect(result.certificates).toEqual({
+      records: [{ id: 'certificate-1', personId: 'source-person', issuedAt, deletedAt: null }],
+    });
+    expect(prisma.certificate.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { subscription: { personId: { in: ['source-person', 'target-person'] } } },
+        select: { id: true, personId: true, issuedAt: true, deletedAt: true },
       }),
     );
   });

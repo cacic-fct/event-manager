@@ -99,6 +99,7 @@ export type PasswordLoginResult = AuthRefreshResult & {
 };
 
 export type LoginOptions = {
+  source?: 'button' | 'guard';
   returnTo?: string;
   prompt?: string;
 };

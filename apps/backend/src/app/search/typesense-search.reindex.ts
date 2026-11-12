@@ -2,6 +2,7 @@ import type { Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { CollectionCreateSchema } from 'typesense';
 import type { Client as TypesenseClient } from 'typesense';
+import { getAuditLogRetentionCutoff } from '../audit-log/audit-log.retention';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   AUDIT_LOG_REINDEX_BATCH_SIZE,
@@ -309,13 +310,14 @@ export async function replaceAuditLogSearchDocuments(input: {
       importDocuments: async (collectionName) => {
         const collection = client.collections<AuditLogSearchDocument & Record<string, unknown>>(collectionName);
 
-        let cursor: { id: string } | undefined;
+        const cutoff = getAuditLogRetentionCutoff(new Date());
+        let lastId: string | undefined;
         for (;;) {
           const entries = await input.prisma.auditLogEntry.findMany({
+            where: { lastRecordedAt: { gte: cutoff }, ...(lastId ? { id: { gt: lastId } } : {}) },
             select: AUDIT_LOG_SEARCH_SELECT,
             orderBy: { id: 'asc' },
             take: AUDIT_LOG_REINDEX_BATCH_SIZE,
-            ...(cursor ? { cursor, skip: 1 } : {}),
           });
           if (entries.length === 0) {
             return;
@@ -329,7 +331,7 @@ export async function replaceAuditLogSearchDocuments(input: {
           );
           assertTypesenseImportSucceeded(importResult, input.schema.name);
 
-          cursor = { id: entries[entries.length - 1].id };
+          lastId = entries[entries.length - 1].id;
           if (entries.length < AUDIT_LOG_REINDEX_BATCH_SIZE) {
             return;
           }

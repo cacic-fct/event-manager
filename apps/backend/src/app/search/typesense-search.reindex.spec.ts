@@ -234,7 +234,10 @@ describe('typesense reindex helpers', () => {
 
     expect(prisma.auditLogEntry.findMany).toHaveBeenNthCalledWith(
       2,
-      expect.objectContaining({ cursor: { id: 'audit-499' }, orderBy: { id: 'asc' }, skip: 1 }),
+      expect.objectContaining({
+        where: { lastRecordedAt: { gte: expect.any(Date) }, id: { gt: 'audit-499' } },
+        orderBy: { id: 'asc' },
+      }),
     );
     expect(client.documents.import).toHaveBeenCalledTimes(2);
     expect(client.documents.import).toHaveBeenLastCalledWith([expect.objectContaining({ id: 'audit-500' })], {

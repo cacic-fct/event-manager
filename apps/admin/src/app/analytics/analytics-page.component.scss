@@ -1,0 +1,37 @@
+.report-period {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+caption {
+  padding-block: 0.75rem;
+  font: var(--mat-sys-title-medium);
+  text-align: start;
+}
+
+th,
+td {
+  padding: 0.625rem 0.5rem;
+  border-block-end: 1px solid var(--mat-sys-outline-variant);
+  text-align: start;
+}
+
+tbody th {
+  font-weight: inherit;
+}
+
+.count {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

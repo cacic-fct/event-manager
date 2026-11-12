@@ -27,6 +27,7 @@ const notificationsData = getFeatureRouteData('notifications');
 const globalOperationsData = getFeatureRouteData('global-operations');
 const permissionsData = getFeatureRouteData('permissions');
 const auditLogsData = getFeatureRouteData('audit-logs');
+const usageMetricsData = getFeatureRouteData('usage-metrics');
 const preferencesData = getFeatureRouteData('preferences');
 const prizeDrawsData = getFeatureRouteData('prize-draws');
 const dataTransferData = getFeatureRouteData('data-transfer');
@@ -288,6 +289,9 @@ export const routes: Route[] = [
         canMatch: [superAdminGuard],
         loadComponent: () => import('../audit-logs/audit-logs-page.component').then((m) => m.AuditLogsPageComponent),
       },
+      ...guardedFeatureRoute(usageMetricsData.path, usageMetricsData, () =>
+        import('../analytics/analytics-page.component').then((m) => m.AnalyticsPageComponent),
+      ),
       ...guardedFeatureRoute(notificationsData.path, notificationsData, () =>
         import('../notifications/notifications-page.component').then((m) => m.NotificationsPageComponent),
       ),

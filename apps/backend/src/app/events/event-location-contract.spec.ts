@@ -30,6 +30,7 @@ describe('structured location GraphQL contract', () => {
         publicEvent(id: $eventId) { ${PUBLIC_EVENT_PAGE_FIELDS} }
         publicMapEvents { ${PUBLIC_MAP_EVENT_FIELDS} }
         currentUserEventMaterials(eventId: $eventId) { links { title url } updatedAt }
+        editableEventMaterials(eventId: $eventId) { links { title url } updatedAt editingFrozen }
         eventPreparation(eventId: $eventId) { lecturerInformation collectorInformation updatedAt }
         eventCollectorInformation(eventId: $eventId)
         currentUserEventSubscriberInformation(eventId: $eventId) { content updatedAt }

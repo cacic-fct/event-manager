@@ -1,3 +1,4 @@
+import { CacicProductAnalyticsService } from '@cacic-fct/shared-angular';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -86,6 +87,7 @@ interface EventDayGroup {
 })
 export class ReceiptValidationPageComponent {
   protected readonly inWorkspaceShell = inject(ADMIN_SHELL_CONTEXT, { optional: true }) ?? false;
+  private readonly productAnalytics = inject(CacicProductAnalyticsService);
   private readonly api = inject(ReceiptValidationApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
@@ -195,6 +197,7 @@ export class ReceiptValidationPageComponent {
         if (!approved) {
           throw new Error('A compra não está mais aguardando validação. Atualize a fila.');
         }
+        this.productAnalytics.record('ticket_sale_approved');
         this.snackbar.open('Compra de bilhete aprovada.', 'Fechar', { duration: 3000 });
         await this.refreshQueue();
       } catch (error) {
@@ -214,6 +217,7 @@ export class ReceiptValidationPageComponent {
     try {
       const selectedEventIds = item.subscriptionFlow === 'RANKED_VOTING' ? [...this.selectedEventIds()] : undefined;
       const result = await firstValueFrom(this.api.approve(item.subscriptionId, receiptId, selectedEventIds));
+      this.productAnalytics.record('registration_payment_approved');
       this.lastAction.set({ id: result.actionId, label: `Aprovação de ${item.personName}` });
       this.openUndoSnack();
       await this.refreshQueue();
@@ -239,6 +243,7 @@ export class ReceiptValidationPageComponent {
           throw new Error('A compra não está mais aguardando validação. Atualize a fila.');
         }
         this.rejectPanelOpen.set(false);
+        this.productAnalytics.record('ticket_sale_rejected');
         this.snackbar.open('Compra de bilhete recusada.', 'Fechar', { duration: 3000 });
         await this.refreshQueue();
       } catch (error) {
@@ -260,6 +265,7 @@ export class ReceiptValidationPageComponent {
       const result = await firstValueFrom(
         this.api.reject(item.subscriptionId, receiptId, formValue.rejectionCode, formValue.reason),
       );
+      this.productAnalytics.record('registration_payment_rejected');
       this.lastAction.set({ id: result.actionId, label: `Recusa de ${item.personName}` });
       this.rejectPanelOpen.set(false);
       this.openUndoSnack();
@@ -280,6 +286,7 @@ export class ReceiptValidationPageComponent {
     this.saving.set(true);
     try {
       await firstValueFrom(this.api.undo(action.id));
+      this.productAnalytics.record('registration_payment_review_undone');
       this.lastAction.set(null);
       this.snackbar.open('Validação desfeita.', 'Fechar', { duration: 2500 });
       await this.refreshQueue();

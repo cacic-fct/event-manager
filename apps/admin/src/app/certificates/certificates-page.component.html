@@ -593,12 +593,13 @@
             (cancelRequested)="workspace.cancelIssuance($event)"
             (refreshRequested)="workspace.loadIssuanceState()" />
 
-          <section class="surface field-group">
+          <section class="surface field-group" aria-labelledby="certificate-person-issuance-title">
             <div class="surface-heading">
-              <h3>{{ workspace.isManualCertificateIssue() ? 'Destinatários manuais' : 'Emissão individual' }}</h3>
-              <div class="panel-actions">
-                <span>{{ workspace.personSearchResults().length }} resultados</span>
-                @if (workspace.isManualCertificateIssue() && canEditSelectedTarget()) {
+              <h3 id="certificate-person-issuance-title">
+                {{ workspace.isManualCertificateIssue() ? 'Destinatários manuais' : 'Emitir para uma pessoa' }}
+              </h3>
+              @if (workspace.isManualCertificateIssue() && canEditSelectedTarget()) {
+                <div class="panel-actions">
                   <input
                     #peopleCsvInput
                     hidden
@@ -616,13 +617,22 @@
                     <mat-icon>upload_file</mat-icon>
                     Importar e emitir CSV
                   </button>
-                }
-              </div>
+                </div>
+              }
             </div>
+
+            @if (!workspace.isManualCertificateIssue()) {
+              <div class="muted">
+                Busque por nome, e-mail ou documento. A emissão só é realizada se a pessoa atender aos critérios da
+                configuração para este certificado. O objetivo é permitir a emissão expressa do certificado de uma
+                pessoa que teve sua inscrição ajustada, sem a necessidade que o sistema reavalie todos os participantes
+                individualmente.
+              </div>
+            }
 
             <form [formGroup]="workspace.personLookupForm" class="compact-form">
               <app-person-search
-                label="Pessoa (nome, e-mail ou documento)"
+                [label]="workspace.isManualCertificateIssue() ? 'Pessoa (nome, e-mail ou documento)' : 'Buscar pessoa'"
                 [query]="workspace.personLookupForm.controls.query.value"
                 [results]="workspace.personSearchResults()"
                 [disabled]="
@@ -676,70 +686,102 @@
             </section>
           }
 
-          <section class="surface field-group">
+          <section class="surface field-group" aria-labelledby="issued-certificates-title">
             <div class="surface-heading">
-              <h3 #certificatesHeading tabindex="-1">Certificados emitidos e revogados</h3>
-              <span>{{ workspace.certificates().length }} certificados</span>
+              <h3 #certificatesHeading id="issued-certificates-title" tabindex="-1">
+                Certificados emitidos e revogados
+              </h3>
+              <span role="status">
+                @if (workspace.certificatesLoadState() === 'ready') {
+                  {{ workspace.certificatesTotal() | number }}
+                  {{ workspace.certificatesTotal() === 1 ? 'certificado' : 'certificados' }}
+                } @else if (workspace.certificatesLoadState() === 'loading') {
+                  Carregando certificados…
+                }
+              </span>
             </div>
 
-            <mat-list class="detail-list">
-              @for (certificate of workspace.certificates(); track certificate.id) {
-                <mat-list-item>
-                  <span matListItemTitle
-                    >{{ certificate.person.name }}<br />Certificado: {{ certificate.config.name }}</span
-                  >
-                  <span matListItemLine>
+            <app-person-search
+              label="Filtrar pelo nome da pessoa"
+              [filterOnly]="true"
+              [minimumQueryLength]="1"
+              [query]="workspace.certificatesPersonQuery()"
+              (queryChange)="workspace.certificatesPersonQuery.set($event)"
+              (searchRequested)="workspace.filterCertificatesByPerson($event)" />
+
+            @if (workspace.certificatesLoadState() === 'error') {
+              <div class="notice" role="alert">
+                <span>Não foi possível carregar os certificados.</span>
+                <button mat-stroked-button type="button" (click)="workspace.loadCertificates()">
+                  Tentar novamente
+                </button>
+              </div>
+            }
+
+            @if (workspace.certificatesLoadState() === 'ready') {
+              <mat-list class="detail-list">
+                @for (certificate of workspace.certificates(); track certificate.id) {
+                  <mat-list-item>
+                    <span matListItemTitle
+                      >{{ certificate.person.name }}<br />Certificado: {{ certificate.config.name }}</span
+                    >
+                    <span matListItemLine>
+                      @if (certificate.revokedAt) {
+                        Revogado em {{ certificate.revokedAt | date: 'short' }}. Reemissão bloqueada.
+                      } @else {
+                        Emitido em {{ certificate.issuedAt | date: 'short' }}
+                      }
+                    </span>
                     @if (certificate.revokedAt) {
-                      Revogado em {{ certificate.revokedAt | date: 'short' }}. Reemissão bloqueada.
+                      @if (canEditSelectedTarget() && permissions.has(Permission.Certificate.Reissue)) {
+                        <div matListItemMeta>
+                          <button
+                            matButton="text"
+                            type="button"
+                            [attr.aria-label]="
+                              'Permitir emissão para ' + certificate.person.name + ' — ' + certificate.config.name
+                            "
+                            (click)="allowCertificateIssuance(certificate, certificatesHeading)">
+                            Permitir emissão
+                          </button>
+                        </div>
+                      }
                     } @else {
-                      Emitido em {{ certificate.issuedAt | date: 'short' }}
-                    }
-                  </span>
-                  @if (certificate.revokedAt) {
-                    @if (canEditSelectedTarget() && permissions.has(Permission.Certificate.Reissue)) {
-                      <div matListItemMeta>
-                        <button
-                          matButton="text"
-                          type="button"
-                          [attr.aria-label]="
-                            'Permitir emissão para ' + certificate.person.name + ' — ' + certificate.config.name
-                          "
-                          (click)="allowCertificateIssuance(certificate, certificatesHeading)">
-                          Permitir emissão
-                        </button>
-                      </div>
-                    }
-                  } @else {
-                    <button
-                      matIconButton
-                      type="button"
-                      aria-label="Baixar certificado"
-                      matTooltip="Baixar"
-                      (click)="workspace.downloadCertificate(certificate, $event)">
-                      <mat-icon>download</mat-icon>
-                    </button>
-                    @if (canDeleteCertificate(certificate)) {
                       <button
                         matIconButton
                         type="button"
-                        aria-label="Revogar certificado"
-                        matTooltip="Revogar"
-                        (click)="workspace.deleteCertificate(certificate, $event)">
-                        <mat-icon>delete</mat-icon>
+                        aria-label="Baixar certificado"
+                        matTooltip="Baixar"
+                        (click)="workspace.downloadCertificate(certificate, $event)">
+                        <mat-icon>download</mat-icon>
                       </button>
+                      @if (canDeleteCertificate(certificate)) {
+                        <button
+                          matIconButton
+                          type="button"
+                          aria-label="Revogar certificado"
+                          matTooltip="Revogar"
+                          (click)="workspace.deleteCertificate(certificate, $event)">
+                          <mat-icon>delete</mat-icon>
+                        </button>
+                      }
                     }
-                  }
-                </mat-list-item>
-              } @empty {
-                <div class="admin-list-empty">
-                  <mat-icon aria-hidden="true">hide_source</mat-icon>
-                  <p>Nenhum certificado emitido</p>
-                </div>
-              }
-            </mat-list>
+                  </mat-list-item>
+                } @empty {
+                  <div class="admin-list-empty">
+                    <mat-icon aria-hidden="true">hide_source</mat-icon>
+                    <p>Nenhum certificado encontrado</p>
+                  </div>
+                }
+              </mat-list>
+            }
 
-            <div class="list-pager" role="group" aria-label="Paginação de certificados emitidos">
-              <span>Itens {{ workspace.certificatesPagination.label() }}</span>
+            <div class="list-pager" role="group" aria-label="Paginação de certificados">
+              <span>
+                @if (workspace.certificatesLoadState() === 'ready') {
+                  Itens {{ workspace.certificatesPagination.label() }}
+                }
+              </span>
               <div class="list-pager-actions">
                 <button
                   mat-icon-button
@@ -747,6 +789,7 @@
                   aria-label="Página anterior de certificados"
                   matTooltip="Anterior"
                   [disabled]="!workspace.certificatesPagination.hasPreviousPage()"
+                  [attr.aria-disabled]="workspace.certificatesLoadState() !== 'ready' ? true : null"
                   (click)="workspace.previousCertificatesPage()">
                   <mat-icon>chevron_left</mat-icon>
                 </button>
@@ -756,6 +799,7 @@
                   aria-label="Próxima página de certificados"
                   matTooltip="Próxima"
                   [disabled]="!workspace.certificatesPagination.hasNextPage()"
+                  [attr.aria-disabled]="workspace.certificatesLoadState() !== 'ready' ? true : null"
                   (click)="workspace.nextCertificatesPage()">
                   <mat-icon>chevron_right</mat-icon>
                 </button>

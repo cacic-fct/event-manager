@@ -23,7 +23,7 @@ export const authGuard = (async (_route: ActivatedRouteSnapshot, state: RouterSt
     if (auth.isAuthenticated()) {
       return false;
     }
-    await auth.login({ returnTo: state.url });
+    await auth.login({ source: 'guard', returnTo: state.url });
     return false;
   } catch {
     return errors.guardRedirect(503);
@@ -46,7 +46,7 @@ export const requiredPermissionsGuard =
         if (auth.isAuthenticated()) {
           return false;
         }
-        await auth.login({ returnTo: state.url });
+        await auth.login({ source: 'guard', returnTo: state.url });
         return false;
       }
       const granted = await firstValueFrom(auth.evaluatePermissions(permissions).pipe(timeout({ first: 10_000 })));
@@ -54,7 +54,7 @@ export const requiredPermissionsGuard =
     } catch (error: unknown) {
       if (error instanceof HttpErrorResponse && error.status === 401) {
         auth.clearSession();
-        await auth.login({ returnTo: state.url });
+        await auth.login({ source: 'guard', returnTo: state.url });
         return false;
       }
       if (error instanceof HttpErrorResponse && error.status === 403) {

@@ -120,6 +120,7 @@ model AuditLogEntry {
 
   @@index([entityType, entityId])
   @@index([entityType, entityId, lastRecordedAt])
+  @@index([lastRecordedAt])
   @@index([actorId])
   @@index([operation])
   @@index([permission])

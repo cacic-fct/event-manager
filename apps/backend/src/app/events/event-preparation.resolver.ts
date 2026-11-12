@@ -53,7 +53,15 @@ export class EventPreparationResolver {
   ) {
     await this.requireMaterialAccess(eventId, context, false);
     const event = await this.requireEvent(eventId);
-    return { links: parseEventMaterials(event.materials), updatedAt: event.materialsUpdatedAt };
+    const user = this.currentUser.getAuthenticatedUser(context);
+    let editingFrozen = false;
+    try {
+      await this.frozen.assertEventUpdateMutable(eventId, {}, user);
+    } catch (error) {
+      if (!(error instanceof ForbiddenException)) throw error;
+      editingFrozen = true;
+    }
+    return { links: parseEventMaterials(event.materials), updatedAt: event.materialsUpdatedAt, editingFrozen };
   }
 
   @Query(() => EventMaterials, { nullable: true })

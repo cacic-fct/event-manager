@@ -31,7 +31,7 @@ export async function ensureAdminAuthentication(
       return router.parseUrl('/login');
     }
 
-    await auth.login({ returnTo });
+    await auth.login({ source: 'guard', returnTo });
     return false;
   } catch {
     return routeErrors.guardRedirect(503, {
@@ -48,7 +48,7 @@ export async function startAdminLogin(
   const navigation = router.currentNavigation();
   const target = navigation?.extractedUrl ?? navigation?.initialUrl;
   try {
-    await auth.login({ returnTo: target ? router.serializeUrl(target) : router.url });
+    await auth.login({ source: 'guard', returnTo: target ? router.serializeUrl(target) : router.url });
     return false;
   } catch {
     return routeErrors.guardRedirect(503);

@@ -139,6 +139,23 @@ describe('CertificatesResolver authorization', () => {
     expect(downloadService.downloadCertificate).toHaveBeenCalledWith('certificate-1');
   });
 
+  it('passes the name filter and pagination to the counted certificate page', async () => {
+    const { issuingService, resolver } = createResolver();
+    const page = { items: [{ id: 'certificate-1' }], totalCount: 52 };
+    issuingService.listCertificatePageByTarget.mockResolvedValue(page);
+
+    await expect(
+      resolver.certificatePage(CertificateScope.EVENT, 'event-1', 'config-1', 50, 51, true, 'Ana'),
+    ).resolves.toEqual(page);
+    expect(issuingService.listCertificatePageByTarget).toHaveBeenCalledWith(CertificateScope.EVENT, 'event-1', {
+      configId: 'config-1',
+      skip: 50,
+      take: 51,
+      includeRevoked: true,
+      personName: 'Ana',
+    });
+  });
+
   it('loads one certificate configuration through its own authorized target', async () => {
     const { authorizationPolicy, configsService, resolver } = createResolver();
     const user = { sub: 'user-1' };
@@ -868,6 +885,7 @@ function createResolver() {
   };
   const issuingService = {
     listCertificatesByTarget: jest.fn(),
+    listCertificatePageByTarget: jest.fn(),
     issueForPerson: jest.fn(),
     issueForExistingConfigRecipients: jest.fn(),
     copyManualRecipients: jest.fn(),

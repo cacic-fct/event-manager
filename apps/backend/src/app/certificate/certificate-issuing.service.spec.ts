@@ -224,6 +224,41 @@ describe('CertificateIssuingService', () => {
     );
   });
 
+  it('counts certificates using the same recipient, target, configuration, and revocation filters as the page', async () => {
+    const prisma = {
+      $transaction: jest.fn((operations: Promise<unknown>[]) => Promise.all(operations)),
+      certificate: {
+        findMany: jest.fn().mockResolvedValue([mappedCertificateRecord]),
+        count: jest.fn().mockResolvedValue(52),
+      },
+    };
+    const validation = {
+      assertSupportedScope: jest.fn(),
+      normalizeRequiredId: jest.fn().mockReturnValue('event-1'),
+    };
+    const service = new CertificateIssuingService(prisma as never, validation as never, {} as never);
+
+    const page = await service.listCertificatePageByTarget(CertificateScope.EVENT, 'event-1', {
+      configId: 'config-1',
+      includeRevoked: true,
+      personName: ' Ana ',
+      skip: 50,
+      take: 51,
+    });
+
+    const where = {
+      OR: [{ deletedAt: null }, { revokedAt: { not: null }, lgpdDeletionRequestId: null }],
+      person: { deletedAt: null, name: { contains: 'Ana', mode: 'insensitive' } },
+      config: expect.objectContaining({ deletedAt: null, id: 'config-1', eventId: 'event-1' }),
+    };
+    expect(prisma.certificate.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where, skip: 50, take: 51, orderBy: [{ issuedAt: 'desc' }, { id: 'desc' }] }),
+    );
+    expect(prisma.certificate.count).toHaveBeenCalledWith({ where });
+    expect(page.items).toHaveLength(1);
+    expect(page.totalCount).toBe(52);
+  });
+
   it('rejects person issuing when the person is missing or not eligible', async () => {
     const validation = {
       normalizeRequiredId: jest.fn((_field: string, value: string) => value),

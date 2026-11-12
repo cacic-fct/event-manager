@@ -114,6 +114,9 @@ export const Permission = {
     Reject: 'receipt#reject',
     Undo: 'receipt#undo',
   },
+  UsageMetrics: {
+    Read: 'usage-metrics#read',
+  },
   Subscription: {
     Read: 'subscription#read',
     Create: 'subscription#create',

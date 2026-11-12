@@ -84,11 +84,22 @@ const permissionResourceExpectations = [
   ['sports-match', 'Partida esportiva', 'scoreboard'],
   ['sports-official', 'Equipe de arbitragem', 'sports_score'],
   ['sports-score', 'Placar esportivo', 'leaderboard'],
+  ['usage-metrics', 'Métricas de uso', 'monitoring'],
   ['user', 'Usuário', 'account_circle'],
   ['custom-resource', 'custom-resource', 'shield'],
 ] as const;
 
 describe('shared permissions contract', () => {
+  it('requires a global grant to read platform-wide usage metrics', () => {
+    expect(WORKSPACE_ENTRY_PERMISSIONS).toContain(Permission.UsageMetrics.Read);
+    expect(WORKSPACE_TAB_PERMISSIONS.find((tab) => tab.id === WorkspacePermissionTab.UsageMetrics)?.read).toEqual([
+      Permission.UsageMetrics.Read,
+    ]);
+    expect(getCompatiblePermissionGrantScopes(Permission.UsageMetrics.Read)).toEqual([
+      EventManagerPermissionGrantScope.Global,
+    ]);
+  });
+
   it('keeps catalog, scope rules, and barrel exports in sync', () => {
     expect(Permission.EventForm.Export).toBe('event-form#export');
     expect(Permission.DataTransfer.Export).toBe('data-transfer#export');

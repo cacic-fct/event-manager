@@ -17,6 +17,7 @@ import { AuthOnlineStatusService } from './auth-online-status.service';
 import { AuthService } from './auth.service';
 import { SilentSsoService, type SilentSsoResult } from './silent-sso.service';
 import { CacicAnalyticsService } from '../observability/analytics.service';
+import { CacicProductAnalyticsService } from '../observability/product-analytics.service';
 import { Router } from '@angular/router';
 
 describe('AuthService silent SSO fallback', () => {
@@ -27,15 +28,18 @@ describe('AuthService silent SSO fallback', () => {
   let injector: EnvironmentInjector;
   let service: AuthService;
   const analytics = { trackEvent: vi.fn() };
+  const record = vi.fn();
 
   beforeEach(() => {
     window.sessionStorage.clear();
     silentSso.check.mockReset();
     analytics.trackEvent.mockReset();
+    record.mockReset();
     injector = createEnvironmentInjector(
       [
         AuthService,
         { provide: CacicAnalyticsService, useValue: analytics },
+        { provide: CacicProductAnalyticsService, useValue: { record } },
         { provide: DOCUMENT, useValue: document },
         { provide: PLATFORM_ID, useValue: 'browser' },
         { provide: HttpClient, useValue: {} },
@@ -65,6 +69,7 @@ describe('AuthService silent SSO fallback', () => {
     await checkExistingSsoSession();
 
     expect(redirectFallback).toHaveBeenCalledOnce();
+    expect(record).toHaveBeenCalledExactlyOnceWith('silent_sso_failed');
     expect(warn).toHaveBeenCalledWith('Silent SSO check failed; falling back to redirect', failure);
   });
 
@@ -75,6 +80,14 @@ describe('AuthService silent SSO fallback', () => {
     await checkExistingSsoSession();
 
     expect(redirectFallback).not.toHaveBeenCalled();
+    expect(record).not.toHaveBeenCalled();
+  });
+
+  it('distinguishes explicit login from a route guard redirect', async () => {
+    await service.login({ returnTo: '/profile?private=1' });
+    await service.login({ source: 'guard', returnTo: '/profile' });
+
+    expect(record.mock.calls).toEqual([['login_button_attempt'], ['login_guard_redirect']]);
   });
 
   it('refreshes once and redirects only once for concurrent onboarding checks', async () => {

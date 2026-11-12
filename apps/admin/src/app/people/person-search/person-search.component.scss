@@ -14,7 +14,7 @@
   min-width: 0;
 }
 
-.person-search-control button {
+.person-search-control > button {
   min-height: 3.5rem;
 }
 
@@ -80,7 +80,7 @@
     grid-template-columns: 1fr;
   }
 
-  .person-search-control button {
+  .person-search-control > button {
     width: 100%;
   }
 }

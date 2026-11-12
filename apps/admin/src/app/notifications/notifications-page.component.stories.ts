@@ -121,11 +121,8 @@ type Story = StoryObj<StoryArgs>;
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('tab', { name: 'Não lidas' }));
     await expect(await canvas.findByText('Inscrições aguardando conferência')).toBeVisible();
-    await userEvent.click(canvas.getByRole('button', { name: 'Mais ações' }));
-    const page = within(canvasElement.ownerDocument.body);
-    await userEvent.click(await page.findByRole('menuitem', { name: /Marcar todas como lidas/ }));
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Não lidas' }));
     await expect(await canvas.findByText('Nenhuma notificação')).toBeVisible();
   },
 };

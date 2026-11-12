@@ -46,7 +46,7 @@ export class CertificateIssuancePanelComponent {
     this.runs().find((run) => run.status === 'PENDING' || run.status === 'PROCESSING'),
   );
   readonly latestRun = computed(() => this.runs().find((run) => !['PENDING', 'PROCESSING'].includes(run.status)));
-  protected readonly model = signal({ timing: 'NOW', scheduledAt: '', notifyRecipients: true });
+  protected readonly model = signal({ timing: 'NOW', scheduledAt: '', notifyRecipients: false });
   protected readonly issuanceForm = form(this.model);
   private readonly scheduleInput = viewChild<ElementRef<HTMLInputElement>>('scheduleInput');
   protected readonly error = signal<string | null>(null);

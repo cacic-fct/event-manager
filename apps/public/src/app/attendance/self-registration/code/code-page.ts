@@ -9,8 +9,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { AztecScannerDialogComponent, ScannerFeedbackService } from '@cacic-fct/shared-angular';
+import {
+  AztecScannerDialogComponent,
+  CacicProductAnalyticsService,
+  ScannerFeedbackService,
+} from '@cacic-fct/shared-angular';
 import { EMPTY, catchError, combineLatest, concat, finalize, map, merge, of, scan, switchMap, take } from 'rxjs';
+import { productActionFailureReason } from '../../../analytics/product-action-failure';
 import { EmojiService } from '../../../shared/emoji.service';
 import { RateLimitError, createRateLimitCooldown } from '../../../shared/rate-limit-error';
 import { OnlineAttendanceApiService, PendingOnlineAttendanceEvent } from '../online-attendance-api.service';
@@ -41,6 +46,7 @@ type AttendanceCodeStateEmission = {
   styleUrl: './code-page.css',
 })
 export class OnlineAttendanceCodeComponent {
+  private readonly productAnalytics = inject(CacicProductAnalyticsService);
   private readonly api = inject(OnlineAttendanceApiService);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
@@ -144,11 +150,16 @@ export class OnlineAttendanceCodeComponent {
       )
       .subscribe({
         next: () => {
+          this.productAnalytics.record('self_attendance_confirmed');
           this.scannerFeedback.show('valid');
           this.snackBar.open('Presença confirmada.', 'OK', { duration: 3000 });
           this.afterRegistration();
         },
         error: (error: unknown) => {
+          this.productAnalytics.record('product_action_failed', {
+            action: 'self_attendance',
+            reason: productActionFailureReason(error),
+          });
           this.scannerFeedback.show('invalid');
           if (error instanceof RateLimitError) {
             this.cooldown.start(error.retryAfterSeconds);

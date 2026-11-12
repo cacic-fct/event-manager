@@ -12,6 +12,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { CacicProductAnalyticsService } from '@cacic-fct/shared-angular';
 import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import { CurrentUserMajorEventSubscription, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import type { TicketPurchase, TicketPurchaseOption } from '@cacic-fct/shared-ticketing';
@@ -19,6 +20,7 @@ import { toSVG } from '@bwip-js/browser';
 import { forkJoin, map } from 'rxjs';
 import type { Observable } from 'rxjs';
 import { AnalyticsService } from '../../analytics/analytics.service';
+import { productActionFailureReason } from '../../analytics/product-action-failure';
 import { RateLimitError, createRateLimitCooldown } from '../../shared/rate-limit-error';
 import { MajorEventSubscriptionApiService } from '../registration/subscription-api.service';
 import { PaymentReceipt, PaymentReceiptApiService } from './receipt-api.service';
@@ -83,6 +85,7 @@ interface ConfirmReceiptDialogData {
 export class PaymentInfo {
   private readonly route = inject(ActivatedRoute);
   private readonly routeErrors = inject(RouteErrorService);
+  private readonly productAnalytics = inject(CacicProductAnalyticsService);
   private readonly analytics = inject(AnalyticsService);
   private readonly subscriptionApi = inject(MajorEventSubscriptionApiService);
   private readonly receiptApi = inject(PaymentReceiptApiService);
@@ -239,7 +242,7 @@ export class PaymentInfo {
           },
         );
       }
-      void this.copyToClipboard(brCode, 'Pix copia e cola copiado.');
+      void this.copyPixToClipboard(brCode, 'code', 'Pix copia e cola copiado.');
     }
   }
 
@@ -261,7 +264,7 @@ export class PaymentInfo {
           },
         );
       }
-      void this.copyToClipboard(paymentInfo.pixKey, 'Chave Pix copiada.');
+      void this.copyPixToClipboard(paymentInfo.pixKey, 'key', 'Chave Pix copiada.');
     }
   }
 
@@ -525,17 +528,10 @@ export class PaymentInfo {
               priceInCents: this.resolveApplicablePrice(currentState.subscription),
             });
           }
+          this.productAnalytics.record('registration_receipt_submitted');
           this.snackBar.open('Comprovante enviado.', 'OK', { duration: 3000 });
         },
-        error: (error: unknown) => {
-          this.uploadProgress.set(null);
-          if (error instanceof RateLimitError) {
-            this.receiptUploadCooldown.start(error.retryAfterSeconds);
-          }
-          this.snackBar.open(this.receiptUploadErrorMessage(error), 'OK', {
-            duration: 5000,
-          });
-        },
+        error: (error: unknown) => this.handleReceiptUploadFailure(error, 'registration_receipt'),
       });
   }
 
@@ -578,16 +574,20 @@ export class PaymentInfo {
             purchase_id: event.result.purchaseId,
             amount_cents: option.amountCents,
           });
+          this.productAnalytics.record('ticket_receipt_submitted');
           this.snackBar.open('Comprovante enviado. A compra está em análise.', 'OK', { duration: 3500 });
         },
-        error: (error: unknown) => {
-          this.uploadProgress.set(null);
-          if (error instanceof RateLimitError) {
-            this.receiptUploadCooldown.start(error.retryAfterSeconds);
-          }
-          this.snackBar.open(this.receiptUploadErrorMessage(error), 'OK', { duration: 5000 });
-        },
+        error: (error: unknown) => this.handleReceiptUploadFailure(error, 'ticket_receipt'),
       });
+  }
+
+  private handleReceiptUploadFailure(error: unknown, action: 'ticket_receipt' | 'registration_receipt'): void {
+    this.productAnalytics.record('product_action_failed', { action, reason: productActionFailureReason(error) });
+    this.uploadProgress.set(null);
+    if (error instanceof RateLimitError) {
+      this.receiptUploadCooldown.start(error.retryAfterSeconds);
+    }
+    this.snackBar.open(this.receiptUploadErrorMessage(error), 'OK', { duration: 5000 });
   }
 
   private readySubscription(): CurrentUserMajorEventSubscription | null {
@@ -603,13 +603,17 @@ export class PaymentInfo {
     return error instanceof Error ? error.message : 'Não foi possível enviar o comprovante.';
   }
 
-  private async copyToClipboard(value: string, message: string): Promise<void> {
+  private async copyPixToClipboard(value: string, method: 'code' | 'key', message: string): Promise<void> {
     if (!navigator.clipboard) {
       this.snackBar.open('Área de transferência indisponível.', 'OK', { duration: 3000 });
       return;
     }
 
     await navigator.clipboard.writeText(value);
+    this.productAnalytics.record('payment_pix_copied', {
+      checkout: this.ticketPurchaseMode ? 'ticket' : 'registration',
+      method,
+    });
     this.snackBar.open(message, 'OK', { duration: 3000 });
   }
 

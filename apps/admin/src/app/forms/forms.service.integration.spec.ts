@@ -719,6 +719,29 @@ describe('FormsService integration', () => {
     });
   });
 
+  it('requires a new notification opt-in when the form becomes required for registration', async () => {
+    await service.initialize();
+    await service.selectForm(service.forms()[0]);
+    service.addLink('EVENT');
+    const link = service.links().at(-1);
+    if (!link) {
+      throw new Error('Expected a new form link');
+    }
+    expect(link.notifyOnPublish).toBe(false);
+
+    service.updateLink(link.localId, { notifyOnPublish: true });
+    service.updateLink(link.localId, { requiredInSubscriptionFlow: true });
+    expect(service.links().at(-1)?.notifyOnPublish).toBe(false);
+
+    await service.save();
+
+    expect(savedInput?.links?.at(-1)).toMatchObject({
+      insertInSubscriptionFlow: true,
+      requiredInSubscriptionFlow: true,
+      notifyOnPublish: false,
+    });
+  });
+
   it('normalizes impossible link combinations before saving', async () => {
     await service.initialize();
     await service.selectForm(service.forms()[0]);

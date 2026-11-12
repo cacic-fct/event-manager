@@ -413,6 +413,10 @@ export class AdminShellComponent {
       return true;
     }
 
+    if ('hideWithoutReadAccess' in item && item.hideWithoutReadAccess) {
+      return this.permissions.canReadTab(item.id);
+    }
+
     if ('visibleFor' in item && item.visibleFor === 'super-admin') {
       return this.authService.roles().includes(EventManagerKeycloakRole.SuperAdmin);
     }

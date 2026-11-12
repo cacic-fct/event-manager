@@ -13,7 +13,7 @@ export class EventPreparationApiService {
   getMaterials(eventId: string, editable: boolean): Promise<EventMaterials | null> {
     const name = editable ? 'editableEventMaterials' : 'currentUserEventMaterials';
     return this.request<Record<string, EventMaterials | null>>(
-      `query EventMaterials($eventId: String!) { ${name}(eventId: $eventId) { ${MATERIAL_FIELDS} } }`,
+      `query EventMaterials($eventId: String!) { ${name}(eventId: $eventId) { ${MATERIAL_FIELDS}${editable ? ' editingFrozen' : ''} } }`,
       { eventId },
     ).then((result) => result[name]);
   }

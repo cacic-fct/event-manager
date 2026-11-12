@@ -4,9 +4,19 @@ import { AnalyticsController } from './analytics.controller';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
 import { redisProvider } from '../redis/redis.provider';
+import { UmamiAnalyticsService } from './umami-analytics.service';
+import { UsageReportResolver } from './usage-report.resolver';
 
 @Module({
   controllers: [AnalyticsController],
-  providers: [AnalyticsService, RateLimitGuard, RateLimitService, redisProvider],
+  exports: [UmamiAnalyticsService],
+  providers: [
+    AnalyticsService,
+    UmamiAnalyticsService,
+    UsageReportResolver,
+    RateLimitGuard,
+    RateLimitService,
+    redisProvider,
+  ],
 })
 export class AnalyticsModule {}

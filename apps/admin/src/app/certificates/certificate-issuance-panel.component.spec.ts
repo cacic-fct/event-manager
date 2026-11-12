@@ -14,10 +14,8 @@ describe('CertificateIssuancePanelComponent', () => {
     return { fixture, component: fixture.componentInstance, requested };
   }
 
-  it('issues immediately by default and carries the scoped notification choice', async () => {
-    const { fixture, requested, component } = await setup();
-    component['model'].update((value) => ({ ...value, notifyRecipients: false }));
-    fixture.detectChanges();
+  it('issues immediately without notifications by default', async () => {
+    const { fixture, requested } = await setup();
     const button = [...fixture.nativeElement.querySelectorAll('button')].find((element) =>
       element.textContent.includes('Emitir e publicar agora'),
     );
@@ -31,7 +29,7 @@ describe('CertificateIssuancePanelComponent', () => {
       element.textContent.includes('Reemitir agora'),
     );
     button.click();
-    expect(requested).toHaveBeenCalledWith({ scheduledAt: undefined, reissue: true, notifyRecipients: true });
+    expect(requested).toHaveBeenCalledWith({ scheduledAt: undefined, reissue: true, notifyRecipients: false });
   });
 
   it('rejects an empty or past schedule without emitting a request', async () => {

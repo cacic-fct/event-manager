@@ -58,7 +58,7 @@ describe('public authGuard', () => {
 
     expect(result).toBe(false);
     expect(authService.ensureAuthenticated).toHaveBeenCalledOnce();
-    expect(authService.login).toHaveBeenCalledWith({ returnTo: '/profile/wallet/tickets/ticket-1' });
+    expect(authService.login).toHaveBeenCalledWith({ source: 'guard', returnTo: '/profile/wallet/tickets/ticket-1' });
   });
 
   it('keeps post-logout redirects on the public app root instead of starting another login', async () => {

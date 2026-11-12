@@ -8,6 +8,7 @@ export interface EventMaterials {
   links: EventMaterial[];
   updatedAt: string | null;
   nextReleaseAt?: string | null;
+  editingFrozen?: boolean | null;
 }
 
 export interface EventPreparation {

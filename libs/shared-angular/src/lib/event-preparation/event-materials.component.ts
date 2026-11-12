@@ -24,7 +24,7 @@ import { EventPreparationApiService } from './event-preparation-api.service';
   templateUrl: './event-materials.component.html',
   styleUrl: './event-materials.component.scss',
   host: {
-    '[hidden]': '!editable() && !loading() && !loadError() && original().length === 0',
+    '[hidden]': '!editable() && !editingFrozen() && !loading() && !loadError() && original().length === 0',
   },
 })
 export class EventMaterialsComponent {
@@ -34,12 +34,14 @@ export class EventMaterialsComponent {
   readonly editable = input(false);
   readonly management = input(false);
   readonly dirtyChange = output<boolean>();
+  readonly editingFrozen = signal(false);
+  readonly canEdit = computed(() => this.editable() && !this.editingFrozen());
   private readonly api = inject(EventPreparationApiService);
   private readonly platformId = inject(PLATFORM_ID);
   private releaseTimer: ReturnType<typeof setTimeout> | undefined;
   readonly model = signal<{ links: EventMaterial[] }>({ links: [] });
   readonly fields = form(this.model, (schema) => {
-    disabled(schema.links, () => this.saving() || !this.editable());
+    disabled(schema.links, () => this.saving() || !this.canEdit());
     applyEach(schema.links, (link) => {
       maxLength(link.title, 200);
       maxLength(link.url, 2048);
@@ -86,6 +88,7 @@ export class EventMaterialsComponent {
       this.loading.set(true);
       this.saving.set(false);
       this.loadError.set(false);
+      this.editingFrozen.set(false);
       this.error.set('');
       this.message.set('');
       this.original.set([]);
@@ -96,6 +99,7 @@ export class EventMaterialsComponent {
       if (request !== this.request) return;
       const links = parseEventMaterials(result?.links ?? []);
       this.revision = result?.updatedAt ?? null;
+      this.editingFrozen.set(result?.editingFrozen === true);
       this.original.set(links);
       this.model.set({ links: links.map((link) => ({ ...link })) });
       if (!this.editable() && !this.management() && result?.nextReleaseAt && isPlatformBrowser(this.platformId)) {
@@ -121,15 +125,15 @@ export class EventMaterialsComponent {
   }
 
   add(): void {
-    if (!this.editable() || this.saving() || this.model().links.length >= this.maximum) return;
+    if (!this.canEdit() || this.saving() || this.model().links.length >= this.maximum) return;
     this.model.update((model) => ({ links: [...model.links, { title: '', url: '' }] }));
   }
   remove(index: number): void {
-    if (!this.editable() || this.saving()) return;
+    if (!this.canEdit() || this.saving()) return;
     this.model.update((model) => ({ links: model.links.filter((_, current) => current !== index) }));
   }
   setReleaseAfterEvent(index: number, releaseAfterEvent: boolean): void {
-    if (!this.editable() || this.saving()) return;
+    if (!this.canEdit() || this.saving()) return;
     this.model.update((model) => ({
       links: model.links.map((link, current) =>
         current === index
@@ -144,7 +148,7 @@ export class EventMaterialsComponent {
     this.error.set('');
   }
   async save(): Promise<void> {
-    if (this.saving() || !this.editable() || this.validationError() || !this.changed()) return;
+    if (this.saving() || !this.canEdit() || this.validationError() || !this.changed()) return;
     const request = this.request;
     const links = parseEventMaterials(this.model().links);
     this.saving.set(true);

@@ -5,7 +5,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router } from '@angular/router';
 import type { EventType, PublicEvent } from '@cacic-fct/event-manager-public-contracts';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService, CacicProductAnalyticsService } from '@cacic-fct/shared-angular';
 import { interestedEventIds } from '@cacic-fct/shared-event-participation';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import {
@@ -17,6 +17,7 @@ import {
 import { isBefore, parseISO } from 'date-fns';
 import { EMPTY, catchError, finalize, map } from 'rxjs';
 import { AnalyticsService } from '../../../analytics/analytics.service';
+import { productActionFailureReason } from '../../../analytics/product-action-failure';
 import { RateLimitError, createRateLimitCooldown } from '../../../shared/rate-limit-error';
 import { SubscriptionFormFlowService } from '../standard/subscription-form-flow.service';
 import {
@@ -73,6 +74,7 @@ export interface RankedSubscriptionFormFlow {
 export class RankedSubscriptionStore {
   private readonly api = inject(MajorEventSubscriptionApiService);
   private readonly analytics = inject(AnalyticsService);
+  private readonly productAnalytics = inject(CacicProductAnalyticsService);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
@@ -537,6 +539,12 @@ export class RankedSubscriptionStore {
       return;
     }
 
+    const details = {
+      flow: 'ranked',
+      action: this.currentUserSubscription() ? 'updated' : 'created',
+      payment_mode: data.majorEvent.isPaymentRequired ? 'paid_event' : 'free_event',
+    } as const;
+    this.productAnalytics.record('major_event_registration_attempted', details);
     this.isSubmitting.set(true);
     this.api
       .upsertRankedSubscription(
@@ -557,6 +565,7 @@ export class RankedSubscriptionStore {
       )
       .subscribe({
         next: (subscription) => {
+          this.productAnalytics.record('major_event_registration_saved', details);
           const action = this.currentUserSubscription() ? 'updated' : 'created';
           this.currentUserSubscription.set(subscription);
           this.subscriptionFormFlow.set(null);
@@ -585,6 +594,10 @@ export class RankedSubscriptionStore {
           }
         },
         error: (error: unknown) => {
+          this.productAnalytics.record('product_action_failed', {
+            action: 'registration',
+            reason: productActionFailureReason(error),
+          });
           if (error instanceof RateLimitError) {
             this.subscriptionCooldown.start(error.retryAfterSeconds);
           }

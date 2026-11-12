@@ -12,8 +12,8 @@ import {
 } from './lgpd-audit-anonymization';
 import { resolveDataSubject } from './lgpd-data-subject';
 import { anonymizeEventDrafts, buildEventDraftSubjectWhere } from './lgpd-event-drafts';
-import { mapOfflineSubmissionForExport, mapPersonForExport, selectManyForExport } from './lgpd-export-mappers';
-import { anonymizeOfflineAttendanceSubmissions, buildOfflineSubmissionSubjectWhere } from './lgpd-offline-submissions';
+import { mapPersonForExport, selectManyForExport } from './lgpd-export-mappers';
+import { anonymizeOfflineAttendanceSubmissions } from './lgpd-offline-submissions';
 import { findReceiptObjectKeys } from './lgpd-receipts';
 import { LgpdStorageCleanupService } from './lgpd-storage-cleanup.service';
 import { suppressErasedImportPeople } from './lgpd-import-suppression';
@@ -31,16 +31,12 @@ import {
   LGPD_EXTERNAL_ACCOUNT_MERGE_OPERATION_SELECT,
   LGPD_MAJOR_EVENT_RECEIPT_SELECT,
   LGPD_MAJOR_EVENT_SUBSCRIPTION_SELECT,
-  LGPD_MERGE_CANDIDATE_SELECT,
-  LGPD_OFFLINE_ATTENDANCE_SUBMISSION_SELECT,
   LGPD_PEOPLE_MERGE_OPERATION_SELECT,
   LGPD_PRIZE_DRAW_FROZEN_ENTRY_SELECT,
   LGPD_PRIZE_DRAW_EXCLUSION_SELECT,
   LGPD_PRIZE_DRAW_MANUAL_ENTRY_SELECT,
   LGPD_PRIZE_DRAW_SPIN_ENTRY_SELECT,
-  LGPD_PRIZE_DRAW_WEIGHT_OVERRIDE_SELECT,
   LGPD_PRIZE_DRAW_WIN_SELECT,
-  LGPD_RECEIPT_VALIDATION_ACTION_SELECT,
   type LgpdCategoryData,
 } from './lgpd-records';
 
@@ -58,7 +54,6 @@ export class LgpdService {
   async collectUserData(input: { userId: string; email?: string }): Promise<Record<string, LgpdCategoryData>> {
     const dataSubject = await resolveDataSubject(this.prisma, input);
     const { people, personIds, userIds } = dataSubject;
-    const offlineSubmissionWhere = buildOfflineSubmissionSubjectWhere(dataSubject);
     const eventDraftWhere = buildEventDraftSubjectWhere(dataSubject);
 
     const userWhere = { OR: [{ oldUserId: { in: userIds } }, { newUserId: { in: userIds } }] };
@@ -72,16 +67,12 @@ export class LgpdService {
       eventGroupSubscriptions,
       majorEventSubscriptions,
       attendances,
-      offlineAttendanceSubmissions,
       lectures,
       certificates,
       majorEventReceipts,
-      receiptValidationActions,
       mergeOperations,
-      mergeCandidates,
       eventDrafts,
       prizeDrawManualEntriesForExport,
-      prizeDrawWeightOverridesForExport,
       prizeDrawExclusionsForExport,
       prizeDrawFrozenEntriesForExport,
       prizeDrawSpinEntriesForExport,
@@ -144,13 +135,6 @@ export class LgpdService {
             orderBy: { attendedAt: 'desc' },
           })
         : Promise.resolve([]),
-      offlineSubmissionWhere
-        ? this.prisma.offlineEventAttendanceSubmission.findMany({
-            where: offlineSubmissionWhere,
-            select: LGPD_OFFLINE_ATTENDANCE_SUBMISSION_SELECT,
-            orderBy: { submittedAt: 'desc' },
-          })
-        : Promise.resolve([]),
       personIds.length > 0
         ? this.prisma.eventLecturer.findMany({
             where: { personId: { in: personIds } },
@@ -173,29 +157,11 @@ export class LgpdService {
           })
         : Promise.resolve([]),
       personIds.length > 0
-        ? this.prisma.majorEventReceiptValidationAction.findMany({
-            where: {
-              subscription: { personId: { in: personIds } },
-            },
-            select: LGPD_RECEIPT_VALIDATION_ACTION_SELECT,
-            orderBy: { createdAt: 'desc' },
-          })
-        : Promise.resolve([]),
-      personIds.length > 0
         ? this.prisma.peopleMergeOperation.findMany({
             where: {
               OR: [{ targetPersonId: { in: personIds } }, { sourcePersonId: { in: personIds } }],
             },
             select: LGPD_PEOPLE_MERGE_OPERATION_SELECT,
-            orderBy: { createdAt: 'desc' },
-          })
-        : Promise.resolve([]),
-      personIds.length > 0
-        ? this.prisma.mergeCandidate.findMany({
-            where: {
-              OR: [{ personAId: { in: personIds } }, { personBId: { in: personIds } }],
-            },
-            select: LGPD_MERGE_CANDIDATE_SELECT,
             orderBy: { createdAt: 'desc' },
           })
         : Promise.resolve([]),
@@ -210,13 +176,6 @@ export class LgpdService {
         ? this.prisma.prizeDrawManualEntry.findMany({
             where: { personId: { in: personIds } },
             select: LGPD_PRIZE_DRAW_MANUAL_ENTRY_SELECT,
-            orderBy: { createdAt: 'desc' },
-          })
-        : Promise.resolve([]),
-      personIds.length > 0
-        ? this.prisma.prizeDrawWeightOverride.findMany({
-            where: { personId: { in: personIds } },
-            select: LGPD_PRIZE_DRAW_WEIGHT_OVERRIDE_SELECT,
             orderBy: { createdAt: 'desc' },
           })
         : Promise.resolve([]),
@@ -263,14 +222,10 @@ export class LgpdService {
       },
       attendances: {
         records: selectManyForExport(attendances, LGPD_EVENT_ATTENDANCE_SELECT),
-        offlineSubmissions: offlineAttendanceSubmissions.map((submission) =>
-          mapOfflineSubmissionForExport(submission, dataSubject),
-        ),
       },
       eventDrafts: { records: selectManyForExport(eventDrafts, LGPD_EVENT_DRAFT_SELECT) },
       prizeDraws: {
         manualEntries: selectManyForExport(prizeDrawManualEntriesForExport, LGPD_PRIZE_DRAW_MANUAL_ENTRY_SELECT),
-        weightOverrides: selectManyForExport(prizeDrawWeightOverridesForExport, LGPD_PRIZE_DRAW_WEIGHT_OVERRIDE_SELECT),
         exclusions: selectManyForExport(prizeDrawExclusionsForExport, LGPD_PRIZE_DRAW_EXCLUSION_SELECT),
         frozenEntries: selectManyForExport(prizeDrawFrozenEntriesForExport, LGPD_PRIZE_DRAW_FROZEN_ENTRY_SELECT),
         spinEntries: selectManyForExport(prizeDrawSpinEntriesForExport, LGPD_PRIZE_DRAW_SPIN_ENTRY_SELECT),
@@ -281,11 +236,9 @@ export class LgpdService {
       certificates: { records: selectManyForExport(certificates, LGPD_CERTIFICATE_SELECT) },
       receipts: {
         majorEventReceipts: selectManyForExport(majorEventReceipts, LGPD_MAJOR_EVENT_RECEIPT_SELECT),
-        receiptValidationActions: selectManyForExport(receiptValidationActions, LGPD_RECEIPT_VALIDATION_ACTION_SELECT),
       },
       mergeHistory: {
         mergeOperations: selectManyForExport(mergeOperations, LGPD_PEOPLE_MERGE_OPERATION_SELECT),
-        mergeCandidates: selectManyForExport(mergeCandidates, LGPD_MERGE_CANDIDATE_SELECT),
         accountUserMerges: selectManyForExport(accountUserMerges, LGPD_ACCOUNT_USER_MERGE_SELECT),
         externalAccountMergeOperations: selectManyForExport(
           externalAccountMergeOperations,

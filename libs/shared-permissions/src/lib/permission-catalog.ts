@@ -127,6 +127,7 @@ export const EVENT_MANAGER_PERMISSION_CATALOG = [
   Permission.SportsScore.Read,
   Permission.SportsScore.Update,
   Permission.SportsScore.Review,
+  Permission.UsageMetrics.Read,
   Permission.User.Read,
 ] as const satisfies PermissionRequirement;
 
@@ -154,6 +155,7 @@ export const EVENT_MANAGER_GLOBAL_ONLY_GRANT_PERMISSIONS = [
   Permission.PlacePreset.Update,
   Permission.PlacePreset.Merge,
   Permission.PlacePreset.Delete,
+  Permission.UsageMetrics.Read,
   Permission.User.Read,
 ] as const satisfies PermissionRequirement;
 

@@ -19,6 +19,7 @@ describe('workspace nav', () => {
       'global-operations',
       'permissions',
       'audit-logs',
+      'usage-metrics',
       'preferences',
     ]);
   });

@@ -202,6 +202,15 @@ export class Certificate {
 }
 
 @ObjectType()
+export class CertificatePage {
+  @Field(() => [Certificate])
+  items!: Certificate[];
+
+  @Field(() => Int)
+  totalCount!: number;
+}
+
+@ObjectType()
 export class CertificateDownload {
   @Field(() => String)
   fileName!: string;

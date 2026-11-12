@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { EMPTY, of, throwError } from 'rxjs';
 import { createTicketPurchase, createTicketPurchaseOption } from '@cacic-fct/shared-ticketing/testing';
+import { CacicProductAnalyticsService } from '@cacic-fct/shared-angular';
 import type { TicketPurchaseOption } from '@cacic-fct/shared-ticketing';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { TicketingApiService } from '../../profile/ticketing/ticketing-api.service';
@@ -12,6 +13,7 @@ describe('TicketPurchaseOptionsSectionComponent', () => {
   let fixture: ComponentFixture<TicketPurchaseOptionsSectionComponent>;
   let optionsApi: { getOptions: ReturnType<typeof vi.fn>; getPurchases: ReturnType<typeof vi.fn> };
   let analytics: { trackEvent: ReturnType<typeof vi.fn> };
+  const record = vi.fn();
   let router: { navigate: ReturnType<typeof vi.fn> };
 
   const option: TicketPurchaseOption = createTicketPurchaseOption({
@@ -24,6 +26,7 @@ describe('TicketPurchaseOptionsSectionComponent', () => {
   beforeEach(async () => {
     optionsApi = { getOptions: vi.fn(() => of([option])), getPurchases: vi.fn(() => of([])) };
     analytics = { trackEvent: vi.fn() };
+    record.mockReset();
     router = { navigate: vi.fn(() => Promise.resolve(true)) };
 
     await TestBed.configureTestingModule({
@@ -32,6 +35,7 @@ describe('TicketPurchaseOptionsSectionComponent', () => {
         { provide: TicketPurchaseApiService, useValue: optionsApi },
         { provide: TicketingApiService, useValue: { watchCurrentUser: () => EMPTY } },
         { provide: AnalyticsService, useValue: analytics },
+        { provide: CacicProductAnalyticsService, useValue: { record } },
         { provide: Router, useValue: router },
       ],
     }).compileComponents();
@@ -50,6 +54,7 @@ describe('TicketPurchaseOptionsSectionComponent', () => {
 
     button.click();
 
+    expect(record).toHaveBeenCalledExactlyOnceWith('ticket_checkout_started');
     expect(analytics.trackEvent).toHaveBeenCalledWith('ticket_purchase_clicked', {
       major_event_id: 'major-event-1',
       event_id: 'party-event',

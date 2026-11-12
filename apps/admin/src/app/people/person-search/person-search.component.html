@@ -5,6 +5,7 @@
       <mat-icon matPrefix aria-hidden="true">person_search</mat-icon>
     }
     <input
+      #searchInput
       matInput
       type="search"
       autocomplete="off"
@@ -12,6 +13,11 @@
       [attr.aria-describedby]="disabled() ? disabledHintId : null"
       (input)="onQueryInput(queryControl.value)"
       (keydown.enter)="searchNow(); $event.preventDefault()" />
+    @if (filterOnly() && !disabled() && queryControl.value) {
+      <button matIconButton matSuffix type="button" aria-label="Limpar busca" (click)="clearQuery(searchInput)">
+        <mat-icon aria-hidden="true">close</mat-icon>
+      </button>
+    }
   </mat-form-field>
 
   <button
@@ -28,7 +34,7 @@
   <p [id]="disabledHintId" class="person-search-hint">{{ disabledReason() }}</p>
 }
 
-@if (!disabled() && results().length) {
+@if (!filterOnly() && !disabled() && results().length) {
   <div class="person-search-results" aria-label="Pessoas encontradas">
     @for (person of results(); track person.id) {
       <button class="person-search-result" type="button" (click)="selectPerson(person)">
@@ -46,6 +52,6 @@
   </div>
 }
 
-@if (showNoResults()) {
+@if (!filterOnly() && showNoResults()) {
   <p class="person-search-hint">Nenhuma pessoa encontrada para esta busca.</p>
 }

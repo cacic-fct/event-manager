@@ -6,6 +6,7 @@ const workspaceRoot = fileURLToPath(new URL('../..', import.meta.url));
 export default defineConfig({
   resolve: {
     alias: {
+      '@cacic-fct/shared-analytics': `${workspaceRoot}/libs/shared-analytics/src/index.ts`,
       '@cacic-fct/shared-data-types/sports-metadata': `${workspaceRoot}/libs/shared-data-types/src/lib/sports-metadata.ts`,
       '@cacic-fct/shared-livestream': `${workspaceRoot}/libs/shared-livestream/src/index.ts`,
       '@cacic-fct/shared-utils': `${workspaceRoot}/libs/shared-utils/src/index.ts`,

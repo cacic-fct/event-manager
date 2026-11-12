@@ -1,0 +1,64 @@
+<section class="section workspace-tab-shell" aria-label="Métricas do Umami">
+  <div class="panel panel-stack">
+    @let current = state();
+    <div class="panel-heading">
+      <div>
+        <h3>Eventos registrados nos últimos 7 dias</h3>
+        <p>Os números do site e do painel refletem a preferência de análise de uso da Conta CACiC.</p>
+      </div>
+      <button mat-stroked-button type="button" [disabled]="current.status === 'loading'" (click)="load()">
+        <mat-icon>refresh</mat-icon>
+        Atualizar
+      </button>
+    </div>
+
+    @if (dashboards().length) {
+      <nav class="dashboard-links" aria-label="Painéis detalhados do Umami">
+        @for (dashboard of dashboards(); track dashboard.source) {
+          <a mat-stroked-button [href]="dashboard.url" target="_blank" rel="noopener noreferrer">
+            <mat-icon>open_in_new</mat-icon>
+            {{ sourceLabels[dashboard.source] }} no Umami
+          </a>
+        }
+      </nav>
+    }
+
+    @if (current.status === 'loading') {
+      <mat-progress-bar mode="indeterminate" aria-label="Carregando métricas" />
+    } @else if (current.status === 'error') {
+      <p role="alert">Não foi possível consultar o Umami. Use Atualizar para tentar novamente.</p>
+    } @else if (current.status === 'ready') {
+      @if (current.report; as report) {
+        <p class="report-period" aria-live="polite">
+          De {{ report.startAt | date: 'dd/MM/yyyy HH:mm' }} a
+          {{ report.endAt | date: 'dd/MM/yyyy HH:mm' }}
+        </p>
+        @for (entry of report.sources; track entry.source) {
+          <table>
+            <caption>
+              {{
+                sourceLabels[entry.source]
+              }}
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Evento</th>
+                <th scope="col" class="count">Ocorrências</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (event of entry.events; track event.name) {
+                <tr>
+                  <th scope="row">{{ eventLabels[event.name] }}</th>
+                  <td class="count">{{ event.count | number }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      } @else {
+        <p role="status">A consulta de métricas do Umami ainda não está configurada neste ambiente.</p>
+      }
+    }
+  </div>
+</section>

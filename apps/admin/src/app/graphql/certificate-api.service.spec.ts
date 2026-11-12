@@ -35,8 +35,8 @@ describe('CertificateApiService', () => {
         if (query.includes('ListCertificateConfigs')) {
           return of({ certificateConfigs: [createAdminCertificateConfig({ id: 'config-1' })] });
         }
-        if (query.includes('ListCertificates')) {
-          return of({ certificates: [certificate()] });
+        if (query.includes('ListCertificatePage')) {
+          return of({ certificatePage: { items: [certificate()], totalCount: 65 } });
         }
         if (query.includes('CreateCertificateConfig')) {
           return of({ createCertificateConfig: createAdminCertificateConfig({ id: 'created-config' }) });
@@ -114,8 +114,16 @@ describe('CertificateApiService', () => {
       firstValueFrom(service.listCertificateConfigs('OTHER', 'folder-1', { includeInactive: false })),
     ).resolves.toEqual([createAdminCertificateConfig({ id: 'config-1' })]);
     await expect(
-      firstValueFrom(service.listCertificates('OTHER', 'folder-1', { configId: 'config-1' })),
-    ).resolves.toEqual([certificate()]);
+      firstValueFrom(
+        service.listCertificatePage('OTHER', 'folder-1', {
+          configId: 'config-1',
+          includeRevoked: true,
+          personName: 'Ana',
+          skip: 50,
+          take: 51,
+        }),
+      ),
+    ).resolves.toEqual({ items: [certificate()], totalCount: 65 });
 
     expect(graphqlHttp.request).toHaveBeenNthCalledWith(1, expect.stringContaining('ListCertificateIssuableEvents'), {
       query: 'aula',
@@ -131,6 +139,15 @@ describe('CertificateApiService', () => {
       includeInactive: false,
       skip: undefined,
       take: undefined,
+    });
+    expect(graphqlHttp.request).toHaveBeenNthCalledWith(8, expect.stringContaining('personName: $personName'), {
+      scope: 'OTHER',
+      targetId: 'folder-1',
+      configId: 'config-1',
+      includeRevoked: true,
+      personName: 'Ana',
+      skip: 50,
+      take: 51,
     });
   });
 

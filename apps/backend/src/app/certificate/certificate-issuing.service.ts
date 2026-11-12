@@ -1,6 +1,7 @@
 import {
   Certificate,
   CertificateIssuedTo,
+  CertificatePage,
   CertificateReissueResult,
   CertificateScope,
   DeletionResult,
@@ -91,14 +92,46 @@ export class CertificateIssuingService {
     take?: number,
     includeRevoked = false,
   ): Promise<Certificate[]> {
+    const query = this.certificatePageQuery(scope, targetId, configId, skip, take, includeRevoked);
+    const certificates = await this.prisma.certificate.findMany(query);
+    return certificates.map(mapCertificate);
+  }
+
+  async listCertificatePageByTarget(
+    scope: CertificateScope,
+    targetId: string,
+    options: { configId?: string; skip: number; take: number; includeRevoked?: boolean; personName?: string },
+  ): Promise<CertificatePage> {
+    const { configId, skip, take, includeRevoked = false, personName } = options;
+    const query = this.certificatePageQuery(scope, targetId, configId, skip, take, includeRevoked, personName);
+    const [certificates, totalCount] = await this.prisma.$transaction(
+      [this.prisma.certificate.findMany(query), this.prisma.certificate.count({ where: query.where })],
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
+    return { items: certificates.map(mapCertificate), totalCount };
+  }
+
+  private certificatePageQuery(
+    scope: CertificateScope,
+    targetId: string,
+    configId: string | undefined,
+    skip: number | undefined,
+    take: number | undefined,
+    includeRevoked: boolean,
+    personName?: string,
+  ) {
     this.validation.assertSupportedScope(scope);
     const normalizedTargetId = this.validation.normalizeRequiredId('targetId', targetId);
-    const normalizedConfigId = configId?.trim() ? configId.trim() : undefined;
+    const normalizedConfigId = configId?.trim();
+    const normalizedName = personName?.trim().replace(/[\\%_]/g, '\\$&');
 
-    const certificates = await this.prisma.certificate.findMany({
+    return {
       where: {
         ...(includeRevoked ? ACTIVE_OR_REVOKED_CERTIFICATE_WHERE : { deletedAt: null }),
-        person: { deletedAt: null },
+        person: {
+          deletedAt: null,
+          ...(normalizedName ? { name: { contains: normalizedName, mode: 'insensitive' } } : {}),
+        },
         config: {
           deletedAt: null,
           ...buildConfigTargetWhere(scope, normalizedTargetId),
@@ -106,14 +139,10 @@ export class CertificateIssuingService {
         },
       },
       select: CERTIFICATE_SELECT,
-      orderBy: {
-        issuedAt: 'desc',
-      },
+      orderBy: [{ issuedAt: 'desc' }, { id: 'desc' }],
       skip,
       take,
-    });
-
-    return certificates.map(mapCertificate);
+    } satisfies Prisma.CertificateFindManyArgs;
   }
 
   async issueForPerson(configId: string, personId: string, issuedById?: string): Promise<Certificate> {

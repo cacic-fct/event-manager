@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute } from '@angular/router';
-import { AuthService, CacicLogoComponent } from '@cacic-fct/shared-angular';
+import { AuthService, CacicLogoComponent, CacicProductAnalyticsService } from '@cacic-fct/shared-angular';
 import { PAGE_ERROR_HEADERS } from '@cacic-fct/shared-angular/errors/routing';
 
 export interface AuthErrorPageContent {
@@ -74,6 +74,7 @@ export class AuthErrorPage {
   readonly contentOverride = input<AuthErrorPageContent | null>(null);
 
   private readonly auth = inject(AuthService);
+  private readonly analytics = inject(CacicProductAnalyticsService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly route = inject(ActivatedRoute);
@@ -86,7 +87,11 @@ export class AuthErrorPage {
 
   constructor() {
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      const reason = this.readReason(params.get('reason'));
+      const callbackReason = params.get('reason');
+      const reason = this.readReason(callbackReason);
+      if (callbackReason === 'login-expired' || callbackReason === 'server-error') {
+        this.analytics.record(reason === 'login-expired' ? 'login_callback_expired' : 'login_callback_failed');
+      }
 
       if (this.response) {
         this.response.status = reason === 'server-error' ? 500 : 400;

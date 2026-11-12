@@ -7,7 +7,7 @@ import {
 } from './lgpd-audit-anonymization';
 import { resolveDataSubject } from './lgpd-data-subject';
 import { anonymizeEventDrafts, buildEventDraftSubjectWhere } from './lgpd-event-drafts';
-import { mapOfflineSubmissionForExport, mapPersonForExport, selectForExport } from './lgpd-export-mappers';
+import { mapPersonForExport, selectForExport } from './lgpd-export-mappers';
 import {
   anonymizeOfflineAttendanceSubmissions,
   buildOfflineSubmissionSubjectWhere,
@@ -178,53 +178,6 @@ describe('LGPD helper modules', () => {
       expect.objectContaining({
         id: 'person-1',
         mergedFromIds: ['merged-person'],
-      }),
-    );
-  });
-
-  it('redacts offline submissions to subject-matching identities', () => {
-    const dataSubject = dataSubjectResolution();
-
-    expect(
-      mapOfflineSubmissionForExport(
-        {
-          id: 'offline-1',
-          clientId: 'client-1',
-          eventId: 'event-1',
-          personId: 'person-1',
-          status: 'PENDING',
-          createdByMethod: 'SCANNER',
-          scannerCode: 'user:other-user',
-          manualValue: 'subject@example.com',
-          collectedAt: new Date('2026-07-01T12:00:00.000Z'),
-          authorUserId: 'other-user',
-          authorName: 'Other User',
-          authorEmail: 'other@example.com',
-          submittedById: 'subject-user',
-          submittedAt: new Date('2026-07-01T12:00:00.000Z'),
-          stagedReason: 'Coleta fora da janela.',
-          resolutionError: null,
-          collectedLatitude: -22.1,
-          collectedLongitude: -51.4,
-          collectedAccuracyMeters: 30,
-          committedAt: null,
-          committedById: 'other-user',
-          rejectedAt: null,
-          rejectedById: null,
-          rejectionReason: null,
-        } as never,
-        dataSubject,
-      ),
-    ).toEqual(
-      expect.objectContaining({
-        scannerCode: null,
-        authorUserId: null,
-        authorName: null,
-        authorEmail: null,
-        submittedById: 'subject-user',
-        submittedBySubject: true,
-        committedById: null,
-        committedBySubject: false,
       }),
     );
   });

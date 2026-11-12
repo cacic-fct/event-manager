@@ -5,7 +5,7 @@ import { signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { CalendarPreferencesStorageService, PublicDataAccessService } from '@cacic-fct/public-indexed-db';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService, CacicProductAnalyticsService } from '@cacic-fct/shared-angular';
 import { createPublicEvent, publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
@@ -18,6 +18,7 @@ import { NetworkStatusService } from '../shared/network-status.service';
 registerLocaleData(localePtBr);
 
 describe('Calendar', () => {
+  const record = vi.fn();
   let component: Calendar;
   let fixture: ComponentFixture<Calendar>;
   let calendarPreferences: { watchDefaultItemView: ReturnType<typeof vi.fn> };
@@ -40,6 +41,7 @@ describe('Calendar', () => {
   };
 
   beforeEach(async () => {
+    record.mockReset();
     calendarPreferences = {
       watchDefaultItemView: vi.fn().mockReturnValue(of('automatic')),
     };
@@ -71,6 +73,7 @@ describe('Calendar', () => {
         { provide: CalendarPreferencesStorageService, useValue: calendarPreferences },
         { provide: PublicFeatureFlagService, useValue: featureFlags },
         { provide: AuthService, useValue: { isAuthenticated } },
+        { provide: CacicProductAnalyticsService, useValue: { record } },
         { provide: CalendarApiService, useValue: calendarApi },
         {
           provide: NetworkStatusService,
@@ -167,6 +170,25 @@ describe('Calendar', () => {
     expect(component.viewMode()).toBe('list');
     expect(calendarPreferences.watchDefaultItemView).toHaveBeenCalled();
     expect('setDefaultItemView' in calendarPreferences).toBe(false);
+  });
+
+  it('records completed searches by outcome without sending the query or counting a live refresh', async () => {
+    await vi.waitFor(() => expect(component.calendarState().status).toBe('ready'));
+    expect(record).not.toHaveBeenCalled();
+
+    liveEvents = [];
+    component.filterForm.query().value.set('private search');
+    await vi.waitFor(() =>
+      expect(record).toHaveBeenCalledExactlyOnceWith('calendar_search_completed', {
+        result: 'empty',
+        source: 'network',
+      }),
+    );
+
+    const requestCount = calendarApi.getCalendarEvents.mock.calls.length;
+    catalogEvents.next();
+    await vi.waitFor(() => expect(calendarApi.getCalendarEvents).toHaveBeenCalledTimes(requestCount + 1));
+    expect(record).toHaveBeenCalledTimes(1);
   });
 
   it('reloads visible catalog data and personal subscriptions from their live invalidations', async () => {

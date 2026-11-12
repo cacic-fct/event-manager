@@ -11,6 +11,7 @@ type NavigationLink = {
   helpLink: string | undefined;
   contextOnly?: true;
   visibleFor?: 'super-admin';
+  hideWithoutReadAccess?: true;
   requiredRoleLabel?: string;
 };
 
@@ -254,6 +255,17 @@ export const navigationItems = [
     helpLink: 'https://docs.eventos.cacic.com.br/Manual/Interface%20administrativa/Auditoria',
     visibleFor: 'super-admin',
     requiredRoleLabel: 'super-admin',
+  },
+  {
+    kind: 'link',
+    id: 'usage-metrics',
+    path: 'usage-metrics',
+    label: 'Métricas de uso',
+    description: 'Acompanhe métricas agregadas do Umami sobre uso, presença, compras e infraestrutura.',
+    icon: 'monitoring',
+    group: 'Administração',
+    helpLink: undefined,
+    hideWithoutReadAccess: true,
   },
   {
     kind: 'link',
