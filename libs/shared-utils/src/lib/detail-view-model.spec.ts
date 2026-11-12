@@ -195,8 +195,5 @@ function majorEvent(overrides: Partial<PublicMajorEvent> = {}): PublicMajorEvent
 }
 
 function addOneHour(value: string): string {
-  const [date, time] = value.split('T');
-  const hour = Number(time.slice(0, 2)) + 1;
-
-  return `${date}T${String(hour).padStart(2, '0')}${time.slice(2)}`;
+  return new Date(new Date(value).getTime() + 60 * 60 * 1000).toISOString();
 }
