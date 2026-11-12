@@ -57,7 +57,7 @@ describe('myDayFeatureGuard', () => {
     const result = await runGuard('/my-day?date=tomorrow');
 
     expect(result).toBe(false);
-    expect(auth.login).toHaveBeenCalledWith({ returnTo: '/my-day?date=tomorrow' });
+    expect(auth.login).toHaveBeenCalledWith({ source: 'guard', returnTo: '/my-day?date=tomorrow' });
     expect(flags.booleanValue).not.toHaveBeenCalled();
   });
 

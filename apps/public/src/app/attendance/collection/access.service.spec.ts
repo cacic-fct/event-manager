@@ -89,7 +89,7 @@ describe('attendance collection guards', () => {
     const result = await TestBed.runInInjectionContext(() => attendanceCollectionScannerGuard(route, state));
 
     expect(result).toBe(false);
-    expect(auth.login).toHaveBeenCalledWith({ returnTo: state.url });
+    expect(auth.login).toHaveBeenCalledWith({ source: 'guard', returnTo: state.url });
     expect(api.listCollectionEvents).not.toHaveBeenCalled();
   });
 
