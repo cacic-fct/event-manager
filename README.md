@@ -1,6 +1,6 @@
 
 <p align="left">
-  <img src="https://raw.githubusercontent.com/cacic-fct/event-manager/refs/heads/main/apps/public/public/icons/favicon.svg" alt="Logo do Event Manager" width="72">
+  <img src="https://cdn.jsdelivr.net/gh/cacic-fct/event-manager@main/apps/public/public/icons/favicon.svg" alt="Logo do Event Manager" width="72">
 </p>
 
 # CACiC Event Manager
