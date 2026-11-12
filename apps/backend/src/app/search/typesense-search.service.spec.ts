@@ -857,6 +857,21 @@ describe('TypesenseSearchService', () => {
     });
   });
 
+  it('removes expired audit documents by timestamp and propagates failures for retry', async () => {
+    const { client, service } = createEnabledService();
+    const error = new Error('Typesense unavailable');
+    client.documents.delete.mockRejectedValueOnce(error);
+    const cutoffSeconds = Math.floor(Date.now() / 1000);
+
+    await expect(service.deleteExpiredAuditLogEntries(new Date(cutoffSeconds * 1000))).rejects.toBe(error);
+
+    expect(client.instance.collections).toHaveBeenCalledWith(TYPESENSE_COLLECTIONS.auditLogs);
+    expect(client.documents.delete).toHaveBeenCalledWith({
+      filter_by: `lastRecordedAt:<${cutoffSeconds}`,
+      batch_size: 1000,
+    });
+  });
+
   it('reindexes audit logs in bounded batches', async () => {
     const prisma = createPrismaMock();
     const firstBatch = Array.from({ length: 500 }, (_, index) => createAuditLogEntry({ id: `audit-${index + 1}` }));
@@ -879,8 +894,7 @@ describe('TypesenseSearchService', () => {
     expect(prisma.auditLogEntry.findMany).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
-        cursor: { id: 'audit-500' },
-        skip: 1,
+        where: { lastRecordedAt: { gte: expect.any(Date) }, id: { gt: 'audit-500' } },
         take: 500,
       }),
     );

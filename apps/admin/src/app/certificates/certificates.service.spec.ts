@@ -59,7 +59,7 @@ describe('CertificatesService', () => {
     requestCertificateIssuance: ReturnType<typeof vi.fn>;
     addCertificateManualRecipient: ReturnType<typeof vi.fn>;
     removeCertificateManualRecipient: ReturnType<typeof vi.fn>;
-    listCertificates: ReturnType<typeof vi.fn>;
+    listCertificatePage: ReturnType<typeof vi.fn>;
     updateCertificateConfig: ReturnType<typeof vi.fn>;
     updateCertificateFolder: ReturnType<typeof vi.fn>;
   };
@@ -139,7 +139,7 @@ describe('CertificatesService', () => {
       ),
       addCertificateManualRecipient: vi.fn(() => of(createAdminPerson())),
       removeCertificateManualRecipient: vi.fn(() => of({ id: 'person-1', deleted: true })),
-      listCertificates: vi.fn(() => of([])),
+      listCertificatePage: vi.fn(() => of({ items: [], totalCount: 0 })),
       updateCertificateConfig: vi.fn((id: string, payload: CertificateConfigInput) => {
         lastPayload = payload;
         return of(createAdminCertificateConfigFromInput(payload, certificateTemplate, { id }));
@@ -231,10 +231,10 @@ describe('CertificatesService', () => {
     await service.removeManualRecipient(person);
     expect(api.removeCertificateManualRecipient).not.toHaveBeenCalled();
     dialog.open.mockReturnValueOnce({ afterClosed: () => of(true) });
-    const loadsBeforeRemoval = api.listCertificates.mock.calls.length;
+    const loadsBeforeRemoval = api.listCertificatePage.mock.calls.length;
     await service.removeManualRecipient(person);
     expect(api.removeCertificateManualRecipient).toHaveBeenCalledWith('config-1', person.id);
-    expect(api.listCertificates.mock.calls.length).toBeGreaterThan(loadsBeforeRemoval);
+    expect(api.listCertificatePage.mock.calls.length).toBeGreaterThan(loadsBeforeRemoval);
   });
 
   it('uses the revoked certificate configuration for manual issuance confirmation', async () => {
@@ -279,7 +279,7 @@ describe('CertificatesService', () => {
 
     expect(service.selectedTarget()).toEqual({ id: event.id, name: event.name, emoji: event.emoji });
     expect(api.listCertificateConfigs).toHaveBeenCalled();
-    expect(api.listCertificates).toHaveBeenCalled();
+    expect(api.listCertificatePage).toHaveBeenCalled();
     expect(service.certificateConfigs()).toEqual([config]);
     expect(service.availablePaymentTiers()).toEqual([]);
     service.selectCertificateConfig(config);
@@ -508,6 +508,54 @@ describe('CertificatesService', () => {
     expect(api.listCertificateFolders).toHaveBeenCalledWith({ query: undefined, skip: 0, take: 51 });
     expect(service.certificateFolders().map((folder) => folder.id)).toEqual(['folder-1']);
     expect(api.listCertificateIssuableEvents).not.toHaveBeenCalled();
+  });
+
+  it('counts all matching certificates and filters before pagination', async () => {
+    const items = Array.from({ length: 65 }, (_, index) => ({
+      id: `certificate-${index}`,
+      person: createAdminPerson({ name: index === 60 ? 'Ana Souza' : 'Bruno Lima' }),
+    }));
+    api.listCertificatePage.mockImplementation((_scope, _target, { personName, skip, take }) => {
+      const matches = personName ? items.filter((item) => item.person.name.includes(personName)) : items;
+      return of({ items: matches.slice(skip, skip + take), totalCount: matches.length });
+    });
+    await service.selectTarget(createAdminEvent({ id: 'event-1' }));
+
+    expect(service.certificates()).toHaveLength(50);
+    expect(service.certificatesTotal()).toBe(65);
+    await service.nextCertificatesPage();
+    expect(service.certificatesPagination.label()).toBe('51-65');
+    expect(service.certificatesTotal()).toBe(65);
+
+    await service.filterCertificatesByPerson('Ana');
+    expect(api.listCertificatePage).toHaveBeenLastCalledWith('EVENT', 'event-1', {
+      configId: undefined,
+      includeRevoked: true,
+      personName: 'Ana',
+      skip: 0,
+      take: 51,
+    });
+    expect(service.certificates().map((certificate) => certificate.person.name)).toEqual(['Ana Souza']);
+    expect(service.certificatesPagination.pageIndex()).toBe(0);
+    expect(service.certificatesTotal()).toBe(1);
+
+    await service.filterCertificatesByPerson('');
+    expect(service.certificatesTotal()).toBe(65);
+    expect(service.certificatesPagination.hasNextPage()).toBe(true);
+  });
+
+  it('keeps the most recent certificate filter result and its count', async () => {
+    const staleResponse = new Subject<{ items: Certificate[]; totalCount: number }>();
+    api.listCertificatePage.mockReturnValueOnce(staleResponse).mockReturnValueOnce(of({ items: [], totalCount: 0 }));
+    service.selectedTarget.set({ id: 'event-1', name: 'Event' });
+
+    const staleSearch = service.filterCertificatesByPerson('Ana');
+    await service.filterCertificatesByPerson('Bruno');
+    staleResponse.next({ items: [], totalCount: 5 });
+    await staleSearch;
+
+    expect(service.certificatesTotal()).toBe(0);
+    expect(service.certificatesLoadState()).toBe('ready');
   });
 
   it('does not restore a scoped event after navigation returns to the global folder browser', async () => {

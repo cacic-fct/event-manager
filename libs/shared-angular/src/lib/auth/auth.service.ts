@@ -34,6 +34,7 @@ import type { LoginOptions } from './auth.types';
 import { AUTH_ONBOARDING_ENFORCEMENT_ENABLED } from './auth-onboarding-enforcement.token';
 import { SilentSsoService } from './silent-sso.service';
 import { CacicAnalyticsService } from '../observability/analytics.service';
+import { CacicProductAnalyticsService } from '../observability/product-analytics.service';
 
 type LogoutResponse = {
   success: boolean;
@@ -55,6 +56,7 @@ export class AuthService {
   private readonly accountTrackingSyncTimeoutMs = 2_000;
 
   private readonly http = inject(HttpClient);
+  private readonly productAnalytics = inject(CacicProductAnalyticsService, { optional: true });
   private readonly injector = inject(Injector);
   private readonly accountPrivacy = inject(CacicAccountPrivacyService);
   private readonly document = inject(DOCUMENT);
@@ -139,6 +141,7 @@ export class AuthService {
 
     this.removeSessionStorageItem(this.postLogoutRedirectStorageKey);
     this.removeSessionStorageItem(this.silentSsoAttemptStorageKey);
+    this.productAnalytics?.record(options?.source === 'guard' ? 'login_guard_redirect' : 'login_button_attempt');
     window.location.assign(this.buildLoginRedirectUrl(options));
   }
 
@@ -236,6 +239,7 @@ export class AuthService {
         await this.redirectToOnboardingIfNeeded();
       }
     } catch (error) {
+      this.productAnalytics?.record('silent_sso_failed');
       this.logUnexpectedAuthError('Silent SSO check failed; falling back to redirect', error);
       this.removeSessionStorageItem(this.silentSsoAttemptStorageKey);
       this.loginWithExistingSsoSession();

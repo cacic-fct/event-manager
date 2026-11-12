@@ -61,6 +61,25 @@ describe('shared event materials editor', () => {
     expect(instructions.nativeElement.hidden).toBe(false);
   });
 
+  it('shows existing materials without editing controls when the event is frozen', async () => {
+    const links = [{ title: 'Slides', url: 'https://example.org/slides' }];
+    api.getMaterials.mockResolvedValueOnce({ links, updatedAt: null, editingFrozen: true });
+    const fixture = await create();
+    fixture.detectChanges();
+
+    const component = fixture.componentInstance;
+    expect(fixture.nativeElement.textContent).toContain('Este evento está congelado.');
+    expect(fixture.nativeElement.querySelector('a')?.href).toBe(links[0].url);
+    expect(fixture.nativeElement.querySelector('form')).toBeNull();
+    component.add();
+    component.remove(0);
+    component.setReleaseAfterEvent(0, true);
+    expect(component.changed()).toBe(false);
+    component.model.set({ links: [] });
+    await component.save();
+    expect(api.saveMaterials).not.toHaveBeenCalled();
+  });
+
   it('shares links and never calls notifications', async () => {
     const fixture = await create();
     fixture.componentInstance.model.set({ links: [{ title: ' Slides ', url: 'https://example.org/slides' }] });

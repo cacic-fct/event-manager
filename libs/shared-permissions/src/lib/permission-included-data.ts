@@ -27,6 +27,15 @@ const RECEIPT_CONTEXT_FIELDS = [
 export const EVENT_MANAGER_PERMISSION_INCLUDED_DATA: Readonly<
   Partial<Record<Permission, readonly PermissionIncludedData[]>>
 > = {
+  [Permission.UsageMetrics.Read]: [
+    {
+      label: 'Métricas globais de uso',
+      fields: [
+        'contagens agregadas do site público, painel administrativo e infraestrutura',
+        'links para os painéis do Umami, sujeitos às permissões do próprio Umami',
+      ],
+    },
+  ],
   [Permission.DataTransfer.Export]: [
     {
       label: 'Estrutura de configuração exportada',

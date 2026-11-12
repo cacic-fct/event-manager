@@ -24,7 +24,7 @@ import {
   reindexEventGroupSearchDocuments,
   replaceAuditLogSearchDocuments,
 } from './typesense-search.reindex';
-import { toOptionalString } from './typesense-search.shared';
+import { toOptionalString, toUnixTimestamp } from './typesense-search.shared';
 import type {
   AuditLogSearchDocument,
   AuditLogSearchDocumentInput,
@@ -183,6 +183,16 @@ export class TypesenseSearchService implements OnModuleInit {
       options,
       true,
     );
+  }
+
+  async deleteExpiredAuditLogEntries(cutoff: Date): Promise<void> {
+    await this.client
+      ?.collections(TYPESENSE_COLLECTIONS.auditLogs)
+      .documents()
+      .delete({
+        filter_by: `lastRecordedAt:<${toUnixTimestamp(cutoff)}`,
+        batch_size: 1000,
+      });
   }
 
   async upsertAuditLogEntry(input: AuditLogSearchDocumentInput, throwOnError = false): Promise<void> {

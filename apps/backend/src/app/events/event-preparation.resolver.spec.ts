@@ -88,6 +88,17 @@ describe('event preparation access and writes', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
+  it('returns saved materials and the caller-specific freeze restriction for management reads', async () => {
+    const { resolver, frozen, prisma, previous } = setup();
+    const links = [{ title: 'Slides', url: 'https://example.org/slides' }];
+    prisma.event.findFirst.mockResolvedValue({ ...previous, materials: links });
+    frozen.assertEventUpdateMutable.mockRejectedValueOnce(new ForbiddenException('frozen'));
+
+    await expect(resolver.editableEventMaterials('event', {})).resolves.toMatchObject({ links, editingFrozen: true });
+    expect(frozen.assertEventUpdateMutable).toHaveBeenCalledWith('event', {}, { sub: 'actor' });
+    await expect(resolver.editableEventMaterials('event', {})).resolves.toMatchObject({ links, editingFrozen: false });
+  });
+
   it('allows a linked lecturer to share validated links without any notification input', async () => {
     const { resolver, authorization, prisma, audit, tx } = setup();
     authorization.assertPermissions.mockRejectedValue(new ForbiddenException());

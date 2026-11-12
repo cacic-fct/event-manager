@@ -581,7 +581,7 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
           insertInSubscriptionFlow: false,
           requiredInSubscriptionFlow: false,
           displayOrder: current.length,
-          notifyOnPublish: true,
+          notifyOnPublish: false,
           allowLecturerManualPublish: false,
         },
       ]);
@@ -591,9 +591,16 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
     },
     updateLink: (localId: string, patch: Partial<EventFormLinkInput>) => {
       links.update((current) =>
-        current.map((link) =>
-          link.localId === localId ? normalizeStoryLink({ ...link, ...patch }, link, events, majorEvents) : link,
-        ),
+        current.map((link) => {
+          if (link.localId !== localId) {
+            return link;
+          }
+          const changesRequiredSubscriptionFlow =
+            patch.requiredInSubscriptionFlow !== undefined &&
+            patch.requiredInSubscriptionFlow !== link.requiredInSubscriptionFlow;
+          const notifyOnPublish = patch.notifyOnPublish ?? (!changesRequiredSubscriptionFlow && link.notifyOnPublish);
+          return normalizeStoryLink({ ...link, ...patch, notifyOnPublish }, link, events, majorEvents);
+        }),
       );
     },
     updateLinkDate: (localId: string, key: 'availableFrom' | 'availableUntil', value: string) => {
@@ -846,10 +853,10 @@ function normalizeStoryLink(
     requiredInSubscriptionFlow: insertInSubscriptionFlow ? (link.requiredInSubscriptionFlow ?? false) : false,
     notifyOnPublish:
       insertInSubscriptionFlow && link.requiredInSubscriptionFlow === true
-        ? (link.notifyOnPublish ?? true)
+        ? (link.notifyOnPublish ?? false)
         : insertInSubscriptionFlow
           ? false
-          : (link.notifyOnPublish ?? true),
+          : (link.notifyOnPublish ?? false),
     allowLecturerManualPublish:
       targetType === 'EVENT' && !insertInSubscriptionFlow ? (link.allowLecturerManualPublish ?? false) : false,
   };

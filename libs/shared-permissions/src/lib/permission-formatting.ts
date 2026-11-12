@@ -143,6 +143,8 @@ export function getPermissionResourceLabel(resource: string): string {
       return 'Comprovante';
     case 'subscription':
       return 'Inscrição';
+    case 'usage-metrics':
+      return 'Métricas de uso';
     case 'ticket-config':
       return 'Configuração de bilhete';
     case 'ticket':
@@ -210,6 +212,8 @@ export function getPermissionResourceIcon(resource: string): string {
       return 'receipt_long';
     case 'subscription':
       return 'how_to_reg';
+    case 'usage-metrics':
+      return 'monitoring';
     case 'ticket-config':
     case 'ticket':
       return 'confirmation_number';

@@ -10,13 +10,14 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
-import { AuthService, MarkdownComponent } from '@cacic-fct/shared-angular';
+import { AuthService, CacicProductAnalyticsService, MarkdownComponent } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import { compareIsoDateAsc, formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { areIntervalsOverlapping, isBefore, parseISO } from 'date-fns';
 import { EMPTY, catchError, filter, finalize, map } from 'rxjs';
 import { EventDetailHeading } from '../../../shared/event-detail-heading';
 import { AnalyticsService } from '../../../analytics/analytics.service';
+import { productActionFailureReason } from '../../../analytics/product-action-failure';
 import { RateLimitError, createRateLimitCooldown } from '../../../shared/rate-limit-error';
 import { MajorEventSubscriptionApiService, type PublicMajorEventSubscriptionPage } from '../subscription-api.service';
 import { SubscriptionEventList } from './event-list';
@@ -88,6 +89,7 @@ export class MajorEventSubscription {
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly api = inject(MajorEventSubscriptionApiService);
   private readonly analytics = inject(AnalyticsService);
+  private readonly productAnalytics = inject(CacicProductAnalyticsService);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
@@ -638,6 +640,12 @@ export class MajorEventSubscription {
       return;
     }
 
+    const details = {
+      flow: 'standard',
+      action: this.currentUserSubscription() ? 'updated' : 'created',
+      payment_mode: data.majorEvent.isPaymentRequired ? 'paid_event' : 'free_event',
+    } as const;
+    this.productAnalytics.record('major_event_registration_attempted', details);
     this.isSubmitting.set(true);
     this.api
       .upsertSubscription(
@@ -653,6 +661,7 @@ export class MajorEventSubscription {
       )
       .subscribe({
         next: (subscription) => {
+          this.productAnalytics.record('major_event_registration_saved', details);
           const action = this.currentUserSubscription() ? 'updated' : 'created';
           this.currentUserSubscription.set(subscription);
           this.flowPhase.set('selection');
@@ -681,6 +690,10 @@ export class MajorEventSubscription {
           }
         },
         error: (error: unknown) => {
+          this.productAnalytics.record('product_action_failed', {
+            action: 'registration',
+            reason: productActionFailureReason(error),
+          });
           if (error instanceof RateLimitError) {
             this.subscriptionCooldown.start(error.retryAfterSeconds);
           }

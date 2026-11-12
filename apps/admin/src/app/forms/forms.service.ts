@@ -774,15 +774,15 @@ export class FormsService {
     if (!current) {
       return;
     }
-    const startsRequiredSubscriptionFlow =
-      patch.requiredInSubscriptionFlow === true &&
-      !(current.insertInSubscriptionFlow && current.requiredInSubscriptionFlow);
+    const changesRequiredSubscriptionFlow =
+      patch.requiredInSubscriptionFlow !== undefined &&
+      patch.requiredInSubscriptionFlow !== current.requiredInSubscriptionFlow;
     const updated = this.normalizeLinkDraft(
       {
         ...current,
         ...patch,
         ...(patch.targetType && patch.targetType !== current.targetType ? { targetName: null, targetEmoji: null } : {}),
-        ...(startsRequiredSubscriptionFlow && patch.notifyOnPublish === undefined ? { notifyOnPublish: true } : {}),
+        ...(changesRequiredSubscriptionFlow && patch.notifyOnPublish === undefined ? { notifyOnPublish: false } : {}),
       },
       current,
     );
@@ -1271,7 +1271,7 @@ export class FormsService {
     const insertInSubscriptionFlow =
       link.requiredInSubscriptionFlow === true ? true : (link.insertInSubscriptionFlow ?? false);
     const notifyPreviousSubscribers =
-      insertInSubscriptionFlow && link.requiredInSubscriptionFlow === true ? (link.notifyOnPublish ?? true) : false;
+      insertInSubscriptionFlow && link.requiredInSubscriptionFlow === true ? (link.notifyOnPublish ?? false) : false;
     const fallbackEventId = link.eventId || previous?.eventId || (this.selectableEvents()[0]?.id ?? '');
     const fallbackMajorEventId =
       link.majorEventId || previous?.majorEventId || (this.selectableMajorEvents()[0]?.id ?? '');
@@ -1292,7 +1292,7 @@ export class FormsService {
       audiences,
       insertInSubscriptionFlow,
       requiredInSubscriptionFlow: insertInSubscriptionFlow ? (link.requiredInSubscriptionFlow ?? false) : false,
-      notifyOnPublish: insertInSubscriptionFlow ? notifyPreviousSubscribers : (link.notifyOnPublish ?? true),
+      notifyOnPublish: insertInSubscriptionFlow ? notifyPreviousSubscribers : (link.notifyOnPublish ?? false),
       allowLecturerManualPublish:
         targetType === 'EVENT' && !insertInSubscriptionFlow ? (link.allowLecturerManualPublish ?? false) : false,
       priceTierIds,
@@ -1329,7 +1329,7 @@ export class FormsService {
       insertInSubscriptionFlow: false,
       requiredInSubscriptionFlow: false,
       displayOrder,
-      notifyOnPublish: true,
+      notifyOnPublish: false,
       allowLecturerManualPublish: false,
       priceTierIds: [],
     };
@@ -1389,10 +1389,10 @@ export class FormsService {
       availableUntil: this.localInputToIso(link.availableUntil),
       notifyOnPublish:
         link.insertInSubscriptionFlow && link.requiredInSubscriptionFlow
-          ? (link.notifyOnPublish ?? true)
+          ? (link.notifyOnPublish ?? false)
           : link.insertInSubscriptionFlow
             ? false
-            : (link.notifyOnPublish ?? true),
+            : (link.notifyOnPublish ?? false),
       allowLecturerManualPublish:
         link.targetType === 'EVENT' && !link.insertInSubscriptionFlow
           ? (link.allowLecturerManualPublish ?? false)

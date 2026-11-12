@@ -3,7 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import { decodeTypedSseEvent, watchReplayableEventSource } from '@cacic-fct/shared-angular/realtime';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
-import { Observable, map } from 'rxjs';
+import { CacicProductAnalyticsService } from '@cacic-fct/shared-angular';
+import { Observable, map, tap } from 'rxjs';
 import { graphqlError } from '../../shared/rate-limit-error';
 
 export type AttendanceCreationMethod =
@@ -114,6 +115,7 @@ const PUBLIC_EVENT_FIELDS = `
 @Service()
 export class AttendanceCollectionApiService {
   private readonly http = inject(HttpClient);
+  private readonly analytics = inject(CacicProductAnalyticsService);
 
   listCollectionEvents(): Observable<AttendanceCollectionEvent[]> {
     return this.query<{ currentUserAttendanceCollectionEvents: AttendanceCollectionEvent[] }>(
@@ -208,7 +210,10 @@ export class AttendanceCollectionApiService {
         }
       `,
       { input: { eventId, code, location } },
-    ).pipe(map((data) => data.collectCurrentUserAttendanceFromScannerCode));
+    ).pipe(
+      map((data) => data.collectCurrentUserAttendanceFromScannerCode),
+      tap(() => this.analytics.record('collector_attendance_registered')),
+    );
   }
 
   registerManual(
@@ -229,7 +234,10 @@ export class AttendanceCollectionApiService {
         }
       `,
       { input: { eventId, value, location } },
-    ).pipe(map((data) => data.collectCurrentUserManualAttendance));
+    ).pipe(
+      map((data) => data.collectCurrentUserManualAttendance),
+      tap(() => this.analytics.record('collector_attendance_registered')),
+    );
   }
 
   registerOralBatch(

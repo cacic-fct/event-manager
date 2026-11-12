@@ -568,7 +568,7 @@
                   </mat-checkbox>
                   @if (!(link.insertInSubscriptionFlow ?? false) || !(link.requiredInSubscriptionFlow ?? false)) {
                     <mat-checkbox
-                      [checked]="link.notifyOnPublish ?? true"
+                      [checked]="link.notifyOnPublish ?? false"
                       [disabled]="link.insertInSubscriptionFlow ?? false"
                       matTooltip="Indisponível quando o formulário faz parte da inscrição, porque a pessoa já vê o formulário ao se inscrever."
                       (change)="workspace.updateLink(link.localId, { notifyOnPublish: $event.checked })">
@@ -577,7 +577,7 @@
                   }
                   @if ((link.insertInSubscriptionFlow ?? false) && (link.requiredInSubscriptionFlow ?? false)) {
                     <mat-checkbox
-                      [checked]="link.notifyOnPublish ?? true"
+                      [checked]="link.notifyOnPublish ?? false"
                       [disabled]="workspace.previousSubscriberCount(link) === 0"
                       matTooltip="Envia uma notificação aos inscritos anteriores que ainda não responderam este formulário."
                       (change)="workspace.updateLink(link.localId, { notifyOnPublish: $event.checked })">

@@ -6,6 +6,7 @@ import {
   CertificateConfigCloneInput,
   CertificateIssuanceInput,
   CertificateIssuanceRun,
+  CertificatePage,
   CertificateConfigCreateInput,
   CertificateConfigUpdateInput,
   CertificateFolder,
@@ -215,6 +216,25 @@ export class CertificatesResolver {
       pagination.take,
       includeRevoked,
     );
+  }
+
+  @Query(() => CertificatePage, { description: 'Certificates and total count for the selected target and filters.' })
+  @RequirePermissions(Permission.Certificate.Read)
+  certificatePage(
+    @Args('scope', { type: () => CertificateScope }) scope: CertificateScope,
+    @Args('targetId', { type: () => String }) targetId: string,
+    @Args('configId', { type: () => String, nullable: true }) configId?: string,
+    @Args('skip', { type: () => Int, nullable: true }) skip?: number,
+    @Args('take', { type: () => Int, nullable: true }) take?: number,
+    @Args('includeRevoked', { type: () => Boolean, nullable: true }) includeRevoked?: boolean,
+    @Args('personName', { type: () => String, nullable: true }) personName?: string,
+  ) {
+    return this.issuingService.listCertificatePageByTarget(scope, targetId, {
+      configId,
+      includeRevoked,
+      personName,
+      ...resolvePagination(skip, take),
+    });
   }
 
   @Query(() => CertificateDownload, { name: 'downloadCertificate' })

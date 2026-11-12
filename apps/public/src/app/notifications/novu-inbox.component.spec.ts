@@ -11,6 +11,45 @@ import { NovuInboxComponent } from '@cacic-fct/shared-notifications-angular/inbo
 import { NovuNotificationsService } from '@cacic-fct/shared-notifications-angular/service';
 
 describe('NovuInboxComponent', () => {
+  it('uses the last notification ID to load the next page of the current tab', async () => {
+    const { component, fixture, notifications } = await createFixture();
+    const first = createNotification({ id: '672caf14cde9d9b5ca18c561', isArchived: true });
+    const second = createNotification({ id: '672caf14cde9d9b5ca18c560', isArchived: true });
+    notifications.listNotificationPage.mockResolvedValue({ notifications: [first], hasMore: true });
+    notifications.loadMoreNotifications.mockResolvedValueOnce({ notifications: [second], hasMore: false });
+
+    inboxMethods(component).selectIndex(1);
+    await fixture.whenStable();
+    await inboxMethods(component).reload();
+    await inboxMethods(component).loadMore();
+
+    expect(notifications.loadMoreNotifications).toHaveBeenCalledWith(first.id, { archived: true });
+  });
+
+  it('opens public links from admin and routes mounted admin links within admin', async () => {
+    const { component, fixture, router } = await createFixture();
+    fixture.componentRef.setInput('appBasePath', '/admin');
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    const publicRoute = '/profile/forms/form-1?linkId=link-1#response';
+
+    for (const url of [publicRoute, `/app${publicRoute}`]) {
+      await expect(inboxMethods(component).openRedirect(createNotification({ redirect: { url } }))).resolves.toBe(
+        'opened',
+      );
+    }
+    expect(open).toHaveBeenCalledTimes(2);
+    expect(open).toHaveBeenLastCalledWith(
+      `${window.location.origin}/app${publicRoute}`,
+      '_self',
+      'noopener,noreferrer',
+    );
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+
+    const adminRoute = '/attendances/event/event-1?offlineReview=pending';
+    await inboxMethods(component).openRedirect(createNotification({ redirect: { url: `/admin${adminRoute}` } }));
+    expect(router.navigateByUrl).toHaveBeenCalledWith(adminRoute);
+  });
+
   afterEach(() => vi.restoreAllMocks());
 
   it('groups and sorts optional workflows while excluding required messages', async () => {
@@ -391,6 +430,7 @@ function createNotificationsMock() {
     shouldOfferPushPermission: vi.fn(() => false),
     archiveAllRead: vi.fn(),
     listNotificationPage: vi.fn().mockResolvedValue({ notifications: [], hasMore: false }),
+    loadMoreNotifications: vi.fn(),
     listPreferences: vi.fn<() => Promise<Preference[]>>().mockResolvedValue([]),
     updatePreferenceChannels: vi.fn().mockResolvedValue(undefined),
     completePrimary: vi.fn().mockResolvedValue(undefined),
@@ -421,6 +461,7 @@ function createNotification(overrides: Partial<Notification>): Notification {
 function inboxMethods(component: NovuInboxComponent) {
   return component as unknown as {
     reload(): Promise<void>;
+    loadMore(): Promise<void>;
     selectIndex(index: number): void;
     updatePreferenceChannel(preference: Preference, channel: 'in_app' | 'push', enabled: boolean): Promise<void>;
     activateNotification(event: Event, notification: Notification): void;

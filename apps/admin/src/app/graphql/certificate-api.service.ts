@@ -193,35 +193,41 @@ export class CertificateApiService {
       .pipe(map((data) => data.certificateConfig));
   }
 
-  listCertificates(
+  listCertificatePage(
     scope: CertificateScope,
     targetId: string,
     filters?: {
       configId?: string;
       includeRevoked?: boolean;
+      personName?: string;
       skip?: number;
       take?: number;
     },
   ) {
     return this.graphqlHttp
-      .request<{ certificates: Certificate[] }>(
-        `query ListCertificates(
+      .request<{ certificatePage: { items: Certificate[]; totalCount: number } }>(
+        `query ListCertificatePage(
           $scope: CertificateScope!
           $targetId: String!
           $includeRevoked: Boolean
           $configId: String
+          $personName: String
           $skip: Int
           $take: Int
         ) {
-          certificates(
+          certificatePage(
             scope: $scope
             targetId: $targetId
             includeRevoked: $includeRevoked
             configId: $configId
+            personName: $personName
             skip: $skip
             take: $take
           ) {
-            ${CERTIFICATE_FIELDS}
+            totalCount
+            items {
+              ${CERTIFICATE_FIELDS}
+            }
           }
         }`,
         {
@@ -229,11 +235,12 @@ export class CertificateApiService {
           targetId,
           configId: filters?.configId,
           includeRevoked: filters?.includeRevoked,
+          personName: filters?.personName,
           skip: filters?.skip,
           take: filters?.take,
         },
       )
-      .pipe(map((data) => data.certificates));
+      .pipe(map((data) => data.certificatePage));
   }
 
   createCertificateConfig(input: CertificateConfigInput) {

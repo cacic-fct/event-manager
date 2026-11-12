@@ -9,6 +9,7 @@ describe('admin SSR route modes', () => {
       .map((route) => route.path);
 
     expect(clientPaths).toContain('');
+    expect(clientPaths).toContain('usage-metrics');
     expect(clientPaths).toContain('permissions/manage/people/:personId');
     expect(clientPaths).toContain('draws/:drawId/draw');
     expect(clientPaths).toContain('event-workspace/event/:targetId/settings');

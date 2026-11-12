@@ -50,7 +50,10 @@ describe('adminAuthenticationGuard', () => {
 
     expect(result).toBe(false);
     expect(authService.ensureAuthenticated).toHaveBeenCalledOnce();
-    expect(authService.login).toHaveBeenCalledWith({ returnTo: '/events?status=draft&page=2#selected-event' });
+    expect(authService.login).toHaveBeenCalledWith({
+      source: 'guard',
+      returnTo: '/events?status=draft&page=2#selected-event',
+    });
   });
 
   it('cancels admin navigation while onboarding redirects without starting a competing login', async () => {

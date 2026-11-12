@@ -65,6 +65,14 @@ describe('admin feature route access', () => {
     expect(result).toBe(errorRedirect);
   });
 
+  it('allows access to usage metrics with the tab grant and no super-admin role', async () => {
+    permissions.canReadTab.mockImplementation((tab: string) => tab === 'usage-metrics');
+
+    await expect(runGuard('usage-metrics')).resolves.toBe(true);
+    expect(permissions.canReadTab).toHaveBeenCalledWith('usage-metrics');
+    expect(routeErrors.guardRedirect).not.toHaveBeenCalled();
+  });
+
   it('routes a permission service outage to shared 503', async () => {
     permissions.evaluateWorkspacePermissions.mockRejectedValue(new Error('offline'));
 
@@ -80,13 +88,13 @@ describe('admin feature route access', () => {
     const result = await runGuard();
 
     expect(auth.clearSession).toHaveBeenCalledOnce();
-    expect(auth.login).toHaveBeenCalledWith({ returnTo: '/events?filter=private#target' });
+    expect(auth.login).toHaveBeenCalledWith({ source: 'guard', returnTo: '/events?filter=private#target' });
     expect(result).toBe(false);
   });
 
-  async function runGuard(): Promise<boolean | RedirectCommand | UrlTree> {
+  async function runGuard(id = 'events'): Promise<boolean | RedirectCommand | UrlTree> {
     return TestBed.runInInjectionContext(() =>
-      canReadFeatureGuard({ data: { id: 'events' } } as never, [], {} as never),
+      canReadFeatureGuard({ data: { id } } as never, [], {} as never),
     ) as Promise<boolean | RedirectCommand | UrlTree>;
   }
 });

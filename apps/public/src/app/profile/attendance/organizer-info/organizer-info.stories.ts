@@ -34,6 +34,7 @@ interface OrganizerInfoStoryArgs extends PublicEventStoryControls {
   includeOnlineAttendanceCode: boolean;
   canDownloadSubscriberList: boolean;
   downloadOutcome: DownloadOutcome;
+  materialsFrozen: boolean;
 }
 
 const defaultArgs: OrganizerInfoStoryArgs = {
@@ -46,6 +47,7 @@ const defaultArgs: OrganizerInfoStoryArgs = {
   includeOnlineAttendanceCode: true,
   canDownloadSubscriberList: true,
   downloadOutcome: 'success',
+  materialsFrozen: false,
 };
 
 const navigateRouteError = fn(async () => true);
@@ -54,7 +56,19 @@ const withOrganizerInfoProviders: Decorator<OrganizerInfoStoryArgs> = (story, co
   const args = { ...defaultArgs, ...context.args };
   return applicationConfig({
     providers: [
-      { provide: EventPreparationApiService, useFactory: createEventPreparationStoryApi },
+      {
+        provide: EventPreparationApiService,
+        useFactory: () => {
+          const api = createEventPreparationStoryApi();
+          return {
+            ...api,
+            getMaterials: async (eventId: string) => ({
+              ...(await api.getMaterials(eventId)),
+              editingFrozen: args.materialsFrozen,
+            }),
+          };
+        },
+      },
       provideRouter([]),
       provideNoopAnimations(),
       { provide: PLATFORM_ID, useValue: 'browser' },
@@ -104,6 +118,7 @@ const meta: Meta<OrganizerInfoStoryArgs> = {
     attendanceBaseCount: { control: { type: 'range', min: 0, max: 250, step: 1 } },
     includeOnlineAttendanceCode: { control: 'boolean' },
     canDownloadSubscriberList: { control: 'boolean' },
+    materialsFrozen: { control: 'boolean' },
     downloadOutcome: {
       control: 'select',
       options: ['success', 'error'],
@@ -160,6 +175,18 @@ export const MaterialDraft: Story = {
     await expect(await canvas.findByText('CACIC-142')).toBeVisible();
     await userEvent.click(panels[0]);
     await expect((await canvas.findAllByLabelText('Título'))[0]).toHaveValue('Slides revisados');
+  },
+};
+
+export const FrozenMaterials: Story = {
+  args: { materialsFrozen: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const panels = await canvas.findAllByRole('button', { name: /Materiais para os inscritos/ });
+    await userEvent.click(panels[0]);
+    await expect(await canvas.findByText(/Este evento está congelado/)).toBeVisible();
+    await expect(canvas.getByRole('link', { name: /Slides e referências/ })).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: /Adicionar link/ })).toBeNull();
   },
 };
 

@@ -1,3 +1,4 @@
+import { CacicProductAnalyticsService } from '@cacic-fct/shared-angular';
 import { CurrencyPipe, DatePipe, registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
 import { Component, DestroyRef, effect, inject, input, signal } from '@angular/core';
@@ -28,6 +29,7 @@ type TicketPurchaseSectionState =
   styleUrl: './ticket-purchase-options-section.component.css',
 })
 export class TicketPurchaseOptionsSectionComponent {
+  private readonly productAnalytics = inject(CacicProductAnalyticsService);
   private readonly analytics = inject(AnalyticsService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly emojiService = inject(EmojiService);
@@ -68,6 +70,7 @@ export class TicketPurchaseOptionsSectionComponent {
   }
 
   purchase(option: TicketPurchaseOption): void {
+    this.productAnalytics.record('ticket_checkout_started');
     this.analytics.trackEvent('ticket_purchase_clicked', {
       major_event_id: option.majorEventId,
       event_id: option.eventId,

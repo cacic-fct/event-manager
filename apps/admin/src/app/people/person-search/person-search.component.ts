@@ -6,7 +6,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import type { Person } from '@cacic-fct/event-manager-admin-contracts';
-import { debounceTime, distinctUntilChanged } from 'rxjs';
+import { debounceTime } from 'rxjs';
 
 let nextPersonSearchId = 0;
 
@@ -27,6 +27,7 @@ export class PersonSearchComponent {
   readonly resultActionIcon = input('person_add');
   readonly resultActionLabel = input('Selecionar');
   readonly showIdentitySummary = input(true);
+  readonly filterOnly = input(false);
 
   readonly queryChange = output<string>();
   readonly searchRequested = output<string>();
@@ -52,9 +53,11 @@ export class PersonSearchComponent {
       }
     });
 
-    this.queryControl.valueChanges
-      .pipe(debounceTime(320), distinctUntilChanged(), takeUntilDestroyed())
-      .subscribe((query) => this.emitSearch(query));
+    this.queryControl.valueChanges.pipe(debounceTime(320), takeUntilDestroyed()).subscribe((query) => {
+      if (query === this.queryControl.value) {
+        this.emitSearch(query);
+      }
+    });
   }
 
   protected onQueryInput(query: string): void {
@@ -64,6 +67,13 @@ export class PersonSearchComponent {
 
   protected searchNow(): void {
     this.emitSearch(this.queryControl.value);
+  }
+
+  protected clearQuery(input: HTMLInputElement): void {
+    this.queryControl.setValue('', { emitEvent: false });
+    this.onQueryInput('');
+    this.searchNow();
+    input.focus();
   }
 
   protected selectPerson(person: Person): void {

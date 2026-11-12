@@ -26,6 +26,7 @@ export * from './lib/markdown/markdown.component';
 export * from './lib/markdown/markdown-preview-dialog.component';
 export * from './lib/markdown/markdown.service';
 export * from './lib/observability/analytics.service';
+export * from './lib/observability/product-analytics.service';
 export * from './lib/observability/provide-observability';
 export * from './lib/oral-attendance/oral-attendance.component';
 export * from './lib/prize-draw-reel/models';

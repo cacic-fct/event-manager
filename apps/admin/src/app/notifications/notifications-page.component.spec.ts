@@ -8,12 +8,13 @@ import { By } from '@angular/platform-browser';
 import { NotificationsPageComponent } from './notifications-page.component';
 
 describe('Admin notification review', () => {
-  it('keeps unread notifications on entry, queries unread separately, and offers an explicit bulk read', async () => {
+  it('marks notifications as read once the inbox connects and supports the unread filter', async () => {
+    const client = signal<object | null>(null);
     const notifications = {
       loadingConfig: signal(false),
       notificationPermission: signal('granted'),
       isConfigured: signal(true),
-      client: signal({}),
+      client,
       ensureReady: vi.fn(),
       shouldOfferPushPermission: () => false,
       listNotificationPage: vi.fn().mockResolvedValue({ notifications: [], hasMore: false }),
@@ -30,6 +31,10 @@ describe('Admin notification review', () => {
     const fixture = TestBed.createComponent(NotificationsPageComponent);
     await fixture.whenStable();
     expect(notifications.markAllAsRead).not.toHaveBeenCalled();
+    client.set({});
+    await fixture.whenStable();
+    expect(notifications.markAllAsRead).toHaveBeenCalledTimes(1);
+    expect(notifications.listNotificationPage).toHaveBeenLastCalledWith({ archived: false });
     const child = fixture.debugElement.query(By.directive(NovuInboxComponent)).componentInstance as NovuInboxComponent;
     const actions = child as unknown as {
       selectIndex(index: number): void;
@@ -40,7 +45,7 @@ describe('Admin notification review', () => {
     await fixture.whenStable();
     expect(notifications.listNotificationPage).toHaveBeenLastCalledWith({ archived: false, read: false });
     await actions.markAllAsRead();
-    expect(notifications.markAllAsRead).toHaveBeenCalledTimes(1);
+    expect(notifications.markAllAsRead).toHaveBeenCalledTimes(2);
     notifications.markAllAsRead.mockRejectedValueOnce(new Error('offline'));
     await actions.markAllAsRead();
     expect(actions.error()).toContain('Tente novamente');

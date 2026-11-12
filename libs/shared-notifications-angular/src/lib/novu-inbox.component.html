@@ -282,7 +282,7 @@
   }
 
   <mat-menu #bulkMenu="matMenu">
-    @if (!markReadOnOpen()) {
+    @if (!markReadOnOpen() || showUnreadFilter()) {
       <button mat-menu-item type="button" [disabled]="busy()" (click)="markAllAsRead()">
         <mat-icon>done_all</mat-icon><span>Marcar todas como lidas</span>
       </button>

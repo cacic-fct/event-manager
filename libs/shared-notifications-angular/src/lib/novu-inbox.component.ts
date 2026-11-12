@@ -55,6 +55,7 @@ export class NovuInboxComponent {
   protected readonly notifications = inject(NovuNotificationsService);
 
   readonly title = input('Notificações');
+  readonly appBasePath = input<'/app' | '/admin'>('/app');
 
   readonly markReadOnOpen = input(true);
   readonly showUnreadFilter = input(false);
@@ -163,11 +164,9 @@ export class NovuInboxComponent {
     }
 
     this.loading.set(true);
+    this.error.set(null);
     try {
-      const result = await this.notifications.loadMoreNotifications(
-        lastNotification.createdAt,
-        this.filterForCurrentTab(),
-      );
+      const result = await this.notifications.loadMoreNotifications(lastNotification.id, this.filterForCurrentTab());
       if (version !== this.loadVersion) {
         return;
       }
@@ -298,11 +297,7 @@ export class NovuInboxComponent {
 
     this.actionPending.set(true);
     try {
-      const redirectResult = await this.openRedirect(
-        notification,
-        notification.primaryAction?.redirect?.url,
-        notification.primaryAction?.redirect?.target,
-      );
+      const redirectResult = await this.openNotificationLink(notification.primaryAction?.redirect);
       if (redirectResult !== 'opened' && redirectResult !== 'none') {
         return;
       }
@@ -322,11 +317,7 @@ export class NovuInboxComponent {
 
     this.actionPending.set(true);
     try {
-      const redirectResult = await this.openRedirect(
-        notification,
-        notification.secondaryAction?.redirect?.url,
-        notification.secondaryAction?.redirect?.target,
-      );
+      const redirectResult = await this.openNotificationLink(notification.secondaryAction?.redirect);
       if (redirectResult !== 'opened' && redirectResult !== 'none') {
         return;
       }
@@ -353,56 +344,65 @@ export class NovuInboxComponent {
   }
 
   protected notificationRedirect(notification: Notification): string | undefined {
-    return (
-      notification.primaryAction?.redirect?.url ??
-      notification.redirect?.url ??
-      notification.secondaryAction?.redirect?.url
+    return this.getNotificationRedirect(notification)?.url;
+  }
+
+  protected openRedirect(notification: Notification): Promise<NotificationRedirectResult> {
+    return this.openNotificationLink(this.getNotificationRedirect(notification));
+  }
+
+  private getNotificationRedirect(notification: Notification) {
+    return [notification.primaryAction?.redirect, notification.redirect, notification.secondaryAction?.redirect].find(
+      (redirect) => redirect?.url,
     );
   }
 
-  protected openRedirect(
-    notification: Notification,
-    fallbackUrl = this.notificationRedirect(notification),
-    fallbackTarget = notification.redirect?.target,
-  ): Promise<NotificationRedirectResult> {
-    if (!fallbackUrl) {
-      return Promise.resolve('none');
+  private async openNotificationLink(redirect?: {
+    url?: string;
+    target?: string;
+  }): Promise<NotificationRedirectResult> {
+    if (!redirect?.url) {
+      return 'none';
     }
 
-    if (fallbackUrl.startsWith('/') && !fallbackUrl.startsWith('//')) {
-      try {
-        const navigation = this.router.navigateByUrl(fallbackUrl);
-        return navigation.then(
-          (succeeded) => {
-            if (!succeeded) {
-              this.error.set('O link desta notificação não pôde ser aberto.');
-              return 'failed';
-            }
-            return 'opened';
-          },
-          () => {
-            this.error.set('O link desta notificação não pôde ser aberto.');
-            return 'failed';
-          },
-        );
-      } catch {
-        this.error.set('O link desta notificação não pôde ser aberto.');
-        return Promise.resolve('failed');
+    const { url, target = '_self' } = redirect;
+    const isRootRelative = url.startsWith('/');
+    let destination: URL;
+    try {
+      destination = isRootRelative ? new URL(url, window.location.origin) : new URL(url);
+      if (
+        (destination.protocol !== 'http:' && destination.protocol !== 'https:') ||
+        (isRootRelative && (url.startsWith('//') || destination.origin !== window.location.origin))
+      ) {
+        throw new Error('Invalid notification URL.');
       }
+    } catch {
+      this.error.set('O link desta notificação é inválido.');
+      return 'invalid';
     }
 
     try {
-      const url = new URL(fallbackUrl);
-      if (url.protocol === 'https:' || url.protocol === 'http:') {
-        // noopener deliberately returns null even when a new tab opens successfully.
-        window.open(url.toString(), fallbackTarget ?? '_self', 'noopener,noreferrer');
-        return Promise.resolve('opened');
+      if (isRootRelative) {
+        const { pathname, search, hash } = destination;
+        const mount = pathname.match(/^\/(app|admin)(?=\/|$)/)?.[0];
+        const destinationBase = mount ?? '/app';
+        if (destinationBase === this.appBasePath() && target === '_self') {
+          const route = mount ? pathname.slice(mount.length) || '/' : pathname;
+          if (await this.router.navigateByUrl(`${route}${search}${hash}`)) {
+            return 'opened';
+          }
+          this.error.set('O link desta notificação não pôde ser aberto.');
+          return 'failed';
+        }
+        destination.pathname = mount ? pathname : `/app${pathname}`;
       }
-      this.error.set('O link desta notificação é inválido.');
-      return Promise.resolve('invalid');
+
+      // noopener deliberately returns null even when a new tab opens successfully.
+      window.open(destination.href, target, 'noopener,noreferrer');
+      return 'opened';
     } catch {
-      this.error.set('O link desta notificação é inválido.');
-      return Promise.resolve('invalid');
+      this.error.set('O link desta notificação não pôde ser aberto.');
+      return 'failed';
     }
   }
 

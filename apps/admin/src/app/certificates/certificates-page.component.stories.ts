@@ -95,7 +95,7 @@ const standaloneFolderCertificateApi = {
   getCertificateFolder: () => of(standaloneCertificateFolder),
   listCertificateTemplates: () => of([standaloneCertificateTemplate]),
   listCertificateConfigs: () => of([]),
-  listCertificates: () => of([]),
+  listCertificatePage: () => of({ items: [], totalCount: 0 }),
 } satisfies Partial<CertificateApiService>;
 
 let activeArgs = defaultArgs;
@@ -403,6 +403,11 @@ export const IssuanceWorkspace: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Emissão e publicação' })).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Emitir e publicar agora' })).toBeVisible();
+    const individualIssuance = within(canvas.getByRole('region', { name: 'Emitir para uma pessoa' }));
+    await expect(individualIssuance.getByRole('searchbox', { name: 'Buscar pessoa' })).toBeVisible();
+    await expect(
+      individualIssuance.getByText(/A emissão só é realizada se a pessoa atender aos critérios/),
+    ).toBeVisible();
   },
 };
 
@@ -445,7 +450,7 @@ export const RevocationWorkspace: Story = {
               listCertificateConfigs: () => of([revocationConfig]),
               getCertificateConfig: () => of(revocationConfig),
               listCertificateIssuanceRuns: () => of([]),
-              listCertificates: () => of(revoked ? [certificate] : []),
+              listCertificatePage: () => of({ items: revoked ? [certificate] : [], totalCount: revoked ? 1 : 0 }),
               restoreCertificate: (id) => {
                 revoked = false;
                 return restoreRevokedCertificate(id);
@@ -510,9 +515,9 @@ const manualEligibilityCertificateApi = {
   getCertificateConfig: () => of(manualEligibilityConfig),
   listCertificateIssuanceRuns: () => of([]),
   listCertificateManualRecipients: () => of(manualEligibilityPeople.slice(0, 2)),
-  listCertificates: () =>
-    of(
-      [manualEligibilityPeople[0], manualEligibilityPeople[2]].map((person, index) => ({
+  listCertificatePage: (_scope, _targetId, filters) => {
+    const items = [manualEligibilityPeople[0], manualEligibilityPeople[2]]
+      .map((person, index) => ({
         id: `manual-certificate-${index + 1}`,
         personId: person.id,
         person,
@@ -525,8 +530,12 @@ const manualEligibilityCertificateApi = {
         createdAt: folderStoryTimestamp,
         updatedAt: folderStoryTimestamp,
         revokedAt: index === 1 ? folderStoryTimestamp : null,
-      })),
-    ),
+      }))
+      .filter(
+        ({ person }) => !filters?.personName || person.name.toLowerCase().includes(filters.personName.toLowerCase()),
+      );
+    return of({ items, totalCount: items.length });
+  },
 } satisfies Partial<CertificateApiService>;
 
 export const ManualEligibilityWorkspace: Story = {
@@ -558,6 +567,21 @@ export const ManualEligibilityWorkspace: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Lista de destinatários' })).toBeVisible();
-    await expect(await canvas.findByRole('button', { name: 'Permitir emissão para Carla Santos' })).toBeVisible();
+    const issuedCertificates = within(canvas.getByRole('region', { name: 'Certificados emitidos e revogados' }));
+    const restoreAction = { name: /Permitir emissão para Carla Santos/ };
+    await expect(await issuedCertificates.findByRole('button', restoreAction)).toBeVisible();
+    await expect(issuedCertificates.getByRole('status')).toHaveTextContent('2 certificados');
+
+    const search = issuedCertificates.getByRole('searchbox', { name: 'Filtrar pelo nome da pessoa' });
+    await userEvent.type(search, 'Ana');
+    await waitFor(async () => {
+      await expect(issuedCertificates.getByRole('status')).toHaveTextContent('1 certificado');
+      await expect(issuedCertificates.queryByRole('button', restoreAction)).not.toBeInTheDocument();
+    });
+
+    await userEvent.click(issuedCertificates.getByRole('button', { name: 'Limpar busca' }));
+    await expect(await issuedCertificates.findByRole('button', restoreAction)).toBeVisible();
+    await expect(issuedCertificates.getByRole('status')).toHaveTextContent('2 certificados');
+    await expect(search).toHaveFocus();
   },
 };

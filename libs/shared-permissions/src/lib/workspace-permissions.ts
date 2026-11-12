@@ -18,6 +18,7 @@ export const WorkspacePermissionTab = {
   GlobalOperations: 'global-operations',
   Permissions: 'permissions',
   AuditLogs: 'audit-logs',
+  UsageMetrics: 'usage-metrics',
   Notifications: 'notifications',
   Preferences: 'preferences',
   PrizeDraws: 'prize-draws',
@@ -61,6 +62,7 @@ export const WORKSPACE_ENTRY_PERMISSIONS = [
   Permission.SportsMatch.Read,
   Permission.SportsOfficial.Read,
   Permission.SportsScore.Read,
+  Permission.UsageMetrics.Read,
   Permission.User.Read,
 ] as const satisfies PermissionRequirement;
 
@@ -294,6 +296,13 @@ export const WORKSPACE_TAB_PERMISSIONS = [
     id: WorkspacePermissionTab.AuditLogs,
     label: 'Auditoria',
     read: [],
+    edit: [],
+    delete: [],
+  },
+  {
+    id: WorkspacePermissionTab.UsageMetrics,
+    label: 'Métricas de uso',
+    read: [Permission.UsageMetrics.Read],
     edit: [],
     delete: [],
   },

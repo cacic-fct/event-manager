@@ -7,7 +7,7 @@
   } @else if (loadError()) {
     <p role="alert">Não foi possível carregar os materiais.</p>
     <button mat-button type="button" (click)="load()">Tentar novamente</button>
-  } @else if (editable()) {
+  } @else if (canEdit()) {
     <p>Compartilhe slides, leituras e outros links com os inscritos. Eles não receberão notificações.</p>
     <p>A liberação programada acontece no término do evento.</p>
     <form (submit)="$event.preventDefault(); save()">
@@ -60,15 +60,22 @@
       </div>
     </form>
   } @else {
-    <ul>
-      @for (link of original(); track link.url) {
-        <li>
-          <a mat-button [href]="link.url" target="_blank" rel="noopener noreferrer">
-            <mat-icon>open_in_new</mat-icon>{{ link.title }}<span class="visually-hidden"> (abre em nova aba)</span>
-          </a>
-        </li>
-      }
-    </ul>
+    @if (editingFrozen()) {
+      <p>Este evento está congelado. Os materiais estão disponíveis apenas para consulta.</p>
+    }
+    @if (original().length === 0) {
+      <p>Nenhum material compartilhado.</p>
+    } @else {
+      <ul>
+        @for (link of original(); track link.url) {
+          <li>
+            <a mat-button [href]="link.url" target="_blank" rel="noopener noreferrer">
+              <mat-icon>open_in_new</mat-icon>{{ link.title }}<span class="visually-hidden"> (abre em nova aba)</span>
+            </a>
+          </li>
+        }
+      </ul>
+    }
   }
   @if (message()) {
     <p role="status">{{ message() }}</p>

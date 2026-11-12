@@ -152,6 +152,13 @@ class PublicNotificationsStoryService {
     this.refreshUnreadCount();
   }
 
+  async markAllAsRead(): Promise<void> {
+    for (const notification of this.notifications()) {
+      notification.isRead = true;
+    }
+    this.refreshUnreadCount();
+  }
+
   async markAsUnread(notification: MutableNotification): Promise<void> {
     notification.isRead = false;
     this.refreshUnreadCount();

@@ -1,3 +1,4 @@
+import { CacicProductAnalyticsService } from '@cacic-fct/shared-angular';
 import { EventDetailTabs } from '../../shared/event-detail-tabs';
 import { DatePipe, isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
 import { PLATFORM_ID, Component, DestroyRef, computed, effect, inject, signal, viewChild } from '@angular/core';
@@ -167,6 +168,7 @@ type EventStructuredData = {
 })
 export class Event {
   protected readonly workspace = viewChild(MoreInfo);
+  private readonly productAnalytics = inject(CacicProductAnalyticsService);
   private readonly api = inject(EventApiService);
   private readonly informationFallback = inject(EventInformationFallbackService);
   private readonly authService = inject(AuthService);
@@ -432,6 +434,7 @@ export class Event {
     const url = new URL(this.router.url, document.baseURI).toString().split('?')[0].split('#')[0];
 
     await navigator.clipboard.writeText(url);
+    this.productAnalytics.record('event_share_link_copied');
 
     this.snackBar.open('Link copiado para a área de transferência.', 'OK', {
       duration: 3000,
@@ -827,6 +830,7 @@ export class Event {
   }
 
   private createEventState(): Observable<EventPageState> {
+    let lastViewedEventId: string | undefined;
     return combineLatest([
       this.route.paramMap.pipe(
         map((params) => ({
@@ -864,12 +868,13 @@ export class Event {
         return this.api.getEventPageData(eventId, authenticated).pipe(
           timeout({ first: EVENT_INFORMATION_TIMEOUT_MS }),
           catchError((error: unknown) => this.informationFallback.eventPage(eventId, error)),
-          map(
-            (data): EventPageState => ({
-              status: 'ready',
-              data,
-            }),
-          ),
+          map((data): EventPageState => {
+            if (!data.preview && lastViewedEventId !== eventId) {
+              lastViewedEventId = eventId;
+              this.productAnalytics.record('event_detail_viewed');
+            }
+            return { status: 'ready', data };
+          }),
           startWith({ status: 'loading' } satisfies EventPageState),
           catchError((error: unknown) => {
             void this.routeErrors.navigate(privateResourceErrorStatus(error));

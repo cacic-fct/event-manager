@@ -1,5 +1,5 @@
 import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
-import { DatePipe, isPlatformBrowser } from '@angular/common';
+import { DatePipe, DecimalPipe, isPlatformBrowser } from '@angular/common';
 import { Component, DestroyRef, PLATFORM_ID, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -35,6 +35,7 @@ import { WorkspacePendingChangesService } from '../app-shell/workspace-pending-c
   selector: 'app-workspace-certificates-tab',
   imports: [
     DatePipe,
+    DecimalPipe,
     CertificateIssuancePanelComponent,
     FormField,
     ReactiveFormsModule,

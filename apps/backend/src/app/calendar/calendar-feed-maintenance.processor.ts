@@ -1,12 +1,16 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { BadRequestException } from '@nestjs/common';
 import { Job } from 'bullmq';
+import { UmamiAnalyticsService } from '../analytics/umami-analytics.service';
 import { CALENDAR_FEED_MAINTENANCE_QUEUE, DISABLE_STALE_ADMIN_CALENDAR_FEEDS_JOB } from './calendar.models';
 import { CalendarService } from './calendar.service';
 
 @Processor(CALENDAR_FEED_MAINTENANCE_QUEUE)
 export class CalendarFeedMaintenanceProcessor extends WorkerHost {
-  constructor(private readonly calendars: CalendarService) {
+  constructor(
+    private readonly calendars: CalendarService,
+    private readonly usageMetrics: UmamiAnalyticsService,
+  ) {
     super();
   }
 
@@ -14,6 +18,12 @@ export class CalendarFeedMaintenanceProcessor extends WorkerHost {
     if (job.name !== DISABLE_STALE_ADMIN_CALENDAR_FEEDS_JOB) {
       throw new BadRequestException(`Unsupported calendar feed maintenance job: ${job.name}.`);
     }
-    await this.calendars.runAdminCalendarFeedMaintenance();
+    try {
+      await this.calendars.runAdminCalendarFeedMaintenance();
+      this.usageMetrics.recordOperation('calendar_feed_maintenance_completed');
+    } catch (error) {
+      this.usageMetrics.recordOperation('calendar_feed_maintenance_failed');
+      throw error;
+    }
   }
 }

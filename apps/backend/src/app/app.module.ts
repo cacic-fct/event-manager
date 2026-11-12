@@ -55,6 +55,11 @@ import { HealthService } from './health/health.service';
 import { AccountMergeController } from './account-merge/account-merge.controller';
 import { AccountMergeService } from './account-merge/account-merge.service';
 import { AuditLogResolver } from './audit-log/audit-log.resolver';
+import {
+  AUDIT_LOG_RETENTION_QUEUE,
+  AuditLogRetentionProcessor,
+  AuditLogRetentionScheduler,
+} from './audit-log/audit-log.retention-job';
 import { AuditLogService } from './audit-log/audit-log.service';
 import { AuthModule } from './auth/auth.module';
 import { PermissionManagementResolver } from './authorization/permission-management.resolver';
@@ -304,6 +309,7 @@ import { PrizeDrawNotificationJobsProcessor } from './prize-draw/prize-draw-noti
 
 const useInMemoryTestInfra = process.env.BACKEND_E2E_IN_MEMORY_INFRA === 'true';
 const backendQueueNames = [
+  AUDIT_LOG_RETENTION_QUEUE,
   'weather',
   EVENT_INFORMATION_QUEUE,
   EVENT_MANUAL_NOTIFICATION_QUEUE,
@@ -325,6 +331,7 @@ const queueImports = useInMemoryTestInfra
         connection: getRedisConnectionOptions(),
         prefix: process.env.BACKEND_E2E_QUEUE_PREFIX,
       }),
+      BullModule.registerQueue({ name: AUDIT_LOG_RETENTION_QUEUE }),
       BullModule.registerQueue({ name: EVENT_INFORMATION_QUEUE }),
       BullModule.registerQueue({
         name: 'weather',
@@ -363,6 +370,7 @@ const queueProviders = useInMemoryTestInfra ? createNoopQueueProviders(backendQu
 const queueProcessorProviders = useInMemoryTestInfra
   ? []
   : [
+      AuditLogRetentionProcessor,
       CalendarFeedMaintenanceProcessor,
       PublicationProcessor,
       MajorEventReceiptsProcessor,
@@ -378,6 +386,7 @@ const queueProcessorProviders = useInMemoryTestInfra
 const schedulerProviders = useInMemoryTestInfra
   ? []
   : [
+      AuditLogRetentionScheduler,
       CalendarFeedMaintenanceScheduler,
       PublicationScheduler,
       EventFormsScheduler,

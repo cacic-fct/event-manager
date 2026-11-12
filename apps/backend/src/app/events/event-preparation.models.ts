@@ -19,6 +19,7 @@ export class EventMaterials {
   @Field(() => [EventMaterialModel]) links!: EventMaterialModel[];
   @Field(() => Date, { nullable: true }) updatedAt!: Date | null;
   @Field(() => Date, { nullable: true }) nextReleaseAt?: Date | null;
+  @Field(() => Boolean, { nullable: true }) editingFrozen?: boolean;
 }
 
 @ObjectType()

@@ -42,6 +42,9 @@ type Story = StoryObj<CertificateIssuancePanelComponent>;
 export const IssueNow: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
+    const notify = canvas.getByRole('checkbox', { name: 'Notificar somente os destinatários ao concluir' });
+    await expect(notify).not.toBeChecked();
+    await userEvent.click(notify);
     await userEvent.click(canvas.getByRole('button', { name: 'Emitir e publicar agora' }));
     await expect(args.issuanceRequested).toHaveBeenCalledWith({
       scheduledAt: undefined,

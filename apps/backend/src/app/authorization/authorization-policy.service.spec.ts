@@ -71,6 +71,21 @@ describe('AuthorizationPolicyService', () => {
     expect(activeScopes).not.toHaveBeenCalled();
   });
 
+  it('allows usage metrics with a global grant and rejects missing or scoped grants', async () => {
+    const actor = user([EventManagerKeycloakRole.Access]);
+    const permission = Permission.UsageMetrics.Read;
+
+    await expect(service.assertPermissions(actor, [permission])).rejects.toBeInstanceOf(ForbiddenException);
+
+    activeScopes.mockResolvedValue([grant({ permission, scope: EventManagerPermissionScope.EVENT })]);
+    await expect(service.assertPermissions(actor, [permission])).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.evaluatePermissions(actor, [permission])).resolves.toEqual([]);
+
+    activeScopes.mockResolvedValue([grant({ permission, scope: EventManagerPermissionScope.GLOBAL })]);
+    await expect(service.assertPermissions(actor, [permission])).resolves.toBeUndefined();
+    await expect(service.evaluatePermissions(actor, [permission])).resolves.toEqual([permission]);
+  });
+
   it('authorizes global DB grants', async () => {
     activeScopes.mockResolvedValue([
       grant({ permission: Permission.Event.Read, scope: EventManagerPermissionScope.GLOBAL }),

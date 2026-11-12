@@ -81,7 +81,7 @@ describe('authentication route guards', () => {
   it('starts login with the requested URL after restoration is denied', async () => {
     await expect(runGuard(authGuard)).resolves.toBe(false);
 
-    expect(auth.login).toHaveBeenCalledWith({ returnTo: state.url });
+    expect(auth.login).toHaveBeenCalledWith({ source: 'guard', returnTo: state.url });
     expect(errors.guardRedirect).not.toHaveBeenCalled();
   });
 
@@ -162,7 +162,7 @@ describe('authentication route guards', () => {
 
     await expect(runGuard(guard)).resolves.toBe(false);
 
-    expect(auth.login).toHaveBeenCalledWith({ returnTo: state.url });
+    expect(auth.login).toHaveBeenCalledWith({ source: 'guard', returnTo: state.url });
     expect(auth.evaluatePermissions).not.toHaveBeenCalled();
   });
 
