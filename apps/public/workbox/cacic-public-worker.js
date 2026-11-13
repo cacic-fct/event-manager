@@ -17,11 +17,46 @@ workbox.core.setCacheNameDetails({
   prefix: 'cacic-public',
 });
 
-workbox.precaching.precacheAndRoute(self.__WB_MANIFEST, {
-  ignoreURLParametersMatching: [/^utm_/, /^fbclid$/],
+let filesPrepared = 0;
+let lastProgressReport = 0;
+const precacheController = new workbox.precaching.PrecacheController({
+  plugins: [{ handlerDidComplete: reportPrecacheProgress }],
 });
+precacheController.precache(self.__WB_MANIFEST);
+workbox.routing.registerRoute(
+  new workbox.precaching.PrecacheRoute(precacheController, {
+    ignoreURLParametersMatching: [/^utm_/, /^fbclid$/],
+  }),
+);
 workbox.precaching.cleanupOutdatedCaches();
 workbox.core.clientsClaim();
+
+async function reportPrecacheProgress({ event, response, error }) {
+  if (event?.type !== 'install' || !response || error || !self.registration.active) {
+    return;
+  }
+
+  // Workbox completes the same install callback for cache hits and freshly cached files.
+  const completed = ++filesPrepared;
+  const total = precacheController.getURLsToCacheKeys().size;
+  const now = Date.now();
+  if (completed > 1 && completed < total && now - lastProgressReport < 250) {
+    return;
+  }
+  lastProgressReport = now;
+
+  // Progress feedback must never cause installation to fail if a tab has closed.
+  try {
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of clients) {
+      if (client.url.startsWith(self.registration.scope)) {
+        client.postMessage({ type: 'PRECACHE_PROGRESS', completed, total });
+      }
+    }
+  } catch {
+    // The browser still reports the install and activation states to the app.
+  }
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(self.skipWaiting());
@@ -366,7 +401,7 @@ workbox.routing.registerRoute(
 );
 
 async function appShellFallback() {
-  const precachedResponse = await workbox.precaching.matchPrecache(appShellUrl);
+  const precachedResponse = await precacheController.matchPrecache(appShellUrl);
   if (precachedResponse) {
     return createOfflineHtmlResponse(precachedResponse);
   }

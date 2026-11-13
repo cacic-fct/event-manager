@@ -26,15 +26,7 @@ export interface ShowcaseFeature {
             </li>
           }
         </ul>
-        @if (organizer()) {
-          <a matButton href="/admin"
-            >Acessar o painel de organização<mat-icon iconPositionEnd>arrow_forward</mat-icon></a
-          >
-        } @else {
-          <a matButton routerLink="/calendar"
-            >Explorar a programação<mat-icon iconPositionEnd>arrow_forward</mat-icon></a
-          >
-        }
+        <a matButton routerLink="/calendar">Explorar a programação<mat-icon iconPositionEnd>arrow_forward</mat-icon></a>
       </div>
       <div>
         <div class="product-window">
@@ -53,5 +45,4 @@ export interface ShowcaseFeature {
 })
 export class ShowcaseStageComponent {
   readonly feature = input.required<ShowcaseFeature>();
-  readonly organizer = input(false);
 }

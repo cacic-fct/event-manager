@@ -88,7 +88,7 @@ describe('PublicationJobsService', () => {
     );
     expect(publicationQueue.upsertJobScheduler).toHaveBeenCalledWith(
       `publication-${CLEANUP_STALE_EVENT_DRAFTS_JOB}`,
-      { pattern: '17 3 * * *', tz: 'America/Sao_Paulo' },
+      { pattern: '20 23 * * *', tz: 'America/Sao_Paulo' },
       {
         name: CLEANUP_STALE_EVENT_DRAFTS_JOB,
         data: {},

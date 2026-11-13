@@ -35,21 +35,22 @@ import {
 import { AuthService } from '@cacic-fct/shared-angular';
 import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import {
-  EMPTY,
   TimeoutError,
   catchError,
-  combineLatest,
+  defer,
   distinctUntilChanged,
   finalize,
   from,
   interval,
   map,
   of,
+  scan,
   startWith,
   switchMap,
   throwError,
+  throwIfEmpty,
 } from 'rxjs';
-import { format, isSameDay, isSameMonth, isSameYear, parseISO } from 'date-fns';
+import { format, isSameDay, isSameMonth, isSameYear, isValid, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale/pt-BR';
 import { NetworkStatusService } from '../../../shared/network-status.service';
 import { AttendancesApiService } from '../attendances-api.service';
@@ -74,12 +75,13 @@ type AttendanceStatusFilter = 'interested' | 'subscribed' | 'present' | 'certifi
 
 type FeedState =
   | { status: 'loading' }
-  | { status: 'ready'; data: NormalizedSubscriptionsFeed }
+  | { status: 'ready'; participations: ParticipationFeedItem[]; folders: StandaloneCertificateFolderItem[] }
   | { status: 'error'; message: string };
 
-type NormalizedSubscriptionsFeed = Omit<SubscriptionsFeed, 'standaloneCertificateFolders'> & {
-  standaloneCertificateFolders: StandaloneCertificateFolderItem[];
-};
+type TargetedFeedState = { target: string | null; state: FeedState };
+
+const LOADING_FEED: FeedState = { status: 'loading' };
+const INITIAL_FEED: TargetedFeedState = { target: null, state: LOADING_FEED };
 
 interface AttendanceFilterOption<TValue extends string> {
   value: TValue;
@@ -113,7 +115,7 @@ const EMPTY_SUBSCRIPTIONS_FEED = {
   eventItems: [],
   standaloneCertificateFolders: [],
   attendances: [],
-} satisfies NormalizedSubscriptionsFeed;
+} satisfies SubscriptionsFeed;
 
 @Component({
   selector: 'app-attendances',
@@ -181,7 +183,7 @@ export class Attendances {
     const knownTargets = new Set(this.allParticipations().map((item) => `${item.targetType}:${item.targetId}`));
     const state = this.feedState();
     if (state.status === 'ready') {
-      for (const folder of state.data.standaloneCertificateFolders) {
+      for (const folder of state.folders) {
         knownTargets.add(`folder:${folder.id}`);
       }
     }
@@ -194,7 +196,7 @@ export class Attendances {
     const visibleTargets = new Set(this.visibleParticipations().map((item) => `${item.targetType}:${item.targetId}`));
     const state = this.feedState();
     if (state.status === 'ready') {
-      for (const folder of state.data.standaloneCertificateFolders) {
+      for (const folder of state.folders) {
         visibleTargets.add(`folder:${folder.id}`);
       }
     }
@@ -299,48 +301,50 @@ export class Attendances {
     { value: 'sportsManager', label: 'Gestão esportiva', icon: 'sports' },
   ];
   private readonly feedUserId = computed(() => this.auth.user()?.sub ?? null);
-  private loadedFeedTarget: string | null = null;
-  private readonly feedRetry = signal(0);
+  private readonly feedTarget = computed(() => {
+    const userId = this.feedUserId();
+    if (userId) return `user:${userId}`;
+    if (!this.networkStatus.isOnline()) return 'offline-snapshot';
+    return this.auth.initialized() ? 'anonymous' : null;
+  });
+  private readonly feedRequest = computed(() => ({
+    target: this.feedTarget(),
+    userId: this.feedUserId(),
+    online: this.networkStatus.isOnline(),
+    revision: this.feedCache.revision(),
+  }));
 
-  readonly feedState = toSignal(
-    combineLatest([
-      toObservable(this.feedUserId).pipe(distinctUntilChanged()),
-      toObservable(this.feedCache.revision),
-      toObservable(this.feedRetry),
-    ]).pipe(
-      switchMap(([userId]) => {
-        const target = userId ? `user:${userId}` : 'anonymous';
-        const preserveReadyState = this.loadedFeedTarget === target;
-        const load = this.loadFeed(userId).pipe(
-          map((feed): FeedState => {
-            this.loadedFeedTarget = target;
-            return {
-              status: 'ready',
-              data: this.normalizeFeed(feed),
-            };
-          }),
-          catchError((error: unknown) =>
-            preserveReadyState
-              ? EMPTY
-              : of({
-                  status: 'error',
-                  message:
-                    error instanceof TimeoutError ||
-                    (error instanceof HttpErrorResponse && [408, 504].includes(error.status))
-                      ? 'O carregamento das suas participações demorou mais que o esperado. Tente novamente.'
-                      : 'Não foi possível carregar suas participações. Tente novamente.',
-                } satisfies FeedState),
-          ),
+  private readonly loadedFeed = toSignal(
+    toObservable(this.feedRequest).pipe(
+      switchMap(({ target, userId, online }) => {
+        if (target === null) return of(INITIAL_FEED);
+
+        return defer(() => this.loadFeed(userId, online)).pipe(
+          map((feed) => this.buildFeed(feed)),
+          catchError((error: unknown) => of(this.feedError(error))),
+          startWith(LOADING_FEED),
+          map((state): TargetedFeedState => ({ target, state })),
         );
-        return preserveReadyState ? load : load.pipe(startWith({ status: 'loading' } satisfies FeedState));
       }),
+      // Keep the last successful feed visible during a refresh for the same account.
+      scan(
+        (previous, next) =>
+          previous.target === next.target && previous.state.status === 'ready' && next.state.status !== 'ready'
+            ? previous
+            : next,
+        INITIAL_FEED,
+      ),
     ),
-    { initialValue: { status: 'loading' } satisfies FeedState },
+    { initialValue: INITIAL_FEED },
   );
+  readonly feedState = computed(() => {
+    const loaded = this.loadedFeed();
+    return loaded.target === this.feedTarget() ? loaded.state : LOADING_FEED;
+  });
 
   retryFeed(): void {
     if (this.feedState().status === 'error') {
-      this.feedRetry.update((attempt) => attempt + 1);
+      this.feedCache.invalidate();
     }
   }
 
@@ -372,49 +376,11 @@ export class Attendances {
 
   private readonly allParticipations = computed(() => {
     const state = this.feedState();
-    if (state.status !== 'ready') {
-      return [];
-    }
-
-    const attendanceByEventId = getAttendanceByEventId(state.data.attendances);
-    const attendanceByMajorEventId = new Map<string, SubscriptionsFeed['attendances'][number]>();
-    const attendancesByGroupId = new Map<string, SubscriptionsFeed['attendances']>();
-    for (const attendance of state.data.attendances) {
-      const { majorEventId, eventGroupId } = attendance.event ?? {};
-      if (majorEventId) attendanceByMajorEventId.set(majorEventId, attendance);
-      if (eventGroupId) {
-        const groupAttendances = attendancesByGroupId.get(eventGroupId) ?? [];
-        groupAttendances.push(attendance);
-        attendancesByGroupId.set(eventGroupId, groupAttendances);
-      }
-    }
-
-    return [
-      ...state.data.majorEventItems.map((item) => {
-        const attendance = attendanceByMajorEventId.get(item.majorEventId);
-        return this.majorEventFeedItem(item, attendance ? [attendance] : []);
-      }),
-      ...state.data.eventItems.map((item) => {
-        if (item.__typename === 'SubscribedSingleEventItem') {
-          const attendance = attendanceByEventId.get(item.event.id);
-          return this.eventFeedItem(item, attendance ? [attendance] : []);
-        }
-        const attendances = new Set(attendancesByGroupId.get(item.eventGroup.id));
-        for (const event of item.events) {
-          const attendance = attendanceByEventId.get(event.id);
-          if (attendance) attendances.add(attendance);
-        }
-        return this.eventFeedItem(item, [...attendances]);
-      }),
-    ].sort((left, right) => compareIsoDateDesc(left.startDate, right.startDate));
+    return state.status === 'ready' ? state.participations : [];
   });
 
   readonly visibleParticipations = computed(() => this.allParticipations().filter((item) => this.matchesFilters(item)));
-
-  readonly hasParticipations = computed(() => {
-    const state = this.feedState();
-    return state.status === 'ready' && state.data.majorEventItems.length + state.data.eventItems.length > 0;
-  });
+  readonly hasParticipations = computed(() => this.allParticipations().length > 0);
 
   toggleFilters(): void {
     this.filtersOpen.update((isOpen) => !isOpen);
@@ -524,23 +490,21 @@ export class Attendances {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   }
 
-  private loadFeed(userId: string | null) {
-    if (!this.networkStatus.isOnline()) {
+  private loadFeed(userId: string | null, online: boolean) {
+    if (!online) {
       return from(this.loadOfflineFeed(userId));
     }
 
     if (!userId) {
-      void this.offlineData.purgeUserData();
       return of(EMPTY_SUBSCRIPTIONS_FEED);
     }
 
-    return this.feedCache
-      .load(userId)
-      .pipe(
-        catchError((error: unknown) =>
-          from(this.loadOfflineFeed(userId)).pipe(catchError(() => throwError(() => error))),
-        ),
-      );
+    return this.feedCache.load(userId).pipe(
+      throwIfEmpty(),
+      catchError((error: unknown) =>
+        from(this.loadOfflineFeed(userId)).pipe(catchError(() => throwError(() => error))),
+      ),
+    );
   }
 
   private async loadOfflineFeed(currentUserId: string | null): Promise<SubscriptionsFeed> {
@@ -553,17 +517,52 @@ export class Attendances {
     return feed;
   }
 
-  private normalizeFeed(feed: SubscriptionsFeed): NormalizedSubscriptionsFeed {
-    const sortedFeed = sortSubscriptionsFeed({
-      ...feed,
-      eventItems: this.mergeStandaloneEventGroupItems(feed.eventItems),
-    });
-
+  private feedError(error: unknown): FeedState {
+    const timedOut =
+      error instanceof TimeoutError || (error instanceof HttpErrorResponse && [408, 504].includes(error.status));
     return {
-      ...sortedFeed,
-      standaloneCertificateFolders:
-        sortedFeed.standaloneCertificateFolders ?? EMPTY_SUBSCRIPTIONS_FEED.standaloneCertificateFolders,
+      status: 'error',
+      message: timedOut
+        ? 'O carregamento das suas participações demorou mais que o esperado. Tente novamente.'
+        : 'Não foi possível carregar suas participações. Tente novamente.',
     };
+  }
+
+  private buildFeed(feed: SubscriptionsFeed): FeedState {
+    const data = sortSubscriptionsFeed({ ...feed, eventItems: this.mergeStandaloneEventGroupItems(feed.eventItems) });
+    const attendanceByEventId = getAttendanceByEventId(data.attendances);
+    const attendanceByMajorEventId = new Map<string, SubscriptionsFeed['attendances'][number]>();
+    const attendancesByGroupId = new Map<string, SubscriptionsFeed['attendances']>();
+    for (const attendance of data.attendances) {
+      const { majorEventId, eventGroupId } = attendance.event ?? {};
+      if (majorEventId) attendanceByMajorEventId.set(majorEventId, attendance);
+      if (eventGroupId) {
+        const groupAttendances = attendancesByGroupId.get(eventGroupId) ?? [];
+        groupAttendances.push(attendance);
+        attendancesByGroupId.set(eventGroupId, groupAttendances);
+      }
+    }
+
+    const participations = [
+      ...data.majorEventItems.map((item) => {
+        const attendance = attendanceByMajorEventId.get(item.majorEventId);
+        return this.majorEventFeedItem(item, attendance ? [attendance] : []);
+      }),
+      ...data.eventItems.map((item) => {
+        if (item.__typename === 'SubscribedSingleEventItem') {
+          const attendance = attendanceByEventId.get(item.event.id);
+          return this.eventFeedItem(item, attendance ? [attendance] : []);
+        }
+        const attendances = new Set(attendancesByGroupId.get(item.eventGroup.id));
+        for (const event of item.events) {
+          const attendance = attendanceByEventId.get(event.id);
+          if (attendance) attendances.add(attendance);
+        }
+        return this.eventFeedItem(item, [...attendances]);
+      }),
+    ].sort((left, right) => compareIsoDateDesc(left.startDate, right.startDate));
+
+    return { status: 'ready', participations, folders: data.standaloneCertificateFolders ?? [] };
   }
 
   private mergeStandaloneEventGroupItems(items: SubscribedItem[]): SubscribedItem[] {
@@ -677,6 +676,10 @@ export class Attendances {
   participationDateLine(startDate: string, endDate: string): string {
     const start = parseISO(startDate);
     const end = parseISO(endDate);
+    if (!isValid(start) || !isValid(end)) {
+      return 'Datas a confirmar';
+    }
+
     const startDay = format(start, 'd', { locale: ptBR });
     const endDay = format(end, 'd', { locale: ptBR });
     const startMonth = this.shortMonth(start);

@@ -14,7 +14,7 @@ describe('Audit log retention', () => {
 
     expect(queue.upsertJobScheduler).toHaveBeenCalledWith(
       expect.any(String),
-      { pattern: '0 4 * * *', tz: 'America/Sao_Paulo' },
+      { pattern: '0 23 * * *', tz: 'America/Sao_Paulo' },
       expect.objectContaining({
         name: 'delete-expired-audit-logs',
         opts: expect.objectContaining({ attempts: 3 }),

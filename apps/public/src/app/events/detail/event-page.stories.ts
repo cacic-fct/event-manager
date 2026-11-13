@@ -208,6 +208,28 @@ export const InterestedAndRegistered: Story = {
   globals: { network: 'online' },
 };
 
+export const MajorEventParticipation: Story = {
+  args: {
+    context: 'major-event',
+    emoji: '💡',
+    majorEventName: 'Encontro de ciência e comunidade',
+    isSubscribed: true,
+    hasAttendance: true,
+    dayOffset: -1,
+    lecturerCount: 0,
+    mapEnabled: false,
+  },
+  globals: { network: 'online' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'Sua participação' })).toBeVisible();
+    await expect(
+      canvas.getByText('Este evento está incluído na sua inscrição em Encontro de ciência e comunidade.'),
+    ).toBeVisible();
+    await expect(canvas.getByText(/^Presença registrada em/)).toBeVisible();
+  },
+};
+
 export const WithoutLecturers: Story = {
   args: {
     lecturerCount: 0,
@@ -596,8 +618,8 @@ function publicSubscriptionEventForm(event: PublicEvent): PublicEventForm {
 function currentUserEventAttendance(event: PublicEvent) {
   return {
     eventId: event.id,
-    attendedAt: event.onlineAttendanceStartDate ?? event.startDate,
-    createdAt: event.onlineAttendanceStartDate ?? event.startDate,
+    attendedAt: event.startDate,
+    createdAt: event.startDate,
   };
 }
 

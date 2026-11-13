@@ -18,7 +18,7 @@
       Tentar novamente
     </button>
   </section>
-  } @else if (currentState.status !== 'loading') {
+  } @else if (currentState.status === 'ready') {
   <div class="page-actions" [class.selection-actions]="selectionMode()">
     <button
       matButton="outlined"
@@ -204,12 +204,12 @@
         <h2 id="standalone-certificates-heading">Certificados avulsos</h2>
       </div>
 
-      @if (currentState.data.standaloneCertificateFolders.length === 0) {
+      @if (currentState.folders.length === 0) {
       <p class="empty-text">Nenhum certificado avulso disponível.</p>
       } @else {
       <div class="certificate-list">
-        @for (folder of currentState.data.standaloneCertificateFolders; track folder.id) { @if (selectionMode()) { @if
-        (selectionState() === 'ready') {
+        @for (folder of currentState.folders; track folder.id) { @if (selectionMode()) { @if (selectionState() ===
+        'ready') {
         <app-certificate-selection-group
           [title]="folder.name"
           [emojiUrl]="emoji.getTwemojiUrl(folder.emoji)"
@@ -218,12 +218,7 @@
           [disabled]="isDownloadingCertificates()"
           (selectionChange)="changeCertificateSelection($event)" />
         } } @else {
-        <button
-          class="certificate-item"
-          role="button"
-          type="button"
-          (click)="openStandaloneCertificates(folder)"
-          [attr.aria-label]="'Abrir certificados avulsos de ' + folder.name">
+        <button class="certificate-item" type="button" (click)="openStandaloneCertificates(folder)">
           <div class="emoji-frame">
             <img class="twemoji" [src]="emoji.getTwemojiUrl(folder.emoji)" alt="" />
           </div>

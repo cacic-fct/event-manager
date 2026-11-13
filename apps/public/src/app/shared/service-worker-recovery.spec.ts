@@ -148,6 +148,61 @@ describe('ServiceWorkerService recovery', () => {
     expect(unregister).not.toHaveBeenCalled();
   });
 
+  it('shows measured progress and keeps waiting while files are still being prepared', async () => {
+    container.controller = {};
+    const registration = createRegistration(unregister);
+    const installingWorker = Object.assign(new EventTarget(), { state: 'installing' });
+    Object.assign(registration, { installing: installingWorker });
+    register.mockResolvedValue(registration);
+    service.start();
+    await Promise.resolve();
+
+    const report = (source: object, completed: number, total = 10) => {
+      const event = new MessageEvent('message', { data: { type: 'PRECACHE_PROGRESS', completed, total } });
+      Object.defineProperty(event, 'source', { value: source });
+      container.dispatchEvent(event);
+    };
+
+    expect(setInput).toHaveBeenCalledWith('progress', null);
+    setInput.mockClear();
+    report(container.controller, 1);
+    expect(setInput).not.toHaveBeenCalled();
+    report(installingWorker, 2);
+    expect(setInput).toHaveBeenLastCalledWith('progress', { completed: 2, total: 10 });
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(setInput).toHaveBeenLastCalledWith('takingLonger', true);
+
+    await vi.advanceTimersByTimeAsync(70_000);
+    report(installingWorker, 3, 2);
+    report(installingWorker, 1);
+    expect(setInput).toHaveBeenLastCalledWith('takingLonger', true);
+    report(installingWorker, 3);
+    expect(setInput).toHaveBeenLastCalledWith('progress', { completed: 3, total: 10 });
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(service.state()).toBe('downloading');
+
+    installingWorker.state = 'activating';
+    installingWorker.dispatchEvent(new Event('statechange'));
+    expect(service.state()).toBe('ready');
+    expect(setInput).toHaveBeenLastCalledWith('phase', 'ready');
+    expect(open).toHaveBeenCalledOnce();
+  });
+
+  it('offers recovery if an installing worker goes 90 seconds without advancing', async () => {
+    container.controller = {};
+    const registration = createRegistration(unregister);
+    Object.assign(registration, { installing: Object.assign(new EventTarget(), { state: 'installing' }) });
+    register.mockResolvedValue(registration);
+    service.start();
+    await Promise.resolve();
+
+    await vi.advanceTimersByTimeAsync(90_000);
+
+    expect(service.state()).toBe('failed');
+    expect(close).toHaveBeenCalledOnce();
+    expect(open).toHaveBeenCalledTimes(2);
+  });
+
   it('checks on return and reconnection without polling', async () => {
     const registration = createRegistration(unregister);
     register.mockResolvedValue(registration);

@@ -6,7 +6,7 @@
   }
 </div>
 
-<app-landing-showcase-stage [feature]="activeFeature()" [organizer]="true">
+<app-landing-showcase-stage [feature]="activeFeature()">
   @switch (feature()) { @case ('roles') { @defer (on immediate) {
   <app-landing-role-demo />
   } @placeholder {

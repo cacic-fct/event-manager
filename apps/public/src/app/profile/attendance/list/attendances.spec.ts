@@ -9,7 +9,7 @@ import { AuthService } from '@cacic-fct/shared-angular';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import type { SubscriptionsFeed } from '@cacic-fct/shared-utils';
-import { defer, NEVER, of, Subject, throwError, TimeoutError } from 'rxjs';
+import { defer, EMPTY, NEVER, of, Subject, throwError, TimeoutError, type Observable } from 'rxjs';
 import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
 import { NetworkStatusService } from '../../../shared/network-status.service';
 import { RealtimeInvalidationService } from '../../../shared/realtime-invalidation.service';
@@ -19,6 +19,57 @@ import { Attendances } from './attendances';
 import { CertificateDialog } from '../certificate-dialog/certificate-dialog';
 
 describe('Attendances', () => {
+  it('renders the first uncached response without a second change detection trigger', async () => {
+    const response = new Subject<SubscriptionsFeed>();
+    const { fixture, api } = await createFixture({ onlineResponse: response });
+    expect(fixture.nativeElement.querySelector('[aria-label="Carregando participações"]')).not.toBeNull();
+
+    response.next(subscriptionsFeedFixture);
+    response.complete();
+    await fixture.whenStable();
+
+    expect(fixture.nativeElement.querySelector('[aria-label="Carregando participações"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Oficina pública');
+    expect(fixture.nativeElement.textContent).toContain('Atividades complementares');
+    expect(api.getSubscriptionsFeed).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers a retry when the first request completes without a feed', async () => {
+    const { fixture } = await createFixture({ onlineResponse: EMPTY });
+    await settle(fixture);
+
+    expect(fixture.nativeElement.textContent).toContain('Não foi possível carregar suas participações.');
+    expect(fixture.nativeElement.querySelector('main button')?.textContent).toContain('Tentar novamente');
+  });
+
+  it('loads the feed when an offline cold visit regains connectivity', async () => {
+    const { fixture, api, networkOnline } = await createFixture({ online: false });
+    await settle(fixture);
+    expect(api.getSubscriptionsFeed).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).toContain('Não foi possível carregar suas participações.');
+
+    networkOnline.set(true);
+    await fixture.whenStable();
+
+    expect(fixture.nativeElement.textContent).toContain('SECOMPP');
+    expect(api.getSubscriptionsFeed).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the feed when a participation has an invalid date', async () => {
+    const [majorEventItem] = subscriptionsFeedFixture.majorEventItems;
+    const { fixture } = await createFixture({
+      onlineFeed: {
+        ...subscriptionsFeedFixture,
+        majorEventItems: [{ ...majorEventItem, majorEvent: { ...majorEventItem.majorEvent, endDate: '' } }],
+      },
+    });
+    await fixture.whenStable();
+
+    expect(fixture.nativeElement.textContent).toContain('Datas a confirmar');
+    expect(fixture.nativeElement.textContent).toContain('Oficina pública');
+    expect(fixture.nativeElement.textContent).toContain('Atividades complementares');
+  });
+
   it('lists online subscriptions and stores the feed for offline use', async () => {
     const { fixture, offlineData } = await createFixture();
 
@@ -536,14 +587,27 @@ describe('Attendances', () => {
     expect(fixture.nativeElement.textContent).toContain('Nenhum certificado avulso disponível.');
   });
 
-  it('purges offline user data and renders an empty feed when the online user is anonymous', async () => {
+  it('renders an empty feed when the online user is anonymous', async () => {
     const { fixture, api, offlineData } = await createFixture({ user: null });
 
     await settle(fixture);
 
     expect(api.getSubscriptionsFeed).not.toHaveBeenCalled();
-    expect(offlineData.purgeUserData).toHaveBeenCalled();
+    expect(offlineData.purgeUserData).not.toHaveBeenCalled();
     expect(fixture.nativeElement.textContent).toContain('Nenhuma participação encontrada.');
+  });
+
+  it('waits for the session on a cold online visit before deciding the feed is empty', async () => {
+    const { fixture, api, authUser, authInitialized } = await createFixture({ user: null, initialized: false });
+    expect(api.getSubscriptionsFeed).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).not.toContain('Nenhuma participação encontrada.');
+
+    authUser.set({ sub: 'user-1' });
+    authInitialized.set(true);
+    await fixture.whenStable();
+
+    expect(api.getSubscriptionsFeed).toHaveBeenCalledTimes(1);
+    expect(fixture.nativeElement.textContent).toContain('SECOMPP');
   });
 
   it('combines granular type and status filters while keeping attendance-only items', async () => {
@@ -995,16 +1059,20 @@ async function createFixture({
   cacheWrite = () => Promise.resolve(),
   onlineFeed = subscriptionsFeedFixture,
   onlineFeedError = null,
+  onlineResponse,
   offlineFeed = null,
   user = { sub: 'user-1' },
+  initialized = true,
 }: {
   latestUserSnapshot?: { userId: string } | null;
   cacheWrite?: () => Promise<void>;
   online?: boolean;
   onlineFeed?: SubscriptionsFeed;
   onlineFeedError?: Error | null;
+  onlineResponse?: Observable<SubscriptionsFeed>;
   offlineFeed?: SubscriptionsFeed | null;
   user?: { sub: string } | null;
+  initialized?: boolean;
 } = {}): Promise<{
   api: {
     getSubscriptionsFeed: ReturnType<typeof vi.fn>;
@@ -1025,9 +1093,13 @@ async function createFixture({
   snackBar: { open: ReturnType<typeof vi.fn> };
   currentUserChanges: Subject<void>;
   authUser: WritableSignal<{ sub: string } | null>;
+  authInitialized: WritableSignal<boolean>;
+  networkOnline: WritableSignal<boolean>;
 }> {
   const api = {
-    getSubscriptionsFeed: vi.fn(() => (onlineFeedError ? throwError(() => onlineFeedError) : of(onlineFeed))),
+    getSubscriptionsFeed: vi.fn(
+      () => onlineResponse ?? (onlineFeedError ? throwError(() => onlineFeedError) : of(onlineFeed)),
+    ),
     getCurrentUserCertificateCatalog: vi.fn(() =>
       of(
         (onlineFeed.standaloneCertificateFolders ?? []).map((folder) => ({
@@ -1064,6 +1136,8 @@ async function createFixture({
   const currentUserChanges = new Subject<void>();
   const catalogChanges = new Subject<void>();
   const authUser = signal(user);
+  const authInitialized = signal(initialized);
+  const networkOnline = signal(online);
 
   await TestBed.configureTestingModule({
     imports: [Attendances],
@@ -1074,6 +1148,7 @@ async function createFixture({
         provide: AuthService,
         useValue: {
           user: authUser,
+          initialized: authInitialized,
         },
       },
       {
@@ -1083,7 +1158,7 @@ async function createFixture({
       {
         provide: NetworkStatusService,
         useValue: {
-          isOnline: () => online,
+          isOnline: networkOnline,
         },
       },
       {
@@ -1120,11 +1195,13 @@ async function createFixture({
 
   return {
     api,
+    authInitialized,
     authUser,
     component: fixture.componentInstance,
     dialog,
     fileDownload,
     fixture,
+    networkOnline,
     offlineData,
     snackBar,
     currentUserChanges,

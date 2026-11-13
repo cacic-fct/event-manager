@@ -26,6 +26,14 @@ p {
   margin: 0 0 16px;
 }
 
+.file-count {
+  margin-bottom: 8px;
+}
+
+.slow-update {
+  margin: 16px 0 0;
+}
+
 summary {
   cursor: pointer;
   padding-block: 12px;

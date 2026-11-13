@@ -162,7 +162,7 @@ export class CurrentUserEventSubscriptionsResolver {
         personId: person.id,
         deletedAt: null,
         event: {
-          AND: [PUBLIC_EVENT_WHERE, { majorEventId }],
+          AND: [PUBLIC_EVENT_WHERE, { OR: [{ majorEventId }, { eventGroup: { majorEventId, deletedAt: null } }] }],
         },
       },
       select: CURRENT_USER_EVENT_SUBSCRIPTION_SELECT,

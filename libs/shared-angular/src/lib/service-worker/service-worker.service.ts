@@ -3,13 +3,14 @@ import { DestroyRef, Service, PLATFORM_ID, computed, inject, isDevMode, signal }
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { NavigationEnd, Router } from '@angular/router';
 
-import { UpdateModalComponent } from './dialog-components/update.component';
+import { UpdateModalComponent, type UpdateProgress } from './dialog-components/update.component';
 import { UpdateErrorDialogComponent } from './dialog-components/update-error.component';
 import { trustedServiceWorkerUrl } from '../security/trusted-types';
 
 type UpdateState = 'idle' | 'checking' | 'downloading' | 'ready' | 'failed' | 'unrecoverable';
 const NAVIGATION_CHECK_COOLDOWN_MS = 60_000;
-const UPDATE_TIMEOUT_MS = 90_000;
+const SLOW_UPDATE_MS = 10_000;
+const UPDATE_INACTIVITY_TIMEOUT_MS = 90_000;
 
 @Service()
 export class ServiceWorkerService {
@@ -32,6 +33,9 @@ export class ServiceWorkerService {
   private updateDialogRef: MatDialogRef<UpdateModalComponent> | null = null;
   private registration: ServiceWorkerRegistration | null = null;
   private readonly trackedServiceWorkers = new WeakSet<ServiceWorker>();
+  private progressWorker: ServiceWorker | null = null;
+  private progress: UpdateProgress | null = null;
+  private slowUpdateTimeout: ReturnType<typeof setTimeout> | undefined;
   private updateTimeout: ReturnType<typeof setTimeout> | undefined;
   private errorDialogRef: MatDialogRef<UpdateErrorDialogComponent> | null = null;
   private checking = false;
@@ -67,7 +71,9 @@ export class ServiceWorkerService {
         void this.checkForUpdate();
       }
     };
+    const workerMessage = (event: MessageEvent<unknown>) => this.handleWorkerMessage(event);
     navigator.serviceWorker.addEventListener('controllerchange', controllerChanged);
+    navigator.serviceWorker.addEventListener('message', workerMessage);
     this.document.addEventListener('visibilitychange', checkWhenVisible);
     window.addEventListener('online', checkWhenVisible);
     window.addEventListener('pageshow', checkWhenVisible);
@@ -83,6 +89,7 @@ export class ServiceWorkerService {
       window.removeEventListener('pageshow', checkWhenVisible);
       this.clearUpdateTimeout();
       navigator.serviceWorker.removeEventListener('controllerchange', controllerChanged);
+      navigator.serviceWorker.removeEventListener('message', workerMessage);
       this.document.removeEventListener('visibilitychange', checkWhenVisible);
       window.removeEventListener('online', checkWhenVisible);
       this.updateDialogRef?.close();
@@ -153,7 +160,7 @@ export class ServiceWorkerService {
 
       const hasUpdate = Boolean(registration.waiting || registration.installing);
 
-      if (!hasUpdate && !this.reloading) {
+      if (!hasUpdate && this.state() === 'checking') {
         this.error.set(null);
         this.state.set('idle');
       }
@@ -161,8 +168,10 @@ export class ServiceWorkerService {
       return hasUpdate;
     } catch (error: unknown) {
       // A transient network failure must not remove offline support.
-      this.state.set('failed');
-      this.error.set(this.stringifyError(error));
+      if (this.state() === 'checking') {
+        this.state.set('failed');
+        this.error.set(this.stringifyError(error));
+      }
       return false;
     } finally {
       this.checking = false;
@@ -258,7 +267,6 @@ export class ServiceWorkerService {
     }
 
     if (registration.waiting && isUpdate) {
-      this.handleUpdateDetected();
       this.activateWaitingUpdate(registration);
     }
   }
@@ -275,23 +283,36 @@ export class ServiceWorkerService {
     this.trackedServiceWorkers.add(serviceWorker);
 
     serviceWorker.addEventListener('error', (event) => {
+      if (this.reloading || (isUpdate && serviceWorker !== this.progressWorker)) return;
       const message =
         event instanceof ErrorEvent && event.message ? event.message : 'O Service Worker encontrou um erro.';
       void this.handleUpdateFailed(message);
     });
 
     if (isUpdate) {
+      this.progressWorker = serviceWorker;
+      this.progress = null;
       this.handleUpdateDetected();
     }
 
     const handleStateChange = () => {
+      if (this.reloading || (isUpdate && serviceWorker !== this.progressWorker)) return;
       switch (serviceWorker.state) {
         case 'installed': {
           if (isUpdate) {
-            this.activateWaitingUpdate(registration);
+            if (registration.waiting) {
+              this.activateWaitingUpdate(registration);
+            } else {
+              this.finishUpdate();
+            }
           } else {
             this.state.set('idle');
           }
+          break;
+        }
+
+        case 'activating': {
+          if (isUpdate) this.finishUpdate();
           break;
         }
 
@@ -317,12 +338,45 @@ export class ServiceWorkerService {
   private handleUpdateDetected(): void {
     this.error.set(null);
     this.showUpdateProgress('downloading');
-    if (this.updateTimeout === undefined) {
-      this.updateTimeout = setTimeout(() => {
-        this.updateTimeout = undefined;
-        void this.handleUpdateFailed('A atualização demorou mais do que o esperado.');
-      }, UPDATE_TIMEOUT_MS);
+    this.updateDialogRef?.componentRef?.setInput('progress', null);
+    this.updateDialogRef?.componentRef?.setInput('takingLonger', false);
+    clearTimeout(this.slowUpdateTimeout);
+    this.slowUpdateTimeout = setTimeout(() => {
+      this.updateDialogRef?.componentRef?.setInput('takingLonger', true);
+    }, SLOW_UPDATE_MS);
+    this.restartUpdateTimeout();
+  }
+
+  private handleWorkerMessage(event: MessageEvent<unknown>): void {
+    if (!this.progressWorker || event.source !== this.progressWorker || this.state() !== 'downloading') return;
+
+    const data = event.data;
+    if (typeof data !== 'object' || data === null || !('type' in data) || data.type !== 'PRECACHE_PROGRESS') return;
+    if (!('completed' in data) || !('total' in data)) return;
+
+    const { completed, total } = data;
+    if (
+      typeof completed !== 'number' ||
+      !Number.isSafeInteger(completed) ||
+      completed < 1 ||
+      typeof total !== 'number' ||
+      !Number.isSafeInteger(total) ||
+      completed > total ||
+      (this.progress && (total !== this.progress.total || completed <= this.progress.completed))
+    ) {
+      return;
     }
+
+    this.progress = { completed, total };
+    this.updateDialogRef?.componentRef?.setInput('progress', this.progress);
+    this.restartUpdateTimeout();
+  }
+
+  private restartUpdateTimeout(): void {
+    clearTimeout(this.updateTimeout);
+    this.updateTimeout = setTimeout(() => {
+      void this.handleUpdateFailed('A atualização ficou sem progresso por muito tempo.');
+    }, UPDATE_INACTIVITY_TIMEOUT_MS);
   }
 
   private showUpdateProgress(phase: 'downloading' | 'ready'): void {
@@ -341,12 +395,22 @@ export class ServiceWorkerService {
   private clearUpdateTimeout(): void {
     clearTimeout(this.updateTimeout);
     this.updateTimeout = undefined;
+    clearTimeout(this.slowUpdateTimeout);
+    this.slowUpdateTimeout = undefined;
+  }
+
+  private finishUpdate(): void {
+    if (this.state() === 'ready' || this.reloading) return;
+
+    this.clearUpdateTimeout();
+    this.showUpdateProgress('ready');
+    this.restartUpdateTimeout();
   }
 
   private activateWaitingUpdate(registration: ServiceWorkerRegistration): void {
     const waitingServiceWorker = registration.waiting;
     if (waitingServiceWorker) {
-      this.showUpdateProgress('ready');
+      this.finishUpdate();
       waitingServiceWorker.postMessage({ type: 'SKIP_WAITING' });
     }
   }
