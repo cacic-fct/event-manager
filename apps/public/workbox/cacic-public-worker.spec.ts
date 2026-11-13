@@ -77,6 +77,10 @@ interface WorkerHarness {
       matchPrecache: ReturnType<typeof vi.fn<(url: string) => Promise<Response | undefined>>>;
     };
   };
+  clients: {
+    matchAll: ReturnType<typeof vi.fn<() => Promise<Array<{ url: string; postMessage(message: unknown): void }>>>>;
+  };
+  reportPrecacheProgress: (result: { event: { type: string }; response?: Response; error?: Error }) => Promise<void>;
   importScripts: ReturnType<typeof vi.fn>;
   createPolicy: ReturnType<typeof vi.fn>;
 }
@@ -112,7 +116,10 @@ function loadWorkerSource(): string {
   return readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'cacic-public-worker.js'), 'utf8');
 }
 
-function createWorkerHarness({ trustedTypes = false }: { trustedTypes?: boolean } = {}): WorkerHarness {
+function createWorkerHarness({
+  trustedTypes = false,
+  active = false,
+}: { trustedTypes?: boolean; active?: boolean } = {}): WorkerHarness {
   const listeners: WorkerListenerMap = {
     install: [],
     activate: [],
@@ -146,6 +153,9 @@ function createWorkerHarness({ trustedTypes = false }: { trustedTypes?: boolean 
     }),
   };
 
+  const matchPrecache = vi.fn<(url: string) => Promise<Response | undefined>>();
+  class MockPrecacheRoute {}
+  let reportPrecacheProgress!: WorkerHarness['reportPrecacheProgress'];
   const workbox = {
     setConfig: vi.fn(),
     core: {
@@ -153,9 +163,22 @@ function createWorkerHarness({ trustedTypes = false }: { trustedTypes?: boolean 
       clientsClaim: vi.fn(),
     },
     precaching: {
-      precacheAndRoute: vi.fn(),
+      PrecacheController: class {
+        readonly precache = vi.fn();
+        readonly matchPrecache = matchPrecache;
+        readonly getURLsToCacheKeys = () =>
+          new Map([
+            ['first', 'first'],
+            ['second', 'second'],
+          ]);
+
+        constructor({ plugins }: { plugins: Array<{ handlerDidComplete: typeof reportPrecacheProgress }> }) {
+          reportPrecacheProgress = plugins[0].handlerDidComplete;
+        }
+      },
+      PrecacheRoute: MockPrecacheRoute,
       cleanupOutdatedCaches: vi.fn(),
-      matchPrecache: vi.fn<(url: string) => Promise<Response | undefined>>(),
+      matchPrecache,
     },
     strategies: {
       NetworkOnly: MockNetworkOnly,
@@ -199,8 +222,10 @@ function createWorkerHarness({ trustedTypes = false }: { trustedTypes?: boolean 
       },
     },
     routing: {
-      registerRoute: vi.fn((matcher: RouteMatcher, handler: RouteHandler, method?: string) => {
-        routes.push({ matcher, handler, method });
+      registerRoute: vi.fn((matcher: RouteMatcher | MockPrecacheRoute, handler?: RouteHandler, method?: string) => {
+        if (typeof matcher === 'function' && handler) {
+          routes.push({ matcher, handler, method });
+        }
       }),
       setCatchHandler: vi.fn((handler: WorkerHarness['catchHandler']) => {
         catchHandler = handler;
@@ -218,10 +243,11 @@ function createWorkerHarness({ trustedTypes = false }: { trustedTypes?: boolean 
     location: new URL('https://eventos.example/app/cacic-public-worker.js'),
     registration: {
       scope: 'https://eventos.example/app/',
+      active: active ? {} : null,
     },
     clients: {
       get: vi.fn(),
-      matchAll: vi.fn(async () => []),
+      matchAll: vi.fn<WorkerHarness['clients']['matchAll']>(async () => []),
       openWindow: vi.fn(),
     },
     skipWaiting: vi.fn(async () => undefined),
@@ -286,6 +312,8 @@ function createWorkerHarness({ trustedTypes = false }: { trustedTypes?: boolean 
     caches,
     openedCaches,
     workbox,
+    clients: workerGlobal.clients,
+    reportPrecacheProgress,
     importScripts,
     createPolicy,
   };
@@ -334,6 +362,36 @@ async function dispatchActivate(harness: WorkerHarness): Promise<void> {
 }
 
 describe('cacic-public-worker', () => {
+  it('reports completed precache entries to in-scope tabs during an update', async () => {
+    const harness = createWorkerHarness({ active: true });
+    const appTab = { url: 'https://eventos.example/app/events', postMessage: vi.fn() };
+    const otherTab = { url: 'https://eventos.example/admin/', postMessage: vi.fn() };
+    harness.clients.matchAll.mockResolvedValue([appTab, otherTab]);
+    const response = new Response('asset');
+
+    await harness.reportPrecacheProgress({ event: { type: 'fetch' }, response });
+    await harness.reportPrecacheProgress({ event: { type: 'install' }, error: new Error('failed') });
+    await harness.reportPrecacheProgress({ event: { type: 'install' }, response });
+    await harness.reportPrecacheProgress({ event: { type: 'install' }, response });
+
+    expect(appTab.postMessage.mock.calls).toEqual([
+      [{ type: 'PRECACHE_PROGRESS', completed: 1, total: 2 }],
+      [{ type: 'PRECACHE_PROGRESS', completed: 2, total: 2 }],
+    ]);
+    expect(otherTab.postMessage).not.toHaveBeenCalled();
+  });
+
+  it('skips progress reports for first installs and tolerates client messaging failures', async () => {
+    const firstInstall = createWorkerHarness();
+    const install = { event: { type: 'install' }, response: new Response('asset') };
+    await firstInstall.reportPrecacheProgress(install);
+    expect(firstInstall.clients.matchAll).not.toHaveBeenCalled();
+
+    const update = createWorkerHarness({ active: true });
+    update.clients.matchAll.mockRejectedValue(new Error('client lookup failed'));
+    await expect(update.reportPrecacheProgress(install)).resolves.toBeUndefined();
+  });
+
   it('loads worker dependencies without requiring Trusted Types support in service workers', () => {
     const harness = createWorkerHarness({ trustedTypes: true });
 
