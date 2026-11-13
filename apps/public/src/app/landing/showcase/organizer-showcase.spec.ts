@@ -1,11 +1,15 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { OrganizerShowcaseComponent } from './organizer-showcase';
 
 describe('OrganizerShowcaseComponent', () => {
   let fixture: ComponentFixture<OrganizerShowcaseComponent>;
 
   beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [OrganizerShowcaseComponent] }).compileComponents();
+    await TestBed.configureTestingModule({
+      imports: [OrganizerShowcaseComponent],
+      providers: [provideRouter([])],
+    }).compileComponents();
     fixture = TestBed.createComponent(OrganizerShowcaseComponent);
     fixture.detectChanges();
   });
