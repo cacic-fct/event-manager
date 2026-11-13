@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="848" viewBox="0 0 1200 848">
+  <rect width="1200" height="848" fill="#fff"/>
+  <rect x="35" y="35" width="1130" height="778" fill="none" stroke="#174f86" stroke-width="4"/>
+  <rect x="48" y="48" width="1104" height="752" fill="none" stroke="#aebfd0" stroke-width="1"/>
+  <g fill="#174f86" text-anchor="middle" font-family="sans-serif">
+    <text x="600" y="155" font-size="26" font-weight="bold" letter-spacing="4">CACiC</text>
+    <text x="600" y="270" font-size="54" font-weight="bold" letter-spacing="5">CERTIFICADO</text>
+  </g>
+  <g fill="#273445" text-anchor="middle" font-family="sans-serif">
+    <text x="600" y="360" font-size="24">Certificamos a contribuição de</text>
+    <text x="600" y="435" font-size="42" font-weight="bold">Maria Organizadora</text>
+    <text x="600" y="495" font-size="24">na organização da Semana de Computação.</text>
+    <text x="600" y="655" font-size="20">Documento de exemplo para demonstração</text>
+  </g>
+  <path d="M430 710h340" stroke="#8c9aaa"/>
+  <text x="600" y="742" text-anchor="middle" fill="#526175" font-family="sans-serif" font-size="18">Organização do evento</text>
+</svg>

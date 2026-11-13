@@ -7,6 +7,7 @@ const config: StorybookConfig = {
   staticDirs: [
     '../public',
     { from: '../public', to: '/app' },
+    { from: './fixtures', to: '/storybook-fixtures' },
     {
       from: '../../../node_modules/@fontsource/material-symbols-outlined/files',
       to: '/material-symbols-outlined-files',

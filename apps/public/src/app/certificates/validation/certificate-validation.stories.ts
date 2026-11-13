@@ -152,6 +152,21 @@ export const PreviewUnavailable: Story = {
   },
 };
 
+export const CertificatePreview: Story = {
+  decorators: [routeDecorator('certificate-with-preview')],
+  globals: { network: 'online' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Ver prévia do documento' }));
+    const preview = await canvas.findByRole<HTMLImageElement>('img', {
+      name: 'Prévia da primeira página do certificado',
+    });
+    await waitFor(() => expect(preview.naturalWidth).toBeGreaterThan(0));
+    await expect(preview).toBeVisible();
+    await expect(canvas.getByText(/Prévia da primeira página\./)).toBeVisible();
+  },
+};
+
 export const OfflineFallback: Story = {
   args: {},
   globals: { network: 'offline' },
