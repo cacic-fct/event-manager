@@ -29,10 +29,12 @@ export class AttendanceFeedCacheService {
   constructor() {
     merge(this.realtime.watchCurrentUserData(), this.realtime.watchCatalog())
       .pipe(takeUntilDestroyed())
-      .subscribe(() => {
-        this.cachedFeed.set(null);
-        this.version.update((value) => value + 1);
-      });
+      .subscribe(() => this.invalidate());
+  }
+
+  invalidate(): void {
+    this.cachedFeed.set(null);
+    this.version.update((value) => value + 1);
   }
 
   load(userId: string) {

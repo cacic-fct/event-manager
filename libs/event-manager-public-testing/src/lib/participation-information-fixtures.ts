@@ -15,17 +15,22 @@ export interface ParticipationInformationOptions {
   subscriptionStatus?: string;
   eventCount?: number;
   allowSubscription?: boolean;
+  underMajorEvent?: boolean;
+  subscribedEventCount?: number;
+  attendedEventCount?: number;
+  dayOffset?: number;
 }
 
 /** A consistent graph for unified pages, HTTP integration tests, stories and browser flows. */
 export function createParticipationInformationFixture(options: ParticipationInformationOptions = {}) {
   const targetType = options.targetType ?? 'event';
   const subscribed = options.subscribed ?? true;
+  const dayOffset = options.dayOffset ?? 3;
   const majorEvent = createPublicMajorEvent({
     id: 'information-major',
     name: 'Encontro de ciência e comunidade',
-    startDate: publicFixtureDateFromNow(3, 12),
-    endDate: publicFixtureDateFromNow(5, 21),
+    startDate: publicFixtureDateFromNow(dayOffset, 12),
+    endDate: publicFixtureDateFromNow(dayOffset + 2, 21),
     isPaymentRequired: true,
     hasEvents: true,
     regularSubscriptionOpen: true,
@@ -33,6 +38,7 @@ export function createParticipationInformationFixture(options: ParticipationInfo
   const eventGroup = createPublicEventGroup({
     id: 'information-group',
     name: 'Oficinas de tecnologia e criação',
+    majorEventId: options.underMajorEvent ? majorEvent.id : null,
     shouldIssueCertificate: true,
     shouldIssuePartialCertificate: true,
     shouldIssueCertificateForEachEvent: false,
@@ -43,13 +49,13 @@ export function createParticipationInformationFixture(options: ParticipationInfo
       id: `information-event-${index + 1}`,
       name: index < names.length ? names[index] : `${names[index % names.length]}, encontro ${index + 1}`,
       emoji: ['💡', '🧪', '🤝'][index % 3],
-      startDate: publicFixtureDateFromNow(3 + index, 14),
-      endDate: publicFixtureDateFromNow(3 + index, 16),
+      startDate: publicFixtureDateFromNow(dayOffset + index, 14),
+      endDate: publicFixtureDateFromNow(dayOffset + index, 16),
       description: 'Uma atividade prática para trocar experiências e criar projetos em comunidade.',
       shortDescription: 'Conhecimento e criação em comunidade.',
       locationDescription: 'Laboratório de informática, FCT-Unesp',
-      majorEventId: targetType === 'major-event' ? majorEvent.id : null,
-      majorEvent: targetType === 'major-event' ? majorEvent : null,
+      majorEventId: targetType === 'major-event' || options.underMajorEvent ? majorEvent.id : null,
+      majorEvent: targetType === 'major-event' || options.underMajorEvent ? majorEvent : null,
       eventGroupId: targetType === 'event-group' ? eventGroup.id : null,
       eventGroup: targetType === 'event-group' ? eventGroup : null,
       shouldIssueCertificate: targetType === 'event',
@@ -70,13 +76,15 @@ export function createParticipationInformationFixture(options: ParticipationInfo
     imageLicenseAgreementAccepted: true,
     event,
   });
-  const attendances = options.attended
-    ? events.map((event) => ({
-        eventId: event.id,
-        attendedAt: publicFixtureDateFromNow(),
-        event,
-      }))
-    : [];
+  const subscribedEvents = subscribed ? events.slice(0, options.subscribedEventCount ?? events.length) : [];
+  const attendances =
+    options.attended || options.attendedEventCount
+      ? events.slice(0, options.attendedEventCount ?? events.length).map((event) => ({
+          eventId: event.id,
+          attendedAt: options.dayOffset === undefined ? publicFixtureDateFromNow() : event.startDate,
+          event,
+        }))
+      : [];
   const subscription = subscribed
     ? {
         id: 'information-subscription',
@@ -98,6 +106,7 @@ export function createParticipationInformationFixture(options: ParticipationInfo
     majorEvent,
     eventGroup,
     subscribed,
+    subscribedEvents,
     subscription,
     attendances,
     lecturer: options.lecturer ?? false,
@@ -114,7 +123,7 @@ export function participationInformationGraphqlData(
   variables: Record<string, unknown>,
   fixture: ParticipationInformationFixture,
 ): Record<string, unknown> {
-  const { events, majorEvent, eventGroup, subscribed, subscription, attendances, lecturer } = fixture;
+  const { events, majorEvent, eventGroup, subscribed, subscribedEvents, subscription, attendances, lecturer } = fixture;
   const event = events.find((item) => item.id === variables['eventId']) ?? events[0];
   const eventSubscription = subscribed && event ? fixture.eventSubscription(event) : null;
   const eventAttendance = attendances.find((item) => item.eventId === event?.id) ?? null;
@@ -242,6 +251,12 @@ export function participationInformationGraphqlData(
         : null,
       currentUserEventAttendances: attendances,
       publicEvents: events,
+    };
+  }
+  if (query.includes('CurrentUserMajorEventGroupParticipation')) {
+    return {
+      currentUserMajorEventEventSubscriptions: subscribedEvents.map(fixture.eventSubscription),
+      currentUserEventAttendances: attendances,
     };
   }
   if (query.includes('CurrentUserEventDetails')) {

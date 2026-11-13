@@ -58,12 +58,15 @@
   </app-event-detail-heading>
 
   @let parentMajorEventId = event.majorEvent?.id || event.majorEventId || event.eventGroup?.majorEventId; @let parentId
-  = parentMajorEventId || event.eventGroup?.id; @if (parentId || data.currentUserSubscription ||
-  data.currentUserAttendance) {
+  = parentMajorEventId || event.eventGroup?.id; @let hasSubscription = isAuthenticated() &&
+  !!data.currentUserSubscription && !data.preview; @let showMajorParticipation = parentMajorEventId && !data.preview &&
+  (isAuthenticated() || !isOnline()) && (data.currentUserSubscription || data.currentUserAttendance); @let
+  showAttendanceAction = canConfirmAttendance(event) && !(showMajorParticipation && data.currentUserAttendance); @if
+  (parentId || (!showMajorParticipation && (data.currentUserSubscription || data.currentUserAttendance))) {
   <ul class="event-context" aria-label="Resumo do evento">
-    @if (data.currentUserSubscription) {
+    @if (!showMajorParticipation && data.currentUserSubscription) {
     <li class="participation-context"><mat-icon aria-hidden="true">event_available</mat-icon><span>Inscrito</span></li>
-    } @if (data.currentUserAttendance) {
+    } @if (!showMajorParticipation && data.currentUserAttendance) {
     <li class="participation-context">
       <mat-icon aria-hidden="true">how_to_reg</mat-icon><span>Presença confirmada</span>
     </li>
@@ -77,6 +80,19 @@
           [routerLink]="[parentMajorEventId ? '/major-event' : '/event-group', parentId]"
           [queryParams]="{ returnUrl: '/event/' + event.id }">
           {{ parentMajorEventId ? (event.majorEvent?.name || 'Ver evento principal') : event.eventGroup?.name }}
+        </a>
+      </div>
+    </li>
+    } @if (parentMajorEventId && event.eventGroup; as group) {
+    <li class="parent-event-context">
+      <mat-icon aria-hidden="true">event_note</mat-icon>
+      <div>
+        <span>Grupo de eventos</span>
+        <a
+          class="parent-event-link"
+          [routerLink]="['/event-group', group.id]"
+          [queryParams]="{ returnUrl: '/event/' + event.id }">
+          {{ group.name }}
         </a>
       </div>
     </li>
@@ -106,15 +122,15 @@
       [subscribed]="!!data.currentUserSubscription?.eventGroupSubscriptionId"
       (changed)="refreshInterestForms()" />
   </section>
-  } @let hasSubscription = isAuthenticated() && !!data.currentUserSubscription && !data.preview;
+  }
 
   <ng-template #participationActions>
     @if ((hasStandaloneSubscription(event) && !data.currentUserSubscription) || unavailableInSelectedTier() ||
-    event.buttonLink || canConfirmAttendance(event) || hasPrizeDraws() || needsImageLicenseAgreement()) {
+    event.buttonLink || showAttendanceAction || hasPrizeDraws() || needsImageLicenseAgreement()) {
     <section
       class="participation-overview"
-      [attr.aria-labelledby]="hasSubscription ? null : 'event-participation-heading'">
-      @if (!hasSubscription) {
+      [attr.aria-labelledby]="hasSubscription || showMajorParticipation ? null : 'event-participation-heading'">
+      @if (!hasSubscription && !showMajorParticipation) {
       <h2 id="event-participation-heading">
         {{ data.currentUserAttendance ? 'Inscrição e presença' : 'Participe do evento' }}
       </h2>
@@ -159,7 +175,7 @@
           <mat-icon>event_available</mat-icon>
           Inscrever-se
         </button>
-        } } @if (canConfirmAttendance(event)) {
+        } } @if (showAttendanceAction) {
         <button
           mat-stroked-button
           type="button"
@@ -223,7 +239,12 @@
         <ng-container [ngTemplateOutlet]="participationActions" />
       </div>
     </app-more-info>
-    } @else { @if (hasSubscription) {
+    } @else { @if (showMajorParticipation) {
+    <app-major-event-participation-summary
+      [isSubscribed]="!!data.currentUserSubscription"
+      [majorEventName]="event.majorEvent?.name ?? null"
+      [attendanceAt]="data.currentUserAttendance?.attendedAt ?? null" />
+    } @else if (hasSubscription) {
     <h2>Sua participação</h2>
     }
     <ng-container [ngTemplateOutlet]="participationActions" />

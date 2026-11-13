@@ -52,7 +52,7 @@ export class PublicationJobsService {
       this.publicationQueue.upsertJobScheduler(
         buildBullMqJobId('publication', CLEANUP_STALE_EVENT_DRAFTS_JOB),
         {
-          pattern: '17 3 * * *',
+          pattern: '20 23 * * *',
           tz: 'America/Sao_Paulo',
         },
         {

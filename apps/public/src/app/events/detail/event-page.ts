@@ -79,6 +79,7 @@ import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
 import { PublicPrizeDrawApiService } from '../../prize-draws/prize-draw-api.service';
 import { RealtimeInvalidationService } from '../../shared/realtime-invalidation.service';
 import { MoreInfo } from '../../profile/attendance/more-info/more-info';
+import { MajorEventParticipationSummary } from '../../shared/major-event-participation-summary';
 import { EventDetailHeading } from '../../shared/event-detail-heading';
 import {
   EVENT_INFORMATION_TIMEOUT_MS,
@@ -144,6 +145,7 @@ type EventStructuredData = {
   selector: 'app-event',
   imports: [
     MoreInfo,
+    MajorEventParticipationSummary,
     EventDetailTabs,
     NgTemplateOutlet,
     EventDetailHeading,

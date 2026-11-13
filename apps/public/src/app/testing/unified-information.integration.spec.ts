@@ -9,6 +9,7 @@ import { AuthService } from '@cacic-fct/shared-angular';
 import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import { EventPreparationApiService } from '@cacic-fct/shared-angular/event-preparation';
 import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
+import { formatDateTime } from '@cacic-fct/shared-utils';
 import {
   createParticipationInformationFixture,
   participationInformationGraphqlData,
@@ -222,6 +223,54 @@ describe('unified information pages HTTP integration', () => {
     expect(host.textContent).not.toContain('Certificado');
     expect(host.querySelector('[role="tablist"]')).toBeNull();
     expect(queries.some((query) => query.includes('query CurrentUserEventDetails'))).toBe(false);
+  });
+
+  it.each([true, false])('shows a child event’s attendance with subscription = %s', async (subscribed) => {
+    const { host, data } = await setup(Event, { underMajorEvent: true, attended: true, subscribed });
+    const summary = host.querySelector('app-major-event-participation-summary');
+    const timestamp = data.attendances[0].attendedAt;
+    expect(summary?.textContent).toContain('Sua participação');
+    expect(summary?.querySelector('time')?.getAttribute('datetime')).toBe(timestamp);
+    expect(summary?.textContent).toContain(formatDateTime(timestamp));
+    expect(summary?.textContent?.includes(`incluído na sua inscrição em ${data.majorEvent.name}`)).toBe(subscribed);
+    expect(Boolean(host.querySelector('[role="tablist"]'))).toBe(subscribed);
+    expect(host.textContent).not.toContain('Cancelar inscrição');
+  });
+
+  it('summarizes only the registered and attended activities of a group under a major event', async () => {
+    const { host, data } = await setup(EventGroupInfoPage, {
+      targetType: 'event-group',
+      underMajorEvent: true,
+      subscribedEventCount: 2,
+      attendedEventCount: 1,
+    });
+    const summary = host.querySelector('app-major-event-participation-summary');
+    expect(summary?.textContent).toContain(`2 eventos do grupo incluídos na sua inscrição em ${data.majorEvent.name}.`);
+    expect(summary?.textContent).toContain('Presença registrada em 1 evento.');
+    const program = host.querySelector('#group-program-heading')?.parentElement;
+    expect(program?.querySelectorAll('app-calendar-event-list-item')).toHaveLength(3);
+    expect(program?.textContent).toContain(formatDateTime(data.attendances[0].attendedAt));
+    expect(host.querySelector('.parent-event-link')?.getAttribute('href')).toContain(
+      `/major-event/${data.majorEvent.id}`,
+    );
+    expect(host.querySelector('#group-registration-heading')).toBeNull();
+  });
+
+  it('shows the nested group program to guests without looking up private participation', async () => {
+    const { host, queries } = await setup(
+      EventGroupInfoPage,
+      { targetType: 'event-group', underMajorEvent: true },
+      false,
+    );
+    expect(host.querySelector('#group-program-heading')).not.toBeNull();
+    expect(host.querySelector('app-major-event-participation-summary')).toBeNull();
+    expect(queries.some((query) => query.includes('query CurrentUserMajorEventGroupParticipation'))).toBe(false);
+  });
+
+  it('links a grouped activity to its group and the major event', async () => {
+    const { host, data } = await setup(Event, { targetType: 'event-group', underMajorEvent: true });
+    const hrefs = [...host.querySelectorAll<HTMLAnchorElement>('.parent-event-link')].map((link) => link.pathname);
+    expect(hrefs).toEqual([`/major-event/${data.majorEvent.id}`, `/event-group/${data.eventGroup.id}`]);
   });
 
   it('shows the full major-event program with the signed-in person’s payment and participation tools', async () => {

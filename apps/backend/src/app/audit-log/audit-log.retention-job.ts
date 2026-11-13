@@ -17,7 +17,7 @@ export class AuditLogRetentionScheduler implements OnModuleInit {
   async onModuleInit(): Promise<void> {
     await this.queue.upsertJobScheduler(
       buildBullMqJobId('audit-log', DELETE_EXPIRED_AUDIT_LOGS_JOB),
-      { pattern: '0 4 * * *', tz: 'America/Sao_Paulo' },
+      { pattern: '0 23 * * *', tz: 'America/Sao_Paulo' },
       {
         name: DELETE_EXPIRED_AUDIT_LOGS_JOB,
         data: {},

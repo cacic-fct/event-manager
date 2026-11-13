@@ -145,7 +145,7 @@ export const DenseMixedFeed: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect((await canvas.findAllByRole('link', {}, { timeout: 5_000 })).length).toBeGreaterThan(40);
-    await expect(canvas.getAllByRole('button', { name: /Abrir certificados avulsos/ })).toHaveLength(12);
+    await expect(canvas.getAllByRole('button', { name: /Certificados disponíveis$/ })).toHaveLength(12);
   },
 };
 

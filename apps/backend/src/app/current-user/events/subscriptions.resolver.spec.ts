@@ -205,7 +205,10 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
         personId: 'person-1',
         deletedAt: null,
         event: {
-          AND: [PUBLIC_EVENT_WHERE, { majorEventId: 'major-1' }],
+          AND: [
+            PUBLIC_EVENT_WHERE,
+            { OR: [{ majorEventId: 'major-1' }, { eventGroup: { majorEventId: 'major-1', deletedAt: null } }] },
+          ],
         },
       },
       select: expect.any(Object),

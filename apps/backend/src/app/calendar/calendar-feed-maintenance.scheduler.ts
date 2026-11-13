@@ -17,7 +17,7 @@ export class CalendarFeedMaintenanceScheduler implements OnModuleInit {
     await this.calendarFeedMaintenanceQueue.upsertJobScheduler(
       buildBullMqJobId('calendar', DISABLE_STALE_ADMIN_CALENDAR_FEEDS_JOB),
       {
-        pattern: '0 3 * * 0',
+        pattern: '40 23 * * 0',
         tz: TIME_ZONE,
       },
       {

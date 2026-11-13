@@ -13,7 +13,9 @@ import {
   type SubmitPublicEventFormResponseInput,
 } from '@cacic-fct/event-manager-public-contracts';
 import type { CurrentUserEventAttendance, CurrentUserEventSubscription } from '@cacic-fct/shared-utils';
+import { getAttendanceByEventId } from '@cacic-fct/shared-utils';
 import { Observable, map } from 'rxjs';
+import type { ParticipationEventStatus } from '../../shared/participation-status-icons';
 import { graphqlError, NotFoundGraphqlError } from '../../shared/rate-limit-error';
 
 export type { PublicEventSubscriptionSummary, PublicEventWeather } from '@cacic-fct/event-manager-public-contracts';
@@ -147,6 +149,38 @@ export class EventApiService {
       `,
       { eventGroupId, programAfter },
     ).pipe(map((data) => data.publicEvents));
+  }
+
+  getMajorEventGroupParticipation(majorEventId: string, eventGroupId: string, events: PublicEvent[]) {
+    return this.query<{
+      currentUserMajorEventEventSubscriptions: Pick<CurrentUserEventSubscription, 'eventId'>[];
+      currentUserEventAttendances: CurrentUserEventAttendance[];
+    }>(
+      `
+        query CurrentUserMajorEventGroupParticipation($majorEventId: String!, $eventGroupId: String!) {
+          currentUserMajorEventEventSubscriptions(majorEventId: $majorEventId) {
+            eventId
+          }
+          currentUserEventAttendances(eventGroupId: $eventGroupId) {
+            eventId
+            attendedAt
+          }
+        }
+      `,
+      { majorEventId, eventGroupId },
+    ).pipe(
+      map((data) => {
+        const subscribedIds = new Set(data.currentUserMajorEventEventSubscriptions.map(({ eventId }) => eventId));
+        const attendanceByEvent = getAttendanceByEventId(data.currentUserEventAttendances);
+        const statuses: Record<string, ParticipationEventStatus> = {};
+        for (const { id } of events) {
+          const isSubscribed = subscribedIds.has(id);
+          const attendanceAt = attendanceByEvent.get(id)?.attendedAt;
+          if (isSubscribed || attendanceAt) statuses[id] = { isSubscribed, attendanceAt };
+        }
+        return statuses;
+      }),
+    );
   }
 
   listRequiredImageLicenseAgreementInterruptions(): Observable<RequiredImageLicenseAgreementInterruption[]> {

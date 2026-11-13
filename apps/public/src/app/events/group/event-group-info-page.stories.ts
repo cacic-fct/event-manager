@@ -18,6 +18,10 @@ interface GroupArgs {
   lecturer: boolean;
   issuedCertificate: boolean;
   eventCount: number;
+  underMajorEvent: boolean;
+  subscribedEventCount?: number;
+  attendedEventCount?: number;
+  dayOffset?: number;
 }
 let current: GroupArgs = {
   subscribed: true,
@@ -25,6 +29,7 @@ let current: GroupArgs = {
   lecturer: false,
   issuedCertificate: false,
   eventCount: 3,
+  underMajorEvent: false,
 };
 const meta: Meta<GroupArgs> = {
   title: 'Public/Discovery/Unified Event Group Information',
@@ -87,3 +92,14 @@ export const AttendanceOnly: Story = { args: { subscribed: false, attended: true
 export const CertificateOnly: Story = { args: { subscribed: false, issuedCertificate: true } };
 export const LecturerOnly: Story = { args: { subscribed: false, lecturer: true } };
 export const ManyActivities: Story = { args: { eventCount: 20 } };
+export const MajorEventGroupParticipation: Story = {
+  args: { underMajorEvent: true, subscribedEventCount: 2, attendedEventCount: 1, dayOffset: -2 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'Sua participação' })).toBeVisible();
+    await expect(
+      canvas.getByText('2 eventos do grupo incluídos na sua inscrição em Encontro de ciência e comunidade.'),
+    ).toBeVisible();
+    await expect(canvas.getByRole('img', { name: /^Presença registrada em \d/ })).toBeVisible();
+  },
+};

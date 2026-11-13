@@ -14,7 +14,7 @@ describe('CalendarFeedMaintenanceScheduler', () => {
     expect(queue.upsertJobScheduler).toHaveBeenCalledWith(
       `calendar-${DISABLE_STALE_ADMIN_CALENDAR_FEEDS_JOB}`,
       {
-        pattern: '0 3 * * 0',
+        pattern: '40 23 * * 0',
         tz: 'America/Sao_Paulo',
       },
       {

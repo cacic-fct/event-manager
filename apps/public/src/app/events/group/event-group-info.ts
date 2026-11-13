@@ -1,6 +1,7 @@
 import { Component, computed, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { RouterLink } from '@angular/router';
 import { EventInformationNav } from '../../shared/event-information-nav';
 import type { ParticipationEventStatus } from '../../shared/participation-status-icons';
 import type { PublicEvent, PublicEventGroup } from '@cacic-fct/event-manager-public-contracts';
@@ -15,6 +16,7 @@ import { EventDetailHeading } from '../../shared/event-detail-heading';
   imports: [
     MatButtonModule,
     MatIconModule,
+    RouterLink,
     EventInformationNav,
     CalendarEventListItem,
     EventDetailHeading,
@@ -27,6 +29,10 @@ export class EventGroupInfo {
   readonly group = input.required<PublicEventGroup>();
   readonly events = input<PublicEvent[]>([]);
   readonly backUrl = input('/calendar');
+  readonly parentMajorEventId = input<string | null>(null);
+  readonly parentMajorEventName = computed(
+    () => this.events().find((event) => event.majorEvent?.id === this.parentMajorEventId())?.majorEvent?.name,
+  );
   readonly isAuthenticated = input(false);
   readonly hasParticipation = input(false);
   readonly participationStatuses = input<Record<string, ParticipationEventStatus>>({});

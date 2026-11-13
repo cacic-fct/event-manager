@@ -29,6 +29,24 @@ h2 {
   font-size: 20px;
 }
 
+.parent-event-context > div {
+  min-width: 0;
+}
+
+.parent-event-link {
+  display: block;
+  min-height: 44px;
+  color: var(--mat-sys-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+
+.parent-event-link:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 3px;
+}
+
 .participation-workspace {
   margin-top: 28px;
 }

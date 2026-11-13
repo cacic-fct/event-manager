@@ -11,6 +11,19 @@
     <p class="metadata">
       <mat-icon aria-hidden="true">schedule</mat-icon><span>Carga horária total: {{ workload }}</span>
     </p>
+    } @if (parentMajorEventId(); as parentId) {
+    <div class="metadata parent-event-context">
+      <mat-icon aria-hidden="true">event</mat-icon>
+      <div>
+        <span>Faz parte de</span>
+        <a
+          class="parent-event-link"
+          [routerLink]="['/major-event', parentId]"
+          [queryParams]="{ returnUrl: returnUrl() }">
+          {{ parentMajorEventName() || 'Ver evento principal' }}
+        </a>
+      </div>
+    </div>
     }
   </app-event-detail-heading>
 
@@ -18,7 +31,7 @@
     <ng-content select="[participationWorkspace]" />
   </div>
 
-  @if (!participationPending() && !hasParticipation()) {
+  @if (!parentMajorEventId() && !participationPending() && !hasParticipation()) {
   <section class="registration" aria-labelledby="group-registration-heading">
     <div>
       <h2 id="group-registration-heading">Participe do grupo</h2>
@@ -41,6 +54,7 @@
             [event]="event"
             [usePublicTimeZone]="true"
             [returnUrl]="returnUrl()"
+            [showMajorEventContext]="!parentMajorEventId()"
             [showEventGroupContext]="false"
             [participationStatus]="participationStatuses()[event.id] ?? null" />
         </li>
