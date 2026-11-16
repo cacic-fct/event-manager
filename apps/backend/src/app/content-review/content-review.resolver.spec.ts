@@ -52,14 +52,16 @@ function setup(target: { personId: string | null; eventId: string | null }, chan
   };
   const frozen = { assertEventUpdateMutable: jest.fn() };
   const audit = { record: jest.fn() };
+  const invalidations = { publish: jest.fn() };
   const resolver = new ContentReviewResolver(
     prisma as never,
     { getAuthenticatedUser: () => actor } as never,
     authorization as never,
     frozen as never,
     audit as never,
+    invalidations as never,
   );
-  return { resolver, prisma, tx, review, profile, authorization, frozen, audit };
+  return { resolver, prisma, tx, review, profile, authorization, frozen, audit, invalidations };
 }
 
 describe('content review decisions', () => {
@@ -123,10 +125,11 @@ describe('content review decisions', () => {
 
   it('rejects a proposed deletion without changing the published materials and records the decision', async () => {
     const changes = diffMaterials([slides], [], 'Ana');
-    const { resolver, tx, audit } = setup({ personId: null, eventId: 'event' }, changes);
+    const { resolver, tx, audit, invalidations } = setup({ personId: null, eventId: 'event' }, changes);
     await resolver.decideContentReview('review', 2, [slidesKey], ContentReviewDecision.REJECT, {});
     expect(tx.event.update).not.toHaveBeenCalled();
     expect(tx.contentReview.delete).toHaveBeenCalledWith({ where: { id: 'review' } });
+    expect(invalidations.publish).toHaveBeenCalledWith('event');
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({
         actor,

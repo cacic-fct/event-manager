@@ -14,6 +14,14 @@ export class RealtimeApiService {
     return this.watch('/api/realtime/admin/workspace/events', 'Não foi possível manter o painel atualizado.');
   }
 
+  watchContentReviews(): Observable<void> {
+    return this.watch(
+      '/api/realtime/admin/content-reviews/events',
+      'Não foi possível acompanhar a fila de revisão.',
+      true,
+    );
+  }
+
   watchEventTickets(eventId: string): Observable<void> {
     return this.watch(
       `/api/realtime/admin/events/${encodeURIComponent(eventId)}/tickets/events`,
@@ -35,12 +43,13 @@ export class RealtimeApiService {
     );
   }
 
-  private watch(url: string, errorMessage: string): Observable<void> {
+  private watch(url: string, errorMessage: string, refreshOnConnect = false): Observable<void> {
     if (!this.isBrowser || typeof EventSource === 'undefined') {
       return EMPTY;
     }
     return watchRecoveringReplayableEventSourcePing(url, {
       errorMessage,
+      onOpen: refreshOnConnect ? () => undefined : undefined,
       recover: () => this.auth.refreshMe(),
     });
   }

@@ -17,6 +17,7 @@ import { type GraphqlContext } from '../current-user/selects';
 import { PrismaService } from '../prisma/prisma.service';
 import { PUBLIC_EVENT_WHERE } from '../public-events/models';
 import { EventMaterialInput, EventMaterials, EventPreparation } from './event-preparation.models';
+import { ContentReviewInvalidationService } from '../content-review/content-review-invalidation.service';
 import { ContentReviewNotifications } from '../content-review/content-review-notifications.service';
 import {
   applyMaterialChanges,
@@ -53,6 +54,7 @@ export class EventPreparationResolver {
     private readonly frozen: FrozenResourceService,
     private readonly audit: AuditLogService,
     private readonly reviewNotifications: ContentReviewNotifications,
+    private readonly reviewInvalidations: ContentReviewInvalidationService,
   ) {}
 
   @Query(() => EventPreparation)
@@ -223,7 +225,13 @@ export class EventPreparationResolver {
       const original = lecturer ? applyMaterialChanges(published, pending) : published;
       const submitted = diffMaterials(original, normalized, lecturer?.name ?? '');
       if (!submitted.length) {
-        return { links: normalized, updatedAt: revision, pendingReview: !!lecturer && !!review, notification: null };
+        return {
+          links: normalized,
+          updatedAt: revision,
+          pendingReview: !!lecturer && !!review,
+          notification: null,
+          reviewChanged: false,
+        };
       }
 
       const updatedAt = nextContentRevision(previous.materialsUpdatedAt, review?.updatedAt);
@@ -237,6 +245,7 @@ export class EventPreparationResolver {
           updatedAt: savedReview?.updatedAt ?? previous.materialsUpdatedAt,
           pendingReview: !!savedReview,
           notification: changed.length ? savedReview : null,
+          reviewChanged: true,
         };
       }
 
@@ -250,10 +259,12 @@ export class EventPreparationResolver {
         links: normalized,
         updatedAt,
       });
-      if (untouched.length !== pending.length) await writeReview(tx, { eventId }, review, untouched, updatedAt);
-      return { links: normalized, updatedAt, pendingReview: false, notification: null };
+      const reviewChanged = untouched.length !== pending.length;
+      if (reviewChanged) await writeReview(tx, { eventId }, review, untouched, updatedAt);
+      return { links: normalized, updatedAt, pendingReview: false, notification: null, reviewChanged };
     });
-    const { notification, ...materials } = result;
+    const { notification, reviewChanged, ...materials } = result;
+    if (reviewChanged) await this.reviewInvalidations.publish(eventId);
     if (notification) await this.reviewNotifications.notify(notification);
     return { ...materials, links: materials.links.map(withMaterialIdentity), reviewRequired: !!lecturer };
   }

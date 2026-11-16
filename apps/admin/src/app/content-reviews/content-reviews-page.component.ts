@@ -1,13 +1,24 @@
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
-import { afterNextRender, Component, ElementRef, effect, inject, Injector, signal, viewChild } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import {
+  afterNextRender,
+  Component,
+  DestroyRef,
+  ElementRef,
+  effect,
+  inject,
+  Injector,
+  signal,
+  viewChild,
+} from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { firstValueFrom, map } from 'rxjs';
+import { auditTime, firstValueFrom, map } from 'rxjs';
 import { ConfirmationDialogComponent } from '../app-shell/dialogs/confirmation-dialog.component';
+import { RealtimeApiService } from '../graphql/realtime-api.service';
 import {
   ContentReviewsApi,
   type ContentReviewDecision,
@@ -37,9 +48,12 @@ export class ContentReviewsPageComponent {
   private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
   private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly queueHeading = viewChild<ElementRef<HTMLHeadingElement>>('queueHeading');
   private readonly decisionAlert = viewChild<ElementRef<HTMLParagraphElement>>('decisionAlert');
   private request = 0;
+  private refreshing = false;
+  private refreshPending = false;
 
   readonly reviewId = toSignal(this.route.queryParamMap.pipe(map((params) => params.get('review'))), {
     initialValue: null,
@@ -53,6 +67,14 @@ export class ContentReviewsPageComponent {
   readonly feedback = signal('');
 
   constructor() {
+    inject(RealtimeApiService)
+      .watchContentReviews()
+      .pipe(auditTime(250), takeUntilDestroyed())
+      .subscribe(() => {
+        this.refreshPending = true;
+        void this.refreshIfIdle();
+      });
+
     effect(() => {
       this.reviewId();
       void this.load(0);
@@ -60,24 +82,39 @@ export class ContentReviewsPageComponent {
   }
 
   async load(page = this.page()): Promise<void> {
-    const request = ++this.request;
+    this.refreshPending = false;
     this.loading.set(true);
     this.loadError.set(false);
     this.decisionError.set('');
+    await this.loadPage(page, false);
+  }
+
+  private async loadPage(page: number, background: boolean): Promise<void> {
+    const request = ++this.request;
+    const reviewId = this.reviewId();
     try {
-      const result = await this.api.list(page, this.reviewId());
-      if (request !== this.request) return;
-      if (!result.groups.length && page > 0) {
-        await this.load(page - 1);
-        return;
+      let result = await this.api.list(page, reviewId);
+      while (request === this.request && result.groups.length === 0 && page > 0) {
+        result = await this.api.list(--page, reviewId);
       }
+      if (request !== this.request) return;
       this.result.set(result);
       this.page.set(page);
+      this.loadError.set(false);
     } catch {
-      if (request === this.request) this.loadError.set(true);
+      if (request === this.request && !background) this.loadError.set(true);
     } finally {
       if (request === this.request) this.loading.set(false);
+      if (background) this.refreshing = false;
+      void this.refreshIfIdle();
     }
+  }
+
+  private async refreshIfIdle(): Promise<void> {
+    if (this.destroyRef.destroyed || !this.refreshPending || this.refreshing || this.loading() || this.busy()) return;
+    this.refreshPending = false;
+    this.refreshing = true;
+    await this.loadPage(this.page(), true);
   }
 
   fieldLabel(key: string): string {
@@ -108,6 +145,7 @@ export class ContentReviewsPageComponent {
     this.feedback.set('');
     const approved = decision === 'APPROVE';
     const trigger = event.currentTarget;
+    this.busy.set(true);
     try {
       if (
         (!approved && group.isProfile) ||
@@ -132,11 +170,16 @@ export class ContentReviewsPageComponent {
             .afterClosed(),
         );
         if (!confirmed) {
-          if (trigger instanceof HTMLElement) trigger.focus();
+          afterNextRender(
+            () => {
+              if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus();
+              else this.queueHeading()?.nativeElement.focus();
+            },
+            { injector: this.injector },
+          );
           return;
         }
       }
-      this.busy.set(true);
       await this.api.decide(
         group,
         items.map(({ key }) => key),
@@ -152,6 +195,7 @@ export class ContentReviewsPageComponent {
       afterNextRender(() => this.decisionAlert()?.nativeElement.focus(), { injector: this.injector });
     } finally {
       this.busy.set(false);
+      void this.refreshIfIdle();
     }
   }
 }

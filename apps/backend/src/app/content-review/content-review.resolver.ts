@@ -21,6 +21,7 @@ import {
   writeReview,
   type ContentChange,
 } from './content-review-changes';
+import { ContentReviewInvalidationService } from './content-review-invalidation.service';
 import { ContentReviewDecision, ContentReviewPage } from './content-review.models';
 import { presentReview } from './content-review-presenter';
 import {
@@ -51,6 +52,7 @@ export class ContentReviewResolver {
     private readonly authorization: AuthorizationPolicyService,
     private readonly frozen: FrozenResourceService,
     private readonly audit: AuditLogService,
+    private readonly invalidations: ContentReviewInvalidationService,
   ) {}
 
   @Query(() => ContentReviewPage)
@@ -61,10 +63,7 @@ export class ContentReviewResolver {
   ): Promise<ContentReviewPage> {
     if (page < 0) throw new BadRequestException('Página inválida.');
     const user = this.context.getAuthenticatedUser(context);
-    const profilePermission = await this.reviewPermission(user, null);
-    const materialScope = await this.materialScope(user);
-
-    if (!profilePermission && !materialScope) throw new ForbiddenException('A fila de revisão exige permissão.');
+    const { profilePermission, materialScope } = await this.queueAccess(user);
 
     const groups = await this.prisma.contentReview.findMany({
       where: {
@@ -105,7 +104,7 @@ export class ContentReviewResolver {
     if (target.eventId && decision === ContentReviewDecision.APPROVE) {
       await this.frozen.assertEventUpdateMutable(target.eventId, {}, user);
     }
-    return this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx) => {
       const { personId, eventId } = target;
       // Submission and decisions serialize on the same target, including the first profile save.
       const event = eventId ? await lockPreparationEvent(tx, eventId) : null;
@@ -130,8 +129,9 @@ export class ContentReviewResolver {
         await this.decideMaterials(tx, eventId, event, action, updatedAt);
         await writeReview(tx, { eventId }, review, remaining, updatedAt);
       }
-      return true;
     });
+    await this.invalidations.publish(target.eventId);
+    return true;
   }
 
   private async decideProfile(tx: Prisma.TransactionClient, personId: string, action: ReviewAction): Promise<void> {
@@ -216,6 +216,15 @@ export class ContentReviewResolver {
       },
       tx,
     );
+  }
+
+  async queueAccess(user: AuthenticatedUser) {
+    const profilePermission = await this.reviewPermission(user, null);
+    const materialScope = await this.materialScope(user);
+
+    if (!profilePermission && !materialScope) throw new ForbiddenException('A fila de revisão exige permissão.');
+
+    return { profilePermission, materialScope };
   }
 
   private async reviewPermission(user: AuthenticatedUser, eventId: string | null): Promise<Permission | null> {

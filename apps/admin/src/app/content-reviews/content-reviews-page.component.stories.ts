@@ -1,5 +1,7 @@
 import { provideRouter } from '@angular/router';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
+import { NEVER } from 'rxjs';
+import { RealtimeApiService } from '../graphql/realtime-api.service';
 import { ContentReviewsApi, type ContentReviewPage } from './content-reviews-api.service';
 import { ContentReviewsPageComponent } from './content-reviews-page.component';
 
@@ -55,6 +57,7 @@ function mockQueue(page: ContentReviewPage, decisionError?: string) {
   let groups = page.groups;
   return applicationConfig({
     providers: [
+      { provide: RealtimeApiService, useValue: { watchContentReviews: () => NEVER } },
       {
         provide: ContentReviewsApi,
         useValue: {

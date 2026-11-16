@@ -335,6 +335,7 @@ describe('LecturerProfilesResolver current-user operations', () => {
       auditLog as never,
       authorization as never,
       reviewNotifications as never,
+      { publish: jest.fn() } as never,
     );
   }
 });

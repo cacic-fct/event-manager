@@ -44,6 +44,7 @@ function setup() {
     frozen as never,
     audit as never,
     reviewNotifications as never,
+    { publish: jest.fn() } as never,
   );
   return { resolver, prisma, tx, authorization, frozen, audit, previous, contentReview, reviewNotifications };
 }
