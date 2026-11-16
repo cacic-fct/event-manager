@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
+import '../../testing/observer-mocks';
 import { OrganizerShowcaseComponent } from './organizer-showcase';
 import { ParticipantShowcaseComponent } from './participant-showcase';
 
