@@ -35,6 +35,8 @@ export class EventMaterialsComponent {
   readonly management = input(false);
   readonly dirtyChange = output<boolean>();
   readonly editingFrozen = signal(false);
+  readonly pendingReview = signal(false);
+  readonly reviewRequired = signal(false);
   readonly canEdit = computed(() => this.editable() && !this.editingFrozen());
   private readonly api = inject(EventPreparationApiService);
   private readonly platformId = inject(PLATFORM_ID);
@@ -89,6 +91,8 @@ export class EventMaterialsComponent {
       this.saving.set(false);
       this.loadError.set(false);
       this.editingFrozen.set(false);
+      this.pendingReview.set(false);
+      this.reviewRequired.set(false);
       this.error.set('');
       this.message.set('');
       this.original.set([]);
@@ -97,9 +101,12 @@ export class EventMaterialsComponent {
     try {
       const result = await this.api.getMaterials(eventId, this.editable() || this.management());
       if (request !== this.request) return;
-      const links = parseEventMaterials(result?.links ?? []);
+      // Each returned link is valid. A partial review can leave draft links with conflicting URLs.
+      const links = (result?.links ?? []).flatMap((link) => parseEventMaterials([link]));
       this.revision = result?.updatedAt ?? null;
       this.editingFrozen.set(result?.editingFrozen === true);
+      this.pendingReview.set(result?.pendingReview === true);
+      this.reviewRequired.set(result?.reviewRequired === true);
       this.original.set(links);
       this.model.set({ links: links.map((link) => ({ ...link })) });
       if (!this.editable() && !this.management() && result?.nextReleaseAt && isPlatformBrowser(this.platformId)) {
@@ -135,11 +142,7 @@ export class EventMaterialsComponent {
   setReleaseAfterEvent(index: number, releaseAfterEvent: boolean): void {
     if (!this.canEdit() || this.saving()) return;
     this.model.update((model) => ({
-      links: model.links.map((link, current) =>
-        current === index
-          ? { title: link.title, url: link.url, ...(releaseAfterEvent ? { releaseAfterEvent: true } : {}) }
-          : link,
-      ),
+      links: model.links.map((link, current) => (current === index ? { ...link, releaseAfterEvent } : link)),
     }));
   }
   discard(): void {
@@ -157,10 +160,17 @@ export class EventMaterialsComponent {
     try {
       const result = await this.api.saveMaterials(this.eventId(), links, this.revision);
       if (request !== this.request) return;
-      this.original.set(result.links);
-      this.model.set({ links: result.links.map((link) => ({ ...link })) });
+      const savedLinks = parseEventMaterials(result.links);
+      this.original.set(savedLinks);
+      this.model.set({ links: savedLinks.map((link) => ({ ...link })) });
+      this.pendingReview.set(result.pendingReview === true);
+      this.reviewRequired.set(result.reviewRequired === true);
       this.revision = result.updatedAt;
-      this.message.set('Materiais salvos. Nenhum aviso foi enviado aos inscritos.');
+      this.message.set(
+        result.pendingReview
+          ? 'Materiais enviados para revisão.'
+          : 'Materiais salvos. Nenhum aviso foi enviado aos inscritos.',
+      );
     } catch (error) {
       if (request === this.request)
         this.error.set(error instanceof Error ? error.message : 'Não foi possível salvar. Tente novamente.');

@@ -190,6 +190,17 @@ export const navigationItems = [
   },
   {
     kind: 'link',
+    id: 'content-reviews',
+    path: 'content-reviews',
+    label: 'Revisão de conteúdo',
+    description: 'Revise alterações em perfis de palestrantes e materiais para inscritos.',
+    icon: 'rate_review',
+    group: 'Pessoas',
+    helpLink: undefined,
+    hideWithoutReadAccess: true,
+  },
+  {
+    kind: 'link',
     id: 'merge-candidates',
     path: 'merge-candidates',
     label: 'Pessoas duplicadas',

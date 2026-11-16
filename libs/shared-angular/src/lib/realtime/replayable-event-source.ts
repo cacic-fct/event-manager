@@ -1,6 +1,7 @@
 import { EMPTY, Observable, ObservableInput, catchError, defer, from, of, retry, switchMap, timer } from 'rxjs';
 
 export interface ReplayableSseOptions<T> {
+  onOpen?(): T;
   decode(event: MessageEvent<string>): T | null;
   errorMessage: string;
 }
@@ -26,6 +27,8 @@ export function watchReplayableEventSource<T>(url: string, options: ReplayableSs
     }
 
     const source = new EventSource(url, { withCredentials: true });
+    const onOpen = options.onOpen;
+    if (onOpen) source.onopen = () => subscriber.next(onOpen());
     source.onmessage = (event) => {
       try {
         const value = options.decode(event);

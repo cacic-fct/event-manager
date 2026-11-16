@@ -1,4 +1,5 @@
 export interface EventMaterial {
+  id?: string;
   title: string;
   url: string;
   releaseAfterEvent?: boolean;
@@ -9,6 +10,8 @@ export interface EventMaterials {
   updatedAt: string | null;
   nextReleaseAt?: string | null;
   editingFrozen?: boolean | null;
+  pendingReview?: boolean | null;
+  reviewRequired?: boolean | null;
 }
 
 export interface EventPreparation {
@@ -31,6 +34,7 @@ export function parseEventMaterials(value: unknown): EventMaterial[] {
     throw new Error(`Adicione até ${MAX_EVENT_MATERIALS} materiais por evento.`);
   }
   const urls = new Set<string>();
+  const ids = new Set<string>();
   return value.map((entry: unknown) => {
     if (typeof entry !== 'object' || entry === null || !('title' in entry) || !('url' in entry)) {
       throw new Error('Informe o título e o link de cada material.');
@@ -59,6 +63,13 @@ export function parseEventMaterials(value: unknown): EventMaterial[] {
     }
     if (urls.has(canonical)) throw new Error('Cada link deve aparecer apenas uma vez.');
     urls.add(canonical);
-    return { title, url: canonical, ...(releaseAfterEvent ? { releaseAfterEvent: true } : {}) };
+    const id = 'id' in entry ? entry.id : undefined;
+    if (id != null && (typeof id !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(id))) {
+      throw new Error('Identificador de material inválido.');
+    }
+    const key = id ?? canonical;
+    if (ids.has(key)) throw new Error('Cada material deve ter um identificador distinto.');
+    ids.add(key);
+    return { ...(id ? { id } : {}), title, url: canonical, ...(releaseAfterEvent ? { releaseAfterEvent: true } : {}) };
   });
 }

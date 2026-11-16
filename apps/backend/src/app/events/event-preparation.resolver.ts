@@ -1,7 +1,11 @@
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
-import { parseEventMaterials, MAX_EVENT_INFORMATION_LENGTH } from '@cacic-fct/shared-event-preparation';
+import {
+  parseEventMaterials,
+  MAX_EVENT_INFORMATION_LENGTH,
+  type EventMaterial,
+} from '@cacic-fct/shared-event-preparation';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
@@ -13,6 +17,23 @@ import { type GraphqlContext } from '../current-user/selects';
 import { PrismaService } from '../prisma/prisma.service';
 import { PUBLIC_EVENT_WHERE } from '../public-events/models';
 import { EventMaterialInput, EventMaterials, EventPreparation } from './event-preparation.models';
+import { ContentReviewInvalidationService } from '../content-review/content-review-invalidation.service';
+import { ContentReviewNotifications } from '../content-review/content-review-notifications.service';
+import {
+  applyMaterialChanges,
+  diffMaterials,
+  materialKey,
+  readChanges,
+  writeReview,
+} from '../content-review/content-review-changes';
+import {
+  lockPreparationEvent,
+  materialDraftRevision,
+  nextContentRevision,
+  parseMaterialSubmission,
+  publishMaterials,
+} from '../content-review/material-review';
+import { canReviewContent } from '../content-review/review-permissions';
 import { eventSubscriberWhere } from './event-subscriber-information';
 
 const PREPARATION_SELECT = {
@@ -32,6 +53,8 @@ export class EventPreparationResolver {
     private readonly authorization: AuthorizationPolicyService,
     private readonly frozen: FrozenResourceService,
     private readonly audit: AuditLogService,
+    private readonly reviewNotifications: ContentReviewNotifications,
+    private readonly reviewInvalidations: ContentReviewInvalidationService,
   ) {}
 
   @Query(() => EventPreparation)
@@ -51,8 +74,7 @@ export class EventPreparationResolver {
     @Args('eventId', { type: () => String }) eventId: string,
     @Context() context: GraphqlContext,
   ) {
-    await this.requireMaterialAccess(eventId, context, false);
-    const event = await this.requireEvent(eventId);
+    const lecturer = await this.requireMaterialAccess(eventId, context, false);
     const user = this.currentUser.getAuthenticatedUser(context);
     let editingFrozen = false;
     try {
@@ -61,7 +83,20 @@ export class EventPreparationResolver {
       if (!(error instanceof ForbiddenException)) throw error;
       editingFrozen = true;
     }
-    return { links: parseEventMaterials(event.materials), updatedAt: event.materialsUpdatedAt, editingFrozen };
+    const { event, review } = lecturer
+      ? await this.prisma.$transaction(async (tx) => ({
+          event: await lockPreparationEvent(tx, eventId),
+          review: await tx.contentReview.findUnique({ where: { eventId } }),
+        }))
+      : { event: await this.requireEvent(eventId), review: null };
+    const changes = readChanges(review).filter((change) => change.kind === 'material');
+    return {
+      links: applyMaterialChanges(parseEventMaterials(event.materials), changes).map(withMaterialIdentity),
+      updatedAt: materialDraftRevision(event.materialsUpdatedAt, review?.updatedAt),
+      editingFrozen,
+      pendingReview: !!review,
+      reviewRequired: !!lecturer,
+    };
   }
 
   @Query(() => EventMaterials, { nullable: true })
@@ -79,7 +114,13 @@ export class EventPreparationResolver {
     const links = parseEventMaterials(event.materials);
     const hasEnded = event.endDate.getTime() <= Date.now();
     return {
-      links: links.filter((link) => !link.releaseAfterEvent || hasEnded),
+      links: links
+        .filter((link) => !link.releaseAfterEvent || hasEnded)
+        .map(({ title, url, releaseAfterEvent }) => ({
+          title,
+          url,
+          ...(releaseAfterEvent ? { releaseAfterEvent } : {}),
+        })),
       updatedAt: event.materialsUpdatedAt,
       nextReleaseAt: !hasEnded && links.some((link) => link.releaseAfterEvent) ? event.endDate : null,
     };
@@ -121,7 +162,7 @@ export class EventPreparationResolver {
       collectorInformation: normalizeInformation(collectorInformation),
     };
     return this.prisma.$transaction(async (tx) => {
-      const previous = await this.lockEvent(tx, eventId);
+      const previous = await lockPreparationEvent(tx, eventId);
       assertRevision(previous.preparationUpdatedAt, expectedUpdatedAt);
       if (
         previous.lecturerInformation === data.lecturerInformation &&
@@ -129,7 +170,7 @@ export class EventPreparationResolver {
       ) {
         return { ...data, updatedAt: previous.preparationUpdatedAt };
       }
-      const updatedAt = nextRevision(previous.preparationUpdatedAt);
+      const updatedAt = nextContentRevision(previous.preparationUpdatedAt);
       await tx.event.update({
         where: { id: eventId },
         data: { ...data, preparationUpdatedAt: updatedAt, updatedById: user.sub },
@@ -163,58 +204,82 @@ export class EventPreparationResolver {
     @Args('expectedUpdatedAt', { type: () => Date, nullable: true }) expectedUpdatedAt: Date | null,
     @Context() context: GraphqlContext,
   ) {
-    await this.requireMaterialAccess(eventId, context, true);
+    const lecturer = await this.requireMaterialAccess(eventId, context, true);
     const user = this.currentUser.getAuthenticatedUser(context);
     await this.frozen.assertEventUpdateMutable(eventId, {}, user);
     let normalized: ReturnType<typeof parseEventMaterials>;
     try {
-      normalized = parseEventMaterials(links);
+      normalized = parseMaterialSubmission(links);
     } catch (error) {
       throw new BadRequestException(error instanceof Error ? error.message : 'Materiais inválidos.');
     }
-    return this.prisma.$transaction(async (tx) => {
-      const previous = await this.lockEvent(tx, eventId);
-      assertRevision(previous.materialsUpdatedAt, expectedUpdatedAt);
-      if (JSON.stringify(parseEventMaterials(previous.materials)) === JSON.stringify(normalized)) {
-        return { links: normalized, updatedAt: previous.materialsUpdatedAt };
+    const result = await this.prisma.$transaction(async (tx) => {
+      const previous = await lockPreparationEvent(tx, eventId);
+      const review = await tx.contentReview.findUnique({ where: { eventId } });
+      const published = parseEventMaterials(previous.materials);
+      const pending = readChanges(review).filter((change) => change.kind === 'material');
+      const revision = lecturer
+        ? materialDraftRevision(previous.materialsUpdatedAt, review?.updatedAt)
+        : previous.materialsUpdatedAt;
+      assertRevision(revision, expectedUpdatedAt);
+      const original = lecturer ? applyMaterialChanges(published, pending) : published;
+      const submitted = diffMaterials(original, normalized, lecturer?.name ?? '');
+      if (!submitted.length) {
+        return {
+          links: normalized,
+          updatedAt: revision,
+          pendingReview: !!lecturer && !!review,
+          notification: null,
+          reviewChanged: false,
+        };
       }
-      const updatedAt = nextRevision(previous.materialsUpdatedAt);
-      await tx.event.update({
-        where: { id: eventId },
-        data: {
-          materials: normalized.map((link) => ({ ...link })),
-          materialsUpdatedAt: updatedAt,
-          updatedById: user.sub,
-        },
-      });
-      await this.audit.record(
-        {
-          entityType: AuditLogEntityType.EVENT,
-          entityId: eventId,
-          entityLabel: previous.name,
-          operation: AuditLogOperation.UPDATE,
-          actor: user,
-          before: { materials: previous.materials },
-          after: { materials: normalized },
-          scope: { eventId },
-          summary: 'Materiais para inscritos atualizados.',
-          squashWindowMs: 0,
-        },
+
+      const updatedAt = nextContentRevision(previous.materialsUpdatedAt, review?.updatedAt);
+      const touched = new Set(submitted.map(({ key }) => key));
+      const untouched = pending.filter(({ key }) => !touched.has(key));
+      if (lecturer) {
+        const changed = diffMaterials(published, normalized, lecturer.name).filter(({ key }) => touched.has(key));
+        const savedReview = await writeReview(tx, { eventId }, review, [...untouched, ...changed], updatedAt);
+        return {
+          links: normalized,
+          updatedAt: savedReview?.updatedAt ?? previous.materialsUpdatedAt,
+          pendingReview: !!savedReview,
+          notification: changed.length ? savedReview : null,
+          reviewChanged: true,
+        };
+      }
+
+      await publishMaterials({
         tx,
-      );
-      // Materials never enqueue notifications, regardless of who edited them.
-      return { links: normalized, updatedAt };
+        audit: this.audit,
+        user,
+        eventId,
+        name: previous.name,
+        before: previous.materials,
+        links: normalized,
+        updatedAt,
+      });
+      const reviewChanged = untouched.length !== pending.length;
+      if (reviewChanged) await writeReview(tx, { eventId }, review, untouched, updatedAt);
+      return { links: normalized, updatedAt, pendingReview: false, notification: null, reviewChanged };
     });
+    const { notification, reviewChanged, ...materials } = result;
+    if (reviewChanged) await this.reviewInvalidations.publish(eventId);
+    if (notification) await this.reviewNotifications.notify(notification);
+    return { ...materials, links: materials.links.map(withMaterialIdentity), reviewRequired: !!lecturer };
   }
 
   private async requireMaterialAccess(eventId: string, context: GraphqlContext, writing: boolean) {
     const user = this.currentUser.getAuthenticatedUser(context);
-    const permission = writing ? Permission.Event.Update : Permission.Event.Read;
-    try {
-      await this.authorization.assertPermissions(user, [permission], { eventId });
-      return;
-    } catch (error) {
-      if (!(error instanceof ForbiddenException)) throw error;
+    if (await canReviewContent(this.authorization, user, Permission.Event.Update, { eventId })) return null;
+    if (!writing && (await canReviewContent(this.authorization, user, Permission.Event.Read, { eventId }))) {
+      // A lecturer with read-only admin access still edits the lecturer draft.
+      if (!user.sub) return null;
+      const lecturer = await this.prisma.eventLecturer.findFirst({
+        where: { eventId, person: { userId: user.sub, deletedAt: null } },
+        select: { person: { select: { name: true } } },
+      });
+      return lecturer?.person ?? null;
     }
     const person = await this.currentUser.requireCurrentPerson(context);
     const lecturer = await this.prisma.eventLecturer.findUnique({
@@ -222,6 +287,7 @@ export class EventPreparationResolver {
     });
     if (!lecturer)
       throw new ForbiddenException('Somente palestrantes deste evento e organizadores podem editar os materiais.');
+    return person;
   }
 
   private async requireAdmin(eventId: string, permission: string, context: GraphqlContext) {
@@ -232,16 +298,6 @@ export class EventPreparationResolver {
 
   private async requireEvent(eventId: string) {
     const event = await this.prisma.event.findFirst({
-      where: { id: eventId, deletedAt: null },
-      select: PREPARATION_SELECT,
-    });
-    if (!event) throw new NotFoundException('Evento não encontrado.');
-    return event;
-  }
-
-  private async lockEvent(tx: Prisma.TransactionClient, eventId: string) {
-    await tx.$executeRaw`SELECT "id" FROM "events" WHERE "id" = ${eventId} AND "deletedAt" IS NULL FOR UPDATE`;
-    const event = await tx.event.findFirst({
       where: { id: eventId, deletedAt: null },
       select: PREPARATION_SELECT,
     });
@@ -260,6 +316,7 @@ function assertRevision(actual: Date | null, expected: Date | null): void {
     throw new ConflictException('Estas informações foram alteradas. Recarregue antes de salvar novamente.');
   }
 }
-function nextRevision(previous: Date | null): Date {
-  return new Date(Math.max(Date.now(), (previous?.getTime() ?? 0) + 1));
+
+function withMaterialIdentity(link: EventMaterial): EventMaterial {
+  return { ...link, id: materialKey(link) };
 }

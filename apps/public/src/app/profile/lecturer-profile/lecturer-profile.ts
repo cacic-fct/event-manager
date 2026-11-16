@@ -124,7 +124,11 @@ export class LecturerProfileComponent {
         this.populateForm(profile);
         this.isEditing.set(false);
         this.isSaving.set(false);
-        this.snackBar.open('Perfil de ministrante salvo.', 'OK', { duration: 3000 });
+        this.snackBar.open(
+          profile.pendingReview ? 'Perfil salvo e enviado para revisão.' : 'Perfil de ministrante salvo.',
+          'OK',
+          { duration: 3000 },
+        );
       },
       error: (error: unknown) => {
         this.isSaving.set(false);

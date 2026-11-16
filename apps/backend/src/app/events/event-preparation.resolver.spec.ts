@@ -15,7 +15,13 @@ function setup() {
     materials: [],
     materialsUpdatedAt: null,
   };
+  const contentReview = {
+    findUnique: jest.fn().mockResolvedValue(null),
+    create: jest.fn().mockImplementation(({ data }) => ({ id: 'review', revision: 1, ...data })),
+  };
+  const reviewNotifications = { notify: jest.fn() };
   const tx = {
+    contentReview,
     $executeRaw: jest.fn(),
     event: { findFirst: jest.fn().mockResolvedValue(previous), update: jest.fn().mockResolvedValue(previous) },
   };
@@ -29,7 +35,7 @@ function setup() {
   const audit = { record: jest.fn() };
   const currentUser = {
     getAuthenticatedUser: () => ({ sub: 'actor' }),
-    requireCurrentPerson: async () => ({ id: 'speaker' }),
+    requireCurrentPerson: async () => ({ id: 'speaker', name: 'Palestrante' }),
   };
   const resolver = new EventPreparationResolver(
     prisma as never,
@@ -37,8 +43,10 @@ function setup() {
     authorization as never,
     frozen as never,
     audit as never,
+    reviewNotifications as never,
+    { publish: jest.fn() } as never,
   );
-  return { resolver, prisma, tx, authorization, frozen, audit, previous };
+  return { resolver, prisma, tx, authorization, frozen, audit, previous, contentReview, reviewNotifications };
 }
 
 describe('event preparation access and writes', () => {
@@ -94,29 +102,56 @@ describe('event preparation access and writes', () => {
     prisma.event.findFirst.mockResolvedValue({ ...previous, materials: links });
     frozen.assertEventUpdateMutable.mockRejectedValueOnce(new ForbiddenException('frozen'));
 
-    await expect(resolver.editableEventMaterials('event', {})).resolves.toMatchObject({ links, editingFrozen: true });
+    await expect(resolver.editableEventMaterials('event', {})).resolves.toMatchObject({
+      links: [expect.objectContaining(links[0])],
+      editingFrozen: true,
+    });
     expect(frozen.assertEventUpdateMutable).toHaveBeenCalledWith('event', {}, { sub: 'actor' });
-    await expect(resolver.editableEventMaterials('event', {})).resolves.toMatchObject({ links, editingFrozen: false });
+    await expect(resolver.editableEventMaterials('event', {})).resolves.toMatchObject({
+      links: [expect.objectContaining(links[0])],
+      editingFrozen: false,
+    });
   });
 
-  it('allows a linked lecturer to share validated links without any notification input', async () => {
-    const { resolver, authorization, prisma, audit, tx } = setup();
+  it('stages a linked lecturer’s materials without changing what subscribers see', async () => {
+    const { resolver, authorization, prisma, audit, tx, contentReview, reviewNotifications } = setup();
     authorization.assertPermissions.mockRejectedValue(new ForbiddenException());
     const links = [{ title: ' Slides ', url: 'https://example.org/slides' }];
     const result = await resolver.updateEventMaterials('event', links, null, {});
     expect(prisma.eventLecturer.findUnique).toHaveBeenCalledWith({
       where: { eventId_personId: { eventId: 'event', personId: 'speaker' } },
     });
-    expect(result.links).toEqual([{ title: 'Slides', url: 'https://example.org/slides' }]);
-    expect(audit.record).toHaveBeenCalledWith(
-      expect.objectContaining({
-        before: { materials: [] },
-        after: { materials: result.links },
-        scope: { eventId: 'event' },
+    expect(result).toMatchObject({
+      links: [expect.objectContaining({ title: 'Slides', url: 'https://example.org/slides' })],
+      pendingReview: true,
+      reviewRequired: true,
+    });
+    expect(contentReview.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        eventId: 'event',
+        changes: [expect.objectContaining({ kind: 'material', before: null, after: { ...links[0], title: 'Slides' } })],
       }),
+    });
+    expect(tx.event.update).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+    expect(reviewNotifications.notify).toHaveBeenCalledWith(expect.objectContaining({ id: 'review' }));
+  });
+
+  it('allows an authorized event editor to publish materials immediately', async () => {
+    const { resolver, audit, tx, contentReview, reviewNotifications } = setup();
+    const links = [{ title: 'Slides', url: 'https://example.org/slides' }];
+    await expect(resolver.updateEventMaterials('event', links, null, {})).resolves.toMatchObject({
+      links: [expect.objectContaining(links[0])],
+      pendingReview: false,
+      reviewRequired: false,
+    });
+    expect(tx.event.update).toHaveBeenCalled();
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ before: { materials: [] }, after: { materials: links } }),
       tx,
     );
-    expect(JSON.stringify(tx.event.update.mock.calls)).not.toContain('subscriberInformation');
+    expect(contentReview.create).not.toHaveBeenCalled();
+    expect(reviewNotifications.notify).not.toHaveBeenCalled();
   });
 
   it('prevents lecturers from editing a different event and does not mask unexpected authorization failures', async () => {

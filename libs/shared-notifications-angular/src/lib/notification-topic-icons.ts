@@ -3,6 +3,7 @@ import type { Notification } from '@novu/js';
 const WORKFLOW_NOTIFICATION_ICONS: Readonly<Record<string, string>> = {
   'major-event-subscription-status-changed': 'how_to_reg',
   'offline-attendance-review-queued': 'fact_check',
+  'content-review-queued': 'rate_review',
   'certificate-available': 'workspace_premium',
   'event-form-available': 'list_alt',
   'audience-invitation': 'event',

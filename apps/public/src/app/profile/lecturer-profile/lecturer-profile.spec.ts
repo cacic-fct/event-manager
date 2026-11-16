@@ -82,6 +82,18 @@ describe('LecturerProfileComponent', () => {
     expect(component.form.controls.displayName.value).toBe('Grace Hopper');
   });
 
+  it('shows the saved public preview while the edit is awaiting review', () => {
+    upsertCurrentUserLecturerProfile.mockReturnValue(of({ ...updatedProfile, pendingReview: true }));
+    component.edit();
+    component.form.controls.displayName.setValue(updatedProfile.displayName);
+    component.save();
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.textContent).toContain(updatedProfile.displayName);
+    expect(element.querySelector('[role="status"]')?.textContent).toContain('aguardam revisão');
+  });
+
   it('uses a checkbox for the setting saved with the profile', () => {
     component.edit();
     fixture.detectChanges();
