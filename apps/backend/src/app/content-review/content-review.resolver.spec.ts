@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
 import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { AuditLogOperation } from '@prisma/client';
+import { AuditLogOperation, type Prisma } from '@prisma/client';
 import { ContentReviewDecision } from './content-review.models';
 import { ContentReviewResolver } from './content-review.resolver';
 import { parseMaterialSubmission } from './material-review';
@@ -22,7 +22,7 @@ const exercises = { title: 'Exercícios', url: 'https://example.org/exercises' }
 function setup(target: { personId: string | null; eventId: string | null }, changes: ContentChange[]) {
   const review = { id: 'review', ...target, changes, revision: 2, updatedAt: new Date() };
   const contentReview = {
-    findUnique: jest.fn().mockResolvedValue(review),
+    findUnique: jest.fn<() => Promise<typeof review | null>>().mockResolvedValue(review),
     update: jest.fn(),
     delete: jest.fn(),
   };
@@ -40,14 +40,25 @@ function setup(target: { personId: string | null; eventId: string | null }, chan
     $executeRaw: jest.fn(),
     contentReview,
     event: {
-      findFirst: jest.fn().mockResolvedValue({ name: 'Oficina', materials: [slides], materialsUpdatedAt: null }),
+      findFirst: jest
+        .fn<() => Promise<{ name: string; materials: Array<typeof slides>; materialsUpdatedAt: null } | null>>()
+        .mockResolvedValue({ name: 'Oficina', materials: [slides], materialsUpdatedAt: null }),
       update: jest.fn(),
     },
-    lecturerProfile: { findFirst: jest.fn().mockResolvedValue(profile), update: jest.fn(), delete: jest.fn() },
+    lecturerProfile: {
+      findFirst: jest.fn<() => Promise<typeof profile | null>>().mockResolvedValue(profile),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
   };
-  const prisma = { contentReview, $transaction: jest.fn(async (work) => work(tx)) };
+  const prisma = {
+    contentReview,
+    $transaction: jest.fn(async (work: (client: Prisma.TransactionClient) => Promise<unknown>) =>
+      work(tx as unknown as Prisma.TransactionClient),
+    ),
+  };
   const authorization = {
-    assertPermissions: jest.fn().mockResolvedValue(undefined),
+    assertPermissions: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
     accessibleEventTargets: jest.fn(),
   };
   const frozen = { assertEventUpdateMutable: jest.fn() };
@@ -138,6 +149,35 @@ describe('content review decisions', () => {
       }),
       tx,
     );
+  });
+
+  it('requires dependent material changes to be approved together when a URL is reused', async () => {
+    const replacement = { id: materialKey(exercises), title: exercises.title, url: slides.url };
+    const changes = diffMaterials([slides], [replacement], 'Ana');
+    const { resolver, tx, audit, invalidations } = setup({ personId: null, eventId: 'event' }, changes);
+
+    await expect(
+      resolver.decideContentReview('review', 2, [materialKey(replacement)], ContentReviewDecision.APPROVE, {}),
+    ).rejects.toThrow(ConflictException);
+    expect(tx.event.update).not.toHaveBeenCalled();
+    expect(tx.contentReview.update).not.toHaveBeenCalled();
+    expect(tx.contentReview.delete).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+    expect(invalidations.publish).not.toHaveBeenCalled();
+
+    await expect(
+      resolver.decideContentReview(
+        'review',
+        2,
+        [slidesKey, materialKey(replacement)],
+        ContentReviewDecision.APPROVE,
+        {},
+      ),
+    ).resolves.toBe(true);
+    expect(tx.event.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ materials: [replacement] }) }),
+    );
+    expect(tx.contentReview.delete).toHaveBeenCalledWith({ where: { id: 'review' } });
   });
 
   it('keeps distinct identities when a lecturer adds a URL that was edited previously', () => {
