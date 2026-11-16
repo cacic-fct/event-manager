@@ -18,6 +18,7 @@ enum PublicationPreviewTargetType {
 }
 
 model Event {
+  contentReview ContentReview?
   audience            EventAudience             @default(PUBLIC)
   audienceCourseCodes String[]                  @default([])
   audienceInvitations EventAudienceInvitation[]

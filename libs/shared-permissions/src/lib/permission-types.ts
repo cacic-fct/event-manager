@@ -19,6 +19,12 @@ export const Permission = {
     Import: 'data-transfer#import',
     Undo: 'data-transfer#undo',
   },
+  LecturerProfile: {
+    Review: 'lecturer-profile#review',
+  },
+  EventMaterials: {
+    Review: 'event-materials#review',
+  },
   Event: {
     Read: 'event#read',
     Create: 'event#create',

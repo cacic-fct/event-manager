@@ -25,7 +25,9 @@
     }
   </section>
 
-  @if (selfEditingBlocked()) {
+  @if (profilePreview()?.pendingReview) {
+  <p role="status">As alterações estão públicas e aguardam revisão da organização.</p>
+  } @if (selfEditingBlocked()) {
   <p>A edição deste perfil foi bloqueada pela organização. Entre em contato para solicitar alterações.</p>
   } @if (!isEditing()) { @if (profilePreview(); as profile) {
   <h2>Pré-visualização</h2>

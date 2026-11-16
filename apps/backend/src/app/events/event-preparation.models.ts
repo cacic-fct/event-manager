@@ -2,6 +2,7 @@ import { Field, InputType, ObjectType } from '@nestjs/graphql';
 
 @ObjectType('EventMaterial')
 export class EventMaterialModel {
+  @Field(() => String, { nullable: true }) id?: string;
   @Field(() => String) title!: string;
   @Field(() => String) url!: string;
   @Field(() => Boolean, { nullable: true }) releaseAfterEvent?: boolean;
@@ -9,6 +10,7 @@ export class EventMaterialModel {
 
 @InputType()
 export class EventMaterialInput {
+  @Field(() => String, { nullable: true }) id?: string;
   @Field(() => String) title!: string;
   @Field(() => String) url!: string;
   @Field(() => Boolean, { nullable: true }) releaseAfterEvent?: boolean;
@@ -20,6 +22,8 @@ export class EventMaterials {
   @Field(() => Date, { nullable: true }) updatedAt!: Date | null;
   @Field(() => Date, { nullable: true }) nextReleaseAt?: Date | null;
   @Field(() => Boolean, { nullable: true }) editingFrozen?: boolean;
+  @Field(() => Boolean, { nullable: true }) pendingReview?: boolean;
+  @Field(() => Boolean, { nullable: true }) reviewRequired?: boolean;
 }
 
 @ObjectType()

@@ -1,0 +1,13 @@
+model ContentReview {
+  id           String   @id @default(uuid(7))
+  personId     String?  @unique
+  profile      LecturerProfile? @relation(fields: [personId], references: [personId], onDelete: Cascade)
+  eventId      String?  @unique
+  event        Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  changes      Json
+  revision     Int      @default(1)
+  updatedAt    DateTime @updatedAt
+
+  @@index([updatedAt, id])
+  @@map("content_reviews")
+}

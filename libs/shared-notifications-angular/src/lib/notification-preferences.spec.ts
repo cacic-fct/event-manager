@@ -10,11 +10,14 @@ function workflowPreference(identifier: string, critical: boolean): Preference {
 }
 
 describe('required event notices', () => {
-  it('keeps manual event notices mandatory even with stale Novu critical metadata', () => {
-    const notice = workflowPreference('event-manual-notification', false);
-    expect(isRequiredNotificationPreference(notice)).toBe(true);
-    expect(notificationPreferenceGroups([notice])).toEqual([]);
-  });
+  it.each(['event-manual-notification', 'content-review-queued'])(
+    'keeps %s mandatory even with stale Novu critical metadata',
+    (identifier) => {
+      const notice = workflowPreference(identifier, false);
+      expect(isRequiredNotificationPreference(notice)).toBe(true);
+      expect(notificationPreferenceGroups([notice])).toEqual([]);
+    },
+  );
 
   it('honors Novu critical workflows while preserving optional event preferences', () => {
     expect(isRequiredNotificationPreference(workflowPreference('another-critical-workflow', true))).toBe(true);

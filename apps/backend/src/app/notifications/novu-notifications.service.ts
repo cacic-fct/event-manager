@@ -120,6 +120,34 @@ export class NovuNotificationsService {
     });
   }
 
+  async notifyContentReviewQueued(input: {
+    id: string;
+    revision: number;
+    kind: 'profile' | 'materials';
+    recipients: NotificationRecipient[];
+  }): Promise<void> {
+    const secretKey = this.transport.secretKey();
+    if (!secretKey || !input.recipients.length) return;
+
+    const actionUrl = `/admin/content-reviews?review=${encodeURIComponent(input.id)}`;
+    const title = 'Alterações para revisar';
+    const body =
+      input.kind === 'profile'
+        ? 'Há alterações em um perfil de palestrante aguardando revisão.'
+        : 'Há alterações em materiais para inscritos aguardando revisão.';
+
+    await this.transport.trigger(secretKey, {
+      name: NOVU_WORKFLOW_IDENTIFIERS.contentReviewQueued,
+      to: input.recipients,
+      transactionId: `content-review:${input.id}:${input.revision}`,
+      payload: { title, subject: title, body, actionUrl, redirectUrl: actionUrl, actionLabel: 'Revisar alterações' },
+      overrides: {
+        fcm: { data: { url: actionUrl } },
+        webPush: { data: { url: actionUrl } },
+      },
+    });
+  }
+
   async notifyOfflineAttendanceReviewQueued(input: OfflineAttendanceReviewQueuedNotification): Promise<void> {
     const secretKey = this.transport.secretKey();
     if (!secretKey || input.recipients.length === 0) {

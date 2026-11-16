@@ -197,6 +197,10 @@ import { PlacePresetsResolver } from './places/resolver';
 import { MergeCandidateOperationsService } from './people/merge-candidates/operations.service';
 import { MergeCandidatesResolver } from './people/merge-candidates/resolver';
 import { PeopleResolver } from './people/resolver';
+import { ContentReviewInvalidationService } from './content-review/content-review-invalidation.service';
+import { ContentReviewRealtimeController } from './content-review/content-review-realtime.controller';
+import { ContentReviewResolver } from './content-review/content-review.resolver';
+import { ContentReviewNotifications } from './content-review/content-review-notifications.service';
 import { LecturerProfilesResolver } from './people/lecturer-profiles.resolver';
 import { UsersResolver } from './users/resolver';
 import { TypesenseSearchService } from './search/typesense-search.service';
@@ -478,6 +482,7 @@ const schedulerProviders = useInMemoryTestInfra
     SportsMatchOverlayController,
     PrizeDrawRealtimeController,
     RealtimeInvalidationController,
+    ContentReviewRealtimeController,
     DataTransferController,
   ],
   providers: [
@@ -557,6 +562,9 @@ const schedulerProviders = useInMemoryTestInfra
     UsersResolver,
     PeopleResolver,
     LecturerProfilesResolver,
+    ContentReviewResolver,
+    ContentReviewInvalidationService,
+    ContentReviewNotifications,
     PermissionManagementResolver,
     PermissionManagementService,
     AuditLogResolver,

@@ -1,0 +1,148 @@
+<section class="queue" aria-labelledby="review-heading" [attr.aria-busy]="loading() || busy()">
+  <header class="queue-header">
+    <div>
+      <h2 id="review-heading" #queueHeading tabindex="-1">Alterações pendentes</h2>
+      <p>Os perfis exibem as alterações imediatamente. Os materiais aguardam aprovação para aparecer aos inscritos.</p>
+    </div>
+    <div class="actions">
+      @if (reviewId()) {
+        <a mat-button routerLink="/content-reviews">Ver toda a fila</a>
+      }
+      <button mat-stroked-button type="button" [disabled]="loading() || busy()" (click)="load()">Atualizar fila</button>
+    </div>
+  </header>
+
+  @if (feedback()) {
+    <p role="status">{{ feedback() }}</p>
+  }
+  @if (decisionError()) {
+    <p #decisionAlert role="alert" tabindex="-1">{{ decisionError() }}</p>
+  }
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Carregando fila de revisão" />
+  }
+  @if (loadError()) {
+    <p role="alert">Não foi possível carregar a fila. Use “Atualizar fila” para tentar novamente.</p>
+  } @else if (result().groups.length) {
+    <mat-accordion multi>
+      @for (group of result().groups; track group.id) {
+        <mat-expansion-panel [expanded]="result().groups.length === 1">
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              <span>{{ group.targetName }}</span>
+              <span class="group-summary">
+                {{ group.isProfile ? 'Perfil de palestrante' : 'Materiais para inscritos' }} -
+                {{ group.items.length === 1 ? '1 alteração' : group.items.length + ' alterações' }}
+              </span>
+            </mat-panel-title>
+          </mat-expansion-panel-header>
+          <p class="updated">Último envio em {{ group.updatedAt | date: 'short' }}</p>
+
+          @for (item of group.items; track item.key) {
+            <article class="review-item">
+              <h3>{{ itemLabel(group, item) }}</h3>
+              <p class="item-author">Enviado por {{ item.authorName }}</p>
+              @for (field of item.fields; track field.key) {
+                @if (item.fields.length > 1) {
+                  <h4>{{ fieldLabel(field.key) }}</h4>
+                }
+                <dl class="comparison">
+                  <div>
+                    <dt>Antes</dt>
+                    <dd>{{ field.before ?? 'Sem valor' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Publicado</dt>
+                    <dd>{{ field.after ?? 'Sem valor' }}</dd>
+                  </div>
+                </dl>
+              }
+              @if (!group.isProfile) {
+                <dl class="comparison">
+                  <div>
+                    <dt>Publicado</dt>
+                    <dd><ng-container *ngTemplateOutlet="material; context: { $implicit: item.beforeMaterial }" /></dd>
+                  </div>
+                  <div>
+                    <dt>Proposto</dt>
+                    <dd><ng-container *ngTemplateOutlet="material; context: { $implicit: item.afterMaterial }" /></dd>
+                  </div>
+                </dl>
+              }
+              <div class="actions">
+                <button
+                  mat-button
+                  type="button"
+                  [disabled]="loading() || busy()"
+                  [attr.aria-label]="actionLabel(group, item, group.isProfile ? 'Reverter' : 'Rejeitar')"
+                  (click)="decide(group, [item], 'REJECT', $event)">
+                  {{ group.isProfile ? 'Reverter' : 'Rejeitar' }}
+                </button>
+                <button
+                  mat-flat-button
+                  type="button"
+                  [disabled]="loading() || busy()"
+                  [attr.aria-label]="actionLabel(group, item, 'Aprovar')"
+                  (click)="decide(group, [item], 'APPROVE', $event)">
+                  Aprovar
+                </button>
+              </div>
+            </article>
+          }
+
+          @if (group.items.length > 1) {
+            <div class="actions group-actions">
+              <button
+                mat-button
+                type="button"
+                [disabled]="loading() || busy()"
+                (click)="decide(group, group.items, 'REJECT', $event)">
+                {{ group.isProfile ? 'Reverter todas' : 'Rejeitar todas' }}
+              </button>
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="loading() || busy()"
+                (click)="decide(group, group.items, 'APPROVE', $event)">
+                Aprovar todas
+              </button>
+            </div>
+          }
+        </mat-expansion-panel>
+      }
+    </mat-accordion>
+    @if (page() || result().hasNextPage) {
+      <nav class="actions" aria-label="Páginas da fila de revisão">
+        <button mat-button type="button" [disabled]="!page() || loading() || busy()" (click)="load(page() - 1)">
+          Anterior
+        </button>
+        <span>Página {{ page() + 1 }}</span>
+        <button
+          mat-button
+          type="button"
+          [disabled]="!result().hasNextPage || loading() || busy()"
+          (click)="load(page() + 1)">
+          Próxima
+        </button>
+      </nav>
+    }
+  } @else if (!loading()) {
+    <p>{{ reviewId() ? 'Esta revisão não está mais disponível.' : 'Nenhuma alteração aguarda revisão.' }}</p>
+  }
+</section>
+
+<ng-template #material let-link>
+  @if (link) {
+    <a
+      [href]="link.url"
+      target="_blank"
+      rel="noopener noreferrer"
+      [attr.aria-label]="link.title + ' (abre em nova aba)'">
+      {{ link.title }}
+    </a>
+    <span class="material-url">{{ link.url }}</span>
+    <span>{{ link.releaseAfterEvent ? 'Liberação após o evento' : 'Liberação imediata' }}</span>
+  } @else {
+    Sem material
+  }
+</ng-template>

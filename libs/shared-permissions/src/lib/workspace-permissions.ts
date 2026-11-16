@@ -9,6 +9,7 @@ export const WorkspacePermissionTab = {
   Forms: 'forms',
   Publication: 'publication',
   People: 'people',
+  ContentReviews: 'content-reviews',
   MergeCandidates: 'merge-candidates',
   Certificates: 'certificates',
   Attendances: 'attendances',
@@ -36,7 +37,15 @@ export type WorkspaceTabPermission = {
   delete: PermissionRequirement;
 };
 
+export const CONTENT_REVIEW_PERMISSIONS = [
+  Permission.LecturerProfile.Review,
+  Permission.Person.Update,
+  Permission.EventMaterials.Review,
+  Permission.Event.Update,
+] as const;
+
 export const WORKSPACE_ENTRY_PERMISSIONS = [
+  ...CONTENT_REVIEW_PERMISSIONS,
   Permission.Certificate.Read,
   Permission.CertificateConfig.Read,
   Permission.Event.Read,
@@ -134,6 +143,13 @@ export const WORKSPACE_TAB_PERMISSIONS = [
     read: [Permission.Person.Read],
     edit: [Permission.Person.Create, Permission.Person.Update],
     delete: [Permission.Person.Delete],
+  },
+  {
+    id: WorkspacePermissionTab.ContentReviews,
+    label: 'Revisão de conteúdo',
+    read: CONTENT_REVIEW_PERMISSIONS,
+    edit: CONTENT_REVIEW_PERMISSIONS,
+    delete: [],
   },
   {
     id: WorkspacePermissionTab.MergeCandidates,

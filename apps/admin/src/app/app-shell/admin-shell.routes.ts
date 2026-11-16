@@ -17,6 +17,7 @@ const majorEventsData = getFeatureRouteData('major-events');
 const sportsData = getFeatureRouteData('sports');
 const publicationData = getFeatureRouteData('publication');
 const peopleData = getFeatureRouteData('people');
+const contentReviewsData = getFeatureRouteData('content-reviews');
 const mergeCandidatesData = getFeatureRouteData('merge-candidates');
 const certificatesData = getFeatureRouteData('certificates');
 const formsData = getFeatureRouteData('forms');
@@ -178,6 +179,10 @@ export const routes: Route[] = [
       ),
       ...guardedFeatureRoute(`${peopleData.path}/:personId`, peopleData, () =>
         import('../people/people-page.component').then((m) => m.PeoplePageComponent),
+      ),
+
+      ...guardedFeatureRoute(contentReviewsData.path, contentReviewsData, () =>
+        import('../content-reviews/content-reviews-page.component').then((m) => m.ContentReviewsPageComponent),
       ),
 
       ...guardedFeatureRoute(mergeCandidatesData.path, mergeCandidatesData, () =>
