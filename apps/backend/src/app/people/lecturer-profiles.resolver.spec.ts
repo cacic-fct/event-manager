@@ -16,19 +16,25 @@ describe('LecturerProfilesResolver current-user operations', () => {
     findUnique: jest.fn(),
     upsert: jest.fn(),
   };
+  const contentReview = { findUnique: jest.fn(), create: jest.fn(), update: jest.fn() };
+  const reviewNotifications = { notify: jest.fn() };
+  const authorization = { assertPermissions: jest.fn() };
+  const transaction = { lecturerProfile, contentReview, $executeRaw: jest.fn() };
   const prisma = {
+    contentReview,
     people: { findFirst: jest.fn() },
     lecturerProfile,
-    $transaction: jest.fn(async (operation: (tx: { lecturerProfile: typeof lecturerProfile }) => Promise<unknown>) =>
-      operation({ lecturerProfile }),
-    ),
+    $transaction: jest.fn(async (operation: (tx: typeof transaction) => Promise<unknown>) => operation(transaction)),
   };
   const auditLog = { record: jest.fn() };
 
   beforeEach(() => {
     jest.clearAllMocks();
     currentUserContext.getAuthenticatedUser.mockReturnValue(context.req.user);
-    currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
+    currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1', name: 'Maria' });
+    contentReview.findUnique.mockResolvedValue(null);
+    contentReview.create.mockResolvedValue({ id: 'review-1' });
+    authorization.assertPermissions.mockResolvedValue(undefined);
     auditLog.record.mockResolvedValue(undefined);
   });
 
@@ -129,11 +135,37 @@ describe('LecturerProfilesResolver current-user operations', () => {
     const expected = profileFixture();
     lecturerProfile.findUnique.mockResolvedValueOnce(expected);
 
-    await expect(resolver().currentUserLecturerProfile(context as never)).resolves.toBe(expected);
+    await expect(resolver().currentUserLecturerProfile(context as never)).resolves.toEqual({
+      ...expected,
+      pendingReview: false,
+    });
     expect(currentUserContext.requireCurrentPerson).toHaveBeenCalledWith(context);
     expect(lecturerProfile.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({ where: { personId: 'person-1' } }),
     );
+  });
+
+  it('publishes a non-admin self-edit and groups profile fields for review', async () => {
+    authorization.assertPermissions.mockRejectedValueOnce(new ForbiddenException());
+    lecturerProfile.findUnique.mockResolvedValueOnce(profileFixture());
+    lecturerProfile.upsert.mockResolvedValueOnce(profileFixture({ displayName: 'Maria Silva', biography: 'Docente' }));
+
+    await expect(
+      resolver().upsertCurrentUserLecturerProfile(
+        { displayName: 'Maria Silva', biography: 'Docente' },
+        context as never,
+      ),
+    ).resolves.toMatchObject({ displayName: 'Maria Silva', pendingReview: true });
+    expect(contentReview.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        personId: 'person-1',
+        changes: [
+          { kind: 'profileField', key: 'displayName', before: 'Maria', after: 'Maria Silva', authorName: 'Maria' },
+          { kind: 'profileField', key: 'biography', before: null, after: 'Docente', authorName: 'Maria' },
+        ],
+      }),
+    });
+    expect(reviewNotifications.notify).toHaveBeenCalledWith({ id: 'review-1' });
   });
 
   it('creates a normalized current-user profile, publishes an allowed Google picture, and audits the actor', async () => {
@@ -160,8 +192,10 @@ describe('LecturerProfilesResolver current-user operations', () => {
         },
         context as never,
       ),
-    ).resolves.toBe(expected);
+    ).resolves.toEqual({ ...expected, pendingReview: false });
 
+    expect(contentReview.create).not.toHaveBeenCalled();
+    expect(reviewNotifications.notify).not.toHaveBeenCalled();
     expect(lecturerProfile.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { personId: 'person-1', selfEditingBlocked: false },
@@ -295,7 +329,13 @@ describe('LecturerProfilesResolver current-user operations', () => {
   });
 
   function resolver(): LecturerProfilesResolver {
-    return new LecturerProfilesResolver(prisma as never, currentUserContext as never, auditLog as never);
+    return new LecturerProfilesResolver(
+      prisma as never,
+      currentUserContext as never,
+      auditLog as never,
+      authorization as never,
+      reviewNotifications as never,
+    );
   }
 });
 

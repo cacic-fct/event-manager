@@ -261,6 +261,22 @@ export const AUDIENCE_RELATIONS = {
       ownsRelation: true,
     },
   ],
+  ContentReview: [
+    {
+      name: 'profile',
+      type: 'LecturerProfile',
+      isList: false,
+      isRequired: false,
+      ownsRelation: true,
+    },
+    {
+      name: 'event',
+      type: 'Event',
+      isList: false,
+      isRequired: false,
+      ownsRelation: true,
+    },
+  ],
   EventGroup: [
     {
       name: 'audienceInvitations',
@@ -320,6 +336,13 @@ export const AUDIENCE_RELATIONS = {
     },
   ],
   Event: [
+    {
+      name: 'contentReview',
+      type: 'ContentReview',
+      isList: false,
+      isRequired: false,
+      ownsRelation: false,
+    },
     {
       name: 'audienceInvitations',
       type: 'EventAudienceInvitation',
@@ -707,6 +730,13 @@ export const AUDIENCE_RELATIONS = {
       isList: false,
       isRequired: true,
       ownsRelation: true,
+    },
+    {
+      name: 'contentReview',
+      type: 'ContentReview',
+      isList: false,
+      isRequired: false,
+      ownsRelation: false,
     },
   ],
   MajorEvent: [

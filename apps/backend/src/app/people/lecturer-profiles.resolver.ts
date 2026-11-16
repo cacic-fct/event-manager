@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import {
   AdminLecturerProfileUpsertInput,
   LecturerProfile,
@@ -7,6 +8,16 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
+import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
+import { ContentReviewNotifications } from '../content-review/content-review-notifications.service';
+import {
+  lockReviewPerson,
+  mergeProfileChanges,
+  profileSnapshot,
+  readChanges,
+  writeReview,
+} from '../content-review/content-review-changes';
+import { canReviewContent } from '../content-review/review-permissions';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -70,7 +81,9 @@ export class LecturerProfilesResolver {
   constructor(
     private readonly prisma: PrismaService,
     private readonly currentUserContext: CurrentUserContextService,
-    private readonly auditLog: AuditLogService = { record: async () => undefined } as unknown as AuditLogService,
+    private readonly auditLog: AuditLogService,
+    private readonly authorization: AuthorizationPolicyService,
+    private readonly reviewNotifications: ContentReviewNotifications,
   ) {}
 
   @Query(() => LecturerProfile, { name: 'lecturerProfile', nullable: true })
@@ -98,6 +111,7 @@ export class LecturerProfilesResolver {
     };
 
     return this.prisma.$transaction(async (tx) => {
+      await lockReviewPerson(tx, personId);
       const existing = await tx.lecturerProfile.findUnique({ where: { personId }, select: LECTURER_PROFILE_SELECT });
       const profile = await tx.lecturerProfile.upsert({
         where: { personId },
@@ -119,6 +133,7 @@ export class LecturerProfilesResolver {
         },
         tx,
       );
+      await this.updateReview(tx, personId, existing, profile, '', true);
       return profile;
     });
   }
@@ -127,12 +142,14 @@ export class LecturerProfilesResolver {
   async currentUserLecturerProfile(@Context() context: GraphqlContext) {
     const person = await this.currentUserContext.requireCurrentPerson(context);
 
-    return this.prisma.lecturerProfile.findUnique({
-      where: {
-        personId: person.id,
-      },
+    const profile = await this.prisma.lecturerProfile.findUnique({
+      where: { personId: person.id },
       select: LECTURER_PROFILE_SELECT,
     });
+    if (!profile) return null;
+
+    const review = await this.prisma.contentReview.findUnique({ where: { personId: person.id } });
+    return { ...profile, pendingReview: !!review };
   }
 
   @Mutation(() => LecturerProfile, { name: 'upsertCurrentUserLecturerProfile' })
@@ -148,7 +165,9 @@ export class LecturerProfilesResolver {
       googleUserPicture: this.getGoogleUserPicture(authenticatedUser, input.publishGoogleUserPicture ?? false),
     };
 
-    return this.prisma.$transaction(async (tx) => {
+    const administrator = await canReviewContent(this.authorization, authenticatedUser, Permission.Person.Update);
+    const { profile, review, notify } = await this.prisma.$transaction(async (tx) => {
+      await lockReviewPerson(tx, person.id);
       const existing = await tx.lecturerProfile.findUnique({
         where: { personId: person.id },
         select: LECTURER_PROFILE_SELECT,
@@ -180,8 +199,38 @@ export class LecturerProfilesResolver {
         },
         tx,
       );
-      return profile;
+      return {
+        profile,
+        ...(await this.updateReview(tx, person.id, existing, profile, person.name, administrator)),
+      };
     });
+    if (notify && review) await this.reviewNotifications.notify(review);
+    return { ...profile, pendingReview: !!review };
+  }
+
+  private async updateReview(
+    tx: Prisma.TransactionClient,
+    personId: string,
+    before: LecturerProfileAuditSnapshot | null,
+    after: LecturerProfileAuditSnapshot,
+    authorName: string,
+    administrator: boolean,
+  ) {
+    const review = await tx.contentReview.findUnique({ where: { personId } });
+    const baseline = before ? profileSnapshot(before) : null;
+    const proposed = profileSnapshot(after);
+    if (!administrator && isDeepStrictEqual(baseline, proposed)) return { review, notify: false };
+    const changes = mergeProfileChanges(review, baseline, proposed, authorName, administrator);
+    if (isDeepStrictEqual(changes, readChanges(review))) return { review, notify: false };
+    return {
+      review: await writeReview(tx, { personId }, review, changes),
+      notify:
+        !administrator &&
+        changes.some((change) => {
+          const previous = readChanges(review).find(({ key }) => key === change.key);
+          return !isDeepStrictEqual(previous?.after, change.after);
+        }),
+    };
   }
 
   private async ensurePersonExists(personId: string): Promise<void> {

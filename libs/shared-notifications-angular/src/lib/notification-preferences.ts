@@ -18,6 +18,7 @@ export interface NotificationPreferenceItem extends WorkflowPresentation {
 // Keep Novu's critical workflow configuration aligned with this local safeguard.
 const REQUIRED_WORKFLOWS = new Set([
   'offline-attendance-review-queued',
+  'content-review-queued',
   'audience-invitation',
   'major-event-subscription-status-changed',
   'ticket-transfer',

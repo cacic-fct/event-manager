@@ -5,6 +5,17 @@ import { NovuNotificationsService } from './novu-notifications.service';
 const { jest } = import.meta;
 
 describe('NovuNotificationsService', () => {
+  it('sends a review alert with a revision-specific transaction and a queue link', async () => {
+    const recipients = [{ subscriberId: 'admin-1' }];
+    await service.notifyContentReviewQueued({ id: 'review-1', revision: 2, kind: 'materials', recipients });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
+      name: 'content-review-queued',
+      to: recipients,
+      transactionId: 'content-review:review-1:2',
+      payload: { actionUrl: '/admin/content-reviews?review=review-1' },
+    });
+  });
+
   it('reuses a recipient-specific idempotency key after a lost manual notification response', async () => {
     const input = {
       audience: 'LECTURERS' as const,

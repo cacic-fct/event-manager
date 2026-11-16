@@ -129,6 +129,10 @@ export function getPermissionResourceLabel(resource: string): string {
       return 'Grande evento';
     case 'merge-candidate':
       return 'Pessoa duplicada';
+    case 'lecturer-profile':
+      return 'Perfil de palestrante';
+    case 'event-materials':
+      return 'Materiais para inscritos';
     case 'person':
       return 'Pessoa';
     case 'related-person':
@@ -198,6 +202,9 @@ export function getPermissionResourceIcon(resource: string): string {
       return 'festival';
     case 'merge-candidate':
       return 'merge_type';
+    case 'event-materials':
+      return 'link';
+    case 'lecturer-profile':
     case 'person':
       return 'person';
     case 'related-person':

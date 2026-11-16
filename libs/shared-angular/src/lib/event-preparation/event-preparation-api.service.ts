@@ -4,6 +4,8 @@ import type { EventMaterial, EventMaterials, EventPreparation } from '@cacic-fct
 import { firstValueFrom, map } from 'rxjs';
 
 const MATERIAL_FIELDS = 'links { title url releaseAfterEvent } updatedAt nextReleaseAt';
+const EDITABLE_MATERIAL_FIELDS =
+  'links { id title url releaseAfterEvent } updatedAt editingFrozen pendingReview reviewRequired';
 const PREPARATION_FIELDS = 'lecturerInformation collectorInformation updatedAt';
 
 @Service()
@@ -13,7 +15,7 @@ export class EventPreparationApiService {
   getMaterials(eventId: string, editable: boolean): Promise<EventMaterials | null> {
     const name = editable ? 'editableEventMaterials' : 'currentUserEventMaterials';
     return this.request<Record<string, EventMaterials | null>>(
-      `query EventMaterials($eventId: String!) { ${name}(eventId: $eventId) { ${MATERIAL_FIELDS}${editable ? ' editingFrozen' : ''} } }`,
+      `query EventMaterials($eventId: String!) { ${name}(eventId: $eventId) { ${editable ? EDITABLE_MATERIAL_FIELDS : MATERIAL_FIELDS} } }`,
       { eventId },
     ).then((result) => result[name]);
   }
@@ -21,7 +23,7 @@ export class EventPreparationApiService {
   saveMaterials(eventId: string, links: EventMaterial[], expectedUpdatedAt: string | null): Promise<EventMaterials> {
     return this.request<{ updateEventMaterials: EventMaterials }>(
       `mutation UpdateEventMaterials($eventId: String!, $links: [EventMaterialInput!]!, $expectedUpdatedAt: DateTime) {
-        updateEventMaterials(eventId: $eventId, links: $links, expectedUpdatedAt: $expectedUpdatedAt) { ${MATERIAL_FIELDS} }
+        updateEventMaterials(eventId: $eventId, links: $links, expectedUpdatedAt: $expectedUpdatedAt) { ${EDITABLE_MATERIAL_FIELDS} }
       }`,
       { eventId, links, expectedUpdatedAt },
     ).then((result) => result.updateEventMaterials);

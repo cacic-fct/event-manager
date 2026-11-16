@@ -13,6 +13,7 @@ describe('workspace nav', () => {
       'data-transfer',
       'certificates',
       'people',
+      'content-reviews',
       'merge-candidates',
       'notifications',
       'places',
@@ -30,6 +31,7 @@ describe('workspace nav', () => {
     expect(findNavigationItemForUrl('/workspace/attendances/event/event-1').id).toBe('attendances');
     expect(findNavigationItemForUrl('/workspace/permissions?tab=scopes').id).toBe('permissions');
     expect(findNavigationItemForUrl('/workspace/preferences').id).toBe('preferences');
+    expect(findNavigationItemForUrl('/content-reviews?review=group-1').id).toBe('content-reviews');
     expect(findNavigationItemForUrl('/data-transfer').id).toBe('data-transfer');
   });
 

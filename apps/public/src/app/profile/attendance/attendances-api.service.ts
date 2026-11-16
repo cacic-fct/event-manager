@@ -113,6 +113,7 @@ export interface OrganizerInfo {
 }
 
 export interface LecturerProfile {
+  pendingReview?: boolean | null;
   selfEditingBlocked: boolean;
   id: string;
   personId: string;
@@ -167,6 +168,7 @@ const LECTURER_PROFILE_FIELDS = `
   email
   whatsapp
   linkedin
+  pendingReview
 `;
 
 @Service()

@@ -17,6 +17,9 @@ export class LecturerProfile {
   @Field(() => Boolean)
   selfEditingBlocked!: boolean;
 
+  @Field(() => Boolean, { nullable: true })
+  pendingReview?: boolean;
+
   @Field(() => String)
   displayName!: string;
 

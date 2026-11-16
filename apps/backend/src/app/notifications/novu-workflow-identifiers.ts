@@ -1,6 +1,7 @@
 // These identifiers must match the workflows published in each Novu environment.
 export const NOVU_WORKFLOW_IDENTIFIERS = {
   majorEventSubscriptionStatusChanged: 'major-event-subscription-status-changed',
+  contentReviewQueued: 'content-review-queued',
   offlineAttendanceReviewQueued: 'offline-attendance-review-queued',
   certificateAvailable: 'certificate-available',
   eventFormAvailable: 'event-form-available',

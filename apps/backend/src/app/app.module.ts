@@ -190,6 +190,8 @@ import { PlacePresetsResolver } from './places/resolver';
 import { MergeCandidateOperationsService } from './people/merge-candidates/operations.service';
 import { MergeCandidatesResolver } from './people/merge-candidates/resolver';
 import { PeopleResolver } from './people/resolver';
+import { ContentReviewResolver } from './content-review/content-review.resolver';
+import { ContentReviewNotifications } from './content-review/content-review-notifications.service';
 import { LecturerProfilesResolver } from './people/lecturer-profiles.resolver';
 import { UsersResolver } from './users/resolver';
 import { TypesenseSearchService } from './search/typesense-search.service';
@@ -548,6 +550,8 @@ const schedulerProviders = useInMemoryTestInfra
     UsersResolver,
     PeopleResolver,
     LecturerProfilesResolver,
+    ContentReviewResolver,
+    ContentReviewNotifications,
     PermissionManagementResolver,
     PermissionManagementService,
     AuditLogResolver,

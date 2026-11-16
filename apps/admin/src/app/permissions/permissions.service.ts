@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
 import { Service, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import {
+  CONTENT_REVIEW_PERMISSIONS,
   EVENT_MANAGER_PERMISSION_SET,
   Permission,
   WORKSPACE_PERMISSION_EVALUATION_SET,
@@ -45,6 +46,7 @@ export class PermissionsService {
   }
 
   canReadTab(tab: WorkspacePermissionTab): boolean {
+    if (tab === 'content-reviews') return this.hasAny(CONTENT_REVIEW_PERMISSIONS);
     if (tab === 'data-transfer') {
       return this.hasAny([
         Permission.DataTransfer.Export,
@@ -58,6 +60,8 @@ export class PermissionsService {
   }
 
   missingReadForTab(tab: WorkspacePermissionTab): WorkspacePermissionScope[] {
+    if (tab === 'content-reviews')
+      return this.hasAny(CONTENT_REVIEW_PERMISSIONS) ? [] : [...CONTENT_REVIEW_PERMISSIONS];
     if (tab === 'data-transfer') {
       return this.hasAny([Permission.DataTransfer.Export, Permission.DataTransfer.Import, Permission.DataTransfer.Undo])
         ? []

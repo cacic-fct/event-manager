@@ -80,6 +80,26 @@ describe('shared event materials editor', () => {
     expect(api.saveMaterials).not.toHaveBeenCalled();
   });
 
+  it('tells a lecturer that submitted materials will be visible after review', async () => {
+    api.getMaterials.mockResolvedValueOnce({ links: [], updatedAt: null, reviewRequired: true });
+    const fixture = await create();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Enviar para revisão');
+    const links = [{ title: 'Slides', url: 'https://example.org/slides' }];
+    api.saveMaterials.mockResolvedValueOnce({
+      links,
+      updatedAt: new Date().toISOString(),
+      pendingReview: true,
+      reviewRequired: true,
+    });
+    fixture.componentInstance.model.set({ links });
+    await fixture.componentInstance.save();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Há alterações aguardando revisão.');
+    expect(fixture.componentInstance.changed()).toBe(false);
+  });
+
   it('shares links and never calls notifications', async () => {
     const fixture = await create();
     fixture.componentInstance.model.set({ links: [{ title: ' Slides ', url: 'https://example.org/slides' }] });
