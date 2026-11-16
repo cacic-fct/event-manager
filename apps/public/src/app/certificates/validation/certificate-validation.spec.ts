@@ -601,14 +601,34 @@ describe('CertificateValidation', () => {
     expect(component.certificateTypeLabel({ ...certificateFixture, issuedTo, certificateTypeLabel: null })).toBe(label);
   });
 
-  it('does not repeat the certificate name when target metadata is unavailable', async () => {
+  it.each([
+    ['EVENT', 'Evento'],
+    ['EVENT_GROUP', 'Grupo de eventos'],
+    ['MAJOR_EVENT', 'Grande evento'],
+    ['OTHER', 'Pasta'],
+  ] as const)('labels the scope of a %s certificate in its details', async (scope, label) => {
+    const { component, fixture } = await createFixture();
+    const certificate = { ...certificateFixture, scope };
+    component.state.set({ status: 'ready', certificate });
+    fixture.detectChanges();
+
+    const facts = fixture.nativeElement.querySelectorAll('.certificate-facts dd') as NodeListOf<HTMLElement>;
+    const target = Array.from(facts).find((fact) => fact.textContent?.trim() === certificate.targetName);
+    expect(target?.previousElementSibling?.textContent?.trim()).toMatch(new RegExp(`${label}$`));
+    expect(target?.previousElementSibling?.querySelector('mat-icon')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('shows the certificate name once with its own label when target metadata is unavailable', async () => {
     const { component, fixture } = await createFixture();
     component.state.set({ status: 'ready', certificate: { ...certificateFixture, targetName: null } });
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.certificate-context')?.textContent).toContain(
-      certificateFixture.certificateName,
+
+    const facts = fixture.nativeElement.querySelectorAll('.certificate-facts dd') as NodeListOf<HTMLElement>;
+    const matchingFacts = Array.from(facts).filter(
+      (fact) => fact.textContent?.trim() === certificateFixture.certificateName,
     );
-    expect(fixture.nativeElement.querySelector('.certificate-name')).toBeNull();
+    expect(matchingFacts).toHaveLength(1);
+    expect(matchingFacts[0].previousElementSibling?.textContent?.trim()).toMatch(/Certificado$/);
   });
 });
 

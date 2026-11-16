@@ -459,6 +459,19 @@ export class CertificateValidation {
     return formatCreditMinutes(creditMinutes);
   }
 
+  certificateTarget(certificate: PublicCertificateValidation): { label: string; icon: string } {
+    if (!certificate.targetName) {
+      return { label: 'Certificado', icon: 'workspace_premium' };
+    }
+
+    return {
+      EVENT: { label: 'Evento', icon: 'event' },
+      EVENT_GROUP: { label: 'Grupo de eventos', icon: 'event_note' },
+      MAJOR_EVENT: { label: 'Grande evento', icon: 'event' },
+      OTHER: { label: 'Pasta', icon: 'folder' },
+    }[certificate.scope];
+  }
+
   certificateTypeLabel(certificate: PublicCertificateValidation): string {
     const customLabel = certificate.certificateTypeLabel?.trim();
     if (customLabel) {
