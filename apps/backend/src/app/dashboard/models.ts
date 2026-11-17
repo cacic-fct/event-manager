@@ -389,6 +389,12 @@ export class WorkspaceDashboardInsights {
   pendingCertificates!: DashboardCertificatePendingItem[];
 
   @Field(() => Int)
+  pendingProfileReviewsCount!: number;
+
+  @Field(() => Int)
+  pendingMaterialReviewsCount!: number;
+
+  @Field(() => Int)
   pendingReceiptValidationsCount!: number;
 
   @Field(() => [DashboardPendingReceiptMajorEvent])

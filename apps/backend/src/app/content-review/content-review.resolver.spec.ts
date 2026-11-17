@@ -22,6 +22,7 @@ const exercises = { title: 'Exercícios', url: 'https://example.org/exercises' }
 function setup(target: { personId: string | null; eventId: string | null }, changes: ContentChange[]) {
   const review = { id: 'review', ...target, changes, revision: 2, updatedAt: new Date() };
   const contentReview = {
+    count: jest.fn<(...args: unknown[]) => Promise<number>>().mockResolvedValue(3),
     findUnique: jest.fn<() => Promise<typeof review | null>>().mockResolvedValue(review),
     update: jest.fn(),
     delete: jest.fn(),
@@ -266,5 +267,84 @@ describe('content review decisions', () => {
       expect.objectContaining({ key: 'displayName', before: 'Ana Mota', after: 'Ana M.' }),
     ]);
     expect(mergeProfileChanges(review, first, baseline, 'Ana', false)).toEqual([]);
+  });
+});
+
+describe('dashboard pending content reviews', () => {
+  it('counts only profiles belonging to active people', async () => {
+    const { resolver, prisma } = setup({ personId: 'person', eventId: null }, []);
+
+    await expect(resolver.pendingProfileReviewsCount({})).resolves.toBe(3);
+    expect(prisma.contentReview.count).toHaveBeenCalledWith({
+      where: { profile: { is: { person: { deletedAt: null } } } },
+    });
+  });
+
+  it('supports the person-update fallback for profile reviewers', async () => {
+    const { resolver, authorization } = setup({ personId: 'person', eventId: null }, []);
+    authorization.assertPermissions.mockRejectedValueOnce(new ForbiddenException());
+
+    await expect(resolver.pendingProfileReviewsCount({})).resolves.toBe(3);
+    expect(authorization.assertPermissions).toHaveBeenLastCalledWith(actor, [Permission.Person.Update], undefined);
+  });
+
+  it('returns zero without querying reviews when neither review type is accessible', async () => {
+    const { resolver, prisma, authorization } = setup({ personId: null, eventId: 'event' }, []);
+    authorization.assertPermissions.mockRejectedValue(new ForbiddenException());
+    authorization.accessibleEventTargets.mockResolvedValue({
+      eventIds: new Set(),
+      eventGroupIds: new Set(),
+      majorEventIds: new Set(),
+    } as never);
+
+    await expect(resolver.pendingProfileReviewsCount({})).resolves.toBe(0);
+    await expect(resolver.pendingMaterialReviewsCount({})).resolves.toBe(0);
+    expect(prisma.contentReview.count).not.toHaveBeenCalled();
+  });
+
+  it('unions material-review and event-update scopes and excludes deleted events', async () => {
+    const { resolver, prisma, authorization } = setup({ personId: null, eventId: 'event' }, []);
+    authorization.accessibleEventTargets
+      .mockResolvedValueOnce({
+        eventIds: new Set(['event']),
+        eventGroupIds: new Set(),
+        majorEventIds: new Set(),
+      } as never)
+      .mockResolvedValueOnce({
+        eventIds: new Set(),
+        eventGroupIds: new Set(['group']),
+        majorEventIds: new Set(['major']),
+      } as never);
+
+    await expect(resolver.pendingMaterialReviewsCount({})).resolves.toBe(3);
+    expect(prisma.contentReview.count).toHaveBeenCalledWith({
+      where: {
+        event: {
+          is: {
+            deletedAt: null,
+            AND: [
+              {},
+              {
+                OR: [
+                  { id: { in: ['event'] } },
+                  { eventGroupId: { in: ['group'] } },
+                  { majorEventId: { in: ['major'] } },
+                ],
+              },
+            ],
+          },
+        },
+      },
+    });
+  });
+
+  it('counts all active material targets for global reviewers', async () => {
+    const { resolver, prisma, authorization } = setup({ personId: null, eventId: 'event' }, []);
+    authorization.accessibleEventTargets.mockResolvedValue(null as never);
+
+    await expect(resolver.pendingMaterialReviewsCount({})).resolves.toBe(3);
+    expect(prisma.contentReview.count).toHaveBeenCalledWith({
+      where: { event: { is: { deletedAt: null, AND: [{}] } } },
+    });
   });
 });

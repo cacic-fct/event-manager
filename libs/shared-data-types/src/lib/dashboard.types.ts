@@ -172,6 +172,8 @@ export interface WorkspaceDashboardInsights {
   calendarEvents: DashboardCalendarEvent[];
   weatherAlerts: DashboardWeatherAlert[];
   pendingCertificates: DashboardCertificatePendingItem[];
+  pendingProfileReviewsCount: number;
+  pendingMaterialReviewsCount: number;
   pendingReceiptValidationsCount: number;
   pendingReceiptMajorEvents: DashboardPendingReceiptMajorEvent[];
   pendingOfflineAttendancesCount: number;

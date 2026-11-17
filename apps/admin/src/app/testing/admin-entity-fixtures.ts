@@ -298,6 +298,8 @@ export function createAdminWorkspaceDashboardInsights(
     calendarEvents: [createAdminDashboardCalendarEvent()],
     weatherAlerts: [],
     pendingCertificates: [createAdminDashboardPendingCertificate()],
+    pendingProfileReviewsCount: 0,
+    pendingMaterialReviewsCount: 0,
     pendingReceiptValidationsCount: 3,
     pendingReceiptMajorEvents: [createAdminDashboardPendingReceiptMajorEvent()],
     pendingOfflineAttendancesCount: 2,

@@ -1,7 +1,7 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { parseEventMaterials } from '@cacic-fct/shared-event-preparation';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Int, Mutation, Query, ResolveField, Resolver } from '@nestjs/graphql';
 import { AuditLogEntityType, AuditLogOperation, type ContentReview, type Prisma } from '@prisma/client';
 import { audienceContext, eventAudienceWhere } from '../audiences/audience-context';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -10,6 +10,7 @@ import { AuthorizationPolicyService } from '../authorization/authorization-polic
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { CurrentUserContextService } from '../current-user/context.service';
 import type { GraphqlContext } from '../current-user/selects';
+import { WorkspaceDashboardInsights } from '../dashboard/models';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   applyMaterialChanges,
@@ -44,7 +45,7 @@ type ReviewAction = {
   permission: Permission;
 };
 
-@Resolver()
+@Resolver(() => WorkspaceDashboardInsights)
 export class ContentReviewResolver {
   constructor(
     private readonly prisma: PrismaService,
@@ -54,6 +55,24 @@ export class ContentReviewResolver {
     private readonly audit: AuditLogService,
     private readonly invalidations: ContentReviewInvalidationService,
   ) {}
+
+  // Resolve per request: material access can vary by user and audience, unlike cached dashboard insights.
+  @ResolveField(() => Int)
+  async pendingProfileReviewsCount(@Context() context: GraphqlContext): Promise<number> {
+    const user = this.context.getAuthenticatedUser(context);
+    if (!(await this.reviewPermission(user, null))) return 0;
+    return this.prisma.contentReview.count({
+      where: { profile: { is: { person: { deletedAt: null } } } },
+    });
+  }
+
+  @ResolveField(() => Int)
+  async pendingMaterialReviewsCount(@Context() context: GraphqlContext): Promise<number> {
+    const user = this.context.getAuthenticatedUser(context);
+    const scope = await this.materialScope(user);
+    if (!scope) return 0;
+    return this.prisma.contentReview.count({ where: { event: { is: scope } } });
+  }
 
   @Query(() => ContentReviewPage)
   async contentReviews(

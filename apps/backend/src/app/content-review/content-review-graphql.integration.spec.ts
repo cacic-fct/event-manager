@@ -9,6 +9,8 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { CurrentUserContextService } from '../current-user/context.service';
+import { DashboardInsightsResolver } from '../dashboard/insights.resolver';
+import { DashboardInsightsService } from '../dashboard/insights.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ContentReviewInvalidationService } from './content-review-invalidation.service';
 import { ContentReviewResolver } from './content-review.resolver';
@@ -50,7 +52,11 @@ describe('content review GraphQL integration', () => {
     ],
   };
   const prisma = {
-    contentReview: { findMany: jest.fn().mockResolvedValue([entry]), findUnique: jest.fn().mockResolvedValue(entry) },
+    contentReview: {
+      count: jest.fn().mockResolvedValue(2),
+      findMany: jest.fn().mockResolvedValue([entry]),
+      findUnique: jest.fn().mockResolvedValue(entry),
+    },
     $transaction: jest.fn(),
   };
   let app: INestApplication;
@@ -60,6 +66,16 @@ describe('content review GraphQL integration', () => {
       imports: [GraphQLModule.forRoot<ApolloDriverConfig>({ driver: ApolloDriver, autoSchemaFile: true })],
       providers: [
         ContentReviewResolver,
+        DashboardInsightsResolver,
+        {
+          provide: DashboardInsightsService,
+          useValue: {
+            getWorkspaceDashboardInsights: async () => ({
+              pendingProfileReviewsCount: 999,
+              pendingMaterialReviewsCount: 999,
+            }),
+          },
+        },
         { provide: PrismaService, useValue: prisma },
         {
           provide: CurrentUserContextService,
@@ -97,6 +113,21 @@ describe('content review GraphQL integration', () => {
       contextValue: { req: { user } },
     });
   }
+
+  it('resolves fresh permission-scoped counts over cached dashboard values', async () => {
+    const result = await graphql({
+      schema: app.get(GraphQLSchemaHost).schema,
+      source: '{ workspaceDashboardInsights { pendingProfileReviewsCount pendingMaterialReviewsCount } }',
+      contextValue: { req: { user } },
+    });
+    expect(result.errors).toBeUndefined();
+    expect(result.data).toEqual({
+      workspaceDashboardInsights: {
+        pendingProfileReviewsCount: 2,
+        pendingMaterialReviewsCount: 0,
+      },
+    });
+  });
 
   it('serves a deep-linked profile comparison in the admin query without exposing the hidden photo URL', async () => {
     const result = await execute('ContentReviews', { page: 0, id: entry.id });

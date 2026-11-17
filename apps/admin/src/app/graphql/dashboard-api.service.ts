@@ -60,6 +60,8 @@ export class DashboardApiService {
               subtitle
               finishedAt
             }
+            pendingProfileReviewsCount
+            pendingMaterialReviewsCount
             pendingReceiptValidationsCount
             pendingReceiptMajorEvents {
               majorEventId

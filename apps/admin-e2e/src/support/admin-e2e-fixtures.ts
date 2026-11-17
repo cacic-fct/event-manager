@@ -362,6 +362,8 @@ export function createAdminE2EDashboardInsights(
         finishedAt: endsAt.toISOString(),
       },
     ],
+    pendingProfileReviewsCount: 0,
+    pendingMaterialReviewsCount: 0,
     pendingReceiptValidationsCount: 3,
     pendingReceiptMajorEvents: [
       {

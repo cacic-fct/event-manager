@@ -30,6 +30,7 @@ describe('Home', () => {
     listAttendanceReviewEventSummaries: ReturnType<typeof vi.fn>;
   };
   let workspaceEvents: Subject<void>;
+  let reviewEvents: Subject<void>;
   let permissions: { has: ReturnType<typeof vi.fn> };
   let fixtureDestroyed = false;
   const user = signal(createAdminAuthenticatedUser());
@@ -42,6 +43,7 @@ describe('Home', () => {
       listAttendanceReviewEventSummaries: vi.fn(() => of([])),
     };
     workspaceEvents = new Subject<void>();
+    reviewEvents = new Subject<void>();
     permissions = { has: vi.fn(() => true) };
     fixtureDestroyed = false;
     user.set(createAdminAuthenticatedUser());
@@ -54,7 +56,13 @@ describe('Home', () => {
         { provide: AuthService, useValue: { user } },
         { provide: DashboardApiService, useValue: dashboardApi },
         { provide: AttendanceApiService, useValue: attendanceApi },
-        { provide: RealtimeApiService, useValue: { watchWorkspace: vi.fn(() => workspaceEvents) } },
+        {
+          provide: RealtimeApiService,
+          useValue: {
+            watchWorkspace: vi.fn(() => workspaceEvents),
+            watchContentReviews: vi.fn(() => reviewEvents),
+          },
+        },
         { provide: PermissionsService, useValue: permissions },
       ],
     }).compileComponents();
@@ -62,6 +70,65 @@ describe('Home', () => {
     fixture = TestBed.createComponent(Home);
     component = fixture.componentInstance;
     component.currentDate.set(new Date(adminFixtureDate));
+  });
+
+  it('shows pending profile and material reviews as an action queue with a review link', () => {
+    dashboardApi.getWorkspaceDashboardInsights.mockReturnValue(
+      of(
+        createAdminWorkspaceDashboardInsights({
+          calendarEvents: [],
+          pendingOfflineAttendanceEvents: [],
+          pendingReceiptMajorEvents: [],
+          sportsTournaments: [],
+          inconsistencies: [],
+          pendingProfileReviewsCount: 1,
+          pendingMaterialReviewsCount: 3,
+        }),
+      ),
+    );
+    component.loading.set(false);
+    fixture.detectChanges();
+
+    expect(component.hasActionQueue()).toBe(true);
+    const content = fixture.nativeElement as HTMLElement;
+    expect(content.textContent).toContain('1 perfil pendente');
+    expect(content.textContent).toContain('3 eventos com alterações pendentes');
+    expect(content.querySelector('a[href="/content-reviews"]')?.textContent).toContain('Revisar perfis e materiais');
+  });
+
+  it('refreshes review counts after a content review invalidation', () => {
+    dashboardApi.getWorkspaceDashboardInsights.mockReturnValue(
+      of(
+        createAdminWorkspaceDashboardInsights({
+          pendingProfileReviewsCount: 2,
+          pendingMaterialReviewsCount: 1,
+        }),
+      ),
+    );
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('2 perfis pendentes');
+
+    dashboardApi.getWorkspaceDashboardInsights.mockReturnValue(of(createAdminWorkspaceDashboardInsights()));
+    reviewEvents.next();
+    fixture.detectChanges();
+
+    expect(dashboardApi.getWorkspaceDashboardInsights).toHaveBeenCalledTimes(2);
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Perfis e materiais para revisar');
+  });
+
+  it('hides the review card when no accessible reviews are pending', () => {
+    dashboardApi.getWorkspaceDashboardInsights.mockReturnValue(
+      of(
+        createAdminWorkspaceDashboardInsights({
+          pendingProfileReviewsCount: 0,
+          pendingMaterialReviewsCount: 0,
+        }),
+      ),
+    );
+    component.loading.set(false);
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Perfis e materiais para revisar');
   });
 
   it('describes sports states without exposing unknown enum values', () => {

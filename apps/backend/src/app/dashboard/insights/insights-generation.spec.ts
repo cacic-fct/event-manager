@@ -328,34 +328,37 @@ describe('DashboardInsightsService generation', () => {
     expect(prisma.event.count).not.toHaveBeenCalled();
   });
 
-  it('renders an empty dashboard shell for scoped-only administrators without global insight queries', async () => {
-    const { authorizationPolicy, prisma, redis, service, weatherService } = createInsightsServiceTestContext();
-    authorizationPolicy.evaluateGlobalPermissions.mockResolvedValue([]);
-    authorizationPolicy.evaluatePermissions.mockResolvedValue([Permission.Event.Update]);
+  it.each([Permission.Event.Update, Permission.EventMaterials.Review])(
+    'renders a dashboard shell for scoped-only administrators with %s without global insight queries',
+    async (permission) => {
+      const { authorizationPolicy, prisma, redis, service, weatherService } = createInsightsServiceTestContext();
+      authorizationPolicy.evaluateGlobalPermissions.mockResolvedValue([]);
+      authorizationPolicy.evaluatePermissions.mockResolvedValue([permission]);
 
-    const result = await service.getWorkspaceDashboardInsights({} as never);
+      const result = await service.getWorkspaceDashboardInsights({} as never);
 
-    expect(result.summary).toEqual({
-      eventsCount: 0,
-      eventGroupsCount: 0,
-      majorEventsCount: 0,
-    });
-    expect(result.calendarEvents).toEqual([]);
-    expect(result.weatherAlerts).toEqual([]);
-    expect(result.permissions).toEqual([
-      expect.objectContaining({
-        type: 'event',
-        actions: [expect.objectContaining({ scope: 'update' })],
-      }),
-    ]);
-    expect(prisma.event.count).not.toHaveBeenCalled();
-    expect(prisma.event.findMany).not.toHaveBeenCalled();
-    expect(prisma.eventGroup.findMany).not.toHaveBeenCalled();
-    expect(prisma.majorEvent.findMany).not.toHaveBeenCalled();
-    expect(weatherService.getPublicEventWeather).not.toHaveBeenCalled();
-    expect(redis.get).not.toHaveBeenCalled();
-    expect(redis.set).not.toHaveBeenCalled();
-  });
+      expect(result.summary).toEqual({
+        eventsCount: 0,
+        eventGroupsCount: 0,
+        majorEventsCount: 0,
+      });
+      expect(result.calendarEvents).toEqual([]);
+      expect(result.weatherAlerts).toEqual([]);
+      expect(result.permissions).toEqual([
+        expect.objectContaining({
+          type: permission.split('#')[0],
+          actions: [expect.objectContaining({ scope: permission.split('#')[1] })],
+        }),
+      ]);
+      expect(prisma.event.count).not.toHaveBeenCalled();
+      expect(prisma.event.findMany).not.toHaveBeenCalled();
+      expect(prisma.eventGroup.findMany).not.toHaveBeenCalled();
+      expect(prisma.majorEvent.findMany).not.toHaveBeenCalled();
+      expect(weatherService.getPublicEventWeather).not.toHaveBeenCalled();
+      expect(redis.get).not.toHaveBeenCalled();
+      expect(redis.set).not.toHaveBeenCalled();
+    },
+  );
 
   it('reports major-event subscription date issues without event-level inconsistency queries', async () => {
     const { authorizationPolicy, prisma, service } = createInsightsServiceTestContext();

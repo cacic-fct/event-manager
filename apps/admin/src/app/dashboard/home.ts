@@ -24,6 +24,7 @@ import type {
 } from '@cacic-fct/shared-frontend-types';
 import type { AttendanceReviewEventSummary } from '@cacic-fct/event-manager-admin-contracts';
 import {
+  EMPTY,
   Subscription,
   catchError,
   finalize,
@@ -41,7 +42,7 @@ import { AttendanceApiService } from '../graphql/attendance-api.service';
 import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { navigationLinkItems } from '../app-shell/navigation';
 import { PermissionsService } from '../permissions/permissions.service';
-import { Permission } from '@cacic-fct/shared-permissions';
+import { CONTENT_REVIEW_PERMISSIONS, Permission } from '@cacic-fct/shared-permissions';
 import {
   adminEventWorkspaceCreationRoute,
   adminEventWorkspaceRoute,
@@ -118,6 +119,8 @@ export class Home implements OnInit, OnDestroy {
         (this.attendanceReviewEvents().length > 0 ||
           dashboard.pendingOfflineAttendanceEvents.length > 0 ||
           dashboard.pendingReceiptMajorEvents.length > 0 ||
+          dashboard.pendingProfileReviewsCount > 0 ||
+          dashboard.pendingMaterialReviewsCount > 0 ||
           this.sportsTournamentsNeedingReview().length > 0 ||
           this.criticalInconsistencies().length > 0),
     );
@@ -179,7 +182,10 @@ export class Home implements OnInit, OnDestroy {
       map(() => undefined),
     );
     const liveRefresh = this.realtime.watchWorkspace();
-    this.insightsSubscription = merge(fallbackRefresh, liveRefresh)
+    const reviewRefresh = CONTENT_REVIEW_PERMISSIONS.some((permission) => this.permissions.has(permission))
+      ? this.realtime.watchContentReviews()
+      : EMPTY;
+    this.insightsSubscription = merge(fallbackRefresh, liveRefresh, reviewRefresh)
       .pipe(switchMap(() => this.loadDashboard()))
       .subscribe();
   }

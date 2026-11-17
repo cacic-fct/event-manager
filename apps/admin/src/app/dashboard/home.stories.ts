@@ -50,6 +50,8 @@ interface HomeStoryArgs {
   weatherAlerts: number;
   pendingCertificates: number;
   pendingOfflineAttendancesCount: number;
+  pendingProfileReviewsCount: number;
+  pendingMaterialReviewsCount: number;
   pendingReceiptValidationsCount: number;
   duplicatePeopleCount: number;
   inconsistencies: number;
@@ -75,6 +77,8 @@ const defaultArgs: HomeStoryArgs = {
   weatherAlerts: 1,
   pendingCertificates: 2,
   pendingOfflineAttendancesCount: 5,
+  pendingProfileReviewsCount: 2,
+  pendingMaterialReviewsCount: 3,
   pendingReceiptValidationsCount: 4,
   duplicatePeopleCount: 3,
   inconsistencies: 3,
@@ -139,6 +143,8 @@ const meta: Meta<HomeStoryArgs> = {
     weatherAlerts: { control: { type: 'range', min: 0, max: 5, step: 1 } },
     pendingCertificates: { control: { type: 'range', min: 0, max: 6, step: 1 } },
     pendingOfflineAttendancesCount: { control: { type: 'range', min: 0, max: 20, step: 1 } },
+    pendingProfileReviewsCount: { control: { type: 'range', min: 0, max: 20, step: 1 } },
+    pendingMaterialReviewsCount: { control: { type: 'range', min: 0, max: 20, step: 1 } },
     pendingReceiptValidationsCount: { control: { type: 'range', min: 0, max: 20, step: 1 } },
     duplicatePeopleCount: { control: { type: 'range', min: 0, max: 20, step: 1 } },
     inconsistencies: { control: { type: 'range', min: 0, max: 8, step: 1 } },
@@ -216,6 +222,27 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 
 export const Playground: Story = {
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const PendingContentReviews: Story = {
+  args: {
+    showTodayEvents: false,
+    showMonitoring: false,
+    showSystemHealth: false,
+    suggestions: [],
+    sportsMode: 'none',
+    pendingOfflineAttendancesCount: 0,
+    pendingReceiptValidationsCount: 0,
+    inconsistencies: 0,
+    pendingProfileReviewsCount: 1,
+    pendingMaterialReviewsCount: 3,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('1 perfil pendente')).toBeVisible();
+    await expect(canvas.getByText('3 eventos com alterações pendentes')).toBeVisible();
+    await expect(canvas.getByRole('link', { name: 'Revisar perfis e materiais' })).toBeVisible();
+  },
 };
 
 export const EmptyDashboard: Story = {
@@ -440,6 +467,8 @@ function buildDashboardInsights(args: HomeStoryArgs): WorkspaceDashboardHomeInsi
         : Array.from({ length: pendingCertificatesCount }, (_, index) => buildPendingCertificate(index)),
     pendingOfflineAttendancesCount,
     pendingOfflineAttendanceEvents: buildPendingOfflineAttendanceEvents(pendingOfflineAttendancesCount),
+    pendingProfileReviewsCount: empty || !args.showActionQueue ? 0 : args.pendingProfileReviewsCount,
+    pendingMaterialReviewsCount: empty || !args.showActionQueue ? 0 : args.pendingMaterialReviewsCount,
     pendingReceiptValidationsCount,
     pendingReceiptMajorEvents: buildPendingReceiptMajorEvents(pendingReceiptValidationsCount),
     sportsTournaments: buildSportsTournaments(args, empty, dateFromNow),

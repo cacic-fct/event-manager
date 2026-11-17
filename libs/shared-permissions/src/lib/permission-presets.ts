@@ -482,6 +482,9 @@ export const EVENT_MANAGER_PERMISSION_PRESETS = [
 ] as const satisfies readonly EventManagerPermissionPreset[];
 
 export const DASHBOARD_PERMISSION_REQUIREMENTS = [
+  Permission.LecturerProfile.Review,
+  Permission.Person.Update,
+  Permission.EventMaterials.Review,
   Permission.Event.Read,
   Permission.Event.Update,
   Permission.EventAttendance.Update,

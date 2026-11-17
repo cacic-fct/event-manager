@@ -30,6 +30,8 @@ describe('DashboardApiService', () => {
     expect(query).toContain('workspaceDashboardInsights');
     expect(query).toContain('pendingReceiptValidationsCount');
     expect(query).toContain('sportsMatches');
+    expect(query).toContain('pendingProfileReviewsCount');
+    expect(query).toContain('pendingMaterialReviewsCount');
   });
 
   it('propagates GraphQL errors without changing them', async () => {

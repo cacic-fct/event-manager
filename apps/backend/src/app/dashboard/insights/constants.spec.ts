@@ -19,6 +19,9 @@ describe('dashboard insights constants', () => {
     expect(SUSPICIOUS_EARLIEST_DATE).toEqual(new Date('2010-01-01T00:00:00.000Z'));
     expect([...UNFAVORABLE_WEATHER_CODES]).toEqual([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99]);
     expect(DASHBOARD_PERMISSION_REQUIREMENTS).toEqual([
+      'lecturer-profile#review',
+      'person#update',
+      'event-materials#review',
       'event#read',
       'event#update',
       'event-attendance#update',

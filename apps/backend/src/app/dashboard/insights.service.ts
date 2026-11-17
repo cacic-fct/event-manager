@@ -602,6 +602,8 @@ export class DashboardInsightsService {
       calendarEvents: calendarEvents.map((event) => mapCalendarEvent(event, now)),
       weatherAlerts: await buildWeatherAlerts(this.weatherService, calendarEvents),
       pendingCertificates: canManageCertificates ? await buildPendingCertificates(this.prisma, now) : [],
+      pendingProfileReviewsCount: 0,
+      pendingMaterialReviewsCount: 0,
       pendingReceiptValidationsCount: canValidateReceipts ? pendingReceiptValidationsCount : 0,
       pendingReceiptMajorEvents: canValidateReceipts
         ? pendingReceiptMajorEvents.map((majorEvent) => ({

@@ -84,7 +84,39 @@
     </div>
 
     <section class="dashboard-grid">
-      @if (attendanceReviewEvents().length > 0) {
+      @if (dashboard.pendingProfileReviewsCount > 0 || dashboard.pendingMaterialReviewsCount > 0) {
+      <mat-card appearance="outlined">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>rate_review</mat-icon>
+          <mat-card-title>Perfis e materiais para revisar</mat-card-title>
+          <mat-card-subtitle>Alterações enviadas aguardando revisão.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <mat-list class="compact-list embedded-list">
+            @if (dashboard.pendingProfileReviewsCount > 0) {
+            <mat-list-item>
+              <span matListItemTitle>Perfis de palestrantes</span>
+              <span matListItemLine>
+                {{ dashboard.pendingProfileReviewsCount }} {{ dashboard.pendingProfileReviewsCount === 1 ? 'perfil
+                pendente' : 'perfis pendentes' }}
+              </span>
+            </mat-list-item>
+            } @if (dashboard.pendingMaterialReviewsCount > 0) {
+            <mat-list-item>
+              <span matListItemTitle>Materiais para inscritos</span>
+              <span matListItemLine>
+                {{ dashboard.pendingMaterialReviewsCount }} {{ dashboard.pendingMaterialReviewsCount === 1 ? 'evento com
+                alterações pendentes' : 'eventos com alterações pendentes' }}
+              </span>
+            </mat-list-item>
+            }
+          </mat-list>
+        </mat-card-content>
+        <mat-card-actions>
+          <a matButton [routerLink]="['/content-reviews']">Revisar perfis e materiais</a>
+        </mat-card-actions>
+      </mat-card>
+      } @if (attendanceReviewEvents().length > 0) {
       <mat-card appearance="outlined">
         <mat-card-header>
           <mat-icon mat-card-avatar>rule</mat-icon>

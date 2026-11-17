@@ -8,7 +8,7 @@ describe('people labels', () => {
     expect(userRoleLabel(null)).toBe('Perfil não informado');
   });
 
-  it('formats each UNESP role and uses the shared fallback for unknown roles', () => {
+  it('formats each Unesp role and uses the shared fallback for unknown roles', () => {
     expect(unespRoleListLabel(['professor', 'external'])).toBe('Professor, Externo');
     expect(unespRoleListLabel(['aluno-graduacao'], '001234')).toBe('Aluno de Ciência da Computação');
     expect(unespRoleListLabel(['future-role'])).toBe('Vínculo com a Unesp não informado');
