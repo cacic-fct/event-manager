@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { createCertificatePdfFixture } from './certificate-pdf.fixtures';
 import { extractCertificatePdfId, findCertificatePdfId } from './extract-certificate-pdf-id';
 
-const popplerMissing = spawnSync('pdftotext', ['-v']).error?.code === 'ENOENT';
+const popplerMissing = (spawnSync('pdftotext', ['-v']).error as NodeJS.ErrnoException | undefined)?.code === 'ENOENT';
 const testWithPoppler = popplerMissing && !process.env.CI ? it.skip : it;
 
 describe('findCertificatePdfId', () => {

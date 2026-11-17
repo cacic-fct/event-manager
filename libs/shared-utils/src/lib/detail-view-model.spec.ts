@@ -44,6 +44,22 @@ describe('detail view model', () => {
     expect(detail?.events[0]?.event.endDate).toBe(new Date(startDate.getTime() + 60 * 60 * 1000).toISOString());
   });
 
+  it('formats both calendar dates when an event crosses local midnight', () => {
+    const startDate = new Date();
+    startDate.setHours(23, 30, 0, 0);
+    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+    const detail = buildEventDetail({
+      subscription: null,
+      event: event('overnight', startDate.toISOString()),
+      attendance: null,
+      hasIssuedCertificate: true,
+    });
+
+    expect(detail?.dateLine).toBe(
+      `De ${startDate.toLocaleDateString('pt-BR')} às 23:30 a ${endDate.toLocaleDateString('pt-BR')} às 00:30`,
+    );
+  });
+
   it('builds grouped event details with sorted events, certificate targets, and attendance summary', () => {
     const group = eventGroup({
       shouldIssueCertificate: true,

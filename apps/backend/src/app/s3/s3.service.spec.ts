@@ -82,6 +82,54 @@ describe('S3Service', () => {
     await expect(service.downloadFile('missing-key')).rejects.toThrow('S3 configuration is incomplete');
   });
 
+  it('stores small objects with private caching, metadata, expiration, and cancellation', async () => {
+    const service = new S3Service(configServiceMock() as never);
+    const abortSignal = new AbortController().signal;
+    const body = Buffer.from('preview');
+    const expires = new Date(Date.now() + 60_000);
+    const metadata = { revision: 'revision-1' };
+    sendMock.mockResolvedValueOnce({});
+
+    await service.putSmallObject('preview.avif', body, 'image/avif', metadata, expires, abortSignal);
+
+    expect(sendMock).toHaveBeenCalledWith(
+      {
+        kind: 'PutObjectCommand',
+        input: {
+          Bucket: 'bucket',
+          Key: 'preview.avif',
+          Body: body,
+          ContentType: 'image/avif',
+          ContentLength: body.length,
+          CacheControl: 'private, no-store',
+          Metadata: metadata,
+          Expires: expires,
+        },
+      },
+      { abortSignal },
+    );
+  });
+
+  it('accepts an unversioned bucket and rejects enabled or suspended versioning', async () => {
+    const service = new S3Service(configServiceMock() as never);
+    const abortSignal = new AbortController().signal;
+    sendMock
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ Status: 'Enabled' })
+      .mockResolvedValueOnce({ Status: 'Suspended' });
+
+    await expect(service.assertUnversionedBucket(abortSignal)).resolves.toBeUndefined();
+    await expect(service.assertUnversionedBucket(abortSignal)).rejects.toThrow('unversioned S3 bucket');
+    await expect(service.assertUnversionedBucket(abortSignal)).rejects.toThrow('unversioned S3 bucket');
+    expect(sendMock).toHaveBeenCalledWith(
+      {
+        kind: 'GetBucketVersioningCommand',
+        input: { Bucket: 'bucket' },
+      },
+      { abortSignal },
+    );
+  });
+
   it('uploads buffers and returns the object size from metadata', async () => {
     const service = new S3Service(configServiceMock() as never);
     sendMock.mockResolvedValue({ ContentLength: 42 });

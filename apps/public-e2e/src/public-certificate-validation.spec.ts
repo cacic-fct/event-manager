@@ -68,6 +68,7 @@ test('shows an actionable error for a PDF without a certificate ID', async ({ pa
 
 for (const returnMethod of ['browser', 'event button'] as const) {
   test(`preserves certificate results when returning with ${returnMethod}`, async ({ page }) => {
+    await page.clock.setFixedTime(new Date());
     let validationRequests = 0;
     page.on('request', (request) => {
       if (request.url().endsWith('/api/graphql') && request.method() === 'POST') {
@@ -90,7 +91,9 @@ for (const returnMethod of ['browser', 'event button'] as const) {
 
     await expect(page.getByText('Certificado válido', { exact: true })).toBeVisible();
     await expect(page.getByText('Maria Teste', { exact: true })).toBeVisible();
+    await expect(page.locator('#lookup-section')).toBeHidden();
     await page.getByRole('button', { name: 'Consultar outro certificado' }).click();
+    await expect(page.locator('#lookup-section')).toBeVisible();
     await expect(page.getByRole('textbox', { name: 'Código do certificado' })).toHaveValue('certificate-with-event');
     await expect(page.getByRole('link', { name: /Atividade vinculada/ })).toBeVisible();
     await expect(page.getByText('Conclua a verificação para validar.', { exact: true })).toHaveCount(0);

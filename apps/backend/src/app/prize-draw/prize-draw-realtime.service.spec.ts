@@ -74,6 +74,10 @@ describe('PrizeDrawRealtimeService', () => {
     const context = createContext();
     await context.service.onModuleInit();
     expect(context.subscriber.on).toHaveBeenCalledWith('error', expect.any(Function));
+    const warn = jest.spyOn(context.service['logger'], 'warn').mockImplementation(() => undefined);
+    const onError = context.subscriber.on.mock.calls.find(([event]) => event === 'error')?.[1];
+    onError(new Error('Connection lost'));
+    expect(warn).toHaveBeenCalledWith('Redis subscription connection error: Connection lost');
     const scope = context.service.scope('draw', 'draw-1');
     const values: unknown[] = [];
     const subscription = context.service.watch(scope).subscribe((value) => values.push(value));

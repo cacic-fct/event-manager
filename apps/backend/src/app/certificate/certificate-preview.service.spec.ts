@@ -58,7 +58,7 @@ describe('CertificatePreviewService', () => {
       runCommand: jest
         .fn()
         .mockImplementation(async (name: string, args: string[]) =>
-          name === 'reservePublicCertificatePreview' ? 1 : args[2] === 'acquire' ? 'OK' : 1,
+          name === 'reservePublicCertificatePreview' ? 1 : args[1] === 'acquire' ? 'OK' : 1,
         ),
       get: jest.fn().mockResolvedValue(null),
     };
@@ -78,7 +78,7 @@ describe('CertificatePreviewService', () => {
     await expect(service.request('certificate-1', token)).resolves.toEqual({ imagePath: null });
     expect(redis.defineCommand).toHaveBeenCalledWith('reservePublicCertificatePreview', {
       lua: RESERVE_CERTIFICATE_PREVIEW,
-      numberOfKeys: 7,
+      numberOfKeys: 8,
     });
     expect(redis.runCommand).toHaveBeenCalledWith('reservePublicCertificatePreview', [
       'preview:health',
@@ -88,8 +88,10 @@ describe('CertificatePreviewService', () => {
       'preview:wait',
       'preview:active',
       'preview:paused',
+      expect.stringMatching(/^preview:reservation-owner:[a-f0-9]{64}$/),
       expect.stringMatching(/^[a-f0-9]{64}$/),
       'preview:',
+      expect.any(String),
     ]);
     expect(queue.add).toHaveBeenCalledTimes(1);
     redis.runCommand.mockResolvedValue(0);
@@ -97,17 +99,45 @@ describe('CertificatePreviewService', () => {
     expect(queue.add).toHaveBeenCalledTimes(1);
   });
 
-  it('removes retained failures and their stale reservations before reserving another attempt', async () => {
+  it.each([false, true])('releases only its own reservation after enqueue (failure: %s)', async (fails) => {
+    const { service, redis, queue, token } = createQueuedService();
+    if (fails) {
+      queue.add.mockRejectedValueOnce(new Error('Redis unavailable during enqueue'));
+    }
+
+    await expect(service.request('certificate-1', token)).resolves.toEqual(fails ? null : { imagePath: null });
+    const reserveArgs = redis.runCommand.mock.calls[0][1];
+    expect(redis.runCommand).toHaveBeenNthCalledWith(2, 'releasePublicCertificatePreview', [
+      reserveArgs[3],
+      reserveArgs[7],
+      reserveArgs[8],
+      reserveArgs[10],
+    ]);
+    expect(queue.add.mock.invocationCallOrder[0]).toBeLessThan(redis.runCommand.mock.invocationCallOrder[1]);
+    await expect(service.request('certificate-1', token)).resolves.toEqual({ imagePath: null });
+    expect(queue.add).toHaveBeenCalledTimes(2);
+  });
+
+  it('removes retained failures before reserving another attempt', async () => {
     const { service, redis, queue, token } = createQueuedService();
     const failed = { getState: jest.fn().mockResolvedValue('failed'), remove: jest.fn().mockResolvedValue(undefined) };
     queue.getJob.mockResolvedValue(failed);
     await expect(service.request('certificate-1', token)).resolves.toEqual({ imagePath: null });
     expect(failed.remove).toHaveBeenCalledTimes(1);
     const calls = redis.runCommand.mock.calls;
-    const operations = calls.map(([name, args]) => (name === 'reservePublicCertificatePreview' ? 'reserve' : args[2]));
-    expect(operations).toEqual(['acquire', 'reset', 'reserve', 'release']);
+    const operations = calls.map(([name, args]) => {
+      switch (name) {
+        case 'reservePublicCertificatePreview':
+          return 'reserve';
+        case 'releasePublicCertificatePreview':
+          return 'release reservation';
+        default:
+          return args[1];
+      }
+    });
+    expect(operations).toEqual(['acquire', 'reserve', 'release reservation', 'release']);
     expect(failed.remove.mock.invocationCallOrder[0]).toBeLessThan(redis.runCommand.mock.invocationCallOrder[1]);
-    expect(redis.runCommand.mock.invocationCallOrder[2]).toBeLessThan(queue.add.mock.invocationCallOrder[0]);
+    expect(redis.runCommand.mock.invocationCallOrder[1]).toBeLessThan(queue.add.mock.invocationCallOrder[0]);
   });
 
   it.each(['active', 'waiting'])('keeps an existing %s job without reserving or replacing it', async (state) => {

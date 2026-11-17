@@ -3,7 +3,7 @@ import { Injectable, type OnModuleDestroy } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { getRedisConnectionOptions } from '../weather/redis-connection';
-import { RESERVE_CERTIFICATE_PREVIEW } from './certificate-preview-admission';
+import { RELEASE_CERTIFICATE_PREVIEW, RESERVE_CERTIFICATE_PREVIEW } from './certificate-preview-admission';
 import { CertificatePreviewCache } from './certificate-preview-cache';
 import {
   CERTIFICATE_PREVIEW_JOB,
@@ -18,16 +18,16 @@ type PreviewRequest = { imagePath: string | null };
 const MAX_HTTP_OPERATIONS = 12;
 const TOKEN_TTL_MS = 10 * 60_000;
 const RESERVE_COMMAND = 'reservePublicCertificatePreview';
+const RELEASE_COMMAND = 'releasePublicCertificatePreview';
 const RETRY_COMMAND = 'managePublicCertificatePreviewRetry';
 // Serialize failed-job replacement across producers and release only our own lock.
 const MANAGE_PREVIEW_RETRY = `
-local lock, reservations = KEYS[1], KEYS[2]
-local operation, token, revision = ARGV[1], ARGV[2], ARGV[3]
+local lock = KEYS[1]
+local operation, token = ARGV[1], ARGV[2]
 if operation == 'acquire' then
   return redis.call('SET', lock, token, 'PX', 30000, 'NX')
 end
 if redis.call('GET', lock) ~= token then return 0 end
-if operation == 'reset' then return redis.call('ZREM', reservations, revision) end
 return redis.call('DEL', lock)
 `;
 
@@ -71,17 +71,16 @@ export class CertificatePreviewService implements OnModuleDestroy {
 
       const redis = await queue.client;
       if (!this.admissionRegistered) {
-        redis.defineCommand(RESERVE_COMMAND, { lua: RESERVE_CERTIFICATE_PREVIEW, numberOfKeys: 7 });
-        redis.defineCommand(RETRY_COMMAND, { lua: MANAGE_PREVIEW_RETRY, numberOfKeys: 2 });
+        redis.defineCommand(RESERVE_COMMAND, { lua: RESERVE_CERTIFICATE_PREVIEW, numberOfKeys: 8 });
+        redis.defineCommand(RELEASE_COMMAND, { lua: RELEASE_CERTIFICATE_PREVIEW, numberOfKeys: 2 });
+        redis.defineCommand(RETRY_COMMAND, { lua: MANAGE_PREVIEW_RETRY, numberOfKeys: 1 });
         this.admissionRegistered = true;
       }
       const retryKey = queue.toKey(`retry:${revision}`);
       const retryToken = randomUUID();
-      const retryArgs = [retryKey, queue.toKey('reservations')];
-      if (
-        existing &&
-        (await redis.runCommand(RETRY_COMMAND, [...retryArgs, 'acquire', retryToken, revision])) !== 'OK'
-      ) {
+      const reservationsKey = queue.toKey('reservations');
+      const ownerKey = queue.toKey(`reservation-owner:${revision}`);
+      if (existing && (await redis.runCommand(RETRY_COMMAND, [retryKey, 'acquire', retryToken])) !== 'OK') {
         return { imagePath: null };
       }
       if (!existing && (await redis.get(retryKey))) {
@@ -98,40 +97,48 @@ export class CertificatePreviewService implements OnModuleDestroy {
             }
             await current.remove();
           }
-          // A retained failure must not reuse the old pre-enqueue reservation.
-          await redis.runCommand(RETRY_COMMAND, [...retryArgs, 'reset', retryToken, revision]);
         }
         const reserved: unknown = await redis.runCommand(RESERVE_COMMAND, [
           queue.toKey('health'),
           queue.toKey('cooldown'),
           queue.toKey('budget'),
-          queue.toKey('reservations'),
+          reservationsKey,
           queue.toKey('wait'),
           queue.toKey('active'),
           queue.toKey('paused'),
+          ownerKey,
           revision,
           queue.toKey(''),
+          retryToken,
         ]);
         if (reserved !== 1 && reserved !== 2) {
           return null;
         }
         if (reserved === 1) {
-          await queue.add(
-            CERTIFICATE_PREVIEW_JOB,
-            { certificateId, revision },
-            {
-              jobId: revision,
-              attempts: 1,
-              removeOnComplete: true,
-              removeOnFail: { age: 120, count: 32 },
-              stackTraceLimit: 0,
-            },
-          );
+          try {
+            await queue.add(
+              CERTIFICATE_PREVIEW_JOB,
+              { certificateId, revision },
+              {
+                jobId: revision,
+                attempts: 1,
+                removeOnComplete: true,
+                removeOnFail: { age: 120, count: 32 },
+                stackTraceLimit: 0,
+              },
+            );
+          } finally {
+            // BullMQ tracks enqueued jobs. Release the producer reservation on
+            // both outcomes, including a fast job that already completed.
+            await redis
+              .runCommand(RELEASE_COMMAND, [reservationsKey, ownerKey, revision, retryToken])
+              .catch(() => undefined);
+          }
         }
         return { imagePath: null };
       } finally {
         if (existing) {
-          await redis.runCommand(RETRY_COMMAND, [...retryArgs, 'release', retryToken, revision]);
+          await redis.runCommand(RETRY_COMMAND, [retryKey, 'release', retryToken]);
         }
       }
     });

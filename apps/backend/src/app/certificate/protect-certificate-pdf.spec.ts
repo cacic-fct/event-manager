@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { protectCertificatePdf } from './protect-certificate-pdf';
 
-const qpdfMissing = spawnSync('qpdf', ['--version']).error?.code === 'ENOENT';
+const qpdfMissing = (spawnSync('qpdf', ['--version']).error as NodeJS.ErrnoException | undefined)?.code === 'ENOENT';
 const testWithQpdf = qpdfMissing && !process.env.CI ? it.skip : it;
 
 testWithQpdf('encrypts PDFs with an empty user password and denies modification (requires qpdf on PATH)', async () => {

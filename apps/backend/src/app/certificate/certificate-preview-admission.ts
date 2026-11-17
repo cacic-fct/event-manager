@@ -1,13 +1,13 @@
 // Reserve space before BullMQ's separate add command. A short-lived
 // reservation also covers duplicate requests arriving before that add.
 export const RESERVE_CERTIFICATE_PREVIEW = `
-local health, cooldown, budget, reservations, waiting, active, paused = unpack(KEYS)
-local revision, jobPrefix = ARGV[1], ARGV[2]
+local health, cooldown, budget, reservations, waiting, active, paused, owner = unpack(KEYS)
+local revision, jobPrefix, token = ARGV[1], ARGV[2], ARGV[3]
 local time = redis.call('TIME')
 local now = time[1] * 1000 + math.floor(time[2] / 1000)
 
 redis.call('ZREMRANGEBYSCORE', reservations, '-inf', now)
-if redis.call('ZSCORE', reservations, revision) then
+if redis.call('ZSCORE', reservations, revision) or redis.call('EXISTS', jobPrefix .. revision) == 1 then
   return 2
 end
 
@@ -33,7 +33,17 @@ if redis.call('INCR', budget) == 1 then
   redis.call('PEXPIRE', budget, 60000)
 end
 
+redis.call('SET', owner, token, 'PX', 30000)
 redis.call('ZADD', reservations, now + 30000, revision)
 redis.call('PEXPIRE', reservations, 30000)
 return 1
+`;
+
+// Ownership prevents a late producer from releasing a newer reservation.
+export const RELEASE_CERTIFICATE_PREVIEW = `
+local reservations, owner = unpack(KEYS)
+local revision, token = ARGV[1], ARGV[2]
+if redis.call('GET', owner) ~= token then return 0 end
+redis.call('DEL', owner)
+return redis.call('ZREM', reservations, revision)
 `;

@@ -63,6 +63,7 @@
         <button
           mat-flat-button
           type="submit"
+          [disabledInteractive]="currentState.status === 'loading'"
           [disabled]="
           validationForm().invalid() ||
           currentState.status === 'loading' ||

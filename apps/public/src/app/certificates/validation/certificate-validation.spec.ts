@@ -57,6 +57,34 @@ describe('CertificateValidation', () => {
     expect(document.activeElement).toBe(fixture.nativeElement.querySelector('.lookup-shortcut button'));
   });
 
+  it.each([false, true])('keeps or transfers submit focus during validation (moved: %s)', async (moveFocus) => {
+    const { api, component, fixture } = await createFixture({ queryParams: { certificateId: 'certificate-1' } });
+    const response = new Subject<PublicCertificateVerification>();
+    api.validateCertificate.mockReturnValue(response);
+    fixture.detectChanges();
+    const submit = fixture.nativeElement.querySelector('button[type="submit"]') as HTMLButtonElement;
+    const other = document.createElement('button');
+    document.body.append(other);
+    try {
+      submit.focus();
+      component.onTurnstileTokenChange('token');
+      fixture.detectChanges();
+      expect(document.activeElement).toBe(submit);
+      expect(submit.getAttribute('aria-disabled')).toBe('true');
+      if (moveFocus) {
+        other.focus();
+      }
+      response.next(verificationFixture);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(document.activeElement).toBe(
+        moveFocus ? other : fixture.nativeElement.querySelector('.lookup-shortcut button'),
+      );
+    } finally {
+      other.remove();
+    }
+  });
+
   it.each(['request', 'poll', 'image'] as const)('cancels pending preview %s work on collapse', async (stage) => {
     const { api, component, fixture } = await createFixture({ queryParams: { certificateId: 'certificate-1' } });
     component.onTurnstileTokenChange('token');
@@ -199,7 +227,10 @@ describe('CertificateValidation', () => {
     vi.useFakeTimers();
     try {
       component.togglePreview(certificateFixture);
-      await vi.advanceTimersByTimeAsync(20000);
+      await vi.advanceTimersByTimeAsync(35_999);
+      expect(component.previewState()).toBe('loading');
+      expect(api.requestPreview).toHaveBeenCalledTimes(9);
+      await vi.advanceTimersByTimeAsync(1);
       expect(api.requestPreview).toHaveBeenCalledTimes(10);
       expect(component.previewState()).toBe('hidden');
       expect(component.state().status).toBe('ready');

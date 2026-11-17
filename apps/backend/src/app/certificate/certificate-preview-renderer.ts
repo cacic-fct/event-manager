@@ -11,18 +11,28 @@ const MAX_PNG_BYTES = MAX_THUMBNAIL_DIMENSION ** 2 * 4 + 64 * 1024;
 const VIEWPORT = { width: 1123, height: 794 };
 
 export async function runCertificatePreviewRenderer(): Promise<void> {
-  await writeImage(await renderCertificatePreview(await readTemplate()));
+  const shutdown = new AbortController();
+  const cancel = () => shutdown.abort();
+  process.once('SIGTERM', cancel);
+  try {
+    await writeImage(await renderCertificatePreview(await readTemplate(), shutdown.signal));
+  } finally {
+    process.off('SIGTERM', cancel);
+  }
 }
 
-export async function renderCertificatePreview(html: string): Promise<Buffer> {
+export async function renderCertificatePreview(html: string, shutdown?: AbortSignal): Promise<Buffer> {
   if (Buffer.byteLength(html) > CERTIFICATE_PREVIEW_MAX_HTML_BYTES) {
     throw new Error('Certificate preview HTML exceeds the rendering limit.');
   }
-  const signal = AbortSignal.timeout(7500);
+  const timeout = AbortSignal.timeout(7500);
+  const signal = shutdown ? AbortSignal.any([shutdown, timeout]) : timeout;
+  signal.throwIfAborted();
   const { chromium } = await import('playwright');
   const browser = await chromium.launch({
     headless: true,
     timeout: 4000,
+    handleSIGTERM: false,
     args: ['--renderer-process-limit=1', '--js-flags=--max-old-space-size=64'],
   });
   const cancel = () => void browser.close().catch(() => undefined);

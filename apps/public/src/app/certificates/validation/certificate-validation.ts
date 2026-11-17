@@ -234,7 +234,7 @@ export class CertificateValidation {
   }
 
   submit(source: CodeValidationSource = 'manual'): void {
-    if (this.readingPdf()) {
+    if (this.readingPdf() || this.state().status === 'loading') {
       return;
     }
 
@@ -362,7 +362,7 @@ export class CertificateValidation {
           if (!preview) {
             this.hidePreview();
           } else if (!preview.imagePath && attempt < 9) {
-            this.previewTimer = timer(2000)
+            this.previewTimer = timer(4000)
               .pipe(takeUntilDestroyed(this.destroyRef))
               .subscribe(() => this.requestPreview(certificateId, attempt + 1));
           } else if (preview.imagePath === `/api/certificates/validate/${encodeURIComponent(certificateId)}/preview`) {

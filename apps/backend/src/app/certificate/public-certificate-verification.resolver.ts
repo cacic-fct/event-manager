@@ -1,6 +1,6 @@
 import { PublicCertificatePreview, PublicCertificateVerification } from '@cacic-fct/shared-data-types';
 import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
-import { UseGuards } from '@nestjs/common';
+import { HttpException, InternalServerErrorException, UseGuards } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import type { Request } from 'express';
 import { Public } from '../auth/decorators/public.decorator';
@@ -36,7 +36,14 @@ export class PublicCertificateVerificationResolver {
       TURNSTILE_ACTIONS.certificateValidation,
     );
 
-    return this.verification.verify(certificateId);
+    try {
+      return await this.verification.verify(certificateId);
+    } catch (error) {
+      if (error instanceof HttpException && error.getStatus() < 500) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Certificate verification failed.');
+    }
   }
 
   @Public()

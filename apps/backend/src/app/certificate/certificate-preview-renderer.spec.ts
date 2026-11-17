@@ -9,7 +9,7 @@ const { jest } = import.meta;
 jestEsm.unstable_mockModule('playwright', () => ({ chromium: { launch: jest.fn() } }));
 const { chromium } = await import('playwright');
 const { renderCertificatePreview } = await import('./certificate-preview-renderer');
-const popplerMissing = spawnSync('pdftoppm', ['-v']).error?.code === 'ENOENT';
+const popplerMissing = (spawnSync('pdftoppm', ['-v']).error as NodeJS.ErrnoException | undefined)?.code === 'ENOENT';
 const testWithPoppler = popplerMissing && !process.env.CI ? it.skip : it;
 
 function mockBrowser(pdf: Buffer) {

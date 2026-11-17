@@ -1,7 +1,8 @@
 import { BadRequestException, type INestApplication } from '@nestjs/common';
 import { jest } from '@jest/globals';
 import { Test } from '@nestjs/testing';
-import { setImmediate } from 'node:timers/promises';
+import { request } from 'node:http';
+import { setImmediate, setTimeout as delay } from 'node:timers/promises';
 import { PUBLIC_CERTIFICATE_PDF_MAX_BYTES } from '@cacic-fct/event-manager-public-contracts';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 import { TurnstileService } from '../turnstile/turnstile.service';
@@ -147,6 +148,46 @@ describe('certificate PDF verification over HTTP', () => {
     await setImmediate();
     expect((await upload()).status).toBe(200);
   });
+
+  it('closes incomplete uploads at the deadline and releases both slots', async () => {
+    const startedAt = performance.now();
+    const testDeadline = AbortSignal.timeout(18_000);
+    const clients = Array.from({ length: 2 }, () =>
+      request(url, {
+        method: 'POST',
+        signal: testDeadline,
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Length': pdf.length + 100,
+          'X-Turnstile-Token': 'token',
+        },
+      }),
+    );
+    const closed = clients.map(
+      (client) =>
+        new Promise<void>((resolve) => {
+          client.on('error', () => undefined);
+          client.once('close', resolve);
+          client.write(pdf);
+        }),
+    );
+    try {
+      for (let attempt = 0; attempt < 200 && turnstile.assertValidToken.mock.calls.length < 2; attempt++) {
+        await setImmediate();
+      }
+      expect(turnstile.assertValidToken).toHaveBeenCalledTimes(2);
+      expect((await upload()).status).toBe(503);
+      await delay(100);
+      expect(clients.every((client) => !client.destroyed)).toBe(true);
+      await Promise.all(closed);
+      expect(testDeadline.aborted).toBe(false);
+      expect(performance.now() - startedAt).toBeGreaterThanOrEqual(15_000);
+      expect(extractId).not.toHaveBeenCalled();
+      expect((await upload()).status).toBe(200);
+    } finally {
+      clients.forEach((client) => client.destroy());
+    }
+  }, 20_000);
 
   it('bounds concurrent work and recovers the slots after parser errors', async () => {
     let fail!: (error: Error) => void;

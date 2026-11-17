@@ -1,3 +1,4 @@
+import { BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { GraphQLSchemaBuilderModule, GraphQLSchemaFactory } from '@nestjs/graphql';
 import { Test } from '@nestjs/testing';
 import { parse, validate } from 'graphql';
@@ -54,6 +55,18 @@ describe('PublicCertificateVerificationResolver', () => {
     });
     expect(previews.createToken).toHaveBeenCalledWith(certificate);
     expect(validation.findPublicRevocation).not.toHaveBeenCalled();
+  });
+
+  it('returns a generic error for unexpected verification failures and preserves business errors', async () => {
+    const { resolver, validation } = fixture();
+    const badRequest = new BadRequestException('Invalid certificate ID');
+    validation.validateCertificate
+      .mockRejectedValueOnce(new Error('Private database details'))
+      .mockRejectedValueOnce(badRequest);
+    await expect(resolver.publicCertificateVerification('certificate-1', 'token', {})).rejects.toEqual(
+      new InternalServerErrorException('Certificate verification failed.'),
+    );
+    await expect(resolver.publicCertificateVerification('certificate-1', 'token', {})).rejects.toBe(badRequest);
   });
 
   it('publishes the operations used by the public client in the generated GraphQL schema', async () => {
