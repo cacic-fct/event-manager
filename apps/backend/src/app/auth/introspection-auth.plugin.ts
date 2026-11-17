@@ -1,23 +1,14 @@
 import type { ApolloServerPlugin, GraphQLRequestContextDidResolveOperation } from '@apollo/server';
 import { GraphQLError, visit } from 'graphql';
-import type { Request } from 'express';
-import { AUTH_SESSION_COOKIE_NAME } from './auth.constants';
-import { readAuthCookie } from './auth-cookie-utils';
-import { type AuthenticatedUser } from './interfaces/authenticated-user.interface';
-import { KeycloakAuthService } from './keycloak-auth.service';
-
-type RequestWithUser = Request & {
-  user?: AuthenticatedUser;
-  cookies?: Record<string, unknown>;
-};
+import { authenticateHttpRequest, type AuthenticatedRequest } from './authenticated-request';
 
 export type GraphqlRequestContext = {
-  req?: RequestWithUser;
-  request?: RequestWithUser;
+  req?: AuthenticatedRequest;
+  request?: AuthenticatedRequest;
 };
 
 type IntrospectionAuthPluginOptions = {
-  readonly keycloakAuthService: KeycloakAuthService;
+  readonly keycloakAuthService: Parameters<typeof authenticateHttpRequest>[1];
   readonly production: boolean;
 };
 
@@ -36,22 +27,10 @@ export function createIntrospectionAuthPlugin({
           const request = getRequest(requestContext);
 
           try {
-            const accessToken = extractBearerToken(request.headers.authorization);
-            if (accessToken) {
-              request.user = await keycloakAuthService.authenticateAccessToken(accessToken);
-              return;
-            }
-
-            const sessionId = extractCookieValue(request, AUTH_SESSION_COOKIE_NAME);
-            if (sessionId) {
-              request.user = await keycloakAuthService.authenticateSession(sessionId);
-              return;
-            }
+            await authenticateHttpRequest(request, keycloakAuthService);
           } catch {
             throwUnauthenticatedIntrospectionError();
           }
-
-          throwUnauthenticatedIntrospectionError();
         },
       };
     },
@@ -77,7 +56,9 @@ function containsIntrospectionField(
   return containsIntrospection;
 }
 
-function getRequest(requestContext: GraphQLRequestContextDidResolveOperation<GraphqlRequestContext>): RequestWithUser {
+function getRequest(
+  requestContext: GraphQLRequestContextDidResolveOperation<GraphqlRequestContext>,
+): AuthenticatedRequest {
   const request = requestContext.contextValue.req ?? requestContext.contextValue.request;
   if (!request) {
     throw new GraphQLError('Missing request context.', {
@@ -96,22 +77,4 @@ function throwUnauthenticatedIntrospectionError(): never {
       code: 'UNAUTHENTICATED',
     },
   });
-}
-
-function extractBearerToken(authorizationHeader?: string | string[]): string | null {
-  const header = Array.isArray(authorizationHeader) ? authorizationHeader[0] : authorizationHeader;
-  if (!header) {
-    return null;
-  }
-
-  const [scheme, token] = header.split(' ');
-  if (scheme?.toLowerCase() !== 'bearer' || !token) {
-    return null;
-  }
-
-  return token;
-}
-
-function extractCookieValue(request: RequestWithUser, key: string): string | null {
-  return readAuthCookie(request, key);
 }

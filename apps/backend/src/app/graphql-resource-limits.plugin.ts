@@ -8,6 +8,8 @@ import type { Request, Response } from 'express';
 
 const MAX_QUERY_BYTES = 100 * 1024;
 const MAX_QUERY_DEPTH = 12;
+// The standard GraphQL introspection query reaches depth 15 through nested type references.
+const MAX_INTROSPECTION_DEPTH = 16;
 const MAX_QUERY_ALIASES = 50;
 const MAX_QUERY_OPERATIONS = 1;
 const MAX_QUERY_COMPLEXITY = 2_000;
@@ -54,18 +56,18 @@ function assertDocumentLimits(document: DocumentNode): void {
 
   let aliases = 0;
   let complexity = 0;
-  let depth = 0;
+  let exceedsDepthLimit = false;
   for (const operation of operations) {
-    const result = measureSelections(operation.selectionSet.selections, fragments, 0, new Set());
+    const result = measureSelections(operation.selectionSet.selections, fragments, 0, MAX_QUERY_DEPTH, new Set());
     aliases += result.aliases;
     complexity += result.complexity;
-    depth = Math.max(depth, result.depth);
+    exceedsDepthLimit ||= result.exceedsDepthLimit;
   }
 
   if (aliases > MAX_QUERY_ALIASES) {
     throw badGraphqlRequest('GraphQL query contains too many aliases.');
   }
-  if (depth > MAX_QUERY_DEPTH) {
+  if (exceedsDepthLimit) {
     throw badGraphqlRequest('GraphQL query is too deeply nested.');
   }
   if (complexity > MAX_QUERY_COMPLEXITY) {
@@ -77,32 +79,48 @@ function measureSelections(
   selections: readonly SelectionNode[],
   fragments: ReadonlyMap<string, FragmentDefinitionNode>,
   parentDepth: number,
+  depthLimit: number,
   fragmentStack: ReadonlySet<string>,
-): { aliases: number; complexity: number; depth: number } {
+): { aliases: number; complexity: number; exceedsDepthLimit: boolean } {
   let aliases = 0;
   let complexity = 0;
-  let depth = parentDepth;
+  let exceedsDepthLimit = false;
 
   for (const selection of selections) {
     if (selection.kind === Kind.FIELD) {
       const fieldDepth = parentDepth + 1;
+      const isIntrospectionRoot =
+        parentDepth === 0 && (selection.name.value === '__schema' || selection.name.value === '__type');
+      const fieldDepthLimit = isIntrospectionRoot ? MAX_INTROSPECTION_DEPTH : depthLimit;
       aliases += selection.alias ? 1 : 0;
       complexity += fieldDepth;
-      depth = Math.max(depth, fieldDepth);
+      exceedsDepthLimit ||= fieldDepth > fieldDepthLimit;
       if (selection.selectionSet) {
-        const nested = measureSelections(selection.selectionSet.selections, fragments, fieldDepth, fragmentStack);
+        const nested = measureSelections(
+          selection.selectionSet.selections,
+          fragments,
+          fieldDepth,
+          fieldDepthLimit,
+          fragmentStack,
+        );
         aliases += nested.aliases;
         complexity += nested.complexity;
-        depth = Math.max(depth, nested.depth);
+        exceedsDepthLimit ||= nested.exceedsDepthLimit;
       }
       continue;
     }
 
     if (selection.kind === Kind.INLINE_FRAGMENT) {
-      const nested = measureSelections(selection.selectionSet.selections, fragments, parentDepth, fragmentStack);
+      const nested = measureSelections(
+        selection.selectionSet.selections,
+        fragments,
+        parentDepth,
+        depthLimit,
+        fragmentStack,
+      );
       aliases += nested.aliases;
       complexity += nested.complexity;
-      depth = Math.max(depth, nested.depth);
+      exceedsDepthLimit ||= nested.exceedsDepthLimit;
       continue;
     }
 
@@ -116,13 +134,13 @@ function measureSelections(
     }
     const nextStack = new Set(fragmentStack);
     nextStack.add(fragmentName);
-    const nested = measureSelections(fragment.selectionSet.selections, fragments, parentDepth, nextStack);
+    const nested = measureSelections(fragment.selectionSet.selections, fragments, parentDepth, depthLimit, nextStack);
     aliases += nested.aliases;
     complexity += nested.complexity;
-    depth = Math.max(depth, nested.depth);
+    exceedsDepthLimit ||= nested.exceedsDepthLimit;
   }
 
-  return { aliases, complexity, depth };
+  return { aliases, complexity, exceedsDepthLimit };
 }
 
 function badGraphqlRequest(message: string): GraphQLError {
