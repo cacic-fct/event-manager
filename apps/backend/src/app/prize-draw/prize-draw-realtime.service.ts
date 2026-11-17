@@ -47,6 +47,9 @@ export class PrizeDrawRealtimeService implements OnModuleInit, OnModuleDestroy {
       return;
     }
     this.subscriber = connection.duplicate();
+    this.subscriber.on('error', (error: Error) => {
+      this.logger.warn(`Redis subscription connection error: ${error.message}`);
+    });
     this.subscriber.on('message', (_channel, payload) => {
       const envelope = this.parseEnvelope(payload);
       if (envelope) {

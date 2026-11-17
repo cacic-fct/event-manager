@@ -1,5 +1,5 @@
 import '@angular/compiler';
-import { DOCUMENT } from '@angular/common';
+import { DOCUMENT, IMAGE_CONFIG } from '@angular/common';
 import { ApplicationRef, PLATFORM_ID, provideZonelessChangeDetection, signal } from '@angular/core';
 import { createApplication } from '@angular/platform-browser';
 import { AuthService } from '../auth/auth.service';
@@ -253,6 +253,10 @@ describe('provideCacicObservability replay script loader', () => {
       providers: [
         provideZonelessChangeDetection(),
         { provide: DOCUMENT, useValue: document },
+        {
+          provide: IMAGE_CONFIG,
+          useValue: { disableImageSizeWarning: true, disableImageLazyLoadWarning: true },
+        },
         { provide: PLATFORM_ID, useValue: 'browser' },
         { provide: AuthService, useValue: auth },
         { provide: CACIC_OBSERVABILITY_REPLAY_IS_DEVELOPMENT, useValue: false },

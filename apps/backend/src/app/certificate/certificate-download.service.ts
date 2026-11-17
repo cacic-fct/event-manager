@@ -18,6 +18,8 @@ import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { PrismaService } from '../prisma/prisma.service';
 import { CertificateValidationService } from './certificate-validation.service';
+import { CERTIFICATE_PREVIEW_MAX_HTML_BYTES } from './certificate-preview-source';
+import { publiclyValidCertificateWhere } from './public-certificate-visibility';
 import { protectCertificatePdf } from './protect-certificate-pdf';
 import { createZipArchive, type ZipArchiveStream } from '../shared/zip-archive';
 
@@ -53,6 +55,10 @@ export class CertificateDownloadService {
     return this.renderCertificate(certificateId, true);
   }
 
+  async loadPublicPreviewHtml(certificateId: string): Promise<string> {
+    return (await this.loadCertificate(certificateId, 'preview')).renderedHtml;
+  }
+
   private async renderCertificate(certificateId: string, publicOnly: boolean): Promise<CertificateDownload> {
     const certificate = await this.renderCertificateFile(certificateId, publicOnly);
 
@@ -68,20 +74,17 @@ export class CertificateDownloadService {
     publicOnly: boolean,
     browser?: Browser,
   ): Promise<RenderedCertificate> {
+    const { renderedHtml, fileName } = await this.loadCertificate(certificateId, publicOnly ? 'public' : 'private');
+    return { fileName, content: await this.renderPdf(renderedHtml, browser) };
+  }
+
+  private async loadCertificate(certificateId: string, mode: 'private' | 'public' | 'preview') {
     const normalizedCertificateId = this.validation.normalizeRequiredId('certificateId', certificateId);
     const certificate = await this.prisma.certificate.findFirst({
-      where: {
-        id: normalizedCertificateId,
-        deletedAt: null,
-        ...(publicOnly
-          ? {
-              config: {
-                deletedAt: null,
-                isActive: true,
-              },
-            }
-          : {}),
-      },
+      where:
+        mode === 'private'
+          ? { id: normalizedCertificateId, deletedAt: null }
+          : publiclyValidCertificateWhere(normalizedCertificateId),
       select: {
         id: true,
         renderedData: true,
@@ -108,6 +111,11 @@ export class CertificateDownloadService {
       throw new NotFoundException(`Certificate ${normalizedCertificateId} was not found.`);
     }
 
+    const { htmlTemplate, cssTemplate } = certificate.certificateTemplate;
+    if (mode === 'preview' && htmlTemplate.length + (cssTemplate?.length ?? 0) > CERTIFICATE_PREVIEW_MAX_HTML_BYTES) {
+      throw new Error('Certificate preview template exceeds the rendering limit.');
+    }
+
     const verificationUrl = this.buildVerificationUrl(certificate.id);
     const templateVariables = await this.buildTemplateVariables(
       certificate.renderedData,
@@ -116,18 +124,26 @@ export class CertificateDownloadService {
       verificationUrl,
       certificate.id,
     );
+    if (mode === 'preview') {
+      // The public validation record shows only masked CPF. Some original
+      // certificates contain other document types; omit them from the image.
+      for (const key of ['identityDocument', 'identity_document']) {
+        if (!/^(?:\*{3}|•••)\.\d{3}\.\d{3}-(?:\*{2}|••)$/.test(templateVariables[key] ?? '')) {
+          templateVariables[key] = '';
+        }
+      }
+      templateVariables['document'] = templateVariables['identityDocument']
+        ? `Documento: ${templateVariables['identityDocument']}`
+        : '';
+    }
     const renderedHtml = this.renderTemplate(
-      this.inlineCss(
-        certificate.certificateTemplate.htmlTemplate,
-        certificate.certificateTemplate.cssTemplate ?? undefined,
-      ),
+      this.inlineCss(htmlTemplate, cssTemplate ?? undefined),
       templateVariables,
+      mode === 'preview' ? CERTIFICATE_PREVIEW_MAX_HTML_BYTES : Infinity,
     );
-    const pdf = await this.renderPdf(renderedHtml, browser);
-
     return {
       fileName: this.buildFileName(certificate.person.name, certificate.id),
-      content: pdf,
+      renderedHtml,
     };
   }
 
@@ -356,8 +372,20 @@ export class CertificateDownloadService {
     return `${cssTag}${html}`;
   }
 
-  private renderTemplate(template: string, variables: Record<string, string>): string {
-    return template.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_, key: string) => this.escapeHtml(variables[key] ?? ''));
+  private renderTemplate(template: string, variables: Record<string, string>, limit: number): string {
+    let length = template.length;
+    return template.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (placeholder: string, key: string) => {
+      const value = variables[key] ?? '';
+      if (value.length > limit) {
+        throw new Error('Certificate preview variable exceeds the rendering limit.');
+      }
+      const escaped = this.escapeHtml(value);
+      length += escaped.length - placeholder.length;
+      if (length > limit) {
+        throw new Error('Certificate preview HTML exceeds the rendering limit.');
+      }
+      return escaped;
+    });
   }
 
   private async launchBrowser(): Promise<Browser> {

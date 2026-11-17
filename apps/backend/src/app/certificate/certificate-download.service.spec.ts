@@ -69,6 +69,9 @@ describe('CertificateDownloadService', () => {
         where: {
           id: 'certificate-1',
           deletedAt: null,
+          revokedAt: null,
+          lgpdDeletionRequestId: null,
+          person: { deletedAt: null },
           config: {
             deletedAt: null,
             isActive: true,
@@ -221,6 +224,9 @@ describe('CertificateDownloadService', () => {
         where: {
           id: 'certificate-2',
           deletedAt: null,
+          revokedAt: null,
+          lgpdDeletionRequestId: null,
+          person: { deletedAt: null },
           config: {
             deletedAt: null,
             isActive: true,

@@ -11,6 +11,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CertificateValidationService } from './certificate-validation.service';
+import { publicCertificateVisibilityWhere, publiclyValidCertificateWhere } from './public-certificate-visibility';
 import { isManualCertificateIssuedTo } from './certificate-sports-roles';
 
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
@@ -115,6 +116,22 @@ export class PublicCertificateValidationService {
     private readonly validation: CertificateValidationService,
   ) {}
 
+  async findPublicRevocation(certificateId: string): Promise<Date | null> {
+    const normalizedId = this.validation.normalizeOptionalId(certificateId);
+    if (!normalizedId) {
+      return null;
+    }
+
+    const certificate = await this.prisma.certificate.findFirst({
+      where: {
+        ...publicCertificateVisibilityWhere(normalizedId),
+        revokedAt: { not: null },
+      },
+      select: { revokedAt: true },
+    });
+    return certificate?.revokedAt ?? null;
+  }
+
   async validateCertificate(certificateId: string): Promise<PublicCertificateValidation | null> {
     const normalizedCertificateId = this.validation.normalizeOptionalId(certificateId);
     if (!normalizedCertificateId) {
@@ -122,14 +139,7 @@ export class PublicCertificateValidationService {
     }
 
     const storedCertificate = await this.prisma.certificate.findFirst({
-      where: {
-        id: normalizedCertificateId,
-        deletedAt: null,
-        config: {
-          deletedAt: null,
-          isActive: true,
-        },
-      },
+      where: publiclyValidCertificateWhere(normalizedCertificateId),
       select: PUBLIC_CERTIFICATE_VALIDATION_SELECT,
     });
     if (!storedCertificate) {

@@ -5,7 +5,9 @@ import type {
   DefaultRedirectRoute,
   EventType,
   GraphqlVariables,
+  PublicCertificatePreview,
   PublicCertificateValidation,
+  PublicCertificateVerification,
   PublicEvent,
   PublicEventSubscriptionSummary,
   PublicEventWeather,
@@ -352,6 +354,41 @@ export const PUBLIC_CERTIFICATE_VALIDATION_QUERY = `
   query PublicCertificateValidation($certificateId: String!, $turnstileToken: String) {
     publicCertificateValidation(certificateId: $certificateId, turnstileToken: $turnstileToken) {
       ${PUBLIC_CERTIFICATE_VALIDATION_FIELDS}
+    }
+  }
+`;
+
+export type PublicCertificateVerificationQueryVariables = PublicCertificateValidationQueryVariables;
+
+export interface PublicCertificateVerificationQuery {
+  publicCertificateVerification: PublicCertificateVerification;
+}
+
+export const PUBLIC_CERTIFICATE_VERIFICATION_QUERY = `
+  query PublicCertificateVerification($certificateId: String!, $turnstileToken: String) {
+    publicCertificateVerification(certificateId: $certificateId, turnstileToken: $turnstileToken) {
+      revokedAt
+      previewToken
+      certificate {
+        ${PUBLIC_CERTIFICATE_VALIDATION_FIELDS}
+      }
+    }
+  }
+`;
+
+export interface RequestPublicCertificatePreviewMutationVariables {
+  certificateId: string;
+  previewToken: string;
+}
+
+export interface RequestPublicCertificatePreviewMutation {
+  requestPublicCertificatePreview: PublicCertificatePreview | null;
+}
+
+export const REQUEST_PUBLIC_CERTIFICATE_PREVIEW_MUTATION = `
+  mutation RequestPublicCertificatePreview($certificateId: String!, $previewToken: String!) {
+    requestPublicCertificatePreview(certificateId: $certificateId, previewToken: $previewToken) {
+      imagePath
     }
   }
 `;

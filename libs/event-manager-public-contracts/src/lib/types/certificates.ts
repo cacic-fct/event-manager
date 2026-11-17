@@ -1,5 +1,7 @@
 import type { CertificateIssuedTo, CertificateScope, DateTimeString, EventType } from './common';
 
+export const PUBLIC_CERTIFICATE_PDF_MAX_BYTES = 5 * 1024 * 1024;
+
 export type CertificateParticipationStatus =
   | 'AWAITING_RELEASE'
   | 'ATTENDANCE_CONFIRMED'
@@ -70,4 +72,14 @@ export interface PublicCertificateValidation {
   targetEmoji?: string | null;
   sections: PublicCertificateValidationEventSection[];
   totalCreditMinutes: number;
+}
+
+export interface PublicCertificateVerification {
+  certificate: PublicCertificateValidation | null;
+  revokedAt: DateTimeString | null;
+  previewToken: string | null;
+}
+
+export interface PublicCertificatePreview {
+  imagePath: string | null;
 }

@@ -10,152 +10,254 @@
     aria-label="Voltar ao início"
     matTooltip="Voltar ao início"
     role="link" />
-  <h1 class="global-toolbar-title">Validar certificado</h1>
+  <h1 class="certificate-validation-title">Validar certificado</h1>
   <span class="global-toolbar-spacer"></span>
 </mat-toolbar>
 
-<main class="validation-page">
-  @let currentState = state();
+<main
+  class="validation-page"
+  [class.validation-page-with-preview]="state().status === 'ready' && previewToken() && previewState() !== 'hidden'">
+  @let currentState = state(); @if (currentState.status === 'ready' && !lookupExpanded()) {
+  <div class="lookup-shortcut">
+    <button
+      #lookupShortcut
+      mat-button
+      type="button"
+      (click)="openLookup()"
+      [attr.aria-expanded]="lookupExpanded()"
+      aria-controls="lookup-section">
+      <mat-icon>search</mat-icon>Consultar outro certificado
+    </button>
+  </div>
+  }
+  <section
+    #lookupSection
+    id="lookup-section"
+    class="lookup-section"
+    [hidden]="currentState.status === 'ready' && !lookupExpanded()"
+    [class.lookup-section-secondary]="currentState.status === 'ready'"
+    aria-labelledby="lookup-heading">
+    <div class="lookup-introduction">
+      <h2 id="lookup-heading">
+        {{ currentState.status === 'ready' ? 'Consultar certificado' : 'Confira a autenticidade de um certificado' }}
+      </h2>
+    </div>
+    <form id="certificate-lookup" class="lookup-form" (submit)="$event.preventDefault(); submit()">
+      <mat-form-field class="id-field">
+        <mat-label>Código do certificado</mat-label>
+        <input
+          #lookupInput
+          matInput
+          autocomplete="off"
+          spellcheck="false"
+          autocapitalize="off"
+          [formField]="validationForm.certificateId" />
+        @if (validationForm.certificateId().touched() && hasCertificateIdError('required')) {
+        <mat-error>Informe o código do certificado.</mat-error>
+        } @if (hasCertificateIdError('notFound')) {
+        <mat-error>Certificado não encontrado.</mat-error>
+        }
+      </mat-form-field>
 
-  <form class="lookup-form" (submit)="$event.preventDefault(); submit()">
-    <mat-form-field class="id-field">
-      <mat-label>Código do certificado</mat-label>
-      <input matInput autocomplete="off" [formField]="validationForm.certificateId" />
-      @if (validationForm.certificateId().touched() && hasCertificateIdError('required')) {
-      <mat-error>Informe o código do certificado.</mat-error>
-      } @if (hasCertificateIdError('notFound')) {
-      <mat-error>Certificado não encontrado.</mat-error>
-      }
-    </mat-form-field>
-
-    <section class="turnstile-section" [class.turnstile-section-active]="currentState.status === 'challenge'">
-      @if (currentState.status === 'challenge') {
-      <div class="challenge-copy" aria-live="polite">
-        <mat-icon aria-hidden="true">verified_user</mat-icon>
-        <p>{{ challengeMessage(currentState.source) }}</p>
-      </div>
-      }
-      <lib-cloudflare-turnstile [action]="turnstileAction" (tokenChange)="onTurnstileTokenChange($event)" />
-    </section>
-
-    <div class="button-container">
-      <button
-        mat-flat-button
-        type="submit"
-        [disabled]="
+      <div class="button-container">
+        <button
+          mat-flat-button
+          type="submit"
+          [disabledInteractive]="currentState.status === 'loading'"
+          [disabled]="
           validationForm().invalid() ||
           currentState.status === 'loading' ||
           validationCooldownSeconds() > 0
         ">
-        <mat-icon>search</mat-icon>
-        Validar
-      </button>
-      <button
-        matIconButton
-        type="button"
-        aria-label="Escanear código do certificado"
-        [disabled]="validationCooldownSeconds() > 0"
-        (click)="scanCode()">
-        <mat-icon>qr_code_scanner</mat-icon>
-      </button>
-    </div>
-    @if (validationCooldownSeconds() > 0) {
-    <p class="error-text">Muitas tentativas. Aguarde {{ validationCooldownSeconds() }}s para validar novamente.</p>
-    }
-  </form>
+          <mat-icon>search</mat-icon>
+          Validar
+        </button>
+        <button
+          matIconButton
+          type="button"
+          aria-label="Escanear código do certificado"
+          [disabled]="pdfUploadUnavailable()"
+          (click)="scanCode()">
+          <mat-icon>qr_code_scanner</mat-icon>
+        </button>
+      </div>
+      <div class="pdf-lookup">
+        <input #pdfInput type="file" accept="application/pdf,.pdf" hidden (change)="selectCertificatePdf(pdfInput)" />
+        <button
+          mat-stroked-button
+          type="button"
+          [disabled]="pdfUploadUnavailable()"
+          [disabledInteractive]="true"
+          (click)="!pdfUploadUnavailable() && pdfInput.click()">
+          <mat-icon>upload_file</mat-icon>
+          Selecionar PDF
+        </button>
+        <p role="status" [class.error-text]="pdfError()">
+          {{ readingPdf() ? 'Enviando e verificando o PDF…' : pdfError() }}
+        </p>
+      </div>
+      <section class="turnstile-section">
+        @if (currentState.status === 'challenge') {
+        <div class="challenge-copy" aria-live="polite">
+          <mat-icon aria-hidden="true">verified_user</mat-icon>
+          <p>{{ challengeMessage(currentState.source) }}</p>
+        </div>
+        }
+        <lib-cloudflare-turnstile [action]="turnstileAction" (tokenChange)="onTurnstileTokenChange($event)" />
+      </section>
+      @if (validationCooldownSeconds() > 0) {
+      <p class="error-text">Muitas tentativas. Aguarde {{ validationCooldownSeconds() }}s para validar novamente.</p>
+      }
+    </form>
+  </section>
 
   @if (currentState.status === 'loading') {
   <mat-progress-bar mode="indeterminate" aria-label="Validando certificado"></mat-progress-bar>
+  } @else if (currentState.status === 'not-found') {
+  <section class="result-message" role="status">
+    <mat-icon aria-hidden="true">search_off</mat-icon>
+    <div>
+      <h2>Certificado não encontrado</h2>
+      <p>Confira o código no documento e tente novamente.</p>
+    </div>
+  </section>
+  } @else if (currentState.status === 'revoked') {
+  <section class="result-message revoked-message" role="status">
+    <mat-icon aria-hidden="true">do_not_disturb_on</mat-icon>
+    <div>
+      <h2>Certificado revogado</h2>
+      <p>Este certificado não é mais válido. Entre em contato com a organização responsável pela emissão.</p>
+    </div>
+  </section>
   } @else if (currentState.status === 'error') {
-  <section class="empty-section" aria-live="polite">
-    <mat-icon aria-hidden="true">error</mat-icon>
-    <p>{{ currentState.message }}</p>
+  <section class="result-message" role="status">
+    <mat-icon aria-hidden="true">cloud_off</mat-icon>
+    <div>
+      <h2>Não foi possível verificar agora</h2>
+      <p>{{ currentState.message }}</p>
+      <p>Tente novamente em instantes. Isso não significa que o certificado seja inválido.</p>
+    </div>
   </section>
   } @else if (currentState.status === 'ready') { @let certificate = currentState.certificate;
 
-  <section class="certificate-section">
-    <header class="certificate-header">
-      <div class="emoji-frame">
-        <img
-          class="twemoji"
-          [src]="emoji.getTwemojiUrl(certificate.targetEmoji)"
-          [alt]="certificate.targetEmoji || 'Certificado'" />
+  <section
+    class="certificate-section"
+    [class.certificate-section-with-preview]="previewToken() && previewState() !== 'hidden'"
+    aria-labelledby="certificate-status">
+    <div class="certificate-details">
+      <div class="verification-status" role="status">
+        <mat-icon aria-hidden="true">verified</mat-icon>
+        <h2 id="certificate-status">Certificado válido</h2>
       </div>
-      <div class="header-copy">
-        <p class="certificate-status">Certificado válido</p>
-        <h2>{{ certificate.targetName || certificate.certificateName }}</h2>
-        @if (certificate.targetName && certificate.targetName !== certificate.certificateName) {
-        <p class="certificate-name">{{ certificate.certificateName }}</p>
+
+      <dl class="recipient-details">
+        <div>
+          <dt><mat-icon aria-hidden="true">person</mat-icon>Nome</dt>
+          <dd class="recipient-name">{{ certificate.personName }}</dd>
+        </div>
+        @if (certificate.maskedIdentityDocument) {
+        <div>
+          <dt><mat-icon aria-hidden="true">badge</mat-icon>Documento</dt>
+          <dd>{{ certificate.maskedIdentityDocument }}</dd>
+        </div>
         }
-      </div>
-    </header>
+      </dl>
 
-    <mat-list class="summary-list">
-      <mat-list-item>
-        <mat-icon matListItemIcon>person</mat-icon>
-        <div matListItemTitle>{{ certificate.personName }}</div>
-        <div matListItemLine>Nome</div>
-      </mat-list-item>
+      <dl class="certificate-facts certificate-context">
+        <div>
+          <dt><mat-icon aria-hidden="true">category</mat-icon>Tipo</dt>
+          <dd>{{ certificateTypeLabel(certificate) }}</dd>
+        </div>
+        <div>
+          <dt><mat-icon aria-hidden="true">event_available</mat-icon>Emissão</dt>
+          <dd>{{ formatIssuedAt(certificate) }}</dd>
+        </div>
+        <div class="full-width-fact">
+          @let target = certificateTarget(certificate);
+          <dt><mat-icon aria-hidden="true">{{ target.icon }}</mat-icon>{{ target.label }}</dt>
+          <dd>{{ certificate.targetName || certificate.certificateName }}</dd>
+        </div>
+        @if (certificate.targetName && certificate.targetName !== certificate.certificateName) {
+        <div class="full-width-fact certificate-name">
+          <dt><mat-icon aria-hidden="true">workspace_premium</mat-icon>Certificado</dt>
+          <dd>{{ certificate.certificateName }}</dd>
+        </div>
+        }
+        <div class="full-width-fact identifier-fact">
+          <dt><mat-icon aria-hidden="true">tag</mat-icon>Código do certificado</dt>
+          <dd>{{ certificate.id }}</dd>
+        </div>
+      </dl>
 
-      @if (certificate.maskedIdentityDocument) {
-      <mat-list-item>
-        <mat-icon matListItemIcon>badge</mat-icon>
-        <div matListItemTitle>{{ certificate.maskedIdentityDocument }}</div>
-        <div matListItemLine>Documento</div>
-      </mat-list-item>
+      @if (certificate.certificateText || (!certificate.shouldAutofillSecondPage && certificate.secondPageText)) {
+      <section class="text-section" aria-label="Textos do certificado">
+        @if (certificate.certificateText) {
+        <div class="text-block">
+          <h3>Texto do certificado</h3>
+          <p>{{ certificate.certificateText }}</p>
+        </div>
+        } @if (!certificate.shouldAutofillSecondPage && certificate.secondPageText) {
+        <div class="text-block">
+          <h3>Texto do verso</h3>
+          <p>{{ certificate.secondPageText }}</p>
+        </div>
+        }
+      </section>
       }
-
-      <mat-list-item>
-        <mat-icon matListItemIcon>workspace_premium</mat-icon>
-        <div matListItemTitle>{{ certificate.id }}</div>
-        <div matListItemLine>Código do certificado</div>
-      </mat-list-item>
-
-      <mat-list-item>
-        <mat-icon matListItemIcon>category</mat-icon>
-        <div matListItemTitle>{{ certificateTypeLabel(certificate) }}</div>
-        <div matListItemLine>Tipo</div>
-      </mat-list-item>
-
-      <mat-list-item>
-        <mat-icon matListItemIcon>event_available</mat-icon>
-        <div matListItemTitle>{{ formatIssuedAt(certificate) }}</div>
-        <div matListItemLine>Emissão</div>
-      </mat-list-item>
-    </mat-list>
-
-    @if (certificate.certificateText || (!certificate.shouldAutofillSecondPage && certificate.secondPageText)) {
-    <section class="text-section" aria-label="Textos do certificado">
-      @if (certificate.certificateText) {
-      <div class="text-block">
-        <h3>Texto do certificado</h3>
-        <p>{{ certificate.certificateText }}</p>
-      </div>
-      } @if (!certificate.shouldAutofillSecondPage && certificate.secondPageText) {
-      <div class="text-block">
-        <h3>Texto do verso</h3>
-        <p>{{ certificate.secondPageText }}</p>
-      </div>
-      }
-    </section>
-    }
-
-    <div class="actions">
-      <button
-        mat-flat-button
-        type="button"
-        [disabled]="downloading() || downloadCooldownSeconds() > 0"
-        (click)="download(certificate)">
-        <mat-icon>download</mat-icon>
-        Baixar certificado
-      </button>
     </div>
 
-    @if (downloadError()) {
-    <p class="error-text" aria-live="polite">{{ downloadError() }}</p>
-    } @if (downloadCooldownSeconds() > 0) {
-    <p class="error-text" aria-live="polite">Aguarde {{ downloadCooldownSeconds() }}s para baixar novamente.</p>
-    }
+    <section class="document-section" aria-labelledby="document-heading">
+      <h3 id="document-heading"><mat-icon aria-hidden="true">description</mat-icon>Documento</h3>
+      <div class="actions">
+        <button
+          #downloadAction
+          mat-flat-button
+          type="button"
+          [disabled]="downloading() || downloadCooldownSeconds() > 0"
+          (click)="download(certificate)">
+          <mat-icon>download</mat-icon>
+          Baixar certificado em PDF
+        </button>
+      </div>
+      @if (downloadError()) {
+      <p class="error-text" aria-live="polite">{{ downloadError() }}</p>
+      } @if (downloadCooldownSeconds() > 0) {
+      <p class="error-text" aria-live="polite">Aguarde {{ downloadCooldownSeconds() }}s para baixar novamente.</p>
+      } @if (previewToken() && previewState() !== 'hidden') {
+      <section #previewSection class="preview-section" aria-label="Prévia do documento">
+        <button
+          mat-button
+          type="button"
+          (click)="togglePreview(certificate)"
+          [attr.aria-expanded]="previewExpanded()"
+          aria-controls="certificate-preview">
+          <mat-icon
+            >{{ previewState() === 'available' ? 'visibility' : previewExpanded() ? 'expand_less' : 'expand_more'
+            }}</mat-icon
+          >
+          {{ previewState() === 'available' ? 'Ver prévia do documento' : previewExpanded() ? 'Recolher prévia' :
+          'Mostrar prévia' }}
+        </button>
+        <div id="certificate-preview" [hidden]="!previewExpanded()" [attr.aria-busy]="previewState() === 'loading'">
+          @if (previewState() === 'loading') {
+          <div class="preview-loading" role="status">
+            <mat-progress-bar mode="indeterminate" aria-label="Carregando prévia do documento" />
+            <p>Carregando prévia…</p>
+          </div>
+          } @else if (previewUrl(); as url) {
+          <img
+            class="certificate-preview"
+            [src]="url"
+            alt="Prévia da primeira página do certificado"
+            (error)="hidePreview()" />
+          <p class="preview-caption">
+            Prévia da primeira página. Consulte o PDF original para ver o documento completo.
+          </p>
+          }
+        </div>
+      </section>
+      }
+    </section>
   </section>
 
   @if (hasActivitySections(certificate)) {

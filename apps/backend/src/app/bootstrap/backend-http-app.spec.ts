@@ -61,6 +61,7 @@ describe('configured HTTP raw-body preservation', () => {
       '/api/admin/data-transfer/preview',
       '/api/a/glitchtip',
       '/api/current-user/certificates/archive.zip',
+      '/api/certificates/validate/pdf',
     ]) {
       http.post(route, (request, response) => {
         const rawBody = (request as typeof request & { rawBody?: Buffer }).rawBody;
@@ -141,6 +142,16 @@ describe('configured HTTP raw-body preservation', () => {
     });
     expect(unrelated.status).toBe(413);
     expect(unrelated.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
+  });
+
+  it('leaves certificate PDF requests unread by the general body parsers', async () => {
+    const response = await fetch(`${baseUrl}/api/certificates/validate/pdf`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Encoding': 'gzip' },
+      body: 'This request would fail if the general JSON parser tried to inflate it.',
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({});
   });
 
   it('keeps Sentry envelope content intact after selecting the JSON parser', async () => {

@@ -191,7 +191,7 @@ function publicCertificateValidation(variables: Record<string, unknown>): Public
     };
   }
 
-  if (certificateId === 'certificate-manual-major') {
+  if (certificateId === 'certificate-manual-major' || certificateId === 'certificate-with-preview') {
     return {
       id: certificateId,
       personName: 'Maria Organizadora',
@@ -658,6 +658,30 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
     return { downloadPublicCertificate: certificateDownload('certificado-validado.pdf') };
   }
 
+  if (query.includes('publicCertificateVerification')) {
+    const revoked = variables['certificateId'] === 'certificate-revoked';
+    return {
+      publicCertificateVerification: {
+        certificate: revoked ? null : publicCertificateValidation(variables),
+        revokedAt: revoked ? isoDaysFromNow(-1, 10) : null,
+        previewToken:
+          variables['certificateId'] === 'certificate-preview-unavailable' ||
+          variables['certificateId'] === 'certificate-with-preview'
+            ? 'storybook-preview-token'
+            : null,
+      },
+    };
+  }
+
+  if (query.includes('requestPublicCertificatePreview')) {
+    return {
+      requestPublicCertificatePreview:
+        variables['certificateId'] === 'certificate-with-preview'
+          ? { imagePath: '/api/certificates/validate/certificate-with-preview/preview' }
+          : null,
+    };
+  }
+
   if (query.includes('publicCertificateValidation')) {
     return {
       publicCertificateValidation: publicCertificateValidation(variables),
@@ -704,6 +728,12 @@ export const publicHandlers = [
   http.post('/api/graphql', async ({ request }) => {
     const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
     return HttpResponse.json({ data: graphqlData(body.query ?? '', body.variables ?? {}) });
+  }),
+  http.get('/api/certificates/validate/certificate-with-preview/preview', async () => {
+    const response = await fetch('/storybook-fixtures/certificate-preview.avif');
+    return HttpResponse.arrayBuffer(await response.arrayBuffer(), {
+      headers: { 'Content-Type': 'image/avif' },
+    });
   }),
   http.get('/ngsw/state', () =>
     HttpResponse.text(`NGSW Debug Info:

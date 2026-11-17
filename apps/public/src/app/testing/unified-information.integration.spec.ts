@@ -296,7 +296,7 @@ describe('unified information pages HTTP integration', () => {
     expect(host.textContent).toContain('Grupo de eventos');
     expect(host.querySelectorAll('h1')).toHaveLength(1);
     expect(host.querySelectorAll('section.program a')).toHaveLength(data.events.length);
-    expect(host.textContent).toContain('Certificado');
+    expect(host.querySelector('.certificate-summary')).not.toBeNull();
   });
 
   it('omits empty materials and shows available group guidance in its own panel', async () => {

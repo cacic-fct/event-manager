@@ -6,6 +6,8 @@ import {
   DeleteObjectCommand,
   HeadObjectCommand,
   ListObjectsV2Command,
+  PutObjectCommand,
+  GetBucketVersioningCommand,
 } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { Readable } from 'stream';
@@ -87,6 +89,42 @@ export class S3Service implements OnModuleDestroy {
     this.s3Client?.destroy();
   }
 
+  get isConfigured(): boolean {
+    return Boolean(this.s3Client);
+  }
+
+  async assertUnversionedBucket(abortSignal: AbortSignal): Promise<void> {
+    const { s3Client, bucketName } = this.requireConfig();
+    const result = await s3Client.send(new GetBucketVersioningCommand({ Bucket: bucketName }), { abortSignal });
+    if (result.Status) {
+      throw new Error('The certificate preview cache requires an unversioned S3 bucket.');
+    }
+  }
+
+  async putSmallObject(
+    key: string,
+    body: Buffer,
+    contentType: string,
+    metadata: Record<string, string>,
+    expiresAt: Date,
+    abortSignal: AbortSignal,
+  ): Promise<void> {
+    const { s3Client, bucketName } = this.requireConfig();
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+        ContentLength: body.length,
+        CacheControl: 'private, no-store',
+        Metadata: metadata,
+        Expires: expiresAt,
+      }),
+      { abortSignal },
+    );
+  }
+
   /**
    * Upload a file to S3-compatible storage
    */
@@ -145,7 +183,10 @@ export class S3Service implements OnModuleDestroy {
   /**
    * Download a file from S3-compatible storage
    */
-  async downloadFile(key: string): Promise<{
+  async downloadFile(
+    key: string,
+    abortSignal?: AbortSignal,
+  ): Promise<{
     stream: Readable;
     contentType?: string;
     contentLength?: number;
@@ -158,7 +199,7 @@ export class S3Service implements OnModuleDestroy {
         Key: key,
       });
 
-      const response = await s3Client.send(command);
+      const response = await s3Client.send(command, { abortSignal });
 
       if (!response.Body) {
         throw new Error('File not found or empty');
@@ -171,7 +212,9 @@ export class S3Service implements OnModuleDestroy {
         metadata: response.Metadata,
       };
     } catch (error: unknown) {
-      this.logger.error(`Failed to download file ${key}:`, error);
+      if (readAwsMetadata(error).statusCode !== 404) {
+        this.logger.error(`Failed to download file ${key}:`, error);
+      }
       throw new S3ServiceError(`Failed to download file: ${formatAwsError(error)}`, error);
     }
   }
@@ -179,7 +222,7 @@ export class S3Service implements OnModuleDestroy {
   /**
    * Delete a file from S3-compatible storage
    */
-  async deleteFile(key: string): Promise<void> {
+  async deleteFile(key: string, abortSignal?: AbortSignal): Promise<void> {
     try {
       const { s3Client, bucketName } = this.requireConfig();
       await s3Client.send(
@@ -187,6 +230,7 @@ export class S3Service implements OnModuleDestroy {
           Bucket: bucketName,
           Key: key,
         }),
+        { abortSignal },
       );
 
       this.logger.log(`File deleted successfully: ${key}`);
@@ -231,7 +275,10 @@ export class S3Service implements OnModuleDestroy {
   /**
    * Get file metadata without downloading the content
    */
-  async getFileMetadata(key: string): Promise<{
+  async getFileMetadata(
+    key: string,
+    abortSignal?: AbortSignal,
+  ): Promise<{
     size: number;
     lastModified?: Date;
     contentType?: string;
@@ -244,6 +291,7 @@ export class S3Service implements OnModuleDestroy {
           Bucket: bucketName,
           Key: key,
         }),
+        { abortSignal },
       );
 
       return {
@@ -253,7 +301,9 @@ export class S3Service implements OnModuleDestroy {
         metadata: response.Metadata,
       };
     } catch (error: unknown) {
-      this.logger.error(`Failed to get metadata for file ${key}:`, error);
+      if (readAwsMetadata(error).statusCode !== 404) {
+        this.logger.error(`Failed to get metadata for file ${key}:`, error);
+      }
       throw new S3ServiceError(`Failed to get file metadata: ${formatAwsError(error)}`, error);
     }
   }
@@ -261,7 +311,10 @@ export class S3Service implements OnModuleDestroy {
   /**
    * List files in a directory (prefix)
    */
-  async listFiles(prefix?: string): Promise<
+  async listFiles(
+    prefix?: string,
+    abortSignal?: AbortSignal,
+  ): Promise<
     Array<{
       key: string;
       size: number;
@@ -275,7 +328,7 @@ export class S3Service implements OnModuleDestroy {
         Prefix: prefix,
       });
 
-      const response = await s3Client.send(command);
+      const response = await s3Client.send(command, { abortSignal });
 
       return (response.Contents || []).map((obj) => ({
         key: obj.Key ?? '',

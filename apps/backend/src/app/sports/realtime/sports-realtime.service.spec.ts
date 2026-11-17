@@ -45,12 +45,15 @@ describe('SportsRealtimeService', () => {
   });
 
   it('fans out Redis pub/sub envelopes across instances and ignores malformed messages', async () => {
+    let errorHandler: ((error: Error) => void) | undefined;
     let messageHandler: ((channel: string, payload: string) => void) | undefined;
     const subscriber = {
       subscribe: jest.fn().mockResolvedValue(1),
-      on: jest.fn((event: string, handler: (channel: string, payload: string) => void) => {
+      on: jest.fn((event: string, handler: ((channel: string, payload: string) => void) | ((error: Error) => void)) => {
         if (event === 'message') {
-          messageHandler = handler;
+          messageHandler = handler as typeof messageHandler;
+        } else if (event === 'error') {
+          errorHandler = handler as typeof errorHandler;
         }
       }),
       unsubscribe: jest.fn().mockResolvedValue(1),
@@ -71,6 +74,11 @@ describe('SportsRealtimeService', () => {
     };
     const service = new SportsRealtimeService(redis as never, replay as never);
     await service.onModuleInit();
+    expect(subscriber.on).toHaveBeenCalledWith('error', expect.any(Function));
+    const warn = jest.spyOn(service['logger'], 'warn').mockImplementation(() => undefined);
+    expect(errorHandler).toBeDefined();
+    errorHandler?.(new Error('Connection lost'));
+    expect(warn).toHaveBeenCalledWith('Redis subscription connection error: Connection lost');
     const received: MessageEvent[] = [];
     const subscription = service.watch('sports-match:match-1').subscribe((event) => received.push(event));
 
