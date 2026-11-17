@@ -3,7 +3,7 @@
 }
 
 .product-showcase {
-  padding: clamp(4rem, 8vw, 8rem) clamp(1rem, 4vw, 3rem) 4rem;
+  padding: clamp(3rem, 6vw, 5rem) clamp(1rem, 4vw, 3rem) 4rem;
   background: var(--mat-sys-surface-container-low);
   color: var(--mat-sys-on-surface);
 }
@@ -15,25 +15,25 @@
 
 .showcase-introduction {
   text-align: center;
-  max-width: 52rem;
-  margin: 0 auto 2.5rem;
+  max-width: 56rem;
+  margin: 0 auto 2rem;
 }
 
 .showcase-introduction h2 {
-  font-size: clamp(2.75rem, 6.5vw, 6rem);
-  line-height: 1.02;
-  letter-spacing: -0.04em;
+  font-size: clamp(1.75rem, 3.5vw, 3rem);
+  line-height: 1.18;
+  letter-spacing: -0.025em;
   text-wrap: balance;
   margin: 0;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .showcase-introduction p {
-  font-size: clamp(1rem, 1.75vw, 1.25rem);
+  font-size: clamp(1rem, 1.5vw, 1.125rem);
   line-height: 1.6;
   color: var(--mat-sys-on-surface-variant);
   max-width: 43rem;
-  margin: 1.5rem auto 0;
+  margin: 1rem auto 0;
   text-wrap: pretty;
 }
 

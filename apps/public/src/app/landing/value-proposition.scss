@@ -5,7 +5,7 @@
 .value-proposition {
   background: var(--mat-sys-surface);
   color: var(--mat-sys-on-surface);
-  padding: 1.5rem;
+  padding: clamp(3rem, 6vw, 5rem) 1.5rem;
 }
 
 .value-proposition-container {
@@ -14,22 +14,22 @@
 }
 
 .value-proposition-introduction {
-  margin: 0 auto clamp(3rem, 6vw, 5rem);
+  margin: 0 auto clamp(2rem, 4vw, 3rem);
   max-width: 44rem;
   text-align: center;
 }
 
 .value-proposition-title {
-  font-size: clamp(2rem, 4vw, 3.5rem);
-  font-weight: 700;
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  font-weight: 650;
   letter-spacing: -0.03em;
-  line-height: 1.08;
+  line-height: 1.2;
   margin: 0;
   text-wrap: balance;
 }
 
 .value-proposition-description {
-  font-size: 1.125rem;
+  font-size: 1rem;
   line-height: 1.65;
   margin: 1.25rem auto 0;
   max-width: 61ch;
@@ -43,7 +43,7 @@
 
 .value-proposition-stats-title {
   font-size: 0.875rem;
-  font-weight: 700;
+  font-weight: 650;
   margin: 0 0 1.25rem;
 }
 

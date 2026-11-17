@@ -6,7 +6,7 @@
   display: grid;
   grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
   align-items: start;
-  gap: clamp(2rem, 5vw, 5rem);
+  gap: clamp(2rem, 4vw, 4rem);
 }
 
 .stage-copy {
@@ -14,18 +14,18 @@
 }
 
 .stage-copy h3 {
-  font-size: clamp(2rem, 3.4vw, 3.25rem);
-  line-height: 1.1;
-  letter-spacing: -0.035em;
+  font-size: clamp(1.5rem, 2.25vw, 2rem);
+  line-height: 1.25;
+  letter-spacing: -0.02em;
   text-wrap: balance;
   margin: 0;
 }
 
 .stage-copy > p {
   color: var(--mat-sys-on-surface-variant);
-  font-size: 1.125rem;
+  font-size: 1rem;
   line-height: 1.65;
-  margin: 1.5rem 0;
+  margin: 1rem 0 1.5rem;
   text-wrap: pretty;
 }
 

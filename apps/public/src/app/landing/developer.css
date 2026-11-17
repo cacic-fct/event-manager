@@ -5,7 +5,7 @@
 .developer {
   background: #0b003d;
   color: #fff;
-  padding: clamp(4rem, 9vw, 7.5rem) 1.5rem;
+  padding: clamp(3rem, 6vw, 5rem) 1.5rem;
 }
 
 .developer-container {
@@ -16,7 +16,7 @@
 .developer-content {
   align-items: center;
   display: grid;
-  gap: clamp(3rem, 8vw, 7rem);
+  gap: clamp(2rem, 4vw, 4rem);
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
 }
 
@@ -30,16 +30,16 @@
 }
 
 .developer-title {
-  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
   letter-spacing: -0.03em;
-  line-height: 1.08;
+  line-height: 1.2;
   margin: 0;
   text-wrap: balance;
 }
 
 .developer-description {
   color: rgba(255, 255, 255, 0.82);
-  font-size: 1.125rem;
+  font-size: 1rem;
   letter-spacing: 0.01em;
   line-height: 1.7;
   margin: 1.25rem 0 0;
@@ -76,7 +76,7 @@
 }
 
 .developer-api-label-icon {
-  font-size: 1.125rem;
+  font-size: 1rem;
   height: 1.125rem;
   width: 1.125rem;
 }

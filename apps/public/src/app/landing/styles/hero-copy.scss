@@ -16,29 +16,17 @@
     }
 
     .hero-title {
-      font-size: 3.5rem;
+      font-size: clamp(2rem, 4vw, 3.5rem);
       font-weight: 700;
       margin-bottom: 1rem;
-      line-height: 1;
-
-      @media (max-width: 1000px) {
-        line-height: 3rem;
-      }
-
-      // .brand-highlight {
-      //   background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-      //   background-clip: text;
-      //   -webkit-background-clip: text;
-      //   -webkit-text-fill-color: transparent;
-      //   display: inline-block;
-      // }
+      line-height: 1.2;
     }
 
     .hero-subtitle {
-      font-size: 1.5rem;
-      font-weight: 300;
+      font-size: 1.25rem;
+      font-weight: 400;
       margin-bottom: 1.5rem;
-      line-height: 1;
+      line-height: 1.5;
 
       b {
         font-weight: 500;

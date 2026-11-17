@@ -10,7 +10,7 @@ import { ParticipantShowcaseComponent } from './participant-showcase';
       <div class="showcase-container">
         <header class="showcase-introduction">
           <h2 id="showcase-title">
-            Tudo se conecta <br />
+            Tudo se conecta <br class="desktop-break" />
             quando você participa.
           </h2>
           <p>
@@ -30,7 +30,7 @@ import { ParticipantShowcaseComponent } from './participant-showcase';
     <section class="product-showcase organizer-section" aria-labelledby="organizer-showcase-title">
       <div class="showcase-container">
         <header class="showcase-introduction">
-          <h2 id="organizer-showcase-title">Você organiza<br />com tudo à mão.</h2>
+          <h2 id="organizer-showcase-title">Você organiza<br class="desktop-break" />com tudo à mão.</h2>
           <p>
             Das primeiras inscrições ao último certificado.<br class="desktop-break" />
             Organize a programação e acompanhe cada etapa do evento.

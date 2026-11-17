@@ -3,7 +3,7 @@
 }
 
 .event-extras {
-  padding: clamp(4rem, 8vw, 7rem) clamp(1rem, 4vw, 3rem);
+  padding: clamp(3rem, 6vw, 5rem) clamp(1rem, 4vw, 3rem);
   background: var(--mat-sys-surface);
   color: var(--mat-sys-on-surface);
 }
@@ -22,9 +22,9 @@ header {
 }
 
 header h2 {
-  font-size: clamp(2.25rem, 4.5vw, 4rem);
-  line-height: 1.08;
-  letter-spacing: -0.035em;
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  line-height: 1.2;
+  letter-spacing: -0.025em;
   margin: 0;
   text-wrap: balance;
 }
@@ -32,7 +32,7 @@ header h2 {
 header > p {
   max-width: 27rem;
   margin: 0;
-  font-size: 1.125rem;
+  font-size: 1rem;
   line-height: 1.6;
   color: var(--mat-sys-on-surface-variant);
   text-wrap: pretty;
@@ -41,7 +41,7 @@ header > p {
 .extras-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: clamp(2rem, 5vw, 5rem);
+  gap: clamp(2rem, 4vw, 4rem);
 }
 
 .extra-copy {
