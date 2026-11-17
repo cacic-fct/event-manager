@@ -19,6 +19,7 @@ export class ContentReviewComparison {
 export class ContentReviewItem {
   @Field(() => String) key!: string;
   @Field(() => String) authorName!: string;
+  @Field(() => Boolean, { nullable: true }) authorEditingBlocked?: boolean;
   @Field(() => [ContentReviewComparison]) fields!: ContentReviewComparison[];
   @Field(() => EventMaterialModel, { nullable: true }) beforeMaterial?: EventMaterialModel | null;
   @Field(() => EventMaterialModel, { nullable: true }) afterMaterial?: EventMaterialModel | null;
@@ -31,6 +32,7 @@ export class ContentReviewGroup {
   @Field(() => Date) updatedAt!: Date;
   @Field(() => String) targetName!: string;
   @Field(() => Boolean) isProfile!: boolean;
+  @Field(() => Boolean, { nullable: true }) profileEditingBlocked?: boolean;
   @Field(() => [ContentReviewItem]) items!: ContentReviewItem[];
 }
 

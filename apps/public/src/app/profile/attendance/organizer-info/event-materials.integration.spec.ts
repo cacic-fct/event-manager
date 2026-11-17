@@ -80,6 +80,19 @@ describe('shared event materials editor', () => {
     expect(api.saveMaterials).not.toHaveBeenCalled();
   });
 
+  it('shows materials read-only when the organization blocks the lecturer', async () => {
+    const links = [{ title: 'Slides', url: 'https://example.org/slides' }];
+    api.getMaterials.mockResolvedValueOnce({ links, updatedAt: null, editingBlocked: true });
+    const fixture = await create();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('A organização bloqueou a edição de materiais para sua conta.');
+    expect(fixture.nativeElement.querySelector('a')?.href).toBe(links[0].url);
+    expect(fixture.nativeElement.querySelector('form')).toBeNull();
+    await fixture.componentInstance.save();
+    expect(api.saveMaterials).not.toHaveBeenCalled();
+  });
+
   it('tells a lecturer that submitted materials will be visible after review', async () => {
     api.getMaterials.mockResolvedValueOnce({ links: [], updatedAt: null, reviewRequired: true });
     const fixture = await create();

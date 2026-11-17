@@ -35,6 +35,9 @@ export class PersonCreateInput {
 
 @InputType()
 export class PersonUpdateInput {
+  @Field(() => Boolean, { nullable: true })
+  materialEditingBlocked?: boolean;
+
   @Field(() => String, { nullable: true })
   id?: string;
 

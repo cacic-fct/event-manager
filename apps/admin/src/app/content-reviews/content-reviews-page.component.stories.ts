@@ -18,6 +18,7 @@ const queue: ContentReviewPage = {
         {
           key: 'slides',
           authorName: 'Marina Souza',
+          authorEditingBlocked: true,
           fields: [],
           beforeMaterial: { title: 'Slides da oficina', url: 'https://example.org/introducao/arquivo' },
           afterMaterial: {
@@ -28,7 +29,8 @@ const queue: ContentReviewPage = {
         },
         {
           key: 'exercises',
-          authorName: 'Marina Souza',
+          authorName: 'Ana Mota',
+          authorEditingBlocked: false,
           fields: [],
           beforeMaterial: null,
           afterMaterial: { title: 'Exercícios para praticar', url: 'https://example.org/introducao/exercicios' },
@@ -62,6 +64,16 @@ function mockQueue(page: ContentReviewPage, decisionError?: string) {
         provide: ContentReviewsApi,
         useValue: {
           list: async () => ({ ...page, groups }),
+          blockEditing: async (group: { id: string }, key: string | null) => {
+            groups = groups.map((current) => {
+              if (current.id !== group.id) return current;
+              if (key === null) return { ...current, profileEditingBlocked: true };
+              return {
+                ...current,
+                items: current.items.map((item) => (item.key === key ? { ...item, authorEditingBlocked: true } : item)),
+              };
+            });
+          },
           decide: async (group: { id: string }, keys: string[]) => {
             if (decisionError) throw new Error(decisionError);
             groups = groups
@@ -89,6 +101,7 @@ const lecturerQueue: ContentReviewPage = {
       updatedAt: new Date().toISOString(),
       targetName: 'Marina Souza',
       isProfile: true,
+      profileEditingBlocked: false,
       items: [
         {
           key: 'biography',

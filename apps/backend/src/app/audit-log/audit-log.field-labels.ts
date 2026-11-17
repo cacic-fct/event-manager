@@ -107,6 +107,7 @@ const FIELD_LABELS: Record<string, string> = {
   resolutionIssue: 'Motivo da revisão',
   scope: 'Escopo',
   secondaryEmails: 'E-mails secundários',
+  materialEditingBlocked: 'Bloquear edição de materiais para inscritos',
   selectedEventIds: 'Eventos selecionados',
   shortDescription: 'Descrição curta',
   shouldCollectAttendance: 'Coletar presença',

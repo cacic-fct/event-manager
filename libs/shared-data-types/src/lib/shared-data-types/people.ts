@@ -15,6 +15,9 @@ export class Person {
   @Field(() => String)
   name!: string;
 
+  @Field(() => Boolean, { nullable: true })
+  materialEditingBlocked?: boolean;
+
   @Field(() => String, { nullable: true })
   email?: string | null;
 

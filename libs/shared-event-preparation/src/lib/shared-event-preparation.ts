@@ -10,6 +10,7 @@ export interface EventMaterials {
   updatedAt: string | null;
   nextReleaseAt?: string | null;
   editingFrozen?: boolean | null;
+  editingBlocked?: boolean | null;
   pendingReview?: boolean | null;
   reviewRequired?: boolean | null;
 }

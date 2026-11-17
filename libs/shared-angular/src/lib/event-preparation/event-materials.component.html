@@ -67,7 +67,9 @@
       </div>
     </form>
   } @else {
-    @if (editingFrozen()) {
+    @if (editingBlocked()) {
+      <p>A organização bloqueou a edição de materiais para sua conta.</p>
+    } @else if (editingFrozen()) {
       <p>Este evento está congelado. Os materiais estão disponíveis apenas para consulta.</p>
     }
     @if (original().length === 0) {

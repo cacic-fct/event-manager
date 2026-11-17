@@ -38,6 +38,7 @@ export abstract class PeopleState {
     name: ['', [Validators.required]],
     email: [''],
     secondaryEmails: [''],
+    materialEditingBlocked: [false],
     phone: [''],
     identityDocument: [''],
     academicId: [''],

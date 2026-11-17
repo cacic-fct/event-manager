@@ -73,12 +73,121 @@ export class ContentReviewResolver {
           ...(materialScope ? [{ event: { is: materialScope } }] : []),
         ],
       },
-      include: { profile: { select: { person: { select: { name: true } } } }, event: { select: { name: true } } },
+      include: {
+        profile: { select: { selfEditingBlocked: true, person: { select: { name: true } } } },
+        event: { select: { name: true } },
+      },
       orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
       take: PAGE_SIZE + 1,
       skip: page * PAGE_SIZE,
     });
-    return { groups: groups.slice(0, PAGE_SIZE).map(presentReview), hasNextPage: groups.length > PAGE_SIZE };
+    const visible = groups.slice(0, PAGE_SIZE);
+    const canManagePeople =
+      profilePermission === Permission.Person.Update ||
+      (await canReviewContent(this.authorization, user, Permission.Person.Update));
+    const authorIds = canManagePeople
+      ? [
+          ...new Set(
+            visible
+              .flatMap(readChanges)
+              .flatMap((change) =>
+                change.kind === 'material' && change.authorPersonId ? [change.authorPersonId] : [],
+              ),
+          ),
+        ]
+      : [];
+    const authors = authorIds.length
+      ? await this.prisma.people.findMany({
+          where: { id: { in: authorIds }, deletedAt: null },
+          select: { id: true, materialEditingBlocked: true },
+        })
+      : [];
+    const materialBlocks = new Map(authors.map((author) => [author.id, author.materialEditingBlocked]));
+    return {
+      groups: visible.map((review) => presentReview(review, canManagePeople, materialBlocks)),
+      hasNextPage: groups.length > PAGE_SIZE,
+    };
+  }
+
+  @Mutation(() => Boolean)
+  async blockContentReviewEditing(
+    @Args('id', { type: () => String }) id: string,
+    @Args('revision', { type: () => Int }) revision: number,
+    @Args('key', { type: () => String, nullable: true }) key: string | null,
+    @Context() context: GraphqlContext,
+  ): Promise<boolean> {
+    const user = this.context.getAuthenticatedUser(context);
+    await this.authorization.assertPermissions(user, [Permission.Person.Update]);
+    const target = await this.prisma.contentReview.findUnique({ where: { id } });
+    if (!target) throw new NotFoundException('Esta revisão não está mais pendente.');
+    if (!(await this.reviewPermission(user, target.eventId))) {
+      throw new ForbiddenException('Você não tem permissão para revisar este conteúdo.');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      if (target.eventId) await lockPreparationEvent(tx, target.eventId);
+      if (target.personId) await lockReviewPerson(tx, target.personId);
+      const review = await tx.contentReview.findUnique({ where: { id } });
+      if (!review || review.revision !== revision) {
+        throw new ConflictException('A fila mudou. Atualize a página antes de bloquear a edição.');
+      }
+
+      if (review.personId) {
+        const profile = await tx.lecturerProfile.findFirst({
+          where: { personId: review.personId, person: { deletedAt: null } },
+        });
+        if (!profile) throw new NotFoundException('Perfil de palestrante não encontrado.');
+        if (profile.selfEditingBlocked) return;
+        await tx.lecturerProfile.update({
+          where: { id: profile.id },
+          data: { selfEditingBlocked: true, updatedById: user.sub },
+        });
+        await this.audit.record(
+          {
+            entityType: AuditLogEntityType.LECTURER_PROFILE,
+            entityId: profile.id,
+            entityLabel: profile.displayName,
+            actor: user,
+            operation: AuditLogOperation.UPDATE,
+            before: { selfEditingBlocked: false },
+            after: { selfEditingBlocked: true },
+            scope: { permission: Permission.Person.Update },
+            summary: 'Edição do próprio perfil de palestrante bloqueada.',
+          },
+          tx,
+        );
+        return;
+      }
+
+      const change = readChanges(review).find((item) => item.key === key);
+      if (change?.kind !== 'material' || !change.authorPersonId) {
+        throw new BadRequestException('Não foi possível identificar o autor deste envio.');
+      }
+      await lockReviewPerson(tx, change.authorPersonId);
+      const person = await tx.people.findUnique({ where: { id: change.authorPersonId, deletedAt: null } });
+      if (!person) throw new NotFoundException('Pessoa não encontrada.');
+      if (person.materialEditingBlocked) return;
+      await tx.people.update({
+        where: { id: person.id },
+        data: { materialEditingBlocked: true, updatedById: user.sub },
+      });
+      await this.audit.record(
+        {
+          entityType: AuditLogEntityType.PERSON,
+          entityId: person.id,
+          entityLabel: person.name,
+          actor: user,
+          operation: AuditLogOperation.UPDATE,
+          before: { materialEditingBlocked: false },
+          after: { materialEditingBlocked: true },
+          scope: { permission: Permission.Person.Update },
+          summary: 'Edição de materiais para inscritos bloqueada.',
+        },
+        tx,
+      );
+    });
+    await this.invalidations.publish(null);
+    return true;
   }
 
   @Mutation(() => Boolean)

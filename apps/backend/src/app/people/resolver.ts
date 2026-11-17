@@ -1,3 +1,4 @@
+import { lockReviewPerson } from '../content-review/content-review-changes';
 import { maskCPF } from '@cacic-fct/shared-utils';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import {
@@ -57,6 +58,7 @@ const PERSON_AUDIT_SELECT = {
   mergedIntoId: true,
   externalRef: true,
   deletedAt: true,
+  materialEditingBlocked: true,
   createdById: true,
   updatedById: true,
 } satisfies Prisma.PeopleSelect;
@@ -493,6 +495,10 @@ export class PeopleResolver {
     await this.ensureNoDuplicateIdentity(input, id);
 
     const person = await this.prisma.$transaction(async (tx) => {
+      const before =
+        typeof input.materialEditingBlocked === 'boolean'
+          ? await this.loadMaterialBlockAuditBaseline(tx, id)
+          : existingPerson;
       const updated = await tx.people.update({
         where: { id, deletedAt: null },
         data: this.buildPersonUpdateData(input),
@@ -506,7 +512,7 @@ export class PeopleResolver {
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: this.getUser(context),
-          before: existingPerson,
+          before,
           after: auditPerson,
           scope: { permission: Permission.Person.Update },
           summary: 'Pessoa atualizada.',
@@ -811,8 +817,17 @@ export class PeopleResolver {
     };
   }
 
+  private async loadMaterialBlockAuditBaseline(tx: Prisma.TransactionClient, id: string) {
+    await lockReviewPerson(tx, id);
+    return tx.people.findUniqueOrThrow({ where: { id, deletedAt: null }, select: PERSON_AUDIT_SELECT });
+  }
+
   private buildPersonUpdateData(input: PersonUpdateInput): Prisma.PeopleUncheckedUpdateManyInput {
     const data: Prisma.PeopleUncheckedUpdateManyInput = {};
+
+    if (typeof input.materialEditingBlocked === 'boolean') {
+      data.materialEditingBlocked = input.materialEditingBlocked;
+    }
 
     if (input.id !== undefined) {
       data.id = input.id;

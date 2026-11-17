@@ -10,6 +10,7 @@ model People {
   identityDocument String?
   isCPF            Boolean? @default(true)
   academicId       String?
+  materialEditingBlocked Boolean @default(false)
 
   user   User?   @relation(fields: [userId], references: [id])
   userId String?

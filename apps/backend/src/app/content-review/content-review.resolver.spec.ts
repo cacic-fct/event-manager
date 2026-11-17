@@ -39,6 +39,10 @@ function setup(target: { personId: string | null; eventId: string | null }, chan
   const tx = {
     $executeRaw: jest.fn(),
     contentReview,
+    people: {
+      findUnique: jest.fn(async () => ({ id: 'author', name: 'Ana', materialEditingBlocked: false })),
+      update: jest.fn(),
+    },
     event: {
       findFirst: jest
         .fn<() => Promise<{ name: string; materials: Array<typeof slides>; materialsUpdatedAt: null } | null>>()
@@ -74,6 +78,55 @@ function setup(target: { personId: string | null; eventId: string | null }, chan
   );
   return { resolver, prisma, tx, review, profile, authorization, frozen, audit, invalidations };
 }
+
+describe('content review editing blocks', () => {
+  it('locks profile self-editing without resolving the review', async () => {
+    const { resolver, tx, audit } = setup({ personId: 'person', eventId: null }, []);
+
+    await expect(resolver.blockContentReviewEditing('review', 2, null, {})).resolves.toBe(true);
+    expect(tx.lecturerProfile.update).toHaveBeenCalledWith({
+      where: { id: 'profile' },
+      data: { selfEditingBlocked: true, updatedById: actor.sub },
+    });
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ before: { selfEditingBlocked: false }, after: { selfEditingBlocked: true } }),
+      tx,
+    );
+    expect(tx.contentReview.delete).not.toHaveBeenCalled();
+  });
+
+  it('blocks the selected material author and leaves the proposal pending', async () => {
+    const changes = [
+      ...diffMaterials([], [slides], 'Ana', 'other-author'),
+      ...diffMaterials([], [exercises], 'Ana', 'author'),
+    ];
+    const { resolver, tx, audit, authorization } = setup({ personId: null, eventId: 'event' }, changes);
+
+    await expect(resolver.blockContentReviewEditing('review', 2, materialKey(exercises), {})).resolves.toBe(true);
+    expect(authorization.assertPermissions).toHaveBeenCalledWith(actor, [Permission.Person.Update]);
+    expect(tx.people.findUnique).toHaveBeenCalledWith({ where: { id: 'author', deletedAt: null } });
+    expect(tx.people.update).toHaveBeenCalledWith({
+      where: { id: 'author' },
+      data: { materialEditingBlocked: true, updatedById: actor.sub },
+    });
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ before: { materialEditingBlocked: false }, after: { materialEditingBlocked: true } }),
+      tx,
+    );
+    expect(tx.contentReview.update).not.toHaveBeenCalled();
+    expect(tx.contentReview.delete).not.toHaveBeenCalled();
+  });
+
+  it('rejects stale and unattributed material changes without blocking anyone', async () => {
+    const { resolver, tx } = setup({ personId: null, eventId: 'event' }, diffMaterials([], [slides], 'Ana'));
+
+    await expect(resolver.blockContentReviewEditing('review', 1, slidesKey, {})).rejects.toThrow(ConflictException);
+    await expect(resolver.blockContentReviewEditing('review', 2, slidesKey, {})).rejects.toThrow(
+      'Não foi possível identificar o autor deste envio.',
+    );
+    expect(tx.people.update).not.toHaveBeenCalled();
+  });
+});
 
 describe('content review decisions', () => {
   it('reverts only the selected live profile field and audits the reviewer and field values', async () => {

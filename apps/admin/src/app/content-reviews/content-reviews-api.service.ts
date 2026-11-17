@@ -8,6 +8,7 @@ export type ContentReviewDecision = 'APPROVE' | 'REJECT';
 export interface ContentReviewItem {
   key: string;
   authorName: string;
+  authorEditingBlocked?: boolean | null;
   fields: { key: string; before: string | null; after: string | null }[];
   beforeMaterial: EventMaterial | null;
   afterMaterial: EventMaterial | null;
@@ -19,6 +20,7 @@ export interface ContentReviewGroup {
   updatedAt: string;
   targetName: string;
   isProfile: boolean;
+  profileEditingBlocked?: boolean | null;
   items: ContentReviewItem[];
 }
 
@@ -38,9 +40,9 @@ export class ContentReviewsApi {
         contentReviews(page: $page, id: $id) {
           hasNextPage
           groups {
-            id revision updatedAt targetName isProfile
+            id revision updatedAt targetName isProfile profileEditingBlocked
             items {
-              key authorName fields { key before after }
+              key authorName authorEditingBlocked fields { key before after }
               beforeMaterial { title url releaseAfterEvent }
               afterMaterial { title url releaseAfterEvent }
             }
@@ -51,6 +53,17 @@ export class ContentReviewsApi {
       ),
     );
     return contentReviews;
+  }
+
+  async blockEditing(group: ContentReviewGroup, key: string | null): Promise<void> {
+    await firstValueFrom(
+      this.graphql.request<{ blockContentReviewEditing: boolean }>(
+        `mutation BlockContentReviewEditing($id: String!, $revision: Int!, $key: String) {
+          blockContentReviewEditing(id: $id, revision: $revision, key: $key)
+        }`,
+        { id: group.id, revision: group.revision, key },
+      ),
+    );
   }
 
   async decide(group: ContentReviewGroup, keys: string[], decision: ContentReviewDecision): Promise<void> {

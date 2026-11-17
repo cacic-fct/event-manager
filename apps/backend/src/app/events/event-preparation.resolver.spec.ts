@@ -22,6 +22,7 @@ function setup() {
   const reviewNotifications = { notify: jest.fn() };
   const tx = {
     contentReview,
+    people: { findUnique: jest.fn().mockResolvedValue({ materialEditingBlocked: false }) },
     $executeRaw: jest.fn(),
     event: { findFirst: jest.fn().mockResolvedValue(previous), update: jest.fn().mockResolvedValue(previous) },
   };
@@ -113,6 +114,19 @@ describe('event preparation access and writes', () => {
     });
   });
 
+  it('shows materials read-only and rejects saves from a blocked lecturer', async () => {
+    const { resolver, authorization, tx, contentReview } = setup();
+    authorization.assertPermissions.mockRejectedValue(new ForbiddenException());
+    tx.people.findUnique.mockResolvedValue({ materialEditingBlocked: true });
+
+    await expect(resolver.editableEventMaterials('event', {})).resolves.toMatchObject({ editingBlocked: true });
+    await expect(resolver.updateEventMaterials('event', [], null, {})).rejects.toThrow(
+      'A edição de materiais foi bloqueada pela organização.',
+    );
+    expect(contentReview.create).not.toHaveBeenCalled();
+    expect(tx.event.update).not.toHaveBeenCalled();
+  });
+
   it('stages a linked lecturer’s materials without changing what subscribers see', async () => {
     const { resolver, authorization, prisma, audit, tx, contentReview, reviewNotifications } = setup();
     authorization.assertPermissions.mockRejectedValue(new ForbiddenException());
@@ -129,7 +143,14 @@ describe('event preparation access and writes', () => {
     expect(contentReview.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         eventId: 'event',
-        changes: [expect.objectContaining({ kind: 'material', before: null, after: { ...links[0], title: 'Slides' } })],
+        changes: [
+          expect.objectContaining({
+            kind: 'material',
+            authorPersonId: 'speaker',
+            before: null,
+            after: { ...links[0], title: 'Slides' },
+          }),
+        ],
       }),
     });
     expect(tx.event.update).not.toHaveBeenCalled();

@@ -70,6 +70,7 @@ export abstract class PeopleRecords extends PeopleState {
       name: '',
       email: '',
       secondaryEmails: '',
+      materialEditingBlocked: false,
       phone: '',
       identityDocument: '',
       academicId: '',
@@ -89,6 +90,7 @@ export abstract class PeopleRecords extends PeopleState {
       name: '',
       email: '',
       secondaryEmails: '',
+      materialEditingBlocked: false,
       phone: '',
       identityDocument: '',
       academicId: '',
@@ -113,6 +115,9 @@ export abstract class PeopleRecords extends PeopleState {
     const raw = this.personForm.getRawValue();
     const payload: PersonInput = {
       name: raw.name.trim(),
+      ...(selectedPerson && this.personForm.controls.materialEditingBlocked.dirty
+        ? { materialEditingBlocked: raw.materialEditingBlocked }
+        : {}),
       email: raw.email.trim() || null,
       secondaryEmails: raw.secondaryEmails
         .split(',')
@@ -270,6 +275,7 @@ export abstract class PeopleRecords extends PeopleState {
       name: person.name,
       email: person.email ?? '',
       secondaryEmails: person.secondaryEmails?.join(', ') ?? '',
+      materialEditingBlocked: person.materialEditingBlocked ?? false,
       phone: person.phone ?? '',
       identityDocument: person.identityDocument ?? '',
       academicId: person.academicId ?? '',

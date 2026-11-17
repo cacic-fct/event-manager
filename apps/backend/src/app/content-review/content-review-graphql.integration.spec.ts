@@ -35,7 +35,7 @@ describe('content review GraphQL integration', () => {
     id: 'review-1',
     personId: 'person-1',
     eventId: null,
-    profile: { person: { name: 'Ana Mota' } },
+    profile: { person: { name: 'Ana Mota' }, selfEditingBlocked: false },
     event: null,
     revision: 3,
     updatedAt: new Date(),
@@ -112,10 +112,12 @@ describe('content review GraphQL integration', () => {
             targetName: 'Ana Mota',
             updatedAt: entry.updatedAt.toISOString(),
             isProfile: true,
+            profileEditingBlocked: null,
             items: [
               {
                 key: 'photo',
                 authorName: 'Ana',
+                authorEditingBlocked: null,
                 fields: [{ key: 'photo', before: 'Visível quando disponível', after: 'Oculta' }],
                 beforeMaterial: null,
                 afterMaterial: null,
@@ -142,6 +144,17 @@ describe('content review GraphQL integration', () => {
 
     expect(result.errors?.map(({ message }) => message)).toEqual(['Selecione as alterações que deseja revisar.']);
     expect(prisma.contentReview.findUnique).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('requires person update permission before a reviewer can block editing', async () => {
+    const result = await execute('BlockContentReviewEditing', {
+      id: entry.id,
+      revision: entry.revision,
+      key: null,
+    });
+
+    expect(result.errors).toHaveLength(1);
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });

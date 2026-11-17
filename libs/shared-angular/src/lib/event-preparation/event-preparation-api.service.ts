@@ -5,7 +5,7 @@ import { firstValueFrom, map } from 'rxjs';
 
 const MATERIAL_FIELDS = 'links { title url releaseAfterEvent } updatedAt nextReleaseAt';
 const EDITABLE_MATERIAL_FIELDS =
-  'links { id title url releaseAfterEvent } updatedAt editingFrozen pendingReview reviewRequired';
+  'links { id title url releaseAfterEvent } updatedAt editingFrozen editingBlocked pendingReview reviewRequired';
 const PREPARATION_FIELDS = 'lecturerInformation collectorInformation updatedAt';
 
 @Service()

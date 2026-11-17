@@ -23,6 +23,7 @@ import {
   applyMaterialChanges,
   diffMaterials,
   materialKey,
+  lockReviewPerson,
   readChanges,
   writeReview,
 } from '../content-review/content-review-changes';
@@ -83,17 +84,19 @@ export class EventPreparationResolver {
       if (!(error instanceof ForbiddenException)) throw error;
       editingFrozen = true;
     }
-    const { event, review } = lecturer
+    const { event, review, editingBlocked } = lecturer
       ? await this.prisma.$transaction(async (tx) => ({
           event: await lockPreparationEvent(tx, eventId),
           review: await tx.contentReview.findUnique({ where: { eventId } }),
+          editingBlocked: await this.materialEditingBlocked(tx, lecturer.id),
         }))
-      : { event: await this.requireEvent(eventId), review: null };
+      : { event: await this.requireEvent(eventId), review: null, editingBlocked: false };
     const changes = readChanges(review).filter((change) => change.kind === 'material');
     return {
       links: applyMaterialChanges(parseEventMaterials(event.materials), changes).map(withMaterialIdentity),
       updatedAt: materialDraftRevision(event.materialsUpdatedAt, review?.updatedAt),
       editingFrozen,
+      editingBlocked,
       pendingReview: !!review,
       reviewRequired: !!lecturer,
     };
@@ -215,6 +218,12 @@ export class EventPreparationResolver {
     }
     const result = await this.prisma.$transaction(async (tx) => {
       const previous = await lockPreparationEvent(tx, eventId);
+      if (lecturer) {
+        await lockReviewPerson(tx, lecturer.id);
+        if (await this.materialEditingBlocked(tx, lecturer.id)) {
+          throw new ForbiddenException('A edição de materiais foi bloqueada pela organização.');
+        }
+      }
       const review = await tx.contentReview.findUnique({ where: { eventId } });
       const published = parseEventMaterials(previous.materials);
       const pending = readChanges(review).filter((change) => change.kind === 'material');
@@ -238,7 +247,9 @@ export class EventPreparationResolver {
       const touched = new Set(submitted.map(({ key }) => key));
       const untouched = pending.filter(({ key }) => !touched.has(key));
       if (lecturer) {
-        const changed = diffMaterials(published, normalized, lecturer.name).filter(({ key }) => touched.has(key));
+        const changed = diffMaterials(published, normalized, lecturer.name, lecturer.id).filter(({ key }) =>
+          touched.has(key),
+        );
         const savedReview = await writeReview(tx, { eventId }, review, [...untouched, ...changed], updatedAt);
         return {
           links: normalized,
@@ -269,6 +280,14 @@ export class EventPreparationResolver {
     return { ...materials, links: materials.links.map(withMaterialIdentity), reviewRequired: !!lecturer };
   }
 
+  private async materialEditingBlocked(tx: Prisma.TransactionClient, personId: string): Promise<boolean> {
+    const person = await tx.people.findUnique({
+      where: { id: personId, deletedAt: null },
+      select: { materialEditingBlocked: true },
+    });
+    return !person || person.materialEditingBlocked;
+  }
+
   private async requireMaterialAccess(eventId: string, context: GraphqlContext, writing: boolean) {
     const user = this.currentUser.getAuthenticatedUser(context);
     if (await canReviewContent(this.authorization, user, Permission.Event.Update, { eventId })) return null;
@@ -277,7 +296,7 @@ export class EventPreparationResolver {
       if (!user.sub) return null;
       const lecturer = await this.prisma.eventLecturer.findFirst({
         where: { eventId, person: { userId: user.sub, deletedAt: null } },
-        select: { person: { select: { name: true } } },
+        select: { person: { select: { id: true, name: true } } },
       });
       return lecturer?.person ?? null;
     }

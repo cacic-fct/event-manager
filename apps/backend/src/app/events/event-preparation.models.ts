@@ -22,6 +22,7 @@ export class EventMaterials {
   @Field(() => Date, { nullable: true }) updatedAt!: Date | null;
   @Field(() => Date, { nullable: true }) nextReleaseAt?: Date | null;
   @Field(() => Boolean, { nullable: true }) editingFrozen?: boolean;
+  @Field(() => Boolean, { nullable: true }) editingBlocked?: boolean;
   @Field(() => Boolean, { nullable: true }) pendingReview?: boolean;
   @Field(() => Boolean, { nullable: true }) reviewRequired?: boolean;
 }

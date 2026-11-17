@@ -498,6 +498,7 @@ export const PERSON_DETAIL_FIELDS = `
   name
   email
   secondaryEmails
+  materialEditingBlocked
   phone
   identityDocument
   academicId

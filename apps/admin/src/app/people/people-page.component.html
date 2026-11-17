@@ -200,6 +200,16 @@
                   <input matInput formControlName="externalRef" readonly />
                 </mat-form-field>
               </div>
+              @if (workspace.selectedPerson()) {
+                @if (permissions.canEdit(Permission.Person.Update)) {
+                  <mat-checkbox formControlName="materialEditingBlocked" aria-describedby="material-editing-block-help">
+                    Bloquear edição de materiais para inscritos
+                  </mat-checkbox>
+                  <p id="material-editing-block-help">Aplica-se à edição como palestrante em todos os eventos.</p>
+                } @else if (workspace.selectedPerson()?.materialEditingBlocked) {
+                  <p>Edição de materiais para inscritos bloqueada.</p>
+                }
+              }
             </form>
 
             @if (workspace.selectedPerson()) {

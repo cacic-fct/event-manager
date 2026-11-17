@@ -9,11 +9,18 @@ function displayValue(value: string | null | { publishGoogleUserPicture: boolean
   return value;
 }
 
-function presentItem(change: ContentChange): ContentReviewItem {
+function presentItem(change: ContentChange, materialBlocks: ReadonlyMap<string, boolean>): ContentReviewItem {
   const { key, authorName } = change;
   switch (change.kind) {
     case 'material':
-      return { key, authorName, beforeMaterial: change.before, afterMaterial: change.after, fields: [] };
+      return {
+        key,
+        authorName,
+        authorEditingBlocked: change.authorPersonId ? materialBlocks.get(change.authorPersonId) : undefined,
+        beforeMaterial: change.before,
+        afterMaterial: change.after,
+        fields: [],
+      };
     case 'profileCreation':
       return {
         key,
@@ -32,7 +39,12 @@ function presentItem(change: ContentChange): ContentReviewItem {
 }
 
 export function presentReview(
-  review: ContentReview & { profile: { person: { name: string } } | null; event: { name: string } | null },
+  review: ContentReview & {
+    profile: { person: { name: string }; selfEditingBlocked: boolean } | null;
+    event: { name: string } | null;
+  },
+  canManagePeople: boolean,
+  materialBlocks: ReadonlyMap<string, boolean>,
 ): ContentReviewGroup {
   return {
     id: review.id,
@@ -40,6 +52,7 @@ export function presentReview(
     updatedAt: review.updatedAt,
     isProfile: !!review.personId,
     targetName: review.profile?.person.name ?? review.event?.name ?? '',
-    items: readChanges(review).map(presentItem),
+    profileEditingBlocked: canManagePeople ? review.profile?.selfEditingBlocked : undefined,
+    items: readChanges(review).map((change) => presentItem(change, materialBlocks)),
   };
 }

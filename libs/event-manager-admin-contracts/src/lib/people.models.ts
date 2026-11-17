@@ -14,6 +14,7 @@ export interface User {
 }
 
 export interface Person {
+  materialEditingBlocked?: boolean;
   id: string;
   name: string;
   email?: string | null;
@@ -171,6 +172,7 @@ export interface DeletionResult {
 }
 
 export interface PersonInput {
+  materialEditingBlocked?: boolean;
   id?: string;
   name?: string;
   email?: string | null;

@@ -134,6 +134,53 @@ export class ContentReviewsPageComponent {
     return title ? `${action} - ${operation} - ${title}` : `${action} - ${operation}`;
   }
 
+  async blockEditing(group: ContentReviewGroup, item: ContentReviewItem | null, event: Event): Promise<void> {
+    if (this.busy() || this.loading()) return;
+    const trigger = event.currentTarget;
+    this.busy.set(true);
+    this.feedback.set('');
+    this.decisionError.set('');
+    const name = item?.authorName ?? group.targetName;
+    try {
+      const confirmed = await firstValueFrom(
+        this.dialog
+          .open(ConfirmationDialogComponent, {
+            restoreFocus: false,
+            data: {
+              title: item ? 'Bloquear edição de materiais?' : 'Bloquear edição do próprio perfil?',
+              message: item
+                ? `${name} perderá o acesso à edição de materiais para inscritos em todos os eventos. Os envios pendentes continuam na fila.`
+                : `${name} perderá o acesso à edição do próprio perfil de palestrante. As alterações pendentes continuam na fila.`,
+              confirmLabel: 'Bloquear',
+              cancelLabel: 'Cancelar',
+              tone: 'danger',
+            },
+          })
+          .afterClosed(),
+      );
+      if (!confirmed) {
+        afterNextRender(
+          () => {
+            if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus();
+            else this.queueHeading()?.nativeElement.focus();
+          },
+          { injector: this.injector },
+        );
+        return;
+      }
+      await this.api.blockEditing(group, item?.key ?? null);
+      this.feedback.set(item ? 'Edição de materiais bloqueada.' : 'Edição do próprio perfil bloqueada.');
+      await this.load();
+      this.queueHeading()?.nativeElement.focus();
+    } catch (error) {
+      this.decisionError.set(error instanceof Error ? error.message : 'Não foi possível bloquear a edição.');
+      afterNextRender(() => this.decisionAlert()?.nativeElement.focus(), { injector: this.injector });
+    } finally {
+      this.busy.set(false);
+      void this.refreshIfIdle();
+    }
+  }
+
   async decide(
     group: ContentReviewGroup,
     items: ContentReviewItem[],

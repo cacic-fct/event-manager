@@ -68,6 +68,22 @@ describe('PeopleService after permission management extraction', () => {
     expect(service.lecturerProfileForm.controls.selfEditingBlocked.value).toBe(false);
   });
 
+  it('sends a changed material block when saving an existing person', async () => {
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    await service.selectPerson({ ...person, materialEditingBlocked: true });
+    const block = service.personForm.controls.materialEditingBlocked;
+    expect(block.value).toBe(true);
+    block.setValue(false);
+    block.markAsDirty();
+
+    await service.savePerson();
+
+    expect(api.updatePerson).toHaveBeenCalledWith(
+      person.id,
+      expect.objectContaining({ materialEditingBlocked: false }),
+    );
+  });
+
   it('searches people without legacy permission-grant filters', async () => {
     await service.searchPeople('Ana');
     expect(service.people()).toEqual([person]);

@@ -28,7 +28,7 @@ type ProfileCreation = Change<ProfileSnapshot | null> & {
   after: ProfileSnapshot;
 };
 type ProfileChange = ProfileFieldChange | ProfileCreation;
-export type MaterialChange = Change<EventMaterial | null> & { kind: 'material' };
+export type MaterialChange = Change<EventMaterial | null> & { kind: 'material'; authorPersonId?: string };
 export type ContentChange = ProfileChange | MaterialChange;
 export type ReviewTarget = { personId: string } | { eventId: string };
 
@@ -111,7 +111,12 @@ export function materialKey(link: EventMaterial): string {
   return link.id ?? createHash('sha256').update(link.url).digest('base64url');
 }
 
-export function diffMaterials(before: EventMaterial[], after: EventMaterial[], authorName: string): MaterialChange[] {
+export function diffMaterials(
+  before: EventMaterial[],
+  after: EventMaterial[],
+  authorName: string,
+  authorPersonId?: string,
+): MaterialChange[] {
   const beforeByKey = new Map(before.map((link) => [materialKey(link), link]));
   const afterByKey = new Map(after.map((link) => [materialKey(link), link]));
   return [...new Set([...beforeByKey.keys(), ...afterByKey.keys()])].flatMap((key) => {
@@ -119,7 +124,16 @@ export function diffMaterials(before: EventMaterial[], after: EventMaterial[], a
     const newLink = afterByKey.get(key) ?? null;
     return isDeepStrictEqual(oldLink, newLink)
       ? []
-      : [{ kind: 'material', key, before: oldLink, after: newLink, authorName }];
+      : [
+          {
+            kind: 'material',
+            key,
+            before: oldLink,
+            after: newLink,
+            authorName,
+            ...(authorPersonId ? { authorPersonId } : {}),
+          },
+        ];
   });
 }
 

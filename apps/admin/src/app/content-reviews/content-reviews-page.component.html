@@ -38,6 +38,18 @@
           </mat-expansion-panel-header>
           <p class="updated">Último envio em {{ group.updatedAt | date: 'short' }}</p>
 
+          @if (group.profileEditingBlocked === false) {
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="loading() || busy()"
+              (click)="blockEditing(group, null, $event)">
+              Bloquear edição do próprio perfil
+            </button>
+          } @else if (group.profileEditingBlocked) {
+            <p>Edição do próprio perfil bloqueada.</p>
+          }
+
           @for (item of group.items; track item.key) {
             <article class="review-item">
               <h3>{{ itemLabel(group, item) }}</h3>
@@ -69,7 +81,20 @@
                   </div>
                 </dl>
               }
+              @if (item.authorEditingBlocked) {
+                <p>Edição de materiais bloqueada para {{ item.authorName }}.</p>
+              }
               <div class="actions">
+                @if (item.authorEditingBlocked === false) {
+                  <button
+                    mat-button
+                    type="button"
+                    [disabled]="loading() || busy()"
+                    [attr.aria-label]="'Bloquear edição de materiais para ' + item.authorName"
+                    (click)="blockEditing(group, item, $event)">
+                    Bloquear edição de materiais
+                  </button>
+                }
                 <button
                   mat-button
                   type="button"

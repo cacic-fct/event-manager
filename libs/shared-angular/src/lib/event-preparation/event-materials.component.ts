@@ -34,10 +34,11 @@ export class EventMaterialsComponent {
   readonly editable = input(false);
   readonly management = input(false);
   readonly dirtyChange = output<boolean>();
+  readonly editingBlocked = signal(false);
   readonly editingFrozen = signal(false);
   readonly pendingReview = signal(false);
   readonly reviewRequired = signal(false);
-  readonly canEdit = computed(() => this.editable() && !this.editingFrozen());
+  readonly canEdit = computed(() => this.editable() && !this.editingFrozen() && !this.editingBlocked());
   private readonly api = inject(EventPreparationApiService);
   private readonly platformId = inject(PLATFORM_ID);
   private releaseTimer: ReturnType<typeof setTimeout> | undefined;
@@ -91,6 +92,7 @@ export class EventMaterialsComponent {
       this.saving.set(false);
       this.loadError.set(false);
       this.editingFrozen.set(false);
+      this.editingBlocked.set(false);
       this.pendingReview.set(false);
       this.reviewRequired.set(false);
       this.error.set('');
@@ -104,6 +106,7 @@ export class EventMaterialsComponent {
       // Each returned link is valid. A partial review can leave draft links with conflicting URLs.
       const links = (result?.links ?? []).flatMap((link) => parseEventMaterials([link]));
       this.revision = result?.updatedAt ?? null;
+      this.editingBlocked.set(result?.editingBlocked === true);
       this.editingFrozen.set(result?.editingFrozen === true);
       this.pendingReview.set(result?.pendingReview === true);
       this.reviewRequired.set(result?.reviewRequired === true);
