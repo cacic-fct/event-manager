@@ -10,6 +10,7 @@ export const WorkspacePermissionTab = {
   Publication: 'publication',
   People: 'people',
   ContentReviews: 'content-reviews',
+  Mcp: 'mcp',
   MergeCandidates: 'merge-candidates',
   Certificates: 'certificates',
   Attendances: 'attendances',
@@ -76,6 +77,13 @@ export const WORKSPACE_ENTRY_PERMISSIONS = [
 ] as const satisfies PermissionRequirement;
 
 export const WORKSPACE_TAB_PERMISSIONS = [
+  {
+    id: WorkspacePermissionTab.Mcp,
+    label: 'Aplicativos e propostas MCP',
+    read: [Permission.Event.Read],
+    edit: [Permission.Event.Read],
+    delete: [],
+  },
   {
     id: WorkspacePermissionTab.Dashboard,
     label: 'Painel',

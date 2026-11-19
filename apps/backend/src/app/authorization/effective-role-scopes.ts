@@ -17,7 +17,7 @@ export type EffectiveRoleScope = {
 };
 
 export async function findActiveRolePermissionScopes(
-  prisma: PrismaService,
+  prisma: PrismaService | Prisma.TransactionClient,
   userId: string | undefined,
   permissions?: readonly Permission[],
   now = new Date(),
@@ -82,12 +82,17 @@ export async function findActiveRolePermissionScopes(
   );
 }
 
-export async function resolveRoleIdsForPermission(prisma: PrismaService, permission: Permission): Promise<string[]> {
+export async function resolveRoleIdsForPermission(
+  prisma: PrismaService | Prisma.TransactionClient,
+  permission: Permission,
+): Promise<string[]> {
   const effective = await resolveEffectiveRolePermissions(prisma);
   return [...effective.entries()].filter(([, permissions]) => permissions.has(permission)).map(([roleId]) => roleId);
 }
 
-async function resolveEffectiveRolePermissions(prisma: PrismaService): Promise<Map<string, Set<Permission>>> {
+async function resolveEffectiveRolePermissions(
+  prisma: PrismaService | Prisma.TransactionClient,
+): Promise<Map<string, Set<Permission>>> {
   const roles = await prisma.eventManagerRole.findMany({
     where: { archivedAt: null },
     select: {

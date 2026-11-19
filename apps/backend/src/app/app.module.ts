@@ -62,6 +62,28 @@ import {
 } from './audit-log/audit-log.retention-job';
 import { AuditLogService } from './audit-log/audit-log.service';
 import { AuthModule } from './auth/auth.module';
+import { McpAdminConfig } from './mcp/mcp-admin.config';
+import { McpAdminAccessService } from './mcp/mcp-admin-access.service';
+import { McpAdminAuthGuard } from './mcp/mcp-admin-auth.guard';
+import { McpAdminSessionGuard } from './mcp/mcp-admin-session.guard';
+import { McpAdminOperationLogService } from './mcp/mcp-admin-operation-log.service';
+import { McpAdminOperationInterceptor } from './mcp/mcp-admin-operation.interceptor';
+import { McpAdminInvalidationService } from './mcp/mcp-admin-invalidation.service';
+import { McpAdminRealtimeController } from './mcp/mcp-admin-realtime.controller';
+import { McpAdminReadService } from './mcp/mcp-admin-read.service';
+import { McpAdminProposalsService } from './mcp/mcp-admin-proposals.service';
+import { McpAdminController } from './mcp/mcp-admin.controller';
+import {
+  McpAdminMetadataController,
+  McpAdminToolServer,
+  McpAdminTransportController,
+} from './mcp/mcp-admin-transport.controller';
+import { McpAdminMaintenanceService } from './mcp/mcp-admin-maintenance.service';
+import {
+  MCP_ADMIN_MAINTENANCE_QUEUE,
+  McpAdminMaintenanceScheduler,
+  McpAdminMaintenanceProcessor,
+} from './mcp/mcp-admin-maintenance.jobs';
 import { PermissionManagementResolver } from './authorization/permission-management.resolver';
 import { PermissionManagementService } from './authorization/permission-management.service';
 import { KeycloakScopeGuard } from './auth/guards/keycloak-scope.guard';
@@ -320,6 +342,7 @@ import { PrizeDrawNotificationJobsProcessor } from './prize-draw/prize-draw-noti
 
 const useInMemoryTestInfra = process.env.BACKEND_E2E_IN_MEMORY_INFRA === 'true';
 const backendQueueNames = [
+  MCP_ADMIN_MAINTENANCE_QUEUE,
   AUDIT_LOG_RETENTION_QUEUE,
   'weather',
   EVENT_INFORMATION_QUEUE,
@@ -343,6 +366,7 @@ const queueImports = useInMemoryTestInfra
         prefix: process.env.BACKEND_E2E_QUEUE_PREFIX,
       }),
       BullModule.registerQueue({ name: AUDIT_LOG_RETENTION_QUEUE }),
+      BullModule.registerQueue({ name: MCP_ADMIN_MAINTENANCE_QUEUE }),
       BullModule.registerQueue({ name: EVENT_INFORMATION_QUEUE }),
       BullModule.registerQueue({
         name: 'weather',
@@ -381,6 +405,7 @@ const queueProviders = useInMemoryTestInfra ? createNoopQueueProviders(backendQu
 const queueProcessorProviders = useInMemoryTestInfra
   ? []
   : [
+      McpAdminMaintenanceProcessor,
       AuditLogRetentionProcessor,
       CalendarFeedMaintenanceProcessor,
       PublicationProcessor,
@@ -397,6 +422,7 @@ const queueProcessorProviders = useInMemoryTestInfra
 const schedulerProviders = useInMemoryTestInfra
   ? []
   : [
+      McpAdminMaintenanceScheduler,
       AuditLogRetentionScheduler,
       CalendarFeedMaintenanceScheduler,
       PublicationScheduler,
@@ -450,6 +476,10 @@ const schedulerProviders = useInMemoryTestInfra
     AnalyticsModule,
   ],
   controllers: [
+    McpAdminController,
+    McpAdminTransportController,
+    McpAdminMetadataController,
+    McpAdminRealtimeController,
     CertificatePreviewController,
     CertificatePdfValidationController,
     AppController,
@@ -713,6 +743,17 @@ const schedulerProviders = useInMemoryTestInfra
     FrozenResourceService,
     VotingIntegrationService,
     TurnstileService,
+    McpAdminConfig,
+    McpAdminAccessService,
+    McpAdminAuthGuard,
+    McpAdminSessionGuard,
+    McpAdminOperationLogService,
+    McpAdminOperationInterceptor,
+    McpAdminInvalidationService,
+    McpAdminReadService,
+    McpAdminProposalsService,
+    McpAdminToolServer,
+    McpAdminMaintenanceService,
     RateLimitGuard,
     RateLimitService,
     redisProvider,

@@ -7,7 +7,7 @@ import {
   parsePermission,
   requiresGlobalPermissionGrantScope,
 } from '@cacic-fct/shared-permissions';
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   audienceContext,
   eventAudienceWhere,
@@ -15,7 +15,7 @@ import {
   majorEventAudienceWhere,
   type EventAudiencePrincipal,
 } from '../audiences/audience-context';
-import { CertificateScope, EventManagerPermissionScope } from '@prisma/client';
+import { CertificateScope, EventManagerPermissionScope, type Prisma } from '@prisma/client';
 import { addHours, isFuture, isWithinInterval, subHours } from 'date-fns';
 import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { ACTIVE_OR_REVOKED_CERTIFICATE_WHERE } from '../certificate/certificate.constants';
@@ -89,8 +89,12 @@ import { eventGroupBelongsToMajorEventWhere } from '../event-groups/major-event-
 
 @Injectable()
 export class AuthorizationPolicyService extends SportsAuthorizationTargetService {
-  constructor(protected readonly prisma: PrismaService) {
+  constructor(@Inject(PrismaService) protected readonly prisma: PrismaService | Prisma.TransactionClient) {
     super(prisma);
+  }
+
+  forTransaction(tx: Prisma.TransactionClient): AuthorizationPolicyService {
+    return new AuthorizationPolicyService(tx);
   }
 
   hasEventManagerAccess(user: AuthenticatedUser | undefined): boolean {

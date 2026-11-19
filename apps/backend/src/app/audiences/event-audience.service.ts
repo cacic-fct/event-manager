@@ -54,6 +54,14 @@ export class EventAudienceService {
     };
   }
 
+  /** Resolve audience identity internally without adding private profile claims to MCP tokens. */
+  async principalForMcpUser(user: AuthenticatedUser): Promise<EventAudiencePrincipal> {
+    const storedUser = user.sub
+      ? await this.prisma.user.findUnique({ where: { id: user.sub }, select: { email: true } })
+      : null;
+    return this.principalForUser({ ...user, email: storedUser?.email ?? user.email });
+  }
+
   async principalForStoredUser(userId: string): Promise<EventAudiencePrincipal> {
     userId = (await this.accountMerge.resolveFinalUserId(userId)) ?? userId;
     const [user, people] = await Promise.all([

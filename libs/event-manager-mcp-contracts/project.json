@@ -1,0 +1,19 @@
+{
+  "name": "event-manager-mcp-contracts",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/event-manager-mcp-contracts/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:contract"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/event-manager-mcp-contracts",
+        "main": "libs/event-manager-mcp-contracts/src/index.ts",
+        "tsConfig": "libs/event-manager-mcp-contracts/tsconfig.lib.json",
+        "assets": ["libs/event-manager-mcp-contracts/*.md"]
+      }
+    }
+  }
+}

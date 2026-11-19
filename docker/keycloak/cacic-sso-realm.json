@@ -142,6 +142,89 @@
   ],
   "clientScopes": [
     {
+      "name": "mcp-admin-identity",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "event-manager roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-client-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "false",
+            "multivalued": "true",
+            "usermodel.clientRoleMapping.clientId": "cacic-event-manager",
+            "claim.name": "resource_access.cacic-event-manager.roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "is_onboarded",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "false",
+            "user.attribute": "isOnboarded",
+            "claim.name": "is_onboarded",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
+      "name": "mcp:admin:read",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "Consultar dados administrativos permitidos"
+      },
+      "protocolMappers": [
+        {
+          "name": "mcp-admin-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "http://localhost:3000/api/mcp/admin",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "mcp:admin:proposals:create",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "Criar propostas de alterações para aprovação humana"
+      },
+      "protocolMappers": [
+        {
+          "name": "mcp-admin-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "http://localhost:3000/api/mcp/admin",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
       "name": "profile",
       "protocol": "openid-connect",
       "attributes": {
@@ -542,7 +625,37 @@
       ]
     }
   ],
+  "clientScopeMappings": {
+    "cacic-event-manager": [
+      {
+        "client": "cacic-event-manager-mcp-dev",
+        "roles": ["access", "super-admin"]
+      }
+    ]
+  },
   "clients": [
+    {
+      "clientId": "cacic-event-manager-mcp-dev",
+      "name": "MCP administrativo local",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "bearerOnly": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "consentRequired": true,
+      "fullScopeAllowed": false,
+      "redirectUris": ["http://127.0.0.1:8765/callback"],
+      "webOrigins": [],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "access.token.lifespan": "300"
+      },
+      "defaultClientScopes": ["mcp-admin-identity"],
+      "optionalClientScopes": ["mcp:admin:read", "mcp:admin:proposals:create"]
+    },
     {
       "clientId": "cacic-account-manager",
       "protocolMappers": [

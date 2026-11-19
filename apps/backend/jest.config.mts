@@ -11,6 +11,7 @@ export default {
     'transfer-http\\.e2e\\.spec\\.ts$',
     'data-transfer\\.postgres\\.spec\\.ts$',
     'subscription-counters\\.postgres\\.spec\\.ts$',
+    'mcp-admin\\.postgres\\.spec\\.ts$',
   ],
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/apps/backend',

@@ -15,6 +15,7 @@ describe('workspace nav', () => {
       'people',
       'content-reviews',
       'merge-candidates',
+      'mcp',
       'notifications',
       'places',
       'global-operations',
@@ -33,6 +34,7 @@ describe('workspace nav', () => {
     expect(findNavigationItemForUrl('/workspace/preferences').id).toBe('preferences');
     expect(findNavigationItemForUrl('/content-reviews?review=group-1').id).toBe('content-reviews');
     expect(findNavigationItemForUrl('/data-transfer').id).toBe('data-transfer');
+    expect(findNavigationItemForUrl('/mcp?id=proposal').id).toBe('mcp');
   });
 
   it('maps scope homes to the correct permission owner', () => {

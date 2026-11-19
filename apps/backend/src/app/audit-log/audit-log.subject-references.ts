@@ -24,6 +24,8 @@ export const AUDIT_SUBJECT_REFERENCE_FIELDS = new Set([
   'userId',
   'authorUserId',
   'submittedById',
+  'proposedById',
+  'approvedById',
   'createdById',
   'committedById',
   'updatedById',

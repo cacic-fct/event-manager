@@ -322,3 +322,93 @@ describe('invitation audit privacy', () => {
     });
   });
 });
+
+describe('MCP approval audit anonymization', () => {
+  const dataSubject = { people: [], personIds: [], userIds: ['deleted-user'], emails: [] };
+
+  it('finds MCP proposal and approval authors in metadata', () => {
+    const where = buildAuditLogSubjectWhere(dataSubject);
+    expect(where.OR).toEqual(
+      expect.arrayContaining([
+        { metadata: { path: ['proposedById'], equals: 'deleted-user' } },
+        { metadata: { path: ['approvedById'], equals: 'deleted-user' } },
+      ]),
+    );
+  });
+
+  it('scrubs the approval name and summary even when no People profile survives', async () => {
+    const update = jest.fn().mockResolvedValue(undefined);
+    const tx = {
+      lecturerProfile: { findMany: jest.fn().mockResolvedValue([]) },
+      auditLogEntry: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'audit-mcp',
+            entityType: AuditLogEntityType.EVENT,
+            entityId: 'event-1',
+            entityLabel: 'Event title',
+            actorId: 'deleted-user',
+            actorName: 'Deleted Name',
+            actorEmail: null,
+            summary: 'Alteração MCP aprovada por Deleted Name.',
+            before: null,
+            after: null,
+            changes: [],
+            metadata: {
+              source: 'mcp',
+              proposalId: 'proposal-1',
+              delegationId: 'delegation-1',
+              clientId: 'mcp-client',
+              proposedById: 'deleted-user',
+              approvedById: 'deleted-user',
+              approvedByName: 'Deleted Name',
+            },
+          },
+        ]),
+        update,
+      },
+    };
+
+    await anonymizeAuditEntries(tx as unknown as Prisma.TransactionClient, dataSubject, 'anonymous-subject');
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'audit-mcp' },
+      data: expect.objectContaining({
+        actorId: null,
+        actorName: 'Usuário anonimizado',
+        summary: 'Registro MCP anonimizado.',
+        metadata: {
+          source: 'mcp',
+          proposalId: 'proposal-1',
+          delegationId: 'delegation-1',
+          clientId: 'mcp-client',
+          proposedById: 'anonymous-subject',
+          approvedById: 'anonymous-subject',
+          approvedByName: ANONYMIZED_AUDIT_VALUE,
+        },
+      }),
+    });
+    expect(JSON.stringify(update.mock.calls)).not.toContain('Deleted Name');
+  });
+
+  it('preserves another approver name when only the proposal author is the erased subject', () => {
+    expect(
+      anonymizeAuditJson(
+        {
+          proposedById: 'deleted-user',
+          approvedById: 'other-user',
+          approvedByName: 'Other Name',
+        },
+        new Set(),
+        new Set(['deleted-user']),
+        'anonymous-subject',
+        [],
+        false,
+      ),
+    ).toEqual({
+      proposedById: 'anonymous-subject',
+      approvedById: 'other-user',
+      approvedByName: 'Other Name',
+    });
+  });
+});

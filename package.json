@@ -65,6 +65,8 @@
     "@fontsource/material-symbols-outlined": "^5.3.9",
     "@grpc/grpc-js": "^1.14.7",
     "@grpc/proto-loader": "^0.8.1",
+    "@modelcontextprotocol/node": "^2.1.2",
+    "@modelcontextprotocol/server": "^2.4.0",
     "@nestjs/apollo": "^13.4.5",
     "@nestjs/bullmq": "^11.0.5",
     "@nestjs/common": "^11.2.8",

@@ -79,6 +79,13 @@
         "command": "node tools/run-data-transfer-database-tests.mjs"
       }
     },
+    "test-mcp-postgres": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node tools/run-mcp-postgres-tests.mjs"
+      }
+    },
     "test-subscription-counters-postgres": {
       "executor": "nx:run-commands",
       "cache": false,
