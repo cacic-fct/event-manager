@@ -75,7 +75,7 @@ Para reduzir o alcance, remova o escopo desnecessário ou antecipe sua expiraç�
 
 Para encerrar uma responsabilidade individual, remova a atribuição ou a participação no grupo.
 
-Arquive cargos e grupos somente quando eles não devem receber novas atribuições. O arquivamento preserva o histórico, mas não deve ser usado como forma implícita de revogar acessos ainda ativos.
+Arquive um cargo personalizado quando a responsabilidade inteira for encerrada: isso também arquiva suas atribuições ativas e os vínculos em que outros cargos o herdam. Arquivar um grupo arquiva suas participações. O histórico é preservado, mas o acesso derivado dessas relações deixa de valer. Outros cargos ou grupos ainda podem conceder o mesmo acesso.
 
 ## Super administrador
 

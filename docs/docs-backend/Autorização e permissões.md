@@ -1,121 +1,80 @@
 # Autorização e permissões
 
-O backend do CACiC Event Manager é a autoridade final para permissões administrativas. A interface usa as permissões para orientar a navegação, mas toda operação protegida precisa ser autorizada novamente no backend.
+O backend é a autoridade final para permissões administrativas. A interface orienta a navegação, mas cada operação deve ser autorizada novamente para o alvo real.
 
-## Visão geral
-
-O sistema combina quatro fontes:
+## Fontes de autoridade
 
 | Fonte | Responsabilidade |
 | --- | --- |
-| Keycloak | Autenticação, sessão, entrada no Event Manager e bypass de super administrador. |
-| Catálogo compartilhado | Nomes de permissões, labels, presets e requisitos de abas. |
-| Concessões no banco | Permissões efetivas por usuário, com escopo e validade. |
-| Regras de domínio | Restrições contextuais, como recurso congelado, recurso removido, janela de coleta e vínculo com evento. |
+| Keycloak | Autenticação, entrada administrativa com `access` e bypass com `super-admin`. |
+| Catálogo compartilhado | Nomes de permissões, dependências, cargos predefinidos, escopos compatíveis e requisitos de abas. |
+| Cargos e grupos no banco | Atribuições a pessoas ou grupos, herança, escopos e períodos de validade. |
+| Regras de domínio | Público-alvo, publicação, recursos congelados, exclusão e elegibilidade operacional. |
 
-Os principais pontos de manutenção são:
+Não replique as permissões humanas em recursos, escopos ou políticas do Keycloak Authorization Services. Papéis M2M são separados e exigem validação do principal e do audience da integração.
 
-- `libs/shared-permissions/src/lib/shared-permissions.ts`;
-- `apps/backend/src/app/auth/guards/keycloak-scope.guard.ts`;
-- `apps/backend/src/app/authorization/authorization-policy.service.ts`;
-- `apps/backend/src/app/authorization/permission-grants.service.ts`;
-- `apps/backend/src/app/authorization/permission-grants.resolver.ts`;
-- `apps/admin/src/app/shared/services/workspace-permissions.service.ts`;
-- `apps/admin/src/app/shared/services/workspace-people.service.ts`.
+## Onde fica a implementação
+
+- `libs/shared-permissions/src/lib/permission-types.ts` e `permission-catalog.ts`: constantes e catálogo;
+- `libs/shared-permissions/src/lib/permission-role-policy.ts`: cargos predefinidos e dependências;
+- `apps/backend/src/app/auth/guards/keycloak-scope.guard.ts`: autenticação e metadados dos handlers;
+- `apps/backend/src/app/authorization/authorization-policy.service.ts`: autorização contextual;
+- `apps/backend/src/app/authorization/effective-role-scopes.ts`: cálculo das permissões efetivas;
+- `apps/backend/src/app/authorization/permission-management.service.ts` e `.resolver.ts`: gerenciamento de cargos e grupos;
+- `apps/backend/prisma/schema/permissions.prisma`: persistência;
+- `apps/admin/src/app/permissions/permissions.service.ts`: avaliação para navegação;
+- `apps/admin/src/app/permissions/management`: gerenciamento no painel.
+
+## Modelo atual
+
+Um cargo reúne permissões do catálogo `recurso#ação` e pode herdar outros cargos. Atribuições ligam o cargo diretamente a uma pessoa ou a um grupo de permissões. Os grupos reúnem pessoas; não são grupos de eventos.
+
+Cada atribuição possui escopos `GLOBAL`, `MAJOR_EVENT`, `EVENT_GROUP` ou `EVENT`. A atribuição, seus escopos e a participação em grupo podem ter períodos diferentes de validade. Registros arquivados não produzem acesso; `validFrom` é inclusivo e `validUntil` exclusivo.
+
+O avaliador exige exatamente uma pessoa ativa vinculada ao usuário. É possível preparar uma atribuição antes do vínculo de conta, mas ela só produz acesso quando o vínculo e o papel de entrada do Keycloak estiverem válidos.
+
+As permissões efetivas combinam cargos diretos, grupos ativos, herança e dependências obrigatórias. Os cargos predefinidos usam definições do catálogo compartilhado. `super-admin` permanece externo e não pode ser atribuído pelo gerenciamento do Event Manager.
+
+O método interno `findActiveGrants` delega a `findActiveRolePermissionScopes`; ele não consulta uma tabela de concessões diretas. Não recrie o modelo antigo de permissões individuais para uma nova funcionalidade.
 
 ## Fluxo de uma requisição
 
-1. O guard autentica a sessão ou o bearer token.
-2. O guard lê os metadados de `RequireRoles(...)` e `RequirePermissions(...)`.
-3. Papéis M2M são verificados contra o audience M2M quando o endpoint é uma integração interna.
-4. Permissões humanas do Event Manager são enviadas para `AuthorizationPolicyService`.
-5. A camada de autorização exige o client role `access` do Event Manager, exceto quando o usuário possui `super-admin`.
-6. A camada de autorização procura concessões ativas no banco.
-7. A camada de autorização resolve o alvo real da operação a partir dos argumentos GraphQL ou de `params`, `query` e `body` em REST.
-8. A operação só continua se a concessão cobre a permissão e o alvo.
+1. O guard autentica a sessão ou token e verifica onboarding e papéis exigidos.
+2. `RequirePermissions(Permission.Resource.Action)` define as permissões administrativas necessárias.
+3. A política calcula o acesso efetivo pelos cargos e seus escopos ativos.
+4. O contexto resolve o alvo pelos argumentos GraphQL ou por `params`, `query` e `body` em REST.
+5. A política verifica permissão, compatibilidade de escopo e público-alvo aplicável.
+6. A operação verifica recursos congelados e demais regras de domínio, executa a alteração e registra auditoria na mesma transação.
 
-Use `RequirePermissions(Permission.Resource.Action)` em handlers administrativos. Não use strings soltas.
+Quando a permissão depende de criação ou atualização, o serviço pode escolher a exigência após carregar o registro. Os métodos de salvamento de cargos/grupos fazem essa autorização explicitamente; preserve esses checks ao alterar os metadados do resolver.
 
-## Papéis do Keycloak
+## Escopos e coleções
 
-O Event Manager usa apenas dois client roles humanos de alto nível no cliente Keycloak do Event Manager:
+Permissões globais alcançam todos os alvos compatíveis. Permissões limitadas dependem dos vínculos reais do recurso com evento, grupo e grande evento; não confie somente no ID de pai enviado pelo cliente. Recursos esportivos reutilizam essa hierarquia.
 
-- `access`: permite entrar no Event Manager;
-- `super-admin`: bypass para todas as permissões do Event Manager.
+Algumas permissões são sempre globais. Consulte as regras compartilhadas de compatibilidade e `EVENT_MANAGER_GLOBAL_ONLY_GRANT_PERMISSIONS` antes de criar um novo escopo.
 
-Papéis M2M continuam existindo para contas de serviço, mas não devem ser usados para representar permissões humanas do painel.
+`AllowScopedCollectionPermissions()` permite admitir uma coleção sem alvo único. `RequireCollectionPermissions(...)` também evita interpretar IDs aninhados como um único contexto. Nenhum deles filtra as linhas automaticamente.
 
-Não use recursos, escopos ou políticas do Keycloak Authorization Services para permissões administrativas humanas. A autorização de negócio usa o catálogo compartilhado e as concessões do banco do Event Manager.
+O serviço deve aplicar os alvos acessíveis à consulta, inclusive em totais, agregações, exportações e campos GraphQL aninhados. Os helpers `accessibleEventTargets`, `accessibleEventGroupIds` e `accessibleMajorEventIds` retornam `null` para acesso sem limitação de escopo e conjuntos vazios quando nenhum alvo está acessível. Filtros de público-alvo, publicação e exclusão continuam necessários.
 
-## Concessões do Event Manager
+Operações em lote verificam todos os alvos afetados. O acesso à aba não autoriza todos os registros dela.
 
-As concessões ficam na tabela `event_manager_permission_grants`. Uma concessão ativa possui:
+## Gerenciamento e auditoria
 
-- `userId`: usuário que recebe a permissão;
-- `personId`: pessoa vinculada, quando aplicável para auditoria e UI;
-- `permission`: valor do catálogo compartilhado;
-- `scope`: `GLOBAL`, `EVENT`, `MAJOR_EVENT` ou `EVENT_GROUP`;
-- alvo do escopo, quando não for global;
-- `validFrom` e `validUntil`, quando o acesso é agendado ou temporário;
-- `deletedAt`, usado para revogação lógica.
+Use **Permissões > Gerenciamento de permissões**. O serviço preserva versões otimistas, transações serializáveis, dependências, prevenção de ciclos e limites de delegação. Alterar um cargo herdado também exige considerar seus descendentes.
 
-Uma concessão é considerada ativa quando não foi removida, já passou de `validFrom` e ainda não chegou a `validUntil`.
+Arquivar um cargo personalizado arquiva suas atribuições ativas e os vínculos de herança que o usam como pai. Arquivar um grupo arquiva suas participações. Essas ações retiram o acesso derivado dessas relações e preservam o histórico com o motivo do arquivamento. Outros cargos ou grupos ainda podem conceder a mesma permissão.
 
-## Escopos
+Mudanças de cargos/grupos e novas operações de domínio devem registrar ator, entidade, escopo e valores relevantes por `AuditLogService.record(options, tx)`, na transação da alteração. Evite snapshots com dados pessoais desnecessários e registros duplicados entre resolver e serviço.
 
-Uma concessão global satisfaz a permissão em qualquer alvo.
+## Adicionar uma permissão
 
-Uma concessão de evento satisfaz operações daquele evento. Quando o evento pertence a um grupo ou grande evento, a camada de autorização também considera esses vínculos para resolver o contexto.
+1. Atualize a constante, o catálogo e as regras de escopo na biblioteca compartilhada.
+2. Revise dependências obrigatórias/contextuais, cargos predefinidos, modelos, labels e dados incluídos.
+3. Proteja o handler ou serviço e garanta a resolução do alvo real.
+4. Aplique filtros de coleção e auditoria quando cabíveis.
+5. Teste acesso permitido, negação por escopo, validade, herança e ausência de vínculo de conta, conforme a mudança.
+6. Atualize avaliação de abas, mensagens e stories do painel.
 
-Uma concessão de grande evento satisfaz operações ligadas ao grande evento, como inscrições de grande evento, comprovantes e certificados desse contexto.
-
-Uma concessão de grupo de eventos satisfaz operações ligadas ao grupo quando a operação possui contexto suficiente para resolver esse grupo.
-
-Algumas permissões são sempre globais, como gestão de pessoas, resolução de duplicidades e gestão de permissões. Mantenha essa regra em `EVENT_MANAGER_GLOBAL_ONLY_GRANT_PERMISSIONS`.
-
-## Resolução de contexto
-
-O guard monta o contexto de autorização a partir dos argumentos da operação. A camada de autorização reconhece identificadores diretos como `eventId`, `majorEventId` e `eventGroupId`, além de recursos que precisam ser resolvidos no banco:
-
-- inscrições;
-- comprovantes;
-- ações de validação de comprovante;
-- configurações de certificado;
-- certificados emitidos.
-
-Quando a operação recebe um `id` genérico e só exige permissões de um recurso, a camada de autorização tenta tratar esse `id` como o recurso primário. Isso evita depender de nomes diferentes de argumento para operações simples.
-
-Listagens podem usar `AllowScopedCollectionPermissions()`. Esse decorator permite que uma concessão scoped abra uma coleção quando ainda não há alvo específico nos argumentos. O serviço responsável pela listagem deve filtrar os dados retornados com os alvos acessíveis.
-
-## Frontend
-
-O admin chama `/api/auth/permissions/evaluate` com `WORKSPACE_PERMISSION_EVALUATION_SET`. A resposta indica quais permissões o usuário possui de forma suficiente para montar abas, botões e mensagens de diagnóstico.
-
-Essa avaliação não substitui a autorização do backend. Operações sobre registros específicos continuam sendo bloqueadas quando o escopo da concessão não cobre o alvo real.
-
-O gerenciamento de concessões fica no painel de pessoas, na seção "Permissões do Event Manager". Essa UI usa presets, labels, ícones e resumos de dados incluídos do catálogo compartilhado.
-
-## Adicionando uma permissão
-
-Ao criar uma nova permissão:
-
-1. Adicione a constante em `Permission`.
-2. Inclua a permissão em `EVENT_MANAGER_PERMISSION_CATALOG`.
-3. Adicione labels e ícones se ela aparecer no painel.
-4. Documente dados incluídos quando a permissão expuser dados pessoais ou dados operacionais sensíveis.
-5. Inclua a permissão em `WORKSPACE_TAB_PERMISSIONS`, `WORKSPACE_PERMISSION_EVALUATION_SET` ou presets apenas quando a UI precisar.
-6. Marque como global-only se a permissão não puder ser avaliada com segurança em escopos de evento, grupo ou grande evento.
-7. Proteja handlers com `RequirePermissions(...)`.
-8. Garanta que a camada de autorização consiga resolver o alvo da operação.
-9. Adicione testes para o catálogo, o guard, a camada de autorização e os resolvers ou controllers alterados.
-10. Atualize stories quando a nova permissão afetar a UI de concessões ou permissões.
-
-## Cuidados
-
-Não trate checks de frontend como autorização.
-
-Não adicione novos papéis de Keycloak para permissões de negócio sem mudar a arquitetura conscientemente.
-
-Não conceda `super-admin` para resolver falta de escopo em uma operação comum.
-
-Não edite permissões antigas em migrações já aplicadas. Quando a mudança exigir alterações no banco de dados, crie uma nova migração.
+Para detalhes de implementação por agentes, consulte os [arquivos de autorização](../../apps/backend/src/app/authorization/AGENTS.md) e [do catálogo](../../libs/shared-permissions/AGENTS.md). Para operação humana, leia [Concessão de permissões](../docs-manual/07-Procedimentos/Cargos/Concessão%20de%20permissões.md).

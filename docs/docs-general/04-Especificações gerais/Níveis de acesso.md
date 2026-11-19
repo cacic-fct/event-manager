@@ -2,60 +2,50 @@
 title: Níveis de acesso
 ---
 
-O CACiC Event Manager usa um modelo de acesso em camadas. O Keycloak autentica a pessoa e libera a entrada no sistema, mas as permissões administrativas de negócio são concessões gravadas no próprio Event Manager.
-
-Essa separação evita criar um cargo diferente para cada operação no Keycloak e permite conceder acessos temporários ou limitados a um evento, grupo de eventos ou grande evento.
+O CACiC Event Manager separa autenticação, responsabilidades administrativas e regras de domínio. O Keycloak autentica a conta e libera a entrada; cargos e grupos no Event Manager definem o que a pessoa pode fazer, onde e por quanto tempo.
 
 ## Camadas
 
 | Camada | Onde é configurada | O que controla |
 | --- | --- | --- |
-| Conta autenticada | Keycloak | Identidade da pessoa, sessão e claims de perfil. |
-| `access` | Client role do Keycloak | Entrada no Event Manager e no painel administrativo. |
-| `super-admin` | Client role do Keycloak | Bypass administrativo para todas as permissões do Event Manager. |
-| Concessões de permissão | Banco de dados do Event Manager | Operações administrativas como criar eventos, validar comprovantes, emitir certificados e gerenciar pessoas. |
-| Regras de domínio | Backend do Event Manager | Restrições adicionais como recurso congelado, recurso removido, janela de coleta de presença e vínculo com o evento. |
-| Papéis M2M | Keycloak | Endpoints internos de integração entre sistemas. Não devem ser usados para acesso humano ao painel. |
+| Conta autenticada | Keycloak | Identidade, sessão e claims de perfil. |
+| `access` | Client role do Keycloak | Entrada administrativa, sem conceder as operações de negócio. |
+| `super-admin` | Client role do Keycloak | Bypass das permissões administrativas do Event Manager. |
+| Cargos, atribuições e grupos | Event Manager | Permissões efetivas, escopos e validade. |
+| Regras de domínio | Backend do Event Manager | Público-alvo, publicação, recursos congelados, exclusão e elegibilidade. |
+| Papéis M2M | Keycloak | Integrações entre sistemas; não substituem cargos humanos. |
 
-## Usuário comum
+## Pessoa e conta
 
-Usuários comuns podem acessar a interface pública, suas próprias informações e fluxos autenticados que não exigem permissão administrativa.
+Uma pessoa pode existir sem conta vinculada. É possível preparar suas atribuições antecipadamente; o acesso só funciona quando houver uma conta associada de forma válida e entrada administrativa liberada no Keycloak.
 
-Uma pessoa pode existir no Event Manager sem possuir uma conta de usuário. Permissões administrativas só podem ser concedidas quando há um usuário vinculado.
+Usuários comuns acessam a interface pública e seus fluxos autorizados sem precisar de cargo administrativo. Vínculo com o evento, público-alvo e elegibilidade continuam sendo avaliados pelo backend.
 
-## Administrador operacional
+## Responsabilidades administrativas
 
-Um administrador operacional possui o client role `access` no Keycloak e uma ou mais concessões no Event Manager.
+Um cargo reúne permissões no formato `recurso#ação`, como `event#read` ou `receipt#approve`. Ele pode herdar outro cargo. Uma atribuição liga o cargo a uma pessoa ou a um grupo de permissões; a participação em grupos também pode ter validade própria.
 
-As concessões seguem o formato `recurso#ação`, como `event#read`, `subscription#import` ou `receipt#approve`. Cada concessão também possui um escopo:
+O alcance da atribuição é limitado por um ou mais escopos:
 
-- `Global`: vale para todo o Event Manager;
-- `Grande evento`: vale para um grande evento específico;
-- `Grupo de eventos`: vale para um grupo de eventos específico;
-- `Evento`: vale para um evento específico.
+- Global;
+- Grande evento;
+- Grupo de eventos;
+- Evento.
 
-A permissão efetiva depende da operação executada. Por exemplo, uma pessoa pode conseguir abrir a aba de inscrições porque possui alguma concessão de `subscription#read`, mas o backend ainda verifica se aquela inscrição pertence ao evento, grupo ou grande evento liberado.
+A interface **Permissões > Minhas permissões** mostra o resultado dos cargos diretos, grupos, herança e escopos ativos. Conseguir abrir uma aba não significa poder operar todos os seus registros: o backend verifica o alvo de cada ação.
 
-## Super administrador
+## Conceder acesso
 
-O client role `super-admin` é um bypass de emergência e manutenção. Ele não depende das concessões gravadas no banco e deve ser usado apenas por pessoas que realmente precisam operar qualquer parte do sistema.
+Use **Permissões > Gerenciamento de permissões**. Escolha ou crie um cargo, atribua a pessoa ou grupo e limite os alvos e a validade. Cargos predefinidos e modelos ajudam a começar; revise as permissões e os dados incluídos antes de salvar.
 
-Na rotina, prefira conceder permissões específicas no Event Manager. Isso preserva rastreabilidade, reduz o impacto de erros e permite limitar a validade do acesso.
+Use herança para relações duradouras entre responsabilidades. Use grupos para equipes recorrentes. Não replique o catálogo de operações em papéis do Keycloak.
 
-## Responsabilidades típicas
+O cargo predefinido de superadministrador é uma representação de acesso externo e não pode ser atribuído nessa tela. O client role `super-admin` deve ficar restrito a responsabilidades irrestritas de manutenção ou emergência.
 
-O painel de pessoas oferece presets para responsabilidades comuns. Os presets são atalhos para várias permissões e não criam novos cargos permanentes.
+## Validade e encerramento
 
-- Administrador de grande evento: gerencia grande evento, eventos, inscrições, presenças, certificados e comprovantes no escopo escolhido.
-- Validador de comprovantes: valida, rejeita e desfaz validações de comprovantes dentro de um grande evento.
-- Coordenador de presenças: gerencia coleta, importação, ajustes e coletores de presença no escopo escolhido.
-- Operador de certificados: configura, emite, reemite e remove certificados no escopo escolhido.
-- Gestor de pessoas: gerencia pessoas e resolução de duplicidades. Esse acesso é sempre global.
+A atribuição, cada escopo e a participação em grupo podem expirar independentemente. Quando a validade termina, aquela relação deixa de produzir acesso, mas permanece disponível no histórico.
 
-Os presets podem mudar conforme o sistema evolui. A interface sempre mostra as permissões e os dados limitados incluídos antes de salvar a concessão.
+Para retirar uma responsabilidade específica, remova a atribuição, a participação ou o escopo correspondente. Arquivar um cargo personalizado também arquiva suas atribuições ativas e vínculos em que ele é herdado; arquivar um grupo arquiva suas participações. Outros caminhos de acesso podem continuar ativos.
 
-## Acessos temporários
-
-Toda concessão pode ter início e fim de validade. Use validade limitada quando o acesso estiver ligado a um evento, plantão, comissão temporária ou mandato.
-
-Quando a validade expira, a concessão deixa de ser considerada pela autorização, mas continua registrada para histórico interno. Para revogar antes do prazo, remova a concessão no painel de pessoas.
+Consulte [Concessão de permissões](../../docs-manual/07-Procedimentos/Cargos/Concessão%20de%20permissões.md) para o procedimento e [Autorização e permissões](../../docs-backend/Autorização%20e%20permissões.md) para a implementação.

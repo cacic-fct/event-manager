@@ -77,7 +77,7 @@ Expirar encerra o acesso na data prevista.
 
 Remover uma atribuição retira o acesso daquela pessoa ou grupo.
 
-Arquivar um cargo ou grupo impede novo uso normal, mas preserva sua referência para consulta e auditoria. Não use arquivamento como substituto de revogar uma atribuição que ainda está ativa.
+Arquivar um cargo personalizado preserva o histórico e também arquiva suas atribuições ativas e os vínculos em que ele é herdado. Arquivar um grupo arquiva suas participações. O acesso derivado dessas relações deixa de valer; outras atribuições ainda podem conceder a mesma permissão. Para retirar apenas uma responsabilidade individual, remova a atribuição, participação ou escopo correspondente.
 
 ## Recursos congelados
 

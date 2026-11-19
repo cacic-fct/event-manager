@@ -8,13 +8,15 @@ Endpoints de exclusão exigem papel M2M `lgpd:delete`.
 
 ## Exportação
 
-A exportação deve retornar dados agrupados por categoria e evitar expor chaves internas desnecessárias.
+A exportação deve retornar dados pessoais do titular agrupados por categoria, sem incluir dados operacionais de eventos apenas por estarem relacionados ao titular. As seleções explícitas em `apps/backend/src/app/lgpd/lgpd-selects.ts` e os mapeadores de saída delimitam esse conteúdo. Consulte também o [guia do módulo LGPD](../../apps/backend/src/app/lgpd/README.md).
 
 Exemplos de cuidado:
 
-- Comprovantes exportados não devem expor `objectKey`;
+- Certificados incluem somente `id`, `personId`, `issuedAt` e `deletedAt`, sem nomes, datas ou créditos de eventos e sem snapshots renderizados;
+- Presenças não incluem coordenadas de coleta, método de criação nem detalhes operacionais do coletor;
+- Comprovantes exportados não devem expor `objectKey`, texto de OCR, erros de processamento ou logs de validação;
 - Logs de auditoria exportados não devem carregar snapshots brutos completos;
-- Submissões off-line devem ser exportadas sem expandir relações que não pertencem ao titular;
+- Submissões off-line de presença, candidatos de mesclagem e ajustes de peso de sorteios não são categorias de exportação;
 - Pessoas mescladas devem considerar origem e destino para não omitir histórico relevante.
 
 ## Exclusão programada
@@ -27,7 +29,7 @@ Ela deve preservar registros necessários para auditoria e para reversão.
 
 A exclusão definitiva remove o que ainda for deletável depois da etapa de retenção.
 
-Antes de remover usuários ou pessoas, exclua dependências que bloqueiam chave estrangeira, como concessões de permissão, inscrições, presenças, certificados, comprovantes e registros de mesclagem.
+Antes de remover usuários ou pessoas, exclua dependências que bloqueiam chave estrangeira, como escopos e atribuições de cargos, participações em grupos de permissões, inscrições, presenças, certificados, comprovantes e registros de mesclagem.
 
 Quando comprovantes possuem objetos em S3, o serviço deve localizar as chaves antes de remover os registros do banco.
 
