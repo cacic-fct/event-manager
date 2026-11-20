@@ -18,6 +18,7 @@ const sportsData = getFeatureRouteData('sports');
 const publicationData = getFeatureRouteData('publication');
 const peopleData = getFeatureRouteData('people');
 const contentReviewsData = getFeatureRouteData('content-reviews');
+const mcpData = getFeatureRouteData('mcp');
 const mergeCandidatesData = getFeatureRouteData('merge-candidates');
 const certificatesData = getFeatureRouteData('certificates');
 const formsData = getFeatureRouteData('forms');
@@ -179,6 +180,10 @@ export const routes: Route[] = [
       ),
       ...guardedFeatureRoute(`${peopleData.path}/:personId`, peopleData, () =>
         import('../people/people-page.component').then((m) => m.PeoplePageComponent),
+      ),
+
+      ...guardedFeatureRoute(mcpData.path, mcpData, () =>
+        import('../mcp/mcp-page.component').then((m) => m.McpPageComponent),
       ),
 
       ...guardedFeatureRoute(contentReviewsData.path, contentReviewsData, () =>

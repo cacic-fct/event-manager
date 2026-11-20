@@ -102,6 +102,8 @@ export class EventAudienceInterceptor implements NestInterceptor {
     if (isPublic && request.user && !isUserOnboarded(request.user)) {
       return ANONYMOUS_AUDIENCE;
     }
-    return this.audiences.principalForUser(request.user);
+    return request.user?.authenticationTransport === 'mcp'
+      ? this.audiences.principalForMcpUser(request.user)
+      : this.audiences.principalForUser(request.user);
   }
 }

@@ -66,6 +66,34 @@ describe('SportsMutationEventsService', () => {
     },
   );
 
+  it('invalidates a backing-event description change without scheduling backing-resource effects', async () => {
+    const prisma = {
+      sportsMatch: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'match-1' }),
+        findUnique: jest.fn().mockResolvedValue({ category: { tournamentId: 'tournament-1' } }),
+      },
+    };
+    const service = new SportsMutationEventsService(
+      prisma as never,
+      realtime as never,
+      autorouting as never,
+      dashboardInsights as never,
+      defaultRedirect as never,
+      eventEffects as never,
+    );
+    jest.clearAllMocks();
+
+    await service.publishForBackingEvent('event-1', { syncBackingResources: false });
+
+    expect(eventEffects.syncEvent).not.toHaveBeenCalled();
+    expect(eventEffects.syncEvents).not.toHaveBeenCalled();
+    expect(realtime.publish).toHaveBeenCalledWith('match:match-1', expect.objectContaining({ type: 'INVALIDATE' }));
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'tournament:tournament-1',
+      expect.objectContaining({ type: 'INVALIDATE' }),
+    );
+  });
+
   it('publishes administrator, tournament, and match invalidations', async () => {
     const prisma = {
       sportsMatch: {

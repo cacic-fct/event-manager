@@ -1,0 +1,83 @@
+enum McpAdminCapability {
+  EVENT_READ
+  ATTENDANCE_READ
+  DESCRIPTION_PROPOSE
+}
+
+enum McpProposalState {
+  PENDING
+  APPLIED
+  REJECTED
+}
+
+model McpAdminDelegation {
+  id           String               @id @default(uuid(7))
+  userId       String
+  clientId     String
+  resource     String
+  eventIds     String[]
+  capabilities McpAdminCapability[]
+  maxProposals Int
+  createdAt    DateTime             @default(now())
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  proposals    McpAdminProposal[]
+
+  @@index([userId, createdAt])
+  @@index([userId, clientId, expiresAt])
+  @@index([expiresAt])
+  @@map("mcp_admin_delegations")
+}
+
+model McpAdminProposal {
+  id                String             @id @default(uuid(7))
+  delegationId      String
+  delegation        McpAdminDelegation @relation(fields: [delegationId], references: [id], onDelete: Cascade)
+  eventId           String
+  event             Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  idempotencyKey    String
+  descriptionBefore String?
+  descriptionAfter  String
+  baseUpdatedAt     DateTime
+  state             McpProposalState   @default(PENDING)
+  createdAt         DateTime           @default(now())
+  expiresAt         DateTime
+  decidedAt         DateTime?
+  approvedById      String?
+  approvedByName    String?
+
+  @@unique([delegationId, idempotencyKey])
+  @@index([delegationId, createdAt])
+  @@index([eventId, state])
+  @@index([expiresAt])
+  @@map("mcp_admin_proposals")
+}
+
+// Event-only recovery survives erasure of personal delegations and proposals.
+model McpEventContentSync {
+  eventId    String    @id
+  event      Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  revision   Int       @default(1)
+  leaseUntil DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([leaseUntil, createdAt])
+  @@map("mcp_event_content_sync")
+}
+
+// Security evidence only: never store bearer tokens, arguments or tool results.
+model McpAdminOperationLog {
+  id           String   @id @default(uuid(7))
+  userId       String?
+  clientId     String?
+  delegationId String?
+  tool         String
+  eventId      String?
+  proposalId   String?
+  outcome      String
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("mcp_admin_operation_logs")
+}

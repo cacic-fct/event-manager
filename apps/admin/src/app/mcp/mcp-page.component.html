@@ -1,0 +1,245 @@
+<section class="queue" aria-labelledby="proposals-title" [attr.aria-busy]="loading() || busy()">
+  <header class="queue-header">
+    <h1 id="proposals-title" #heading tabindex="-1">Propostas MCP</h1>
+    <div class="actions">
+      @if (proposalId()) {
+        <a mat-button routerLink="/mcp">Ver toda a fila</a>
+      }
+      <button mat-stroked-button type="button" [disabled]="busy() || loading()" (click)="load()">Atualizar fila</button>
+    </div>
+  </header>
+  @if (feedback()) {
+    <p role="status">{{ feedback() }}</p>
+  }
+  @if (actionError()) {
+    <p #alert role="alert" tabindex="-1">{{ actionError() }}</p>
+  }
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Carregando propostas MCP" />
+  }
+  @if (loadError()) {
+    <p role="alert">{{ loadError() }}</p>
+    <button mat-button type="button" [disabled]="loading() || busy()" (click)="load()">Tentar novamente</button>
+  } @else if (settings()) {
+    <mat-accordion multi>
+      @for (proposal of result().items; track proposal.id) {
+        <mat-expansion-panel [expanded]="result().items.length === 1">
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              <span>{{ proposal.eventName }}</span>
+              <span class="proposal-summary"
+                >{{ statusLabel(proposal.status) }} - {{ clientName(proposal.clientId) }}</span
+              >
+            </mat-panel-title>
+          </mat-expansion-panel-header>
+          <div class="review-content">
+            <app-review-text-comparison
+              [before]="proposal.descriptionBefore"
+              [after]="proposal.descriptionAfter"
+              beforeLabel="Descrição anterior"
+              afterLabel="Descrição proposta"
+              emptyLabel="Sem descrição." />
+            <p>{{ proposal.approvalEffects }}</p>
+            @if (proposal.baseUpdatedAt !== proposal.currentUpdatedAt) {
+              <div class="current-description">
+                <h2>Descrição atual do evento</h2>
+                <p>{{ proposal.currentDescription ?? 'Sem descrição.' }}</p>
+              </div>
+            }
+            @if (proposal.unavailableReason) {
+              <p role="status">{{ proposal.unavailableReason }}</p>
+            }
+            @if (proposal.approvedByName) {
+              <p>Aprovada por {{ proposal.approvedByName }} em {{ proposal.decidedAt | date: 'short' }}.</p>
+            }
+            <details>
+              <summary>Detalhes da proposta</summary>
+              <dl class="metadata">
+                <div>
+                  <dt>Enviada em</dt>
+                  <dd>{{ proposal.createdAt | date: 'short' }}</dd>
+                </div>
+                <div>
+                  <dt>Expira em</dt>
+                  <dd>{{ proposal.expiresAt | date: 'short' }}</dd>
+                </div>
+                <div>
+                  <dt>Versão de referência</dt>
+                  <dd>
+                    <code>{{ proposal.baseUpdatedAt }}</code>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Publicação</dt>
+                  <dd>{{ publicationLabel(proposal.publicationState) }}</dd>
+                </div>
+              </dl>
+            </details>
+            @if (proposal.status === 'PENDING') {
+              <div class="actions">
+                <button
+                  mat-button
+                  type="button"
+                  [disabled]="busy() || loading()"
+                  (click)="decide(proposal, 'REJECT', $event)">
+                  Rejeitar proposta
+                </button>
+                <button
+                  mat-flat-button
+                  type="button"
+                  [disabled]="
+                    busy() || loading() || !proposal.canApprove || proposal.baseUpdatedAt !== proposal.currentUpdatedAt
+                  "
+                  (click)="decide(proposal, 'APPROVE', $event)">
+                  Aprovar proposta
+                </button>
+              </div>
+            }
+          </div>
+        </mat-expansion-panel>
+      } @empty {
+        @if (!loading()) {
+          <p role="status">Nenhuma proposta para revisão.</p>
+        }
+      }
+    </mat-accordion>
+    <app-review-queue-pagination
+      [page]="page()"
+      [hasNextPage]="result().hasMore"
+      [disabled]="busy() || loading()"
+      (pageChange)="load($event)" />
+  }
+</section>
+@if (settings(); as config) {
+  <mat-expansion-panel class="authorizations">
+    <mat-expansion-panel-header>
+      <mat-panel-title>Aplicativos autorizados</mat-panel-title>
+    </mat-expansion-panel-header>
+    @if (!config.enabled) {
+      <p role="status">O acesso MCP está desativado.</p>
+    } @else if (!config.clients.length) {
+      <p>Nenhum aplicativo habilitado. Solicite a configuração à administração.</p>
+    } @else {
+      <details class="new-authorization">
+        <summary>Nova autorização</summary>
+        <form [formGroup]="form" (ngSubmit)="createDelegation()">
+          <div class="fields">
+            <mat-form-field>
+              <mat-label>Aplicativo</mat-label>
+              <mat-select formControlName="clientId">
+                @for (client of config.clients; track client.id) {
+                  <mat-option [value]="client.id">{{ client.name }}</mat-option>
+                }
+              </mat-select>
+              <mat-error>Escolha um aplicativo.</mat-error>
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>Acesso autorizado</mat-label>
+              <mat-select formControlName="capabilities" multiple>
+                @for (option of capabilityOptions; track option.value) {
+                  <mat-option
+                    [value]="option.value"
+                    [disabled]="option.value === 'DESCRIPTION_PROPOSE' && !config.proposalsEnabled"
+                    >{{ option.label }}</mat-option
+                  >
+                }
+              </mat-select>
+              <mat-error>Escolha ao menos um acesso.</mat-error>
+            </mat-form-field>
+          </div>
+          <h2>Eventos ({{ selectedEvents().length }}/20)</h2>
+          <ul>
+            @for (event of selectedEvents(); track event.id) {
+              <li>
+                {{ event.name }}
+                <button
+                  mat-button
+                  type="button"
+                  [attr.aria-label]="'Remover ' + event.name"
+                  [disabled]="busy()"
+                  (click)="removeEvent(event.id)">
+                  Remover
+                </button>
+              </li>
+            }
+          </ul>
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="busy() || loading() || selectedEvents().length >= 20"
+            (click)="addEvent()">
+            Adicionar evento
+          </button>
+          <details>
+            <summary>Validade e limite de propostas</summary>
+            <div class="fields">
+              <mat-form-field>
+                <mat-label>Validade em horas</mat-label>
+                <input matInput type="number" min="1" max="24" formControlName="hours" />
+                <mat-error>Informe de 1 a 24 horas.</mat-error>
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Limite de propostas</mat-label>
+                <input matInput type="number" min="1" max="20" step="1" formControlName="maxProposals" />
+                <mat-error>Informe um número inteiro de 1 a 20.</mat-error>
+              </mat-form-field>
+            </div>
+          </details>
+          <p class="supporting">
+            Validade de {{ form.controls.hours.value }} hora(s), até {{ form.controls.maxProposals.value }} propostas.
+            Suas permissões atuais continuam sendo verificadas.
+          </p>
+          <button
+            mat-flat-button
+            type="submit"
+            [disabled]="busy() || loading() || form.invalid || !selectedEvents().length">
+            Criar autorização
+          </button>
+        </form>
+      </details>
+      <details class="connection">
+        <summary>Conectar aplicativo</summary>
+        <p>
+          Endereço MCP: <code>{{ config.resourceUrl }}</code>
+        </p>
+      </details>
+    }
+    @if (!config.proposalsEnabled) {
+      <p role="status">O envio de novas propostas está desativado.</p>
+    }
+    @for (delegation of delegations(); track delegation.id) {
+      <article class="delegation">
+        <h2>{{ clientName(delegation.clientId) }}</h2>
+        <p>
+          {{ delegation.revokedAt ? 'Revogada' : isActive(delegation) ? 'Ativa' : 'Expirada' }}. Expira em
+          {{ delegation.expiresAt | date: 'short' }}.
+        </p>
+        <p>
+          @for (event of delegation.events; track event.id; let last = $last) {
+            {{ event.name }}{{ last ? '' : ', ' }}
+          }
+        </p>
+        <details>
+          <summary>Acesso e limites</summary>
+          <p>
+            @for (capability of delegation.capabilities; track capability; let last = $last) {
+              {{ capabilityLabel(capability) }}{{ last ? '.' : ', ' }}
+            }
+          </p>
+          <p>{{ delegation.proposalCount }} de {{ delegation.maxProposals }} propostas enviadas.</p>
+        </details>
+        @if (isActive(delegation)) {
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="busy() || loading()"
+            (click)="revoke(delegation, $event)">
+            Revogar autorização
+          </button>
+        }
+      </article>
+    } @empty {
+      <p>Nenhum aplicativo autorizado por você.</p>
+    }
+  </mat-expansion-panel>
+}

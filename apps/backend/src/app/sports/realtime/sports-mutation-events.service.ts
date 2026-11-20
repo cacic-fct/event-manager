@@ -189,7 +189,12 @@ export class SportsMutationEventsService {
     await this.publishRosterMutation(match.id, 'ATHLETE_ATTENDANCE_CHANGED', eventId);
   }
 
-  async publishForEntity(entity: SportsMutationEntity, entityId: string, includePublic: boolean): Promise<void> {
+  async publishForEntity(
+    entity: SportsMutationEntity,
+    entityId: string,
+    includePublic: boolean,
+    options: { syncBackingResources?: boolean } = {},
+  ): Promise<void> {
     const tournamentId = await this.resolveTournamentId(entity, entityId);
     const payload = {
       type: 'INVALIDATE',
@@ -202,7 +207,7 @@ export class SportsMutationEventsService {
     const autoroutePeople = await this.resolveAutoroutePeople(entity, entityId);
     await Promise.all([
       this.dashboardInsights.invalidateCachedInsights(),
-      this.syncBackingResources(entity, entityId),
+      ...(options.syncBackingResources === false ? [] : [this.syncBackingResources(entity, entityId)]),
       this.realtime.publish(this.realtime.scope('admin-tournament', tournamentId), payload),
       ...(includePublic
         ? [
@@ -227,13 +232,13 @@ export class SportsMutationEventsService {
     ]);
   }
 
-  async publishForBackingEvent(eventId: string): Promise<void> {
+  async publishForBackingEvent(eventId: string, options: { syncBackingResources?: boolean } = {}): Promise<void> {
     const match = await this.prisma.sportsMatch.findFirst({
       where: { eventId, deletedAt: null },
       select: { id: true },
     });
     if (match) {
-      await this.publishForEntity('MATCH', match.id, true);
+      await this.publishForEntity('MATCH', match.id, true, options);
     }
   }
 

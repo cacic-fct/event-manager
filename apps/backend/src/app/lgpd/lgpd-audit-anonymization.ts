@@ -181,10 +181,16 @@ export async function anonymizeAuditEntries(
       containsAuditIdentity(entry.changes, identityValues, false) ||
       containsAuditIdentity(entry.metadata, identityValues, false);
     const shouldScrubPayload = actorMatches || entitySubjectMatches || payloadMatches;
+    const isMcpEntry =
+      entry.metadata != null &&
+      typeof entry.metadata === 'object' &&
+      !Array.isArray(entry.metadata) &&
+      entry.metadata['source'] === 'mcp';
 
     return tx.auditLogEntry.update({
       where: { id: entry.id },
       data: {
+        summary: shouldScrubPayload && isMcpEntry ? 'Registro MCP anonimizado.' : undefined,
         actorId: actorMatches ? null : entry.actorId,
         actorName: actorMatches ? 'Usuário anonimizado' : entry.actorName,
         actorEmail: actorMatches ? null : entry.actorEmail,
@@ -368,6 +374,7 @@ export function anonymizeAuditJson(
     );
   }
   if (value && typeof value === 'object') {
+    const approvedBySubject = typeof value['approvedById'] === 'string' && identityValues.has(value['approvedById']);
     const changedField = typeof value['field'] === 'string' ? value['field'].split('.')[0] : null;
     const redactChangeValues = personRoot && changedField != null && PERSONAL_AUDIT_FIELDS.has(changedField);
     const anonymizeSourceKeyChange = changedField === 'sourceKey';
@@ -378,7 +385,11 @@ export function anonymizeAuditJson(
           anonymizeSourceKeyChange && (key === 'before' || key === 'after') ? [...path, 'sourceKey'] : [...path, key];
         const isNestedPerson = path.includes('person') || path.includes('user');
         const redactPersonalField = PERSONAL_AUDIT_FIELDS.has(key) && (personRoot || isNestedPerson);
-        if (redactPersonalField || (redactChangeValues && (key === 'before' || key === 'after'))) {
+        if (
+          (approvedBySubject && key === 'approvedByName') ||
+          redactPersonalField ||
+          (redactChangeValues && (key === 'before' || key === 'after'))
+        ) {
           return [key, ANONYMIZED_AUDIT_VALUE];
         }
         return [

@@ -1,4 +1,5 @@
 import { isIP } from 'node:net';
+import { validateMcpAdminEnvironment } from '../mcp/mcp-admin-environment';
 
 type Environment = Record<string, unknown>;
 
@@ -72,6 +73,7 @@ export function validateBackendEnvironment(config: Environment): Environment {
   }
 
   validateNovuConfiguration(config, errors);
+  validateMcpAdminEnvironment(config, errors);
 
   validateCompleteGroup(config, S3_STORAGE_KEYS, errors);
 

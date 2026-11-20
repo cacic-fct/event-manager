@@ -8,6 +8,7 @@ import {
   getLatestDate,
   isFrozenFromDates,
 } from './frozen-resource.service';
+import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 const { jest } = import.meta;
@@ -47,6 +48,24 @@ describe('FrozenResourceService', () => {
     expect(getLatestDate([new Date('2026-01-01T12:00:00.000Z'), new Date('2026-05-01T12:00:00.000Z')])).toEqual(
       new Date('2026-05-01T12:00:00.000Z'),
     );
+  });
+
+  it('applies the same contextual override policy to preloaded event dates without querying the event', async () => {
+    const prisma = { event: { findFirst: jest.fn() } };
+    const policy = { canOverrideFrozenResource: jest.fn().mockResolvedValue(false) };
+    const service = new FrozenResourceService(
+      prisma as unknown as PrismaService,
+      policy as unknown as AuthorizationPolicyService,
+    );
+    const event = { id: 'event-1', createdAt: subMonths(now, 4), endDate: subMonths(now, 3) };
+    const user = buildUser([]);
+
+    await expect(service.assertLoadedEventMutable(event, user, 'edit')).rejects.toBeInstanceOf(ForbiddenException);
+    policy.canOverrideFrozenResource.mockResolvedValue(true);
+    await expect(service.assertLoadedEventMutable(event, user, 'edit')).resolves.toBeUndefined();
+
+    expect(policy.canOverrideFrozenResource).toHaveBeenCalledWith(user, FROZEN_EDIT_PERMISSION, { eventId: event.id });
+    expect(prisma.event.findFirst).not.toHaveBeenCalled();
   });
 
   it('denies editing an old event without frozen permission', async () => {

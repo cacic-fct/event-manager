@@ -344,6 +344,20 @@ export const AUDIENCE_RELATIONS = {
       ownsRelation: false,
     },
     {
+      name: 'mcpProposals',
+      type: 'McpAdminProposal',
+      isList: true,
+      isRequired: true,
+      ownsRelation: false,
+    },
+    {
+      name: 'mcpContentSync',
+      type: 'McpEventContentSync',
+      isList: false,
+      isRequired: false,
+      ownsRelation: false,
+    },
+    {
       name: 'audienceInvitations',
       type: 'EventAudienceInvitation',
       isList: true,
@@ -933,6 +947,41 @@ export const AUDIENCE_RELATIONS = {
       ownsRelation: false,
     },
   ],
+  McpAdminDelegation: [
+    {
+      name: 'proposals',
+      type: 'McpAdminProposal',
+      isList: true,
+      isRequired: true,
+      ownsRelation: false,
+    },
+  ],
+  McpAdminProposal: [
+    {
+      name: 'delegation',
+      type: 'McpAdminDelegation',
+      isList: false,
+      isRequired: true,
+      ownsRelation: true,
+    },
+    {
+      name: 'event',
+      type: 'Event',
+      isList: false,
+      isRequired: true,
+      ownsRelation: true,
+    },
+  ],
+  McpEventContentSync: [
+    {
+      name: 'event',
+      type: 'Event',
+      isList: false,
+      isRequired: true,
+      ownsRelation: true,
+    },
+  ],
+  McpAdminOperationLog: [],
   PeopleMergeOperation: [
     {
       name: 'targetPerson',
