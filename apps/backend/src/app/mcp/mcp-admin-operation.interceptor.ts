@@ -3,6 +3,7 @@ import {
   type ExecutionContext,
   HttpException,
   Injectable,
+  Logger,
   type NestInterceptor,
 } from '@nestjs/common';
 import { catchError, concatMap, type Observable } from 'rxjs';
@@ -12,6 +13,8 @@ import { mcpIdSchema } from './mcp-admin.schemas';
 
 @Injectable()
 export class McpAdminOperationInterceptor implements NestInterceptor {
+  private readonly logger = new Logger(McpAdminOperationInterceptor.name);
+
   constructor(private readonly log: McpAdminOperationLogService) {}
 
   async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<unknown>> {
@@ -26,13 +29,21 @@ export class McpAdminOperationInterceptor implements NestInterceptor {
     });
     return next.handle().pipe(
       concatMap(async (value: unknown) => {
-        await this.log.finish(logId, 'SUCCEEDED');
+        await this.finish(logId, 'SUCCEEDED');
         return value;
       }),
       catchError(async (error: unknown) => {
-        await this.log.finish(logId, error instanceof HttpException && error.getStatus() < 500 ? 'DENIED' : 'FAILED');
+        await this.finish(logId, error instanceof HttpException && error.getStatus() < 500 ? 'DENIED' : 'FAILED');
         throw error;
       }),
     );
+  }
+
+  private async finish(id: string, outcome: 'SUCCEEDED' | 'DENIED' | 'FAILED'): Promise<void> {
+    try {
+      await this.log.finish(id, outcome);
+    } catch {
+      this.logger.warn('MCP operation outcome could not be recorded.');
+    }
   }
 }

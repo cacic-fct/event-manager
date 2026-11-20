@@ -78,6 +78,7 @@ import {
   McpAdminToolServer,
   McpAdminTransportController,
 } from './mcp/mcp-admin-transport.controller';
+import { McpEventContentSyncLockService } from './mcp/mcp-event-content-sync-lock.service';
 import { McpAdminMaintenanceService } from './mcp/mcp-admin-maintenance.service';
 import {
   MCP_ADMIN_MAINTENANCE_QUEUE,
@@ -754,6 +755,7 @@ const schedulerProviders = useInMemoryTestInfra
     McpAdminProposalsService,
     McpAdminToolServer,
     McpAdminMaintenanceService,
+    McpEventContentSyncLockService,
     RateLimitGuard,
     RateLimitService,
     redisProvider,

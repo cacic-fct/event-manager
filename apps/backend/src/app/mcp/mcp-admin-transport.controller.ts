@@ -6,6 +6,7 @@ import {
   Get,
   HttpException,
   Injectable,
+  Logger,
   NotFoundException,
   Req,
   Res,
@@ -135,6 +136,8 @@ export class McpAdminToolServer {
 @UseGuards(McpAdminAuthGuard)
 @Controller('mcp/admin')
 export class McpAdminTransportController {
+  private readonly logger = new Logger(McpAdminTransportController.name);
+
   constructor(
     private readonly tools: McpAdminToolServer,
     private readonly log: McpAdminOperationLogService,
@@ -161,6 +164,10 @@ export class McpAdminTransportController {
     const logId = await this.log.start(context);
     let outcome: 'SUCCEEDED' | 'DENIED' | 'FAILED' = context.tool === 'unsupported' ? 'DENIED' : 'SUCCEEDED';
     let invoked = false;
+    let completeTool: (() => void) | undefined;
+    const toolCompleted = new Promise<void>((resolve) => {
+      completeTool = resolve;
+    });
     const handler = createMcpHandler(
       () =>
         this.tools.create(user, async (operation) => {
@@ -185,6 +192,8 @@ export class McpAdminTransportController {
                 },
               ],
             };
+          } finally {
+            completeTool?.();
           }
         }),
       {
@@ -192,7 +201,7 @@ export class McpAdminTransportController {
         maxRequestBodySize: 100 * 1024,
         maxSubscriptions: 0,
         onerror: () => {
-          outcome = 'DENIED';
+          if (!invoked) outcome = 'DENIED';
         },
       },
     );
@@ -201,12 +210,12 @@ export class McpAdminTransportController {
         fetch: async (webRequest, options) => {
           try {
             const result = await handler.fetch(webRequest, options);
-            if (result.status >= 500) outcome = 'FAILED';
-            else if (result.status >= 400 || (context.tool.startsWith('tool:') && !invoked)) outcome = 'DENIED';
-            await this.log.finish(logId, outcome);
+            result.headers.set('Cache-Control', 'no-store');
+            if (!invoked && result.status >= 500) outcome = 'FAILED';
+            else if (!invoked && result.status >= 400) outcome = 'DENIED';
             return result;
           } catch (error) {
-            await this.log.finish(logId, 'FAILED');
+            if (!invoked) outcome = 'FAILED';
             throw error;
           }
         },
@@ -216,7 +225,20 @@ export class McpAdminTransportController {
     try {
       await nodeHandler(request, response, request.body);
     } finally {
-      await handler.close();
+      // The adapter consumes SSE, or returns on disconnect. A started domain
+      // operation must settle before either its log or its server is finalized.
+      try {
+        if (invoked) await toolCompleted;
+        await handler.close();
+      } finally {
+        if (invoked) await toolCompleted;
+        else if (context.tool.startsWith('tool:') && outcome === 'SUCCEEDED') outcome = 'DENIED';
+        try {
+          await this.log.finish(logId, outcome);
+        } catch {
+          this.logger.warn('MCP operation outcome could not be recorded.');
+        }
+      }
     }
   }
 }

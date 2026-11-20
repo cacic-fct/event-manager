@@ -428,6 +428,10 @@ export class LgpdService {
       );
       const eventDrafts = await anonymizeEventDrafts(tx, dataSubject, anonymizedSubjectId);
       await anonymizeTicketingData(tx, personIds, userIds);
+      await tx.mcpAdminProposal.updateMany({
+        where: { approvedById: { in: userIds } },
+        data: { approvedById: null, approvedByName: null },
+      });
       const mcpRecordsDeleted = await this.deleteMcpData(tx, userIds);
       const certificates = await tx.certificate.deleteMany({ where: { personId: { in: personIds } } });
       const selections = await tx.majorEventSubscriptionEventSelection.deleteMany({

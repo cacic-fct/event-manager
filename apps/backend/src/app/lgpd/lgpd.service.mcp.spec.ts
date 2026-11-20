@@ -164,6 +164,10 @@ describe('LgpdService MCP privacy', () => {
 
     await service.hardDelete({ userId: 'new-user', requestId: 'request-1' });
 
+    expect(tx.mcpAdminProposal.updateMany).toHaveBeenCalledWith({
+      where: { approvedById: { in: ['new-user', 'old-user'] } },
+      data: { approvedById: null, approvedByName: null },
+    });
     expect(tx.mcpAdminOperationLog.deleteMany).toHaveBeenCalledWith({
       where: { userId: { in: ['new-user', 'old-user'] } },
     });

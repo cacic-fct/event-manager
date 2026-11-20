@@ -50,6 +50,8 @@ function context() {
     name: 'Evento revisado',
     description: 'Descrição anterior',
     updatedAt: now,
+    createdAt: now,
+    endDate: now,
     eventGroupId: null,
     majorEventId: null,
     publicationState: 'PUBLISHED',
@@ -76,6 +78,7 @@ function context() {
     event: { findFirst: jest.fn().mockResolvedValue(event), updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
     user: { findUnique: jest.fn().mockResolvedValue({ name: 'Autora Humana' }) },
     mcpAdminProposal: {
+      findMany: jest.fn().mockResolvedValue([storedProposal]),
       findUnique: jest.fn().mockResolvedValue(null),
       findFirst: jest.fn().mockResolvedValue(storedProposal),
       count: jest.fn().mockResolvedValue(0),
@@ -87,6 +90,7 @@ function context() {
   };
   let committed = false;
   const prisma = {
+    mcpAdminProposal: tx.mcpAdminProposal,
     $transaction: jest.fn(async (operation: (client: Prisma.TransactionClient) => Promise<unknown>) => {
       const result = await operation(tx as unknown as Prisma.TransactionClient);
       committed = true;
@@ -94,16 +98,24 @@ function context() {
     }),
   };
   const access = {
+    eventWhere: jest.fn().mockResolvedValue({ deletedAt: null }),
     assertToolAccess: jest.fn().mockResolvedValue(storedDelegation),
     assertEligible: jest.fn().mockResolvedValue(undefined),
     assertEventPermission: jest.fn().mockResolvedValue(undefined),
     assertActive: jest.fn(),
   };
   const frozenPolicy = { assertEventUpdateMutable: jest.fn().mockResolvedValue(undefined) };
-  const frozen = { forTransaction: jest.fn().mockReturnValue(frozenPolicy) };
+  const frozen = {
+    assertLoadedEventMutable: jest.fn().mockResolvedValue(undefined),
+    forTransaction: jest.fn().mockReturnValue(frozenPolicy),
+  };
   const sports = { assertEventUpdateAllowed: jest.fn().mockResolvedValue(undefined) };
   const audit = { record: jest.fn().mockResolvedValue(undefined) };
-  const config = { resourceUrl: storedDelegation.resource, proposalsEnabled: true };
+  const config = {
+    resourceUrl: storedDelegation.resource,
+    applicationOrigin: 'https://events.example',
+    proposalsEnabled: true,
+  };
   const invalidations = { publish: jest.fn().mockResolvedValue(undefined) };
   const service = new McpAdminProposalsService(
     prisma as unknown as PrismaService,
@@ -137,6 +149,7 @@ function context() {
     event,
     storedProposal,
     storedDelegation,
+    config,
     invalidations,
     committed: () => committed,
   };
@@ -145,6 +158,62 @@ function context() {
 describe('McpAdminProposalsService', () => {
   beforeEach(() => jest.useFakeTimers().setSystemTime(new Date('2026-05-21T12:00:00.000Z')));
   afterEach(() => jest.useRealTimers());
+
+  it('returns a review link on the configured application origin without changing OAuth resource binding', async () => {
+    const { service, config, user, input, access, storedDelegation } = context();
+    config.applicationOrigin = 'https://admin.example';
+
+    const result = await service.propose(user, input);
+
+    expect(result.reviewUrl).toBe('https://admin.example/admin/mcp?id=proposal-1');
+    expect(access.assertToolAccess).toHaveBeenCalledWith(
+      user,
+      storedDelegation.id,
+      'DESCRIPTION_PROPOSE',
+      input.eventId,
+      expect.anything(),
+    );
+  });
+
+  it('evaluates a queue page from loaded freeze dates without per-event database reads', async () => {
+    const { service, user, tx, storedProposal, event, frozen, frozenPolicy, access } = context();
+    tx.mcpAdminProposal.findMany.mockResolvedValue(
+      Array.from({ length: 20 }, (_, index) => ({
+        ...storedProposal,
+        id: `proposal-${index}`,
+        event: { ...event, id: `event-${index}` },
+        eventId: `event-${index}`,
+      })),
+    );
+
+    const result = await service.list(user, 0);
+
+    expect(result.items).toHaveLength(20);
+    expect(result.items.every((proposal) => proposal.canApprove)).toBe(true);
+    expect(frozen.assertLoadedEventMutable).toHaveBeenCalledTimes(20);
+    expect(frozen.assertLoadedEventMutable).toHaveBeenCalledWith(
+      expect.objectContaining({ createdAt: event.createdAt, endDate: event.endDate }),
+      user,
+      'edit',
+    );
+    expect(tx.event.findFirst).not.toHaveBeenCalled();
+    expect(frozenPolicy.assertEventUpdateMutable).not.toHaveBeenCalled();
+    expect(access.eventWhere).toHaveBeenCalledTimes(2);
+  });
+
+  it('checks approval expiry using the decision time after acquiring the proposal lock', async () => {
+    const { service, user, decision, storedProposal, tx } = context();
+    tx.$executeRaw
+      .mockImplementationOnce(async () => 1)
+      .mockImplementationOnce(async () => {
+        jest.setSystemTime(storedProposal.expiresAt);
+        return 1;
+      });
+
+    await expect(service.decide(user, storedProposal.id, decision)).rejects.toBeInstanceOf(ConflictException);
+    expect(tx.event.updateMany).not.toHaveBeenCalled();
+    expect(tx.mcpAdminProposal.updateMany).not.toHaveBeenCalled();
+  });
 
   it('creates a proposal without updating the event and audits submission in the transaction', async () => {
     const { service, user, input, tx, access, audit, frozenPolicy, sports } = context();
@@ -382,6 +451,28 @@ describe('McpAdminProposalsService', () => {
       expect(tx.event.updateMany).not.toHaveBeenCalled();
     },
   );
+
+  it('checks expiry after acquiring the proposal lock, using one decision timestamp', async () => {
+    const { service, user, decision, storedProposal, tx } = context();
+    const afterWait = new Date(storedProposal.expiresAt.getTime() + 1);
+    tx.$executeRaw.mockImplementation(async (parts: TemplateStringsArray) => {
+      if (parts.join('').includes('FOR UPDATE OF p')) jest.setSystemTime(afterWait);
+      return 1;
+    });
+
+    await expect(service.decide(user, storedProposal.id, decision)).rejects.toBeInstanceOf(ConflictException);
+    expect(tx.event.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('evaluates queued freeze state from the loaded event without per-row event reads', async () => {
+    const { service, user, tx, frozen, storedProposal } = context();
+
+    const result = await service.list(user, 0);
+
+    expect(result.items[0]?.canApprove).toBe(true);
+    expect(frozen.assertLoadedEventMutable).toHaveBeenCalledWith(storedProposal.event, user, 'edit');
+    expect(tx.event.findFirst).not.toHaveBeenCalled();
+  });
 
   it('rejects a lost concurrent proposal claim without updating event or audit', async () => {
     const { service, user, decision, storedProposal, tx, audit } = context();

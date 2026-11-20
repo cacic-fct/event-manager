@@ -14,6 +14,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-resource-lifecycle.service';
 import { McpAdminAccessService } from './mcp-admin-access.service';
 import { McpAdminConfig, MCP_ADMIN_PROPOSE_SCOPE, MCP_ADMIN_READ_SCOPE } from './mcp-admin.config';
+import { EventPostCommitEffectsService } from '../events/event-post-commit-effects.service';
+import { SportsMutationEventsService } from '../sports/realtime/sports-mutation-events.service';
+import { McpAdminMaintenanceService } from './mcp-admin-maintenance.service';
+import { McpEventContentSyncLockService } from './mcp-event-content-sync-lock.service';
 import { McpAdminProposalsService } from './mcp-admin-proposals.service';
 
 const { jest } = import.meta;
@@ -34,6 +38,7 @@ const fixtureSql = `
   CREATE TABLE event_groups (id TEXT PRIMARY KEY, "majorEventId" TEXT, "deletedAt" TIMESTAMP(3));
   CREATE TABLE events (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "startDate" TIMESTAMP(3) NOT NULL, "endDate" TIMESTAMP(3) NOT NULL,
     "updatedAt" TIMESTAMP(3) NOT NULL, "updatedById" TEXT, "deletedAt" TIMESTAMP(3),
     "majorEventId" TEXT, "eventGroupId" TEXT, "publicationState" TEXT NOT NULL DEFAULT 'PUBLISHED',
@@ -96,6 +101,14 @@ function asTransactionWork<T>(operation: () => Promise<T>): Promise<T> {
   // Audience policy itself has separate tests. Bypass avoids reproducing all
   // invitation tables in this deliberately minimal transaction fixture.
   return audienceContext.run({ bypass: true, personIds: [], isUnesp: false, verifiedCourseCode: null }, operation);
+}
+
+function deferred() {
+  let resolve: () => void = () => undefined;
+  const promise = new Promise<void>((complete) => {
+    resolve = complete;
+  });
+  return { promise, resolve };
 }
 
 function twoPartyBarrier() {
@@ -163,6 +176,7 @@ describe('MCP real PostgreSQL transactions', () => {
       proposalsEnabled: true,
       allowedClients: [CLIENT_ID],
       resourceUrl: RESOURCE,
+      applicationOrigin: 'http://localhost:4200',
     } as McpAdminConfig;
     access = new McpAdminAccessService(
       prisma,
@@ -206,7 +220,15 @@ describe('MCP real PostgreSQL transactions', () => {
     await sql.query(
       `INSERT INTO events (id, name, description, "startDate", "endDate", "updatedAt")
       VALUES ($1, $2, $3, $4, $5, $4)`,
-      [eventId, 'Synthetic Event', 'Before description', updatedAt, new Date(Date.now() + 60_000)],
+      // pg serializes Date parameters in the host timezone. Prisma's timestamp
+      // contract uses UTC, so raw SQL fixtures must use explicit ISO values.
+      [
+        eventId,
+        'Synthetic Event',
+        'Before description',
+        updatedAt.toISOString(),
+        new Date(Date.now() + 60_000).toISOString(),
+      ],
     );
   });
 
@@ -247,28 +269,31 @@ describe('MCP real PostgreSQL transactions', () => {
 
   it('commits only one overlapping approval across independent PostgreSQL sessions', async () => {
     const queued = await queuedProposal();
-    const waitForPeer = twoPartyBarrier();
-    const sessions: number[] = [];
-    mutableHook = async (tx) => {
-      const [session] = await tx.$queryRaw<{ pid: number }[]>(Prisma.sql`SELECT pg_backend_pid() AS pid`);
-      sessions.push(session.pid);
-      await waitForPeer();
+    const entered = deferred();
+    const release = deferred();
+    let first = true;
+    mutableHook = async () => {
+      if (!first) return;
+      first = false;
+      entered.resolve();
+      await release.promise;
     };
-
-    const result = await asTransactionWork(() =>
-      Promise.allSettled([
+    const approve = () =>
+      asTransactionWork(() =>
         proposals.decide(user(), queued.proposalId, {
           decision: 'APPROVE',
           expectedUpdatedAt: updatedAt.toISOString(),
         }),
-        proposals.decide(user(), queued.proposalId, {
-          decision: 'APPROVE',
-          expectedUpdatedAt: updatedAt.toISOString(),
-        }),
-      ]),
-    );
-
-    expect(new Set(sessions.slice(0, 2)).size).toBe(2);
+      );
+    const initial = approve();
+    await entered.promise;
+    const competing = approve();
+    try {
+      await waitForBlockedSession();
+    } finally {
+      release.resolve();
+    }
+    const result = await Promise.allSettled([initial, competing]);
     expect(result.filter((item) => item.status === 'fulfilled')).toHaveLength(1);
     const rejected = result.filter((item): item is PromiseRejectedResult => item.status === 'rejected');
     expect(rejected).toHaveLength(1);
@@ -283,6 +308,127 @@ describe('MCP real PostgreSQL transactions', () => {
       expect.objectContaining({ source: 'mcp', proposalId: queued.proposalId }),
     );
     expect(committed.updates).toBe(1);
+  });
+
+  async function waitForBlockedSession(): Promise<void> {
+    const deadline = Date.now() + 3000;
+    while (Date.now() < deadline) {
+      const result = await sql.query<{ waiting: boolean }>(`SELECT EXISTS(
+        SELECT 1 FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'
+      ) AS waiting`);
+      if (result.rows[0].waiting) return;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    throw new Error('Expected an independently blocked PostgreSQL session.');
+  }
+
+  it('refuses approval when its proposal expires while waiting for a rolled-back row lock', async () => {
+    const queued = await queuedProposal();
+    const expiresAt = new Date(Date.now() + 500);
+    await prisma.mcpAdminProposal.update({ where: { id: queued.proposalId }, data: { expiresAt } });
+    const blocker = new Client({ connectionString: isolatedDatabaseUrl() });
+    await blocker.connect();
+    await blocker.query('BEGIN');
+    await blocker.query('SELECT id FROM mcp_admin_proposals WHERE id = $1 FOR UPDATE', [queued.proposalId]);
+    const approval = asTransactionWork(() =>
+      proposals.decide(user(), queued.proposalId, {
+        decision: 'APPROVE',
+        expectedUpdatedAt: updatedAt.toISOString(),
+      }),
+    );
+    const result = Promise.allSettled([approval]);
+    try {
+      await waitForBlockedSession();
+      await new Promise((resolve) => setTimeout(resolve, Math.max(0, expiresAt.getTime() - Date.now() + 25)));
+    } finally {
+      await blocker.query('ROLLBACK');
+      await blocker.end();
+    }
+    expect((await result)[0]).toEqual(
+      expect.objectContaining({ status: 'rejected', reason: expect.any(ConflictException) }),
+    );
+    expect((await state(queued.proposalId)).updates).toBe(0);
+  });
+
+  it('keeps external writes ordered after lease expiry and retains the newer revision until synchronized', async () => {
+    await prisma.mcpEventContentSync.create({ data: { eventId } });
+    const entered = deferred();
+    const release = deferred();
+    let projection = '';
+    let calls = 0;
+    const effects = {
+      syncEventContent: async () => {
+        const event = await asTransactionWork(() =>
+          prisma.event.findUnique({ where: { id: eventId }, select: { description: true } }),
+        );
+        calls += 1;
+        if (calls === 1) {
+          entered.resolve();
+          await release.promise;
+        }
+        projection = event?.description ?? '';
+      },
+    };
+    const service = new McpAdminMaintenanceService(
+      prisma,
+      effects as unknown as EventPostCommitEffectsService,
+      { publishForBackingEvent: async () => undefined } as unknown as SportsMutationEventsService,
+      new McpEventContentSyncLockService(),
+    );
+    const first = service.flush();
+    await entered.promise;
+    try {
+      await sql.query('UPDATE events SET description = $1 WHERE id = $2', ['New revision', eventId]);
+      await prisma.mcpEventContentSync.update({
+        where: { eventId },
+        data: { revision: { increment: 1 }, leaseUntil: new Date(Date.now() - 1) },
+      });
+      await service.flush();
+      expect(calls).toBe(1);
+      expect(await prisma.mcpEventContentSync.findUnique({ where: { eventId } })).not.toBeNull();
+    } finally {
+      release.resolve();
+      await first;
+    }
+    expect(projection).toBe('Before description');
+    await service.flush();
+    expect(projection).toBe('New revision');
+    expect(await prisma.mcpEventContentSync.findUnique({ where: { eventId } })).toBeNull();
+  });
+
+  it('processes later untouched recovery work after a full batch of persistent failures', async () => {
+    const ids = Array.from({ length: 21 }, (_, index) => `recovery-${String(index).padStart(2, '0')}`);
+    await sql.query(
+      `INSERT INTO events (id, name, "startDate", "endDate", "updatedAt")
+      SELECT id, 'Synthetic Recovery', $2, $2, $2 FROM unnest($1::text[]) AS id`,
+      [ids, updatedAt.toISOString()],
+    );
+    await prisma.mcpEventContentSync.createMany({ data: ids.map((id) => ({ eventId: id })) });
+    const attempted: string[] = [];
+    const effects = {
+      syncEventContent: async (id: string) => {
+        attempted.push(id);
+        if (id !== ids[20]) throw new Error('Synthetic persistent projection failure');
+      },
+    };
+    const service = new McpAdminMaintenanceService(
+      prisma,
+      effects as unknown as EventPostCommitEffectsService,
+      { publishForBackingEvent: async () => undefined } as unknown as SportsMutationEventsService,
+      new McpEventContentSyncLockService(),
+    );
+    await service.flush();
+    expect(attempted).toHaveLength(20);
+    expect(attempted).not.toContain(ids[20]);
+    // Even when the failed leases are eligible again, untouched work comes first.
+    await prisma.mcpEventContentSync.updateMany({
+      where: { leaseUntil: { not: null } },
+      data: { leaseUntil: new Date(Date.now() - 1) },
+    });
+    await service.flush();
+    expect(attempted[20]).toBe(ids[20]);
+    expect(await prisma.mcpEventContentSync.count()).toBe(20);
+    expect(await prisma.mcpEventContentSync.findUnique({ where: { eventId: ids[20] } })).toBeNull();
   });
 
   it('enforces the proposal quota across overlapping transactions rather than just sequential checks', async () => {
@@ -380,8 +526,8 @@ describe('MCP real PostgreSQL transactions', () => {
       await prisma.mcpAdminDelegation.update({ where: { id: queued.delegationId }, data: { revokedAt: new Date() } });
     if (condition === 'expired delegation')
       await sql.query('UPDATE mcp_admin_delegations SET "createdAt" = $1, "expiresAt" = $2 WHERE id = $3', [
-        new Date(Date.now() - 2 * 60 * 60_000),
-        new Date(Date.now() - 60 * 60_000),
+        new Date(Date.now() - 2 * 60 * 60_000).toISOString(),
+        new Date(Date.now() - 60 * 60_000).toISOString(),
         queued.delegationId,
       ]);
     if (condition === 'expired proposal')
@@ -469,8 +615,8 @@ describe('MCP real PostgreSQL transactions', () => {
           eventId,
           existing.idempotencyKey,
           'Second description',
-          existing.baseUpdatedAt,
-          existing.expiresAt,
+          existing.baseUpdatedAt.toISOString(),
+          existing.expiresAt.toISOString(),
         ],
       ),
     ).rejects.toMatchObject({ code: '23505' });

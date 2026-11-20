@@ -110,6 +110,6 @@ export class McpAdminReadService {
   }
 
   private eventUrl(eventId: string): string {
-    return new URL(`/admin/event-workspace/event/${encodeURIComponent(eventId)}`, this.config.resourceUrl).href;
+    return new URL(`/admin/event-workspace/event/${encodeURIComponent(eventId)}`, this.config.applicationOrigin).href;
   }
 }

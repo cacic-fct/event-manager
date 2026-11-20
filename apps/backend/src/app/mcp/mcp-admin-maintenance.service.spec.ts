@@ -1,6 +1,7 @@
 import { EventPostCommitEffectsService } from '../events/event-post-commit-effects.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SportsMutationEventsService } from '../sports/realtime/sports-mutation-events.service';
+import { McpEventContentSyncLockService } from './mcp-event-content-sync-lock.service';
 import { McpAdminMaintenanceService } from './mcp-admin-maintenance.service';
 
 const { jest } = import.meta;
@@ -24,12 +25,14 @@ function context() {
   };
   const effects = { syncEventContent: jest.fn().mockResolvedValue(undefined) };
   const sports = { publishForBackingEvent: jest.fn().mockResolvedValue(undefined) };
+  const syncLock = { run: jest.fn(async (_eventId: string, operation: () => Promise<void>) => operation()) };
   const service = new McpAdminMaintenanceService(
     prisma as unknown as PrismaService,
     effects as unknown as EventPostCommitEffectsService,
     sports as unknown as SportsMutationEventsService,
+    syncLock as unknown as McpEventContentSyncLockService,
   );
-  return { service, prisma, effects, sports, entry };
+  return { service, prisma, effects, sports, entry, syncLock };
 }
 
 describe('McpAdminMaintenanceService', () => {
@@ -44,7 +47,7 @@ describe('McpAdminMaintenanceService', () => {
 
     expect(prisma.mcpEventContentSync.findMany).toHaveBeenCalledWith({
       where: { OR: [{ leaseUntil: null }, { leaseUntil: { lte: new Date() } }] },
-      orderBy: { createdAt: 'asc' },
+      orderBy: [{ leaseUntil: { sort: 'asc', nulls: 'first' } }, { createdAt: 'asc' }, { eventId: 'asc' }],
       take: 20,
     });
     expect(prisma.mcpEventContentSync.updateMany).toHaveBeenNthCalledWith(1, {
@@ -56,14 +59,11 @@ describe('McpAdminMaintenanceService', () => {
       data: { leaseUntil },
     });
     expect(effects.syncEventContent).toHaveBeenCalledWith(entry.eventId);
-    expect(sports.publishForBackingEvent).toHaveBeenCalledWith(entry.eventId);
+    expect(sports.publishForBackingEvent).toHaveBeenCalledWith(entry.eventId, { syncBackingResources: false });
     expect(prisma.mcpEventContentSync.deleteMany).toHaveBeenCalledWith({
       where: { eventId: entry.eventId, revision: entry.revision, leaseUntil },
     });
-    expect(prisma.mcpEventContentSync.updateMany).toHaveBeenLastCalledWith({
-      where: { eventId: entry.eventId, leaseUntil },
-      data: { leaseUntil: null },
-    });
+    expect(prisma.mcpEventContentSync.updateMany).toHaveBeenCalledTimes(2);
     expect(prisma.mcpAdminDelegation.findMany).not.toHaveBeenCalled();
   });
 
@@ -79,10 +79,23 @@ describe('McpAdminMaintenanceService', () => {
     expect(prisma.mcpEventContentSync.updateMany).toHaveBeenCalledTimes(1);
   });
 
+  it('limits foreground approval recovery to the approved event', async () => {
+    const { service, prisma, entry, effects } = context();
+
+    await service.flush(entry.eventId);
+
+    expect(prisma.mcpEventContentSync.findMany).toHaveBeenCalledWith({
+      where: { eventId: entry.eventId, OR: [{ leaseUntil: null }, { leaseUntil: { lte: new Date() } }] },
+      orderBy: [{ leaseUntil: { sort: 'asc', nulls: 'first' } }, { createdAt: 'asc' }, { eventId: 'asc' }],
+      take: 1,
+    });
+    expect(effects.syncEventContent).toHaveBeenCalledWith(entry.eventId);
+  });
+
   it.each(['projection', 'realtime'])(
-    'keeps work pending and releases lease after a transient %s failure',
+    'keeps work pending with a retry delay after a transient %s failure',
     async (stage) => {
-      const { service, prisma, effects, sports, entry } = context();
+      const { service, prisma, effects, sports } = context();
       const failure = new Error('Temporary synchronization error');
       if (stage === 'projection') effects.syncEventContent.mockRejectedValueOnce(failure);
       if (stage === 'realtime') sports.publishForBackingEvent.mockRejectedValueOnce(failure);
@@ -90,12 +103,10 @@ describe('McpAdminMaintenanceService', () => {
       await expect(service.flush()).resolves.toBeUndefined();
 
       expect(prisma.mcpEventContentSync.deleteMany).not.toHaveBeenCalled();
-      expect(prisma.mcpEventContentSync.updateMany).toHaveBeenLastCalledWith({
-        where: { eventId: entry.eventId, leaseUntil: new Date(Date.now() + 60_000) },
-        data: { leaseUntil: null },
-      });
+      expect(prisma.mcpEventContentSync.updateMany).toHaveBeenCalledTimes(1);
       if (stage === 'projection') expect(sports.publishForBackingEvent).not.toHaveBeenCalled();
 
+      jest.advanceTimersByTime(60_000);
       await service.flush();
 
       expect(prisma.mcpEventContentSync.deleteMany).toHaveBeenCalledTimes(1);

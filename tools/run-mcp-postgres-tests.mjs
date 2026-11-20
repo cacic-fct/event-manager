@@ -1,26 +1,19 @@
 import { spawn } from 'node:child_process';
-import { chmod, mkdtemp, realpath, rm } from 'node:fs/promises';
-import { createServer } from 'node:net';
-import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { Client } from 'pg';
 
 const workspace = fileURLToPath(new URL('..', import.meta.url));
-const clusterRoot = await mkdtemp(join(tmpdir(), 'fct-mcp-postgres-'));
-await chmod(clusterRoot, 0o700);
-const dataDirectory = join(clusterRoot, 'data');
-let started = false;
-let startAttempted = false;
-let activeChild;
-let interrupted = false;
-const toolEnv = {
-  ...process.env,
-  PGPASSFILE: join(clusterRoot, 'unused.pgpass'),
-  PGSERVICEFILE: join(clusterRoot, 'unused.pg_service.conf'),
-};
+const containerName = `fct-mcp-postgres-${randomUUID()}`;
+const toolEnv = { ...process.env };
 for (const key of ['PGPASSWORD', 'PGSERVICE', 'PGDATABASE', 'PGHOST', 'PGHOSTADDR', 'PGPORT', 'PGUSER', 'PGOPTIONS']) {
   delete toolEnv[key];
 }
+let activeChild;
+let interrupted = false;
+let containerAttempted = false;
+let containerStarted = false;
+let exitCode = 1;
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
@@ -28,11 +21,9 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
     activeChild?.kill(signal);
   });
 }
-let exitCode = 1;
-let pgCtl;
 
 function run(executable, args, options = {}) {
-  if (interrupted && !options.cleanup) throw new Error('MCP PostgreSQL integration run was interrupted.');
+  if (interrupted && !options.cleanup) throw new Error('MCP PostgreSQL checks were interrupted.');
   return new Promise((resolve, reject) => {
     const child = spawn(executable, args, {
       cwd: workspace,
@@ -40,71 +31,86 @@ function run(executable, args, options = {}) {
       env: options.env ?? toolEnv,
     });
     activeChild = child;
-    // Provisioning output may contain connection details. Report only the step and exit status.
+    let output = '';
     if (!options.inherit) {
-      child.stdout.resume();
-      child.stderr.resume();
+      child.stdout.on('data', (chunk) => {
+        output = (output + chunk.toString()).slice(-4096);
+      });
+      if (options.captureStderr)
+        child.stderr.on('data', (chunk) => {
+          output = (output + chunk.toString()).slice(-4096);
+        });
+      else child.stderr.resume();
     }
-    child.once('error', () => reject(new Error(`Unable to start ${options.label ?? 'PostgreSQL step'}.`)));
+    child.once('error', () => reject(new Error(`Unable to start ${options.label ?? 'Docker step'}.`)));
     child.once('exit', (code, signal) => {
       if (activeChild === child) activeChild = undefined;
-      if (code === 0) resolve(0);
-      else reject(new Error(`${options.label ?? 'PostgreSQL step'} failed (${signal ?? code ?? 'unknown'}).`));
+      if (code === 0) resolve(output.trim());
+      else reject(new Error(`${options.label ?? 'Docker step'} failed (${signal ?? code ?? 'unknown'}).`));
     });
   });
 }
 
-async function unusedLoopbackPort() {
-  const server = createServer();
-  await new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', resolve);
-  });
-  const address = server.address();
-  if (!address || typeof address === 'string') throw new Error('Unable to reserve an isolated test port.');
-  await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
-  return address.port;
+async function waitForPostgres(port) {
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline && !interrupted) {
+    const client = new Client({
+      host: '127.0.0.1',
+      port,
+      user: 'fct_mcp_admin',
+      database: 'fct_mcp_test',
+      connectionTimeoutMillis: 1000,
+    });
+    try {
+      await client.connect();
+      await client.query('SELECT 1');
+      return;
+    } catch {
+      const running = await run('docker', ['inspect', '--format', '{{.State.Running}}', containerName], {
+        label: 'Checking the disposable container',
+      });
+      if (running !== 'true') throw new Error('The disposable PostgreSQL container exited during initialization.');
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    } finally {
+      await client.end();
+    }
+  }
+  throw new Error('The disposable PostgreSQL container did not become ready.');
 }
 
 try {
-  const binaries = dirname(await realpath('/opt/homebrew/bin/initdb'));
-  pgCtl = join(binaries, 'pg_ctl');
-  const port = await unusedLoopbackPort();
+  containerAttempted = true;
   await run(
-    join(binaries, 'initdb'),
+    'docker',
     [
-      '-D',
-      dataDirectory,
-      '--username=fct_mcp_admin',
-      '--auth-local=trust',
-      '--auth-host=trust',
-      '--no-locale',
-      '--encoding=UTF8',
+      'run',
+      '--detach',
+      '--name',
+      containerName,
+      '--publish',
+      '127.0.0.1::5432',
+      // The entrypoint drops privileges; the parent must remain traversable.
+      // PostgreSQL creates its actual data directory with private permissions.
+      '--tmpfs',
+      '/var/lib/postgresql:rw,mode=0755',
+      '--env',
+      'POSTGRES_USER=fct_mcp_admin',
+      '--env',
+      'POSTGRES_DB=fct_mcp_test',
+      '--env',
+      'POSTGRES_HOST_AUTH_METHOD=trust',
+      'postgres:18-alpine',
     ],
-    { label: 'Initializing the disposable cluster' },
+    { label: 'Starting the disposable PostgreSQL container' },
   );
-  // This cluster has no external listen address, no existing database and no private environment file.
-  startAttempted = true;
-  await run(
-    pgCtl,
-    [
-      '-D',
-      dataDirectory,
-      '-l',
-      join(clusterRoot, 'postgres.log'),
-      '-w',
-      'start',
-      '-o',
-      `-h 127.0.0.1 -p ${port} -k ''`,
-    ],
-    { label: 'Starting the disposable cluster' },
-  );
-  started = true;
-  await run(
-    join(binaries, 'createdb'),
-    ['-h', '127.0.0.1', '-p', String(port), '-U', 'fct_mcp_admin', 'fct_mcp_test'],
-    { label: 'Creating the isolated MCP test database' },
-  );
+  containerStarted = true;
+  const published = await run('docker', ['port', containerName, '5432/tcp'], {
+    label: 'Reading the isolated test port',
+  });
+  const match = /^127\.0\.0\.1:(\d+)$/.exec(published);
+  if (!match) throw new Error('The test database must be published only on a random loopback port.');
+  const port = Number(match[1]);
+  await waitForPostgres(port);
   const databaseUrl = `postgresql://fct_mcp_admin@127.0.0.1:${port}/fct_mcp_test`;
   await run(
     process.execPath,
@@ -130,21 +136,27 @@ try {
   exitCode = 0;
 } catch (error) {
   console.error(error instanceof Error ? error.message : 'MCP PostgreSQL integration setup failed.');
+  if (containerStarted) {
+    const diagnostics = await run('docker', ['logs', '--tail', '12', containerName], {
+      captureStderr: true,
+      cleanup: true,
+    }).catch(() => '');
+    if (diagnostics) console.error(diagnostics);
+  }
 } finally {
-  if ((started || startAttempted) && pgCtl) {
+  if (containerAttempted) {
     try {
-      await run(pgCtl, ['-D', dataDirectory, '-m', 'immediate', '-w', 'stop'], {
-        label: 'Stopping the disposable cluster',
+      // The name is generated by this process; no existing container or volume is selected.
+      await run('docker', ['rm', '--force', '--volumes', containerName], {
+        label: 'Removing the disposable PostgreSQL container',
         cleanup: true,
       });
-      started = false;
     } catch {
-      console.error('Unable to stop the disposable MCP cluster; its directory was retained for cleanup.');
-      started = true;
-      exitCode = 1;
+      if (containerStarted) {
+        console.error(`Unable to remove the owned disposable container ${containerName}; remove it manually.`);
+        exitCode = 1;
+      }
     }
   }
-  // A failed stop must retain the only data directory identifying the owned running server.
-  if (!started) await rm(clusterRoot, { recursive: true, force: true });
 }
 process.exitCode = exitCode;

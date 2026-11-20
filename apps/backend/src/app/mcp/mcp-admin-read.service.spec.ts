@@ -57,7 +57,7 @@ function context() {
     eventAttendance: { groupBy: jest.fn().mockResolvedValue([{ status: 'PRESENT', _count: { _all: 4 } }]) },
     attendanceReviewFlag: { count: jest.fn().mockResolvedValue(2) },
   };
-  const config = { resourceUrl: 'https://events.example/api/mcp/admin' };
+  const config = { resourceUrl: 'https://events.example/api/mcp/admin', applicationOrigin: 'https://events.example' };
   const service = new McpAdminReadService(
     prisma as unknown as PrismaService,
     access as unknown as McpAdminAccessService,
@@ -69,6 +69,15 @@ function context() {
 describe('McpAdminReadService privacy projections', () => {
   beforeEach(() => jest.useFakeTimers().setSystemTime(new Date('2026-05-21T12:00:00.000Z')));
   afterEach(() => jest.useRealTimers());
+
+  it('links to the administrative application when it uses another origin than the API', async () => {
+    const { service, config, user } = context();
+    config.applicationOrigin = 'https://admin.example';
+
+    const result = await service.getEvent(user, 'delegation-1', 'event-1');
+
+    expect(result.applicationUrl).toBe('https://admin.example/admin/event-workspace/event/event-1');
+  });
 
   it('requires read OAuth scope before discovering any delegated identifiers', async () => {
     const { service, user, prisma } = context();

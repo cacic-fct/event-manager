@@ -19,6 +19,10 @@ export class McpAdminConfig {
     return process.env.MCP_ADMIN_RESOURCE_URL?.trim() || 'http://localhost:3000/api/mcp/admin';
   }
 
+  get applicationOrigin(): string {
+    return process.env.MCP_ADMIN_APP_ORIGIN?.trim() || new URL(this.resourceUrl).origin;
+  }
+
   get allowedClients(): string[] {
     return (process.env.MCP_ADMIN_ALLOWED_CLIENTS ?? '')
       .split(',')
@@ -32,7 +36,12 @@ export class McpAdminConfig {
 
   get webOrigins(): Set<string> {
     const local = process.env.NODE_ENV === 'production' ? [] : ['http://localhost:4200', 'http://localhost:4201'];
-    return new Set([new URL(this.resourceUrl).origin, ...local, ...this.readOrigins('MCP_ADMIN_WEB_ORIGINS')]);
+    return new Set([
+      this.applicationOrigin,
+      new URL(this.resourceUrl).origin,
+      ...local,
+      ...this.readOrigins('MCP_ADMIN_WEB_ORIGINS'),
+    ]);
   }
 
   get metadataUrl(): string {

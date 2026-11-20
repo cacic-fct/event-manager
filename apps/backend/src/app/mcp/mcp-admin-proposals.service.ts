@@ -31,7 +31,7 @@ import { mcpUserId } from './mcp-admin-principal';
 
 const PROPOSAL_INCLUDE = {
   delegation: true,
-  event: { select: MCP_EVENT_SELECT },
+  event: { select: { ...MCP_EVENT_SELECT, createdAt: true } },
 } satisfies Prisma.McpAdminProposalInclude;
 type StoredProposal = Prisma.McpAdminProposalGetPayload<{ include: typeof PROPOSAL_INCLUDE }>;
 
@@ -175,14 +175,20 @@ export class McpAdminProposalsService {
     return this.toolProposal(proposal.id, this.proposalStatus(proposal), proposal.expiresAt);
   }
 
-  async decide(user: AuthenticatedUser, id: string, input: McpProposalDecisionInput): Promise<void> {
-    await runSerializablePrismaTransaction(this.prisma, async (tx) => {
+  async decide(user: AuthenticatedUser, id: string, input: McpProposalDecisionInput): Promise<string | null> {
+    const eventId = await runSerializablePrismaTransaction(this.prisma, async (tx) => {
       await this.access.assertEligible(user, tx);
       await tx.$executeRaw`
         SELECT d."id" FROM "mcp_admin_delegations" d
         JOIN "mcp_admin_proposals" p ON p."delegationId" = d."id"
         WHERE p."id" = ${id} AND d."userId" = ${mcpUserId(user)}
         FOR SHARE OF d
+      `;
+      await tx.$executeRaw`
+        SELECT p."id" FROM "mcp_admin_proposals" p
+        JOIN "mcp_admin_delegations" d ON d."id" = p."delegationId"
+        WHERE p."id" = ${id} AND d."userId" = ${mcpUserId(user)}
+        FOR UPDATE OF p
       `;
       const proposal = await tx.mcpAdminProposal.findFirst({
         where: { id, delegation: { is: { userId: mcpUserId(user) } } },
@@ -197,7 +203,7 @@ export class McpAdminProposalsService {
       if (input.decision === 'REJECT') {
         await tx.mcpAdminProposal.update({ where: { id }, data: { state: 'REJECTED', decidedAt: new Date() } });
         await this.auditDecision(tx, proposal, user, 'REJECT');
-        return;
+        return null;
       }
       this.access.assertActive(proposal.delegation, 'DESCRIPTION_PROPOSE', proposal.eventId);
       if (this.proposalStatus(proposal) !== 'PENDING') {
@@ -207,9 +213,10 @@ export class McpAdminProposalsService {
       await this.sports.assertEventUpdateAllowed(tx, proposal.eventId, { description: proposal.descriptionAfter });
       const userRecord = await tx.user.findUnique({ where: { id: mcpUserId(user) }, select: { name: true } });
       const approvedByName = userRecord?.name ?? user.preferredUsername ?? mcpUserId(user);
+      const decidedAt = new Date();
       const claimed = await tx.mcpAdminProposal.updateMany({
-        where: { id, state: 'PENDING', expiresAt: { gt: new Date() } },
-        data: { state: 'APPLIED', decidedAt: new Date(), approvedById: user.sub, approvedByName },
+        where: { id, state: 'PENDING', expiresAt: { gt: decidedAt } },
+        data: { state: 'APPLIED', decidedAt, approvedById: user.sub, approvedByName },
       });
       if (claimed.count !== 1) throw new ConflictException('Esta proposta já foi decidida ou expirou.');
       const updated = await tx.event.updateMany({
@@ -257,8 +264,10 @@ export class McpAdminProposalsService {
         },
         tx,
       );
+      return proposal.eventId;
     });
     await this.invalidations?.publish(mcpUserId(user));
+    return eventId;
   }
 
   private proposalStatus(proposal: StoredProposal): McpProposalStatus {
@@ -282,7 +291,7 @@ export class McpAdminProposalsService {
         this.access.assertActive(proposal.delegation, 'DESCRIPTION_PROPOSE', proposal.eventId);
         // The collection query already intersects current read/update scopes and
         // audience before pagination. Execution rechecks them in its transaction.
-        await this.frozen.assertEventUpdateMutable(proposal.eventId, {}, user);
+        await this.frozen.assertLoadedEventMutable(proposal.event, user, 'edit');
       } catch (error) {
         if (!(error instanceof HttpException)) throw error;
         unavailableReason = 'Sem autorização atual, delegação ativa ou permissão para editar este recurso congelado.';
@@ -321,7 +330,7 @@ export class McpAdminProposalsService {
       proposalId: id,
       state,
       expiresAt,
-      reviewUrl: new URL(`/admin/mcp?id=${encodeURIComponent(id)}`, this.config.resourceUrl).href,
+      reviewUrl: new URL(`/admin/mcp?id=${encodeURIComponent(id)}`, this.config.applicationOrigin).href,
       appliesAutomatically: false,
     };
   }

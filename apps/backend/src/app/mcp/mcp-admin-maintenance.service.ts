@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventPostCommitEffectsService } from '../events/event-post-commit-effects.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SportsMutationEventsService } from '../sports/realtime/sports-mutation-events.service';
+import { McpEventContentSyncLockService } from './mcp-event-content-sync-lock.service';
 
 @Injectable()
 export class McpAdminMaintenanceService {
@@ -11,39 +12,42 @@ export class McpAdminMaintenanceService {
     private readonly prisma: PrismaService,
     private readonly effects: EventPostCommitEffectsService,
     private readonly sportsEvents: SportsMutationEventsService,
+    private readonly syncLock: McpEventContentSyncLockService,
   ) {}
 
-  async flush(): Promise<void> {
+  async flush(eventId?: string): Promise<void> {
     const pending = await this.prisma.mcpEventContentSync.findMany({
-      where: { OR: [{ leaseUntil: null }, { leaseUntil: { lte: new Date() } }] },
-      orderBy: { createdAt: 'asc' },
-      take: 20,
+      where: { ...(eventId ? { eventId } : {}), OR: [{ leaseUntil: null }, { leaseUntil: { lte: new Date() } }] },
+      orderBy: [{ leaseUntil: { sort: 'asc', nulls: 'first' } }, { createdAt: 'asc' }, { eventId: 'asc' }],
+      take: eventId ? 1 : 20,
     });
     for (const entry of pending) {
-      const leaseUntil = new Date(Date.now() + 60_000);
-      const claimed = await this.prisma.mcpEventContentSync.updateMany({
-        where: {
-          eventId: entry.eventId,
-          revision: entry.revision,
-          OR: [{ leaseUntil: null }, { leaseUntil: { lte: new Date() } }],
-        },
-        data: { leaseUntil },
-      });
-      if (claimed.count !== 1) continue;
       try {
-        await this.effects.syncEventContent(entry.eventId);
-        await this.sportsEvents.publishForBackingEvent(entry.eventId);
-        // A second approved edit may have arrived while synchronization ran.
-        await this.prisma.mcpEventContentSync.deleteMany({
-          where: { eventId: entry.eventId, revision: entry.revision, leaseUntil },
+        await this.syncLock.run(entry.eventId, async () => {
+          const leaseUntil = new Date(Date.now() + 60_000);
+          const claimed = await this.prisma.mcpEventContentSync.updateMany({
+            where: {
+              eventId: entry.eventId,
+              revision: entry.revision,
+              OR: [{ leaseUntil: null }, { leaseUntil: { lte: new Date() } }],
+            },
+            data: { leaseUntil },
+          });
+          if (claimed.count !== 1) return;
+          // On failure, retain the lease as a retry delay. Untouched work sorts first.
+          await this.effects.syncEventContent(entry.eventId);
+          await this.sportsEvents.publishForBackingEvent(entry.eventId, { syncBackingResources: false });
+          await this.prisma.mcpEventContentSync.deleteMany({
+            where: { eventId: entry.eventId, revision: entry.revision, leaseUntil },
+          });
+          // A newer edit remains pending, and can run as soon as this session unlocks.
+          await this.prisma.mcpEventContentSync.updateMany({
+            where: { eventId: entry.eventId, leaseUntil },
+            data: { leaseUntil: null },
+          });
         });
       } catch {
         this.logger.warn('MCP event projection synchronization will be retried.');
-      } finally {
-        await this.prisma.mcpEventContentSync.updateMany({
-          where: { eventId: entry.eventId, leaseUntil },
-          data: { leaseUntil: null },
-        });
       }
     }
   }

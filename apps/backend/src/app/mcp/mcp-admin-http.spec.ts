@@ -68,6 +68,7 @@ describe('Admin MCP HTTP and official SDK boundaries', () => {
   const log = { start: jest.fn(), finish: jest.fn(), denied: jest.fn() };
   const limits = { assertAllowed: jest.fn() };
   const audiences = { principalForUser: jest.fn(), principalForMcpUser: jest.fn() };
+  const maintenance = { flush: jest.fn() };
 
   beforeAll(async () => {
     process.env.NODE_ENV = 'test';
@@ -104,7 +105,7 @@ describe('Admin MCP HTTP and official SDK boundaries', () => {
         { provide: McpAdminReadService, useValue: reads },
         { provide: McpAdminOperationLogService, useValue: log },
         { provide: RateLimitService, useValue: limits },
-        { provide: McpAdminMaintenanceService, useValue: { flush: jest.fn().mockResolvedValue(undefined) } },
+        { provide: McpAdminMaintenanceService, useValue: maintenance },
         { provide: McpAdminInvalidationService, useValue: { scope: (userId: string) => `own-mcp:${userId}` } },
         {
           provide: RealtimeInvalidationService,
@@ -135,6 +136,7 @@ describe('Admin MCP HTTP and official SDK boundaries', () => {
     auth.authenticateSession.mockResolvedValue(principal(false));
     auth.authenticateAccessToken.mockRejectedValue(new UnauthorizedException());
     limits.assertAllowed.mockResolvedValue(undefined);
+    maintenance.flush.mockResolvedValue(undefined);
     access.assertEligible.mockResolvedValue(undefined);
     log.start.mockResolvedValue(randomUUID());
     log.finish.mockResolvedValue(undefined);
@@ -202,6 +204,107 @@ describe('Admin MCP HTTP and official SDK boundaries', () => {
       expect(auth.authenticateSession).not.toHaveBeenCalled();
     },
   );
+
+  it.each(['SUCCEEDED', 'DENIED', 'FAILED'] as const)(
+    'records the final %s outcome after a delayed legacy tool finishes',
+    async (outcome) => {
+      let release: (() => void) | undefined;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let enter: (() => void) | undefined;
+      const entered = new Promise<void>((resolve) => {
+        enter = resolve;
+      });
+      let finish: (() => void) | undefined;
+      const finished = new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      log.finish.mockImplementationOnce(async () => {
+        finish?.();
+      });
+      reads.getEvent.mockImplementationOnce(async () => {
+        enter?.();
+        await gate;
+        if (outcome === 'DENIED') throw new HttpException('Sem autorização.', 403);
+        if (outcome === 'FAILED') throw new Error('Synthetic domain failure');
+        return { id: eventId };
+      });
+
+      const pendingResponse = rpc(
+        'tools/call',
+        { name: 'get_event', arguments: { delegationId, eventId } },
+        '2025-11-25',
+      );
+      await entered;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(log.finish).not.toHaveBeenCalled();
+      release?.();
+      const response = await pendingResponse;
+      expect(response.headers.get('cache-control')).toBe('no-store');
+      const result = await message(response);
+      await finished;
+
+      expect(Boolean(result.result.isError)).toBe(outcome !== 'SUCCEEDED');
+      expect(log.finish).toHaveBeenCalledTimes(1);
+      expect(log.finish).toHaveBeenCalledWith(expect.any(String), outcome);
+    },
+  );
+
+  it('waits for a running tool after client disconnection and records its domain outcome', async () => {
+    let release: (() => void) | undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let enter: (() => void) | undefined;
+    const entered = new Promise<void>((resolve) => {
+      enter = resolve;
+    });
+    let finish: (() => void) | undefined;
+    const finished = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    log.finish.mockImplementationOnce(async () => {
+      finish?.();
+    });
+    reads.getEvent.mockImplementationOnce(async () => {
+      enter?.();
+      await gate;
+      throw new Error('Synthetic operation failure after disconnect');
+    });
+    const controller = new AbortController();
+    const pendingResponse = rpc(
+      'tools/call',
+      { name: 'get_event', arguments: { delegationId, eventId } },
+      '2025-11-25',
+      {},
+      controller.signal,
+    ).catch(() => undefined);
+    await entered;
+    controller.abort();
+    await pendingResponse;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(log.finish).not.toHaveBeenCalled();
+    release?.();
+    await finished;
+    expect(log.finish).toHaveBeenCalledWith(expect.any(String), 'FAILED');
+  });
+
+  it.each([
+    ['/API/MCP/ADMIN', 'POST, OPTIONS'],
+    ['/API/MCP/ADMIN/', 'POST, OPTIONS'],
+    [`${MCP_ADMIN_METADATA_PATH.toUpperCase()}/`, 'GET, OPTIONS'],
+  ])('handles trusted preflight for route variant %s', async (path, methods) => {
+    const response = await fetch(`${origin}${path}`, { method: 'OPTIONS', headers: { Origin: origin } });
+    expect(response.status).toBe(204);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(response.headers.get('access-control-allow-origin')).toBe(origin);
+    expect(response.headers.get('access-control-allow-methods')).toBe(methods);
+    expect(auth.authenticateMcpAccessToken).not.toHaveBeenCalled();
+    expect(
+      (await fetch(`${origin}${path}`, { method: 'OPTIONS', headers: { Origin: 'https://attacker.example' } })).status,
+    ).toBe(403);
+  });
 
   it('negotiates the legacy handshake through the official SDK without allocating HTTP sessions', async () => {
     const response = await rpc(
@@ -362,6 +465,7 @@ describe('Admin MCP HTTP and official SDK boundaries', () => {
 
   it('approves only through the application session and logs the web review attempt', async () => {
     const expectedUpdatedAt = new Date().toISOString();
+    proposals.decide.mockResolvedValue(eventId);
     const response = await webDecision({}, { decision: 'APPROVE', expectedUpdatedAt });
     expect(response.status).toBe(201);
     expect(proposals.decide).toHaveBeenCalledWith(expect.objectContaining({ sub: 'human' }), proposalId, {
@@ -371,6 +475,45 @@ describe('Admin MCP HTTP and official SDK boundaries', () => {
     expect(log.start).toHaveBeenCalledWith(
       expect.objectContaining({ tool: 'web:decideProposal', proposalId, userId: 'human' }),
     );
+    expect(maintenance.flush).toHaveBeenCalledWith(eventId);
+  });
+
+  it('keeps a committed approval successful if its projection needs retry', async () => {
+    proposals.decide.mockResolvedValue(eventId);
+    maintenance.flush.mockRejectedValue(new Error('Temporary projection failure'));
+
+    const response = await webDecision();
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual({ success: true });
+    expect(maintenance.flush).toHaveBeenCalledWith(eventId);
+    expect(proposals.decide).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves an approved response when operation-log completion fails', async () => {
+    log.finish.mockRejectedValueOnce(new Error('Synthetic log failure'));
+    const response = await webDecision();
+    expect(response.status).toBe(201);
+    expect(log.finish).toHaveBeenCalledTimes(1);
+    expect(log.finish).toHaveBeenCalledWith(expect.any(String), 'SUCCEEDED');
+  });
+
+  it('preserves the handler error when operation-log completion also fails', async () => {
+    proposals.decide.mockRejectedValueOnce(new HttpException('Proposta já decidida.', 409));
+    log.finish.mockRejectedValueOnce(new Error('Synthetic log failure'));
+    const response = await webDecision();
+    expect(response.status).toBe(409);
+    expect((await response.json()).message).toBe('Proposta já decidida.');
+    expect(log.finish).toHaveBeenCalledWith(expect.any(String), 'DENIED');
+  });
+
+  it('does not drain projection work when rejecting a proposal', async () => {
+    proposals.decide.mockResolvedValue(null);
+
+    const response = await webDecision({}, { decision: 'REJECT', expectedUpdatedAt: new Date().toISOString() });
+
+    expect(response.status).toBe(201);
+    expect(maintenance.flush).not.toHaveBeenCalled();
   });
 
   it('does not persist more auth log rows after the shared rate limiter rejects traffic', async () => {
@@ -393,9 +536,11 @@ describe('Admin MCP HTTP and official SDK boundaries', () => {
     params: Record<string, unknown> = {},
     version = '2026-07-28',
     headers: Record<string, string> = {},
+    signal?: AbortSignal,
   ) {
     const modern = version === '2026-07-28';
     return fetch(resource, {
+      signal,
       method: 'POST',
       headers: {
         Authorization: 'Bearer verified-token',

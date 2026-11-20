@@ -41,11 +41,9 @@ export function validateMcpAdminEnvironment(config: Record<string, unknown>, err
   ) {
     errors.push('MCP_ADMIN_ALLOWED_CLIENTS must list 1 to 20 dedicated, manually registered OAuth client IDs.');
   }
-  for (const key of ['MCP_ADMIN_ALLOWED_ORIGINS', 'MCP_ADMIN_WEB_ORIGINS']) {
-    for (const value of String(config[key] ?? '')
-      .split(',')
-      .map((value) => value.trim())
-      .filter(Boolean)) {
+  for (const key of ['MCP_ADMIN_ALLOWED_ORIGINS', 'MCP_ADMIN_WEB_ORIGINS', 'MCP_ADMIN_APP_ORIGIN']) {
+    const origins = key === 'MCP_ADMIN_APP_ORIGIN' ? [String(config[key] ?? '')] : String(config[key] ?? '').split(',');
+    for (const value of origins.map((value) => value.trim()).filter(Boolean)) {
       try {
         const url = new URL(value);
         const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);

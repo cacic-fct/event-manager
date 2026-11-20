@@ -158,16 +158,27 @@ describe('Keycloak admin MCP resource isolation', () => {
     );
   });
 
+  it('explicitly includes the subject in access tokens without adding private claims', () => {
+    expect(identity?.protocolMappers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          protocolMapper: 'oidc-sub-mapper',
+          config: { 'access.token.claim': 'true', 'id.token.claim': 'false', 'introspection.token.claim': 'true' },
+        }),
+      ]),
+    );
+  });
+
   it('excludes private claims, realm roles, audience resolution and unrelated client audiences', () => {
     const assignedScopes = [...(client?.defaultClientScopes ?? []), ...(client?.optionalClientScopes ?? [])];
     const mappers = realm.clientScopes
       .filter((scope) => assignedScopes.includes(scope.name ?? ''))
       .flatMap((scope) => scope.protocolMappers ?? []);
-    expect(mappers).toHaveLength(4);
-    expect(identity?.protocolMappers?.map((mapper) => mapper.config['claim.name'])).toEqual([
-      'resource_access.cacic-event-manager.roles',
-      'is_onboarded',
-    ]);
+    expect(mappers).toHaveLength(5);
+    const identityClaims = identity?.protocolMappers
+      ?.filter((mapper) => mapper.protocolMapper !== 'oidc-sub-mapper')
+      .map((mapper) => mapper.config['claim.name']);
+    expect(identityClaims).toEqual(['resource_access.cacic-event-manager.roles', 'is_onboarded']);
     for (const mapper of mappers) {
       expect(mapper.config['access.token.claim']).toBe('true');
       expect(mapper.config['id.token.claim']).toBe('false');

@@ -3,7 +3,8 @@ import { McpAdminConfig, MCP_ADMIN_METADATA_PATH, MCP_ADMIN_PATH } from './mcp-a
 
 export function mcpAdminHttpMiddleware(config: McpAdminConfig) {
   return (request: Request, response: Response, next: NextFunction): void => {
-    if (![MCP_ADMIN_PATH, `${MCP_ADMIN_PATH}/`, MCP_ADMIN_METADATA_PATH].includes(request.path)) {
+    const path = request.path.toLowerCase().replace(/\/$/, '');
+    if (![MCP_ADMIN_PATH, MCP_ADMIN_METADATA_PATH].includes(path)) {
       next();
       return;
     }
@@ -28,7 +29,7 @@ export function mcpAdminHttpMiddleware(config: McpAdminConfig) {
     if (request.method === 'OPTIONS') {
       response.setHeader(
         'Access-Control-Allow-Methods',
-        request.path === MCP_ADMIN_METADATA_PATH ? 'GET, OPTIONS' : 'POST, OPTIONS',
+        path === MCP_ADMIN_METADATA_PATH ? 'GET, OPTIONS' : 'POST, OPTIONS',
       );
       response.setHeader(
         'Access-Control-Allow-Headers',

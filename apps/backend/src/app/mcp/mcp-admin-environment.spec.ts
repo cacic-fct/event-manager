@@ -14,6 +14,19 @@ describe('MCP environment fail-closed configuration', () => {
     expect(() => validateBackendEnvironment({ NODE_ENV: 'test', DATABASE_URL: base.DATABASE_URL })).not.toThrow();
   });
 
+  it('accepts a separate administrative application origin', () => {
+    expect(() => validateBackendEnvironment({ ...base, MCP_ADMIN_APP_ORIGIN: 'http://localhost:4200' })).not.toThrow();
+  });
+
+  it.each([
+    'https://admin.example/path',
+    'https://*.example',
+    'https://admin.example,https://other.example',
+    'http://admin.example',
+  ])('rejects an invalid administrative application origin: %s', (origin) => {
+    expect(() => validateBackendEnvironment({ ...base, MCP_ADMIN_APP_ORIGIN: origin })).toThrow('MCP_ADMIN_APP_ORIGIN');
+  });
+
   it.each([
     '',
     'http://public.example/api/mcp/admin',

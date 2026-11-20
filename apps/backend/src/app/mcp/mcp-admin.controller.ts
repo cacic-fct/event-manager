@@ -100,9 +100,9 @@ export class McpAdminController {
   @ApiResponse({ status: 409, description: 'Proposta expirada, já decidida ou evento alterado.' })
   async decideProposal(@Req() request: McpAuthenticatedRequest, @Param('id') id: string, @Body() body: unknown) {
     const input = parseMcpInput(mcpDecisionSchema, body);
-    await this.proposals.decide(request.user, parseMcpInput(mcpIdSchema, id), input);
+    const eventId = await this.proposals.decide(request.user, parseMcpInput(mcpIdSchema, id), input);
     // Committed business state and its audit remain successful if projections need retry.
-    if (input.decision === 'APPROVE') await this.maintenance.flush().catch(() => undefined);
+    if (eventId) await this.maintenance.flush(eventId).catch(() => undefined);
     return { success: true };
   }
 }
