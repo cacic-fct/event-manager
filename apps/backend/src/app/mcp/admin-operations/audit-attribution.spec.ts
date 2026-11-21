@@ -103,6 +103,42 @@ describe('administrative MCP owning-transaction audit attribution', () => {
     expect(committed.auditLogEntry.create).not.toHaveBeenCalled();
   });
 
+  it.each([true, false])(
+    'distinguishes explicit unchanged snapshots from missing audit values: %s',
+    async (snapshots) => {
+      const { transaction, service, options } = fixture();
+      const transactionAudit = { businessWrites: true, recorded: false };
+      await adminMcpExecution.run(
+        {
+          request: {},
+          user: { sub: 'operator' } as AuthenticatedUser,
+          phase: 'apply',
+          delegationId: 'delegation',
+          clientId: 'client',
+          operation: 'updateEvent',
+          inTransaction: true,
+          beforeTransaction: async () => undefined,
+          transactionAudit,
+        },
+        () =>
+          service.record(
+            {
+              ...options,
+              before: snapshots ? { name: 'Same' } : undefined,
+              after: snapshots ? { name: 'Same' } : undefined,
+            },
+            transaction as never,
+          ),
+      );
+      expect(transactionAudit).toEqual(
+        snapshots
+          ? { businessWrites: true, recorded: false, validatedNoop: true }
+          : { businessWrites: true, recorded: false },
+      );
+      expect(transaction.auditLogEntry.create).not.toHaveBeenCalled();
+    },
+  );
+
   it('does not squash distinct approved commands into a prior human update', async () => {
     const { transaction: tx, options } = fixture();
     // Avoid asynchronous synchronization without suppressing the actual squash branch under test.

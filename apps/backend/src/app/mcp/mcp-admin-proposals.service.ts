@@ -171,7 +171,7 @@ export class McpAdminProposalsService {
         select: MCP_CHANGE_EVENT_SELECT,
       });
       if (!event) throw new NotFoundException('Evento indisponível.');
-      const after = normalizedMcpChange(operation, input.changes, event);
+      const after = normalizedMcpChange(operation, input.changes);
       const existing = await tx.mcpAdminProposal.findUnique({
         where: {
           delegationId_idempotencyKey: { delegationId: delegation.id, idempotencyKey: input.idempotencyKey },
@@ -192,6 +192,7 @@ export class McpAdminProposalsService {
       if (event.updatedAt.getTime() !== new Date(input.expectedUpdatedAt).getTime()) {
         throw new ConflictException('O evento mudou. Prepare uma nova proposta.');
       }
+      normalizedMcpChange(operation, input.changes, event);
       const before = currentMcpValues(event, Object.keys(after));
       if (mcpValuesEqual(before, after)) throw new BadRequestException('A proposta não altera os valores atuais.');
       const proposalCount = await tx.mcpAdminProposal.count({ where: { delegationId: delegation.id } });

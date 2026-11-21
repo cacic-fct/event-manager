@@ -16,7 +16,7 @@ export interface AdminMcpExecution {
   inTransaction?: boolean;
   trustedRawRead?: boolean;
   readOnlyDatabase?: boolean;
-  transactionAudit?: { businessWrites: boolean; recorded: boolean };
+  transactionAudit?: { businessWrites: boolean; recorded: boolean; validatedNoop?: boolean };
   beforeTransaction?: (tx: Prisma.TransactionClient) => Promise<void>;
   reviewMetadata?: Record<string, unknown>;
   assertScope?: (permissions: readonly Permission[], context: AuthorizationResourceContext) => Promise<void>;

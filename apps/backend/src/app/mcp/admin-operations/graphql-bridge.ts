@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpException, Injectable } from '@nestjs/common';
 import { GraphQLSchemaHost } from '@nestjs/graphql';
 import {
   execute,
@@ -398,14 +398,8 @@ export class AdminMcpGraphqlBridge {
       });
       if (result.errors?.length) {
         const error = result.errors[0];
-        const original = error.extensions?.['originalError'];
-        if (
-          original &&
-          typeof original === 'object' &&
-          'statusCode' in original &&
-          typeof original.statusCode === 'number' &&
-          original.statusCode < 500
-        ) {
+        const original = error.originalError;
+        if (original instanceof HttpException && original.getStatus() < 500) {
           throw new BadRequestException(error.message);
         }
         throw new BadRequestException(

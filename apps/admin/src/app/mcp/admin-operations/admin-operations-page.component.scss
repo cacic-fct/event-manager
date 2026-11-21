@@ -61,3 +61,49 @@ mat-expansion-panel {
 .catalog-search {
   width: min(100%, 32rem);
 }
+
+.review-toolbar,
+.command-heading,
+.review-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.review-toolbar {
+  margin-block: 1rem;
+}
+.command {
+  padding: 1rem;
+}
+.selected-command {
+  background: var(--mat-sys-surface-container-low);
+}
+.command-heading h3 {
+  margin: 0;
+}
+.review-actions,
+.confirmation {
+  padding: 1rem;
+  margin-block: 1rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 0.5rem;
+}
+.review-actions p {
+  margin: 0;
+  max-width: 65ch;
+  color: var(--mat-sys-on-surface-variant);
+}
+.confirmation h3 {
+  margin-top: 0;
+}
+@media (max-width: 640px) {
+  .command {
+    padding-inline: 0.5rem;
+  }
+  .review-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

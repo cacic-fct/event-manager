@@ -521,6 +521,11 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     permissions: readonly Permission[],
     context: AuthorizationResourceContext,
   ): Promise<ResolvedGrantTarget> {
+    if (permissions.length === 0) {
+      // Explicit resource IDs also define delegation scope for operations whose
+      // owning service chooses the required permissions dynamically.
+      return this.resolveGrantTarget(context, undefined, false);
+    }
     const resolve = this.createGrantTargetResolver(context);
     const merged: ResolvedGrantTarget = {
       eventIds: new Set(),

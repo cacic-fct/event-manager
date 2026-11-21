@@ -1,132 +1,85 @@
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { AdminOperationsApi } from './admin-operations-api.service';
 import { CommandReviewDialogComponent } from './command-review-dialog.component';
+import { buildCommandArguments, type CommandArgument } from './command-arguments';
 import { sportsCommand } from './admin-operations.fixtures';
 
 describe('CommandReviewDialogComponent', () => {
-  function setup() {
+  function setup(overrides: Partial<CommandArgument> = {}) {
     const command = sportsCommand();
-    const review = vi
-      .fn()
-      .mockImplementation(async (_id, input) => ({
-        ...input,
-        arguments: { matchId: 'partida-demo', score: 3 },
-        proposalId: command.id,
-        operation: command.operation,
-        effects: 'Efeito validado',
-        token: 'server-token',
-      }));
-    const decide = vi.fn().mockResolvedValue({ success: true, state: 'APPLIED' });
+    const field = { ...buildCommandArguments(command)[1], ...overrides };
     const close = vi.fn();
     TestBed.configureTestingModule({
       providers: [
-        { provide: MAT_DIALOG_DATA, useValue: command },
+        { provide: MAT_DIALOG_DATA, useValue: { field, targets: command.targets } },
         { provide: MatDialogRef, useValue: { close } },
-        { provide: AdminOperationsApi, useValue: { review, decide } },
       ],
     });
     const fixture = TestBed.createComponent(CommandReviewDialogComponent);
     fixture.detectChanges();
-    return { component: fixture.componentInstance, fixture, review, decide, close };
+    return { component: fixture.componentInstance, fixture, close, field };
   }
-  it('shows server-owned target names and identifiers before the editable arguments', () => {
-    const { fixture } = setup();
-    const targets = fixture.nativeElement.querySelector('[aria-label="Destinos da operação"]') as HTMLElement;
-    expect(targets.textContent).toContain('Equipe Azul (demonstração)');
-    expect(targets.textContent).toContain('Equipe esportiva: equipe-demo');
-    expect(fixture.nativeElement.querySelector('mat-dialog-content').textContent.indexOf('Equipe Azul')).toBeLessThan(
-      fixture.nativeElement.querySelector('mat-dialog-content').textContent.indexOf('Enviado pelo aplicativo'),
-    );
+  it('uses a numeric editor and returns only a draft without executing an operation', () => {
+    const { component, fixture, close, field } = setup();
+    expect(fixture.nativeElement.querySelector('input[type="number"]')).not.toBeNull();
+    const input = fixture.nativeElement.querySelector('input[type="number"]') as HTMLInputElement;
+    input.value = '7';
+    input.dispatchEvent(new Event('input'));
+    expect(component.control.value).toBe(7);
+    component.save();
+    expect(close).toHaveBeenCalledWith({ value: 7 });
+    expect(field.value).toBe(2);
   });
-
-  it('omits discarded optional fields and sends the authoritative normalized preview', async () => {
-    const { component, review, decide } = setup();
-    const notes = component.fields.find((field) => field.key === 'notes');
-    expect(notes).toBeDefined();
-    if (!notes) throw new Error('Missing notes fixture');
-    component.include(notes, false);
-    await component.prepare();
-    expect(review.mock.calls[0][1].arguments).not.toHaveProperty('notes');
-    const preview = component.preview();
-    expect(preview?.arguments['score']).toBe(3);
-    await component.approve();
-    expect(decide).toHaveBeenCalledWith('demo-command', {
-      decision: 'APPROVE',
-      expectedFingerprint: 'demo-fingerprint',
-      review: preview,
+  it('offers searchable named destinations and preserves selection across search queries', async () => {
+    const { component, fixture, close } = setup({
+      key: 'teamIds',
+      label: 'Equipes',
+      original: ['equipe-demo', 'other'],
+      value: ['equipe-demo', 'other'],
     });
-  });
-  it('closes with success only after an applied execution', async () => {
-    const { component, close } = setup();
-    await component.prepare();
-    await component.approve();
-    expect(close).toHaveBeenCalledWith(true);
-  });
-
-  it.each(['UNCERTAIN', 'APPLYING'])('keeps HTTP-successful %s execution open and never retries', async (state) => {
-    const { component, fixture, decide, review, close } = setup();
-    decide.mockResolvedValueOnce({ success: true, state });
-    await component.prepare();
-    await component.approve();
+    component.search.setValue('azul');
     fixture.detectChanges();
     await fixture.whenStable();
+    expect(component.filteredOptions()).toEqual(['equipe-demo']);
+    expect(fixture.nativeElement.textContent).toContain('Equipe Azul');
+    component.toggle('equipe-demo', false);
+    component.search.setValue('other');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(component.filteredOptions()).toEqual(['other']);
+    component.save();
+    expect(close).toHaveBeenCalledWith({ value: ['other'] });
+  });
+  it('uses a select for enumerated values and checkbox for boolean values', () => {
+    const { component, fixture, close } = setup({ value: 'DRAFT', schema: { enum: ['DRAFT', 'PUBLISHED'] } });
+    expect(fixture.nativeElement.querySelector('mat-select')).not.toBeNull();
+    component.control.setValue('PUBLISHED');
+    component.save();
+    expect(close).toHaveBeenCalledWith({ value: 'PUBLISHED' });
+  });
+  it('uses a checkbox for boolean values', () => {
+    const { component, fixture, close } = setup({ value: false, schema: { type: 'boolean' } });
+    expect(fixture.nativeElement.querySelector('mat-checkbox')).not.toBeNull();
+    component.booleanValue.set(true);
+    component.save();
+    expect(close).toHaveBeenCalledWith({ value: true });
+  });
+  it('round-trips dates in local time without changing the instant', () => {
+    const value = new Date().toISOString().replace(/\.\d{3}Z$/, '.000Z');
+    const { component, close } = setup({ value, schema: { format: 'date-time' } });
+    component.save();
+    expect(close).toHaveBeenCalledWith({ value });
+  });
+  it('keeps invalid structured input open and cannot edit a locked target', () => {
+    const { component, fixture, close } = setup({ value: ['text'], schema: { type: 'array' } });
+    component.control.setValue('{');
+    component.save();
+    fixture.detectChanges();
     expect(close).not.toHaveBeenCalled();
-    expect(component.executionAttempted()).toBe(true);
-    expect(component.preview()).toBeNull();
-    expect(component.error()).toContain('Não repita');
-    const button = Array.from(fixture.nativeElement.querySelectorAll('button')).find((element) =>
-      (element as HTMLButtonElement).textContent?.includes('Conferir argumentos finais'),
-    ) as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
-    await component.prepare();
-    await component.approve();
-    expect(decide).toHaveBeenCalledTimes(1);
-    expect(review).toHaveBeenCalledTimes(1);
-  });
-
-  it('invalidates a signed preview whenever a value or selection changes', async () => {
-    const { component, decide } = setup();
-    await component.prepare();
-    const score = component.fields.find((field) => field.key === 'score');
-    if (!score) throw new Error('Missing score fixture');
-    score.control.setValue('4');
-    expect(component.preview()).toBeNull();
-    await component.approve();
-    expect(decide).not.toHaveBeenCalled();
-    await component.prepare();
-    const notes = component.fields.find((field) => field.key === 'notes');
-    if (!notes) throw new Error('Missing notes fixture');
-    component.include(notes, false);
-    expect(component.preview()).toBeNull();
-  });
-  it('does not accept a preview returned after an intervening edit', async () => {
-    const { component, review } = setup();
-    let resolve!: (value: unknown) => void;
-    review.mockImplementationOnce(
-      () =>
-        new Promise((done) => {
-          resolve = done;
-        }),
-    );
-    const pending = component.prepare();
-    component.fields[1].control.setValue('9');
-    resolve({ token: 'stale' });
-    await pending;
-    expect(component.preview()).toBeNull();
-  });
-  it('prevents a second execution after a lost response and focuses the error', async () => {
-    const { component, fixture, decide } = setup();
-    decide.mockRejectedValueOnce(new Error('Confira o histórico.'));
-    await component.prepare();
-    await component.approve();
-    fixture.detectChanges();
-    await fixture.whenStable();
-    expect(component.executionAttempted()).toBe(true);
-    expect(component.preview()).toBeNull();
-    await component.prepare();
-    await component.approve();
-    expect(decide).toHaveBeenCalledTimes(1);
-    expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain('Confira o histórico');
+    expect(fixture.nativeElement.querySelector('[role="alert"]')).not.toBeNull();
+    component.field.locked = true;
+    component.control.setValue('[]');
+    component.save();
+    expect(close).not.toHaveBeenCalled();
   });
 });

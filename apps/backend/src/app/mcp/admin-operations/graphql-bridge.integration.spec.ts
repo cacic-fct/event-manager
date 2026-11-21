@@ -1,7 +1,13 @@
 import { PlacePreset, PlacePresetUpdateInput } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { ApolloDriver, type ApolloDriverConfig } from '@nestjs/apollo';
-import { ForbiddenException, Injectable, type INestApplication } from '@nestjs/common';
+import {
+  ForbiddenException,
+  NotFoundException,
+  InternalServerErrorException,
+  Injectable,
+  type INestApplication,
+} from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { Args, Context, GraphQLModule, GraphQLSchemaHost, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Test } from '@nestjs/testing';
@@ -12,6 +18,10 @@ import { KeycloakScopeGuard } from '../../auth/guards/keycloak-scope.guard';
 import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { KeycloakAuthService } from '../../auth/keycloak-auth.service';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
+import { PermissionManagementResolver } from '../../authorization/permission-management.resolver';
+import { PermissionManagementService } from '../../authorization/permission-management.service';
+import { AuditLogService } from '../../audit-log/audit-log.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { McpAdminConfig } from '../mcp-admin.config';
 import { adminMcpExecution } from './execution-context';
 import { AdminMcpGraphqlBridge, boundedJson } from './graphql-bridge';
@@ -70,6 +80,13 @@ describe('administrative MCP bridge through actual Nest GraphQL guards', () => {
   let app: INestApplication;
   let bridge: AdminMcpGraphqlBridge;
   let domain: BridgeDomainFixture;
+  const prisma = {
+    eventManagerRole: { findMany: jest.fn(async () => []) },
+    eventManagerPermissionGroup: { findMany: jest.fn(async () => []) },
+    $transaction: jest.fn(() => {
+      throw new Error('Read attempted permission cleanup');
+    }),
+  };
   const auth = { authenticateAccessToken: jest.fn(), authenticateSession: jest.fn(), assertClientRoles: jest.fn() };
   const policy = { assertPermissions: jest.fn(async () => undefined), buildResourceContext: jest.fn(() => ({})) };
   beforeAll(async () => {
@@ -78,6 +95,10 @@ describe('administrative MCP bridge through actual Nest GraphQL guards', () => {
       providers: [
         BridgeDomainFixture,
         BridgeResolverFixture,
+        PermissionManagementResolver,
+        PermissionManagementService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: AuditLogService, useValue: {} },
         AdminMcpGraphqlBridge,
         { provide: McpAdminConfig, useValue: { resourceUrl: 'https://events.example.test/api/mcp/admin' } },
         { provide: AuthorizationPolicyService, useValue: policy },
@@ -119,6 +140,18 @@ describe('administrative MCP bridge through actual Nest GraphQL guards', () => {
     expect(adminMcpExecution.getStore()).toBeUndefined();
   });
 
+  it.each(['permissionRoles', 'permissionGroups'])(
+    'executes %s without writes even when nothing has expired',
+    async (field) => {
+      const result = await bridge.execute(field, {}, user(), { ...execution, operation: field });
+      expect(Array.isArray(result)).toBe(true);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(
+        field === 'permissionRoles' ? prisma.eventManagerRole.findMany : prisma.eventManagerPermissionGroup.findMany,
+      ).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it.each(['onboarding', 'roles', 'permissions'])('retains the actual Nest %s denial', async (boundary) => {
     const spy = jest.spyOn(domain, 'read');
     if (boundary === 'roles')
@@ -131,6 +164,21 @@ describe('administrative MCP bridge through actual Nest GraphQL guards', () => {
     ).rejects.toThrow();
     expect(spy).not.toHaveBeenCalled();
     spy.mockRestore();
+  });
+
+  it.each([
+    [new NotFoundException('Local inexistente.'), 'Local inexistente.'],
+    [new InternalServerErrorException('Private diagnostic'), 'O serviço responsável recusou'],
+    [new Error('Private diagnostic'), 'O serviço responsável recusou'],
+  ])('preserves only expected public GraphQL errors: %s', async (error, message) => {
+    const spy = jest.spyOn(domain, 'read').mockImplementation(() => {
+      throw error;
+    });
+    try {
+      await expect(bridge.execute('placePreset', { id: 'missing' }, user(), execution)).rejects.toThrow(message);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('rejects a forged normal GraphQL request even when its user and headers look internal', async () => {
@@ -168,6 +216,16 @@ describe('administrative MCP bridge through actual Nest GraphQL guards', () => {
         .catalog()
         .map((entry) => entry.field)
         .sort(),
-    ).toEqual(['placePreset', 'updatePlacePreset']);
+    ).toEqual([
+      'archivePermissionGroup',
+      'archivePermissionRole',
+      'permissionGroups',
+      'permissionRoles',
+      'permissionScopeTargets',
+      'placePreset',
+      'savePermissionGroup',
+      'savePermissionRole',
+      'updatePlacePreset',
+    ]);
   });
 });

@@ -7,14 +7,14 @@ const tokenPattern = /^(\d{13})\.([A-Za-z0-9_-]{43})$/;
 
 export const mcpReviewTokenSchemaPattern = tokenPattern;
 
-function canonical(value: unknown): unknown {
+export function canonicalMcpValue(value: unknown): unknown {
   if (value instanceof Date) return value.toISOString();
-  if (Array.isArray(value)) return value.map(canonical);
+  if (Array.isArray(value)) return value.map(canonicalMcpValue);
   if (value !== null && typeof value === 'object')
     return Object.fromEntries(
       Object.entries(value)
-        .sort(([left], [right]) => left.localeCompare(right))
-        .map(([key, item]) => [key, canonical(item)]),
+        .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+        .map(([key, item]) => [key, canonicalMcpValue(item)]),
     );
   return value;
 }
@@ -24,7 +24,7 @@ function signature(purpose: string, expiresAt: number, payload: unknown): Buffer
   const key = process.env.KEYCLOAK_CLIENT_SECRET?.trim();
   if (!key && process.env.NODE_ENV === 'production') throw new Error('MCP review signing key is unavailable.');
   return createHmac('sha256', key || localSigningKey)
-    .update(JSON.stringify(['mcp-review-v1', purpose, expiresAt, canonical(payload)]))
+    .update(JSON.stringify(['mcp-review-v1', purpose, expiresAt, canonicalMcpValue(payload)]))
     .digest();
 }
 

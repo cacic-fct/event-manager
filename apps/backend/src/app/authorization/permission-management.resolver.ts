@@ -11,6 +11,7 @@ import {
   PermissionScopeTarget,
 } from './permission-management.models';
 import { PermissionManagementService } from './permission-management.service';
+import { trustedAdminMcpPrincipal } from '../mcp/admin-operations/execution-context';
 
 type GraphqlContext = { req?: { user?: AuthenticatedUser }; request?: { user?: AuthenticatedUser } };
 
@@ -20,13 +21,25 @@ export class PermissionManagementResolver {
 
   @Query(() => [PermissionRole], { name: 'permissionRoles' })
   @RequirePermissions(Permission.PermissionGrant.Read)
-  permissionRoles(@Args('includeArchived', { type: () => Boolean, nullable: true }) includeArchived?: boolean) {
+  permissionRoles(
+    @Args('includeArchived', { type: () => Boolean, nullable: true }) includeArchived?: boolean,
+    @Context() context: GraphqlContext = {},
+  ) {
+    if (trustedAdminMcpPrincipal(context.req ?? context.request ?? {})) {
+      return this.management.readRoles(includeArchived ?? false);
+    }
     return this.management.listRoles(includeArchived ?? false);
   }
 
   @Query(() => [PermissionGroup], { name: 'permissionGroups' })
   @RequirePermissions(Permission.PermissionGrant.Read, Permission.Person.Read)
-  permissionGroups(@Args('includeArchived', { type: () => Boolean, nullable: true }) includeArchived?: boolean) {
+  permissionGroups(
+    @Args('includeArchived', { type: () => Boolean, nullable: true }) includeArchived?: boolean,
+    @Context() context: GraphqlContext = {},
+  ) {
+    if (trustedAdminMcpPrincipal(context.req ?? context.request ?? {})) {
+      return this.management.readGroups(includeArchived ?? false);
+    }
     return this.management.listGroups(includeArchived ?? false);
   }
 

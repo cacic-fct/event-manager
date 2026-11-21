@@ -57,6 +57,21 @@ describe('administrative MCP local delegation scope', () => {
     }
   });
 
+  it('uses the source certificate target when clone input is absent and checks both explicit targets', async () => {
+    const { service, policy } = fixture();
+    const operation = ADMIN_MCP_OPERATIONS.find((entry) => entry.field === 'cloneCertificateConfig');
+    if (!operation) throw new Error('Missing clone operation');
+    const scope = { mode: 'RESOURCE', kind: 'EVENT', id: 'event-a' } as const;
+    await expect(service.operation(scope, operation, { id: 'config-a', input: null })).resolves.toBeUndefined();
+    expect(policy.resolveOperationTargets).toHaveBeenCalledWith(
+      operation.permissions,
+      expect.objectContaining({ certificateConfigId: 'config-a' }),
+    );
+    policy.resolveOperationTargets.mockClear();
+    await service.operation(scope, operation, { id: 'config-a', input: { eventId: 'event-a' } });
+    expect(policy.resolveOperationTargets).toHaveBeenCalledTimes(2);
+  });
+
   it('checks all bulk contexts and denies an out-of-scope later target', async () => {
     const { service, policy } = fixture();
     const operation = ADMIN_MCP_OPERATIONS.find((entry) => entry.field === 'commitAdminSportsMatchActions');

@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
-import type { McpAdminCommand, McpAdminOperationDelegation, Prisma } from '@prisma/client';
+import { Prisma, type McpAdminCommand, type McpAdminOperationDelegation } from '@prisma/client';
 import type { AdminMcpCommandDecision } from '@cacic-fct/event-manager-mcp-contracts';
 import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { MCP_ADMIN_PROPOSE_SCOPE, MCP_ADMIN_READ_SCOPE } from '../mcp-admin.config';
@@ -49,8 +49,10 @@ function fixture() {
       async (callback: (tx: Prisma.TransactionClient) => Promise<unknown>): Promise<unknown> =>
         callback(prisma as never),
     ),
+    event: { findFirst: jest.fn(async () => ({ publicationState: 'DRAFT' })) },
     user: { findUnique: jest.fn(async () => ({ name: 'Current reviewer' })) },
     mcpAdminOperationDelegation: {
+      findMany: jest.fn(async () => [delegation]),
       findFirst: jest.fn(
         async (input: {
           where: { id?: string; userId?: string; clientId?: string; revokedAt?: null; expiresAt?: { gt: Date } };
@@ -68,6 +70,7 @@ function fixture() {
       count: jest.fn(async () => 0),
     },
     mcpAdminCommand: {
+      findMany: jest.fn(async () => (command ? [{ ...command, delegation }] : [])),
       findUnique: jest.fn(async () => (command ? { ...command } : null)),
       findFirst: jest.fn(async (input: { where: { id: string; delegation: { userId: string } } }) =>
         command && input.where.id === command.id && input.where.delegation.userId === delegation.userId
@@ -300,6 +303,116 @@ describe('administrative MCP reviewed command lifecycle', () => {
         'idempotent-a',
       ),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('rechecks idempotency inside the transaction before the quota', async () => {
+    const f = fixture();
+    const first = await f.propose();
+    f.prisma.mcpAdminCommand.findUnique.mockResolvedValueOnce(null);
+    f.prisma.mcpAdminCommand.count.mockClear();
+    f.delegation.maxProposals = 1;
+    await expect(f.propose()).resolves.toEqual(first);
+    expect(f.prisma.mcpAdminCommand.count).not.toHaveBeenCalled();
+    expect(f.prisma.mcpAdminCommand.create).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([false, true])('recovers a unique-key collision and detects changed input: %s', async (changed) => {
+    const f = fixture();
+    const first = await f.propose();
+    f.prisma.mcpAdminCommand.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+    f.prisma.mcpAdminCommand.create.mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError('Duplicate key', { code: 'P2002', clientVersion: 'test' }),
+    );
+    if (changed) f.args.input.name = 'Outro nome';
+    const retry = f.propose();
+    if (changed) await expect(retry).rejects.toBeInstanceOf(ConflictException);
+    else await expect(retry).resolves.toEqual(first);
+  });
+
+  it('keeps equivalent JSON object key orders fresh', async () => {
+    const f = fixture();
+    const args = { input: { description: 'Descrição', name: 'Nome' }, id: 'event-a' };
+    await f.service.propose(f.user, f.delegation.id, 'updateEvent', args, 'json-key');
+    const command = f.command();
+    if (!command) throw new Error('Missing command');
+    command.arguments = { id: 'event-a', input: { name: 'Nome', description: 'Descrição' } };
+    await expect(f.review(args)).resolves.toEqual(expect.objectContaining({ arguments: args }));
+  });
+
+  it.each(['PUBLISHED', 'SCHEDULED', 'DRAFT'])('signs the actual publication consequence for %s', async (state) => {
+    const f = fixture();
+    f.prisma.event.findFirst.mockResolvedValue({ publicationState: state });
+    const preview = await f.review();
+    if (state === 'PUBLISHED') expect(preview.effects).toContain('sairá de publicação');
+    if (state === 'SCHEDULED') expect(preview.effects).toContain('agendamento de publicação será cancelado');
+    if (state === 'DRAFT') expect(preview.effects).not.toMatch(/sairá de publicação|agendamento de publicação/);
+    const published = await f.review({ ...f.args, input: { ...f.args.input, publishAfterUpdate: true } });
+    expect(published.effects).toContain('ficará publicado');
+    expect(published.effects).not.toContain('sairá de publicação');
+  });
+
+  it('keeps older active grants ahead of bounded revoked history', async () => {
+    const f = fixture();
+    const history = Array.from({ length: 50 }, (_, index) => ({
+      ...f.delegation,
+      id: `revoked-${index}`,
+      revokedAt: new Date(),
+    }));
+    f.prisma.mcpAdminOperationDelegation.findMany.mockResolvedValueOnce([f.delegation]).mockResolvedValueOnce(history);
+    const listed = await f.service.delegations(f.user);
+    expect(listed).toHaveLength(51);
+    expect(listed[0].id).toBe(f.delegation.id);
+    expect(f.prisma.mcpAdminOperationDelegation.findMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: { userId: 'operator', revokedAt: null, expiresAt: { gt: expect.any(Date) } },
+      }),
+    );
+    expect(f.prisma.mcpAdminOperationDelegation.findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ take: 50 }),
+    );
+  });
+
+  it('lists unavailable catalog operations alongside normal proposals', async () => {
+    const f = fixture();
+    await f.propose();
+    const command = f.command();
+    if (!command) throw new Error('Missing command');
+    f.prisma.mcpAdminCommand.findMany.mockResolvedValue([
+      { ...command, operation: 'removedOperation', delegation: f.delegation },
+      { ...command, state: 'APPLIED', delegation: f.delegation },
+    ]);
+    const page = await f.service.list(f.user, 0);
+    expect(page.items[0]).toMatchObject({ operationLabel: 'removedOperation', canApprove: false });
+    expect(page.items[0].unavailableReason).toContain('catálogo');
+    expect(page.items[1].operation).toBe('updateEvent');
+  });
+
+  it('requires personal-data consent to delegate and read certificate recipients', async () => {
+    const f = fixture();
+    const operations = ['certificateManualRecipients'];
+    await expect(
+      f.service.createDelegation(f.user, {
+        clientId: 'client-a',
+        operations,
+        scope: { mode: 'ALL_AUTHORIZED' },
+        personalData: false,
+        maxProposals: 1,
+        expiresAt: f.delegation.expiresAt.toISOString(),
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    f.delegation.operations = operations;
+    await expect(
+      f.service.read(f.user, f.delegation.id, operations[0], { configId: 'config-a' }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    f.delegation.personalData = true;
+    await f.service.read(f.user, f.delegation.id, operations[0], { configId: 'config-a' });
+    expect(f.policy.assertPermissions).toHaveBeenLastCalledWith(
+      f.user,
+      [Permission.Certificate.Read],
+      expect.any(Object),
+    );
   });
 
   it('requires an exact signed final preview, including manually edited values and effects', async () => {

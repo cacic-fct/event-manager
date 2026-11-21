@@ -39,6 +39,14 @@ describe('AuthorizationPolicyService', () => {
     },
   );
 
+  it('resolves explicit targets without a static permission list', async () => {
+    prisma.event.findUnique.mockResolvedValue({ id: 'event-1', majorEventId: 'major-1', eventGroupId: null });
+    const targets = await service.resolveOperationTargets([], { eventId: 'event-1' });
+    expect([...targets.eventIds]).toEqual(['event-1']);
+    expect([...targets.majorEventIds]).toEqual(['major-1']);
+    expect(activeScopes).not.toHaveBeenCalled();
+  });
+
   it('requires the Event Manager access Keycloak role before DB grants are considered', async () => {
     activeScopes.mockResolvedValue([
       grant({ permission: Permission.Event.Read, scope: EventManagerPermissionScope.GLOBAL }),

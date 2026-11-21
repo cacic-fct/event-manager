@@ -34,7 +34,7 @@ import { McpAdminAccessService } from '../mcp-admin-access.service';
 import { McpAdminConfig, MCP_ADMIN_PROPOSE_SCOPE, MCP_ADMIN_READ_SCOPE } from '../mcp-admin.config';
 import { McpAdminInvalidationService } from '../mcp-admin-invalidation.service';
 import { mcpUserId } from '../mcp-admin-principal';
-import { assertMcpReviewToken, signMcpReview } from '../mcp-review-token';
+import { assertMcpReviewToken, canonicalMcpValue, signMcpReview } from '../mcp-review-token';
 import { parseMcpInput } from '../mcp-admin.schemas';
 import { AdminMcpGraphqlBridge } from './graphql-bridge';
 import { AdminMcpScopePolicy, operationContexts } from './scope-policy';
@@ -94,19 +94,27 @@ export class AdminMcpCommandService {
     if (!user.oidcScopeSet.has(scope)) throw new ForbiddenException('Escopo OAuth insuficiente.');
   }
   async delegations(user: AuthenticatedUser, clientOnly = false): Promise<AdminMcpDelegation[]> {
+    const now = new Date();
+    const active = { userId: mcpUserId(user), revokedAt: null, expiresAt: { gt: now } };
+    const orderBy = [{ createdAt: 'desc' }, { id: 'desc' }] as const;
+    if (!clientOnly) {
+      const [current, history] = await Promise.all([
+        this.prisma.mcpAdminOperationDelegation.findMany({ where: active, orderBy: [...orderBy] }),
+        this.prisma.mcpAdminOperationDelegation.findMany({
+          where: { userId: mcpUserId(user), OR: [{ revokedAt: { not: null } }, { expiresAt: { lte: now } }] },
+          orderBy: [...orderBy],
+          take: 50,
+        }),
+      ]);
+      return [...current, ...history].map((row) => this.delegation(row));
+    }
     const rows = await this.prisma.mcpAdminOperationDelegation.findMany({
       where: {
-        userId: mcpUserId(user),
-        ...(clientOnly
-          ? {
-              clientId: String(user.claims['azp']),
-              revokedAt: null,
-              expiresAt: { gt: new Date() },
-              resource: this.config.resourceUrl,
-            }
-          : {}),
+        ...active,
+        clientId: String(user.claims['azp']),
+        resource: this.config.resourceUrl,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [...orderBy],
       take: 50,
     });
     return rows.map((row) => this.delegation(row));
@@ -217,12 +225,12 @@ export class AdminMcpCommandService {
       // requires a current relevant grant, or super-admin, before a proposal exists.
       const known: Record<string, readonly Permission[]> = {
         savePermissionRole: [
-          args['input'] && typeof args['input'] === 'object' && 'id' in args['input']
+          args['input'] && typeof args['input'] === 'object' && 'id' in args['input'] && Boolean(args['input'].id)
             ? Permission.PermissionGrant.Update
             : Permission.PermissionGrant.Create,
         ],
         savePermissionGroup: [
-          args['input'] && typeof args['input'] === 'object' && 'id' in args['input']
+          args['input'] && typeof args['input'] === 'object' && 'id' in args['input'] && Boolean(args['input'].id)
             ? Permission.PermissionGrant.Update
             : Permission.PermissionGrant.Create,
         ],
@@ -272,7 +280,7 @@ export class AdminMcpCommandService {
     `;
     const latest = rows[0] ?? null;
     return createHash('sha256')
-      .update(JSON.stringify([field, args, latest]))
+      .update(JSON.stringify(canonicalMcpValue([field, args, latest])))
       .digest('hex');
   }
   async propose(user: AuthenticatedUser, delegationId: string, field: string, input: unknown, key: string) {
@@ -280,16 +288,23 @@ export class AdminMcpCommandService {
     if (operation.definition.kind !== 'mutation') throw new BadRequestException('Esta operação não é uma alteração.');
     const args = this.bridge.arguments(field, input);
     const row = await this.grant(user, delegationId, field, args, 'propose');
+    const sameProposal = (command: McpAdminCommand) => {
+      if (command.operation !== field || !isDeepStrictEqual(command.arguments, args))
+        throw new ConflictException('Chave já usada para outra proposta.');
+      return command;
+    };
     const existing = await this.prisma.mcpAdminCommand.findUnique({
       where: { delegationId_idempotencyKey: { delegationId, idempotencyKey: key } },
     });
     if (existing) {
-      if (existing.operation !== field || !isDeepStrictEqual(existing.arguments, args))
-        throw new ConflictException('Chave já usada para outra proposta.');
-      return this.statusResult(existing);
+      return this.statusResult(sameProposal(existing));
     }
     const fingerprint = await this.fingerprint(field, args);
     const created = await runSerializablePrismaTransaction(this.prisma, async (tx) => {
+      const previous = await tx.mcpAdminCommand.findUnique({
+        where: { delegationId_idempotencyKey: { delegationId, idempotencyKey: key } },
+      });
+      if (previous) return sameProposal(previous);
       const active = await tx.mcpAdminOperationDelegation.findFirst({
         where: { id: row.id, revokedAt: null, expiresAt: { gt: new Date() } },
       });
@@ -311,6 +326,14 @@ export class AdminMcpCommandService {
         clientId: row.clientId,
       });
       return proposal;
+    }).catch(async (error: unknown) => {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        const winner = await this.prisma.mcpAdminCommand.findUnique({
+          where: { delegationId_idempotencyKey: { delegationId, idempotencyKey: key } },
+        });
+        if (winner) return sameProposal(winner);
+      }
+      throw error;
     });
     await this.invalidations.publish(mcpUserId(user));
     return this.statusResult(created);
@@ -344,7 +367,46 @@ export class AdminMcpCommandService {
     return command;
   }
   private effects(field: string): string {
-    return `Executa ${this.bridge.operation(field).info.label} pelos serviços administrativos existentes. Pode alterar recursos relacionados e acionar os efeitos próprios dessa operação. Confira todos os argumentos finais.`;
+    const { definition, info } = this.bridge.operation(field);
+    const effects: Record<string, string> = {
+      authorization: 'Pode alterar cargos, grupos, atribuições e a autoridade de pessoas e cargos descendentes.',
+      publishing:
+        'Pode alterar a visibilidade pública, agendamentos e o estado de recursos relacionados da programação.',
+      'ticket-purchases':
+        'Pode aprovar ou rejeitar compras e afetar inscrições, pagamentos e disponibilidade de bilhetes.',
+      'major-event-receipts': 'Pode alterar decisões de pagamento e a situação das inscrições ou bilhetes associados.',
+      certificate:
+        'Pode emitir, substituir, revogar ou alterar certificados e seus arquivos. Confira a pessoa e a configuração.',
+      people:
+        'Pode alterar dados pessoais e vínculos. Mesclas e exclusões podem afetar inscrições, bilhetes e certificados.',
+      'event-forms': 'Pode alterar formulários, versões, publicação, vínculos e consequências próprias do formulário.',
+      sports:
+        'Pode alterar competição, equipes, elegibilidade, súmulas, placar, classificação, arbitragem ou partidas, conforme a operação.',
+      'prize-draw': 'Pode modificar participantes elegíveis, resultados e decisões do sorteio.',
+    };
+    const destruction = /^(?:delete|archive|merge|revert|undo)/i.test(field)
+      ? ' A remoção, mescla ou reversão pode afetar dependentes e não ser reversível.'
+      : '';
+    return `${info.label}. ${effects[definition.domain] ?? 'Aplica a alteração pelos serviços administrativos existentes e pode afetar recursos relacionados.'}${destruction} Confira os destinos e todos os argumentos finais.`;
+  }
+  private async reviewEffects(field: string, args: Record<string, unknown>): Promise<string> {
+    const effects = this.effects(field);
+    if (field !== 'updateEvent') return effects;
+    const event = await this.prisma.event.findFirst({
+      where: { id: String(args['id']), deletedAt: null },
+      select: { publicationState: true },
+    });
+    const input = args['input'] as Record<string, unknown>;
+    if (input['publishAfterUpdate'] === true) {
+      return `${effects} O evento ficará publicado após a atualização.`;
+    }
+    if (event?.publicationState === 'PUBLISHED') {
+      return `${effects} O evento sairá de publicação e ficará em rascunho.`;
+    }
+    if (event?.publicationState === 'SCHEDULED') {
+      return `${effects} O agendamento de publicação será cancelado e o evento ficará em rascunho.`;
+    }
+    return effects;
   }
   async list(user: AuthenticatedUser, page: number): Promise<AdminMcpCommandPage> {
     const rows = await this.prisma.mcpAdminCommand.findMany({
@@ -356,9 +418,15 @@ export class AdminMcpCommandService {
     });
     const items: AdminMcpCommand[] = [];
     for (const row of rows.slice(0, 20)) {
-      const definition = this.bridge.operation(row.operation);
-      let unavailableReason: string | null =
-        row.state !== 'PENDING'
+      let definition: ReturnType<AdminMcpGraphqlBridge['operation']> | undefined;
+      try {
+        definition = this.bridge.operation(row.operation);
+      } catch {
+        // A retained proposal can outlive the server's operation catalog.
+      }
+      let unavailableReason: string | null = !definition
+        ? 'Esta operação não está mais disponível no catálogo.'
+        : row.state !== 'PENDING'
           ? 'Esta proposta já foi decidida ou requer verificação do histórico.'
           : row.expiresAt <= new Date()
             ? 'Proposta expirada.'
@@ -370,25 +438,28 @@ export class AdminMcpCommandService {
           unavailableReason = 'Sem delegação ou autorização atual para executar.';
         }
       }
-      const targets = !unavailableReason
-        ? await this.targetLabels(
-            definition.definition,
-            row.arguments as Record<string, unknown>,
-            row.delegation.personalData,
-          )
-        : [];
+      const targets =
+        !unavailableReason && definition
+          ? await this.targetLabels(
+              definition.definition,
+              row.arguments as Record<string, unknown>,
+              row.delegation.personalData,
+            )
+          : [];
       items.push({
         targets,
         id: row.id,
         delegationId: row.delegationId,
         operation: row.operation,
-        operationLabel: definition.info.label,
-        domain: definition.info.domain,
+        operationLabel: definition?.info.label ?? row.operation,
+        domain: definition?.info.domain ?? 'indisponível',
         clientId: row.delegation.clientId,
         state: row.state as AdminMcpCommand['state'],
         arguments: row.arguments as Record<string, unknown>,
-        inputSchema: definition.info.inputSchema,
-        effects: this.effects(row.operation),
+        inputSchema: definition?.info.inputSchema ?? {},
+        effects: definition
+          ? this.effects(row.operation)
+          : 'Operação indisponível. Esta proposta não pode ser executada.',
         fingerprint: row.fingerprint,
         createdAt: row.createdAt.toISOString(),
         expiresAt: row.expiresAt.toISOString(),
@@ -441,7 +512,7 @@ export class AdminMcpCommandService {
       operation: command.operation,
       arguments: args,
       expectedFingerprint: command.fingerprint,
-      effects: this.effects(command.operation),
+      effects: await this.reviewEffects(command.operation, args),
     };
     return {
       ...preview,
@@ -475,7 +546,7 @@ export class AdminMcpCommandService {
       effects: input.review.effects,
     };
     assertMcpReviewToken('admin-command', [mcpUserId(user), command.delegationId, payload], input.review.token);
-    if (!isDeepStrictEqual(preview.arguments, input.review.arguments))
+    if (!isDeepStrictEqual(preview.arguments, input.review.arguments) || preview.effects !== input.review.effects)
       throw new ConflictException('Os valores normalizados mudaram.');
     const delegation = await this.grant(user, command.delegationId, command.operation, preview.arguments, 'apply');
     const person = await this.prisma.user.findUnique({ where: { id: mcpUserId(user) }, select: { name: true } });

@@ -2,7 +2,7 @@ import { provideRouter } from '@angular/router';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { HttpResponse, http } from 'msw';
 import { EMPTY } from 'rxjs';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { RealtimeApiService } from '../../graphql/realtime-api.service';
 import { AdminOperationsPageComponent } from './admin-operations-page.component';
 import { operationSettings, sportsCommand, sportsOperation } from './admin-operations.fixtures';
@@ -81,15 +81,94 @@ export const PermissionDenied: Story = {
 export const ManualEdit: Story = {
   parameters: handlers(),
   play: async ({ canvasElement }) => {
-    await userEvent.click(await within(canvasElement).findByRole('button', { name: 'Revisar operação' }));
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('checkbox', { name: 'Aplicar esta operação' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Editar Pontuação' }));
     const dialog = within(await within(canvasElement.ownerDocument.body).findByRole('dialog'));
-    const score = dialog.getByRole('textbox', { name: 'Pontuação para aplicar' });
+    const score = dialog.getByRole('spinbutton', { name: 'Pontuação' });
     await userEvent.clear(score);
     await userEvent.type(score, '3');
-    await userEvent.click(dialog.getByRole('checkbox', { name: 'Incluir Observações' }));
-    await userEvent.click(dialog.getByRole('button', { name: 'Conferir argumentos finais' }));
-    await expect(await dialog.findByRole('button', { name: 'Aprovar e executar' })).toBeEnabled();
-    await expect(dialog.getByText('Argumentos finais validados')).toBeVisible();
+    await userEvent.click(dialog.getByRole('button', { name: 'Salvar revisão' }));
+    await waitFor(() => expect(within(canvasElement.ownerDocument.body).queryByRole('dialog')).not.toBeInTheDocument());
+    await userEvent.click(canvas.getByRole('checkbox', { name: 'Incluir Observações' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Conferir selecionadas (1)' }));
+    await expect(await canvas.findByRole('button', { name: 'Aprovar e executar selecionadas' })).toBeEnabled();
+    await expect(canvas.getAllByText('Validado para execução').length).toBeGreaterThan(0);
+    await userEvent.click(canvas.getByRole('button', { name: 'Voltar à revisão' }));
+    await expect(canvas.getByRole('checkbox', { name: 'Incluir Observações' })).not.toBeChecked();
+    await userEvent.click(canvas.getByRole('button', { name: 'Editar Pontuação' }));
+    const editor = within(await within(canvasElement.ownerDocument.body).findByRole('dialog'));
+    await expect(editor.getByRole('spinbutton', { name: 'Pontuação' })).toHaveValue(3);
+    await userEvent.click(editor.getByRole('button', { name: 'Cancelar' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Conferir selecionadas (1)' }));
+    await expect(await canvas.findByRole('button', { name: 'Aprovar e executar selecionadas' })).toBeEnabled();
+  },
+};
+
+export const SearchableDestinations: Story = {
+  parameters: handlers({
+    ...sportsCommand(),
+    arguments: { teamIds: ['equipe-demo', 'equipe-verde'], score: 2 },
+    inputSchema: {
+      type: 'object',
+      properties: { teamIds: { type: 'array', title: 'Equipes' }, score: { type: 'number', title: 'Pontuação' } },
+    },
+    targets: [
+      { kind: 'SportsTeam', id: 'equipe-demo', label: 'Equipe Azul (demonstração)' },
+      { kind: 'SportsTeam', id: 'equipe-verde', label: 'Equipe Verde (demonstração)' },
+    ],
+  }),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Editar Equipes' }));
+    const dialog = within(await within(canvasElement.ownerDocument.body).findByRole('dialog'));
+    await userEvent.type(dialog.getByRole('searchbox', { name: 'Buscar Equipes' }), 'azul');
+    await expect(dialog.getByRole('checkbox', { name: 'Equipe Azul (demonstração)' })).toBeChecked();
+    await expect(dialog.queryByRole('checkbox', { name: 'Equipe Verde (demonstração)' })).not.toBeInTheDocument();
+    await userEvent.click(dialog.getByRole('checkbox', { name: 'Equipe Azul (demonstração)' }));
+    await userEvent.click(dialog.getByRole('button', { name: 'Salvar revisão' }));
+    await expect(canvas.getByText('Sua revisão', { exact: true })).toBeVisible();
+  },
+};
+
+export const Expired: Story = {
+  parameters: handlers({ ...sportsCommand(), expiresAt: new Date(Date.now() - 60000).toISOString() }),
+};
+export const StaleRevision: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.post('/api/admin/mcp/operations/proposals/:id/review', () =>
+          HttpResponse.json({ message: 'Os dados administrativos mudaram. Crie uma nova proposta.' }, { status: 409 }),
+        ),
+        ...handlers().msw.handlers,
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('checkbox', { name: 'Aplicar esta operação' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Conferir selecionadas (1)' }));
+    await expect(await canvas.findByRole('alert')).toHaveTextContent('Os dados administrativos mudaram');
+    await expect(canvas.queryByRole('button', { name: 'Aprovar e executar selecionadas' })).not.toBeInTheDocument();
+  },
+};
+export const LostExecutionResponse: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.post('/api/admin/mcp/operations/proposals/:id/decision', () => HttpResponse.error()),
+        ...handlers().msw.handlers,
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('checkbox', { name: 'Aplicar esta operação' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Conferir selecionadas (1)' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Aprovar e executar selecionadas' }));
+    await expect(await canvas.findByRole('alert')).toHaveTextContent('interrompida');
+    await expect(canvas.getByRole('checkbox', { name: 'Aplicar esta operação' })).toBeDisabled();
   },
 };
 

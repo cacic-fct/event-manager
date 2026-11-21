@@ -42,6 +42,7 @@ export class AdminMcpOperationsController {
   @Post('delegations')
   @ApiOperation({ summary: 'Autorizar operações e escopo explícitos, sem conceder permissões de negócio.' })
   @ApiBody({
+    description: 'Substitua expiresAt por uma data futura, no máximo 24 horas após o envio.',
     schema: {
       example: {
         clientId: 'approved-client',
@@ -90,7 +91,12 @@ export class AdminMcpOperationsController {
   @Post('proposals/:id/decision')
   @ApiOperation({ summary: 'Aprovar uma única tentativa da operação revisada, ou recusar sem executá-la.' })
   @ApiBody({ schema: { example: { decision: 'REJECT', expectedFingerprint: 'a'.repeat(64) } } })
-  @ApiResponse({ status: 201, schema: { example: { success: true } } })
+  @ApiResponse({
+    status: 201,
+    description:
+      'Confira state para saber o resultado. UNCERTAIN exige consultar o histórico, sem tentar executar novamente.',
+    schema: { example: { success: true, state: 'REJECTED' } },
+  })
   async decide(@Req() req: McpAuthenticatedRequest, @Param('id') id: string, @Body() body: unknown) {
     const state = await this.commands.decide(
       req.user,

@@ -486,6 +486,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     target: {
       mode: 'ARGUMENTS',
       paths: [
+        { argument: 'id', context: 'certificateConfigId' },
         { argument: 'input.eventId', context: 'eventId' },
         { argument: 'input.eventGroupId', context: 'eventGroupId' },
         { argument: 'input.majorEventId', context: 'majorEventId' },
@@ -517,10 +518,10 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     field: 'certificateManualRecipients',
     kind: 'query',
     domain: 'certificate',
-    permissions: [Permission.CertificateConfig.Read],
+    permissions: [Permission.Certificate.Read],
     target: { mode: 'ARGUMENTS', paths: [{ argument: 'configId', context: 'certificateConfigId' }] },
-    risk: 'READ',
-    personalData: false,
+    risk: 'SENSITIVE',
+    personalData: true,
     serviceAuthorized: true,
     source: 'apps/backend/src/app/certificate/certificates.resolver.ts',
     selection: 'id name deletedAt createdAt updatedAt',

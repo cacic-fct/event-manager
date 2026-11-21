@@ -23,6 +23,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import type {
   AdminMcpCommand,
   AdminMcpCommandPage,
+  AdminMcpCommandPreview,
   AdminMcpDelegation,
   AdminMcpOperationInfo,
   AdminMcpScope,
@@ -38,7 +39,13 @@ import { mcpErrorMessage } from '../mcp-api.service';
 import { adminOperationDomainLabel, normalizeOperationSearch } from './admin-operation-labels';
 import { CommandTargetsComponent } from './command-targets.component';
 import { AdminOperationsApi } from './admin-operations-api.service';
-import { CommandReviewDialogComponent, serializeArgument } from './command-review-dialog.component';
+import {
+  CommandReviewDialogComponent,
+  type CommandArgumentEdit,
+  type CommandArgumentEditResult,
+} from './command-review-dialog.component';
+import { buildCommandArguments, commandArguments, serializeArgument, type CommandArgument } from './command-arguments';
+import { CommandArgumentsComponent } from './command-arguments.component';
 
 @Component({
   selector: 'app-admin-operations-page',
@@ -56,6 +63,7 @@ import { CommandReviewDialogComponent, serializeArgument } from './command-revie
     ReviewQueuePaginationComponent,
     RouterLink,
     CommandTargetsComponent,
+    CommandArgumentsComponent,
   ],
   templateUrl: './admin-operations-page.component.html',
   styleUrl: './admin-operations-page.component.scss',
@@ -80,6 +88,19 @@ export class AdminOperationsPageComponent {
   readonly page = signal(0);
   readonly serialize = serializeArgument;
   readonly creating = signal(false);
+  readonly selectedCommands = signal<string[]>([]);
+  readonly previews = signal<Record<string, AdminMcpCommandPreview>>({});
+  readonly drafts = signal<Record<string, CommandArgument[]>>({});
+  readonly attempted = signal<string[]>([]);
+  readonly selectableCommands = computed(() => this.result().items.filter((command) => this.selectable(command)));
+  readonly allCommandsSelected = computed(
+    () =>
+      this.selectableCommands().length > 0 &&
+      this.selectableCommands().every((command) => this.selectedCommands().includes(command.id)),
+  );
+  readonly confirming = computed(() => Object.keys(this.previews()).length > 0);
+  private readonly reviewButton = viewChild<ElementRef<HTMLButtonElement>>('reviewButton');
+  private readonly confirmationHeading = viewChild<ElementRef<HTMLHeadingElement>>('confirmationHeading');
   readonly scope = signal<AdminMcpScope | null>(null);
   readonly selectedContext = signal<EventContextRef | null>(null);
   readonly selected = signal<string[]>([]);
@@ -140,7 +161,7 @@ export class AdminOperationsPageComponent {
     void this.load();
   }
   async load(page = this.page()): Promise<void> {
-    if (this.busy() || this.creating()) {
+    if (this.busy() || this.creating() || this.confirming()) {
       this.pendingRefresh = true;
       return;
     }
@@ -155,14 +176,29 @@ export class AdminOperationsPageComponent {
         this.api.proposals(page),
       ]);
       if (request !== this.request) return;
-      if (this.busy() || this.creating()) {
+      if (this.busy() || this.creating() || this.confirming()) {
         this.pendingRefresh = true;
         return;
       }
       this.settings.set(settings);
       this.catalog.set(catalog);
       this.delegations.set(delegations);
+      const previous = this.result().items;
+      const drafts = this.drafts();
+      this.drafts.set(
+        Object.fromEntries(
+          result.items.map((command) => [
+            command.id,
+            previous.some((item) => item.id === command.id && item.fingerprint === command.fingerprint)
+              ? (drafts[command.id] ?? buildCommandArguments(command))
+              : buildCommandArguments(command),
+          ]),
+        ),
+      );
       this.result.set(result);
+      this.selectedCommands.update((ids) =>
+        ids.filter((id) => result.items.some((command) => command.id === id && this.selectable(command))),
+      );
       this.page.set(page);
     } catch (error) {
       this.showError(error, 'Não foi possível carregar as operações. Tente novamente.');
@@ -172,7 +208,15 @@ export class AdminOperationsPageComponent {
     }
   }
   private async refreshIfIdle(): Promise<void> {
-    if (this.destroyRef.destroyed || !this.pendingRefresh || this.loading() || this.busy() || this.creating()) return;
+    if (
+      this.destroyRef.destroyed ||
+      !this.pendingRefresh ||
+      this.loading() ||
+      this.busy() ||
+      this.creating() ||
+      this.confirming()
+    )
+      return;
     await this.load();
   }
   toggleCreation(open: boolean): void {
@@ -284,23 +328,110 @@ export class AdminOperationsPageComponent {
       void this.refreshIfIdle();
     }
   }
-  async review(command: AdminMcpCommand, event?: Event): Promise<void> {
-    if (this.busy() || !this.approvable(command)) return;
+  selectable(command: AdminMcpCommand): boolean {
+    return (
+      this.approvable(command) &&
+      !this.attempted().includes(command.id) &&
+      !!this.settings()?.enabled &&
+      !!this.settings()?.proposalsEnabled
+    );
+  }
+  toggleCommand(command: AdminMcpCommand, checked: boolean): void {
+    if (this.busy() || this.loading() || this.confirming() || !this.selectable(command)) return;
+    this.selectedCommands.update((ids) =>
+      checked ? [...new Set([...ids, command.id])] : ids.filter((id) => id !== command.id),
+    );
+  }
+  toggleAllCommands(checked: boolean): void {
+    if (this.busy() || this.loading() || this.confirming()) return;
+    this.selectedCommands.set(checked ? this.selectableCommands().map((command) => command.id) : []);
+  }
+  includeArgument(change: { field: CommandArgument; included: boolean }): void {
+    if (this.busy() || this.confirming() || change.field.required || change.field.locked) return;
+    change.field.included = change.included;
+    this.drafts.update((drafts) => structuredClone(drafts));
+  }
+  async editArgument(command: AdminMcpCommand, field: CommandArgument, event?: Event): Promise<void> {
+    if (!this.selectable(command) || field.locked || !field.included || this.confirming()) return;
     await this.run(async () => {
-      const applied = await firstValueFrom(
+      const result = await firstValueFrom(
         this.dialog
-          .open<CommandReviewDialogComponent, AdminMcpCommand, boolean>(CommandReviewDialogComponent, {
-            data: structuredClone(command),
-            width: '48rem',
-            maxWidth: 'calc(100vw - 2rem)',
-            autoFocus: 'first-heading',
-            restoreFocus: false,
-          })
+          .open<CommandReviewDialogComponent, CommandArgumentEdit, CommandArgumentEditResult>(
+            CommandReviewDialogComponent,
+            {
+              data: { field: structuredClone(field), targets: command.targets },
+              width: '36rem',
+              maxWidth: 'calc(100vw - 2rem)',
+              restoreFocus: false,
+            },
+          )
           .afterClosed(),
       );
-      if (applied) this.feedback.set('Operação aprovada e executada.');
-      // Closing also reloads after an execution whose response was lost.
-      this.pendingRefresh = true;
+      if (result) {
+        field.value = result.value;
+        this.drafts.update((drafts) => structuredClone(drafts));
+      }
+    }, event?.currentTarget);
+  }
+  async prepareSelected(event?: Event): Promise<void> {
+    if (this.confirming()) return;
+    const commands = this.result().items.filter((command) => this.selectedCommands().includes(command.id));
+    if (!commands.length || commands.some((command) => !this.selectable(command))) return;
+    await this.run(async () => {
+      const previews: Record<string, AdminMcpCommandPreview> = {};
+      for (const command of commands) {
+        previews[command.id] = await this.api.review(command.id, {
+          arguments: commandArguments(this.drafts()[command.id]),
+          expectedFingerprint: command.fingerprint,
+        });
+      }
+      this.previews.set(previews);
+      afterNextRender(() => this.confirmationHeading()?.nativeElement.focus(), { injector: this.injector });
+    }, event?.currentTarget);
+  }
+  async cancelConfirmation(): Promise<void> {
+    this.previews.set({});
+    await this.refreshIfIdle();
+    afterNextRender(() => this.reviewButton()?.nativeElement.focus(), { injector: this.injector });
+  }
+  async approveSelected(event?: Event): Promise<void> {
+    const reviews = this.previews();
+    const commands = this.result().items.filter((command) => reviews[command.id]);
+    if (!commands.length) return;
+    if (commands.some((command) => !this.selectable(command))) {
+      this.showError(new Error('Uma operação não pode mais ser executada. Volte à revisão e atualize a fila.'), '');
+      return;
+    }
+    await this.run(async () => {
+      let applied = 0;
+      try {
+        for (const command of commands) {
+          this.attempted.update((ids) => [...ids, command.id]);
+          const result = await this.api.decide(command.id, {
+            decision: 'APPROVE',
+            expectedFingerprint: command.fingerprint,
+            review: reviews[command.id],
+          });
+          if (result.state !== 'APPLIED') {
+            throw new Error(
+              'O resultado da execução é incerto. Não repita a operação. Confira a fila e o histórico antes de continuar.',
+            );
+          }
+          applied++;
+          this.selectedCommands.update((ids) => ids.filter((id) => id !== command.id));
+        }
+      } catch (error) {
+        const detail = mcpErrorMessage(error, 'A execução não foi confirmada.');
+        throw new Error(
+          `${applied} ${applied === 1 ? 'operação aplicada' : 'operações aplicadas'}. ${detail} A execução das demais operações foi interrompida. Confira a fila e o histórico.`,
+        );
+      } finally {
+        this.previews.set({});
+        this.pendingRefresh = true;
+      }
+      this.feedback.set(
+        `${applied} ${applied === 1 ? 'operação aprovada e executada' : 'operações aprovadas e executadas'}.`,
+      );
     }, event?.currentTarget);
   }
   async reject(command: AdminMcpCommand, event?: Event): Promise<void> {
@@ -367,6 +498,7 @@ export class AdminOperationsPageComponent {
       afterNextRender(
         () => {
           if (this.error()) this.alert()?.nativeElement.focus();
+          else if (this.confirming()) this.confirmationHeading()?.nativeElement.focus();
           else if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus();
           else this.heading()?.nativeElement.focus();
         },

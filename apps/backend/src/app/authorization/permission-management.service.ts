@@ -130,6 +130,10 @@ export class PermissionManagementService {
 
   async listRoles(includeArchived = false): Promise<PermissionRole[]> {
     await this.archiveExpiredAccess();
+    return this.readRoles(includeArchived);
+  }
+
+  async readRoles(includeArchived = false): Promise<PermissionRole[]> {
     const records = await this.prisma.eventManagerRole.findMany({
       where: includeArchived ? {} : { archivedAt: null },
       select: roleSelect,
@@ -140,6 +144,10 @@ export class PermissionManagementService {
 
   async listGroups(includeArchived = false): Promise<PermissionGroup[]> {
     await this.archiveExpiredAccess();
+    return this.readGroups(includeArchived);
+  }
+
+  async readGroups(includeArchived = false): Promise<PermissionGroup[]> {
     const groups = await this.prisma.eventManagerPermissionGroup.findMany({
       where: includeArchived ? {} : { archivedAt: null },
       select: groupSelect,

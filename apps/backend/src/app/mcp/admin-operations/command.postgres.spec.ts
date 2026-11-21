@@ -30,6 +30,7 @@ const fixtureSql = `
   CREATE TABLE event_groups (id TEXT PRIMARY KEY, "majorEventId" TEXT, "deletedAt" TIMESTAMP(3));
   CREATE TABLE events (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT, "deletedAt" TIMESTAMP(3),
+    "publicationState" TEXT NOT NULL DEFAULT 'DRAFT',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "majorEventId" TEXT, "eventGroupId" TEXT
@@ -116,9 +117,13 @@ describe('administrative commands on disposable PostgreSQL', () => {
   let invocations: number;
   let businessWrites: number;
   let observedAudit: { businessWrites: boolean; recorded: boolean }[];
+  let insertedAuditBeforeFailure: boolean;
   let permissionBarrier: (() => Promise<void>) | undefined;
   let domainGate: (() => Promise<void>) | undefined;
-  const inputSchema = z.strictObject({ id: z.string().uuid(), input: z.strictObject({ description: z.string() }) });
+  const inputSchema = z.strictObject({
+    id: z.string().uuid(),
+    input: z.strictObject({ description: z.string(), name: z.string().optional() }),
+  });
   const user = actor();
 
   function domainAudit(id: string, before: string, after: string): AuditRecordOptions {
@@ -237,8 +242,12 @@ describe('administrative commands on disposable PostgreSQL', () => {
       record: async (options: AuditRecordOptions, tx?: Prisma.TransactionClient) => {
         if (!tx) throw new Error('Audit must share the supplied owning transaction.');
         await audit.record(options, tx);
-        if (mode === 'AUDIT_FAIL' && options.entityType === AuditLogEntityType.EVENT)
+        if (mode === 'AUDIT_FAIL' && options.entityType === AuditLogEntityType.EVENT) {
+          const inserted = await tx.auditLogEntry.findFirst({ where: { entityId: options.entityId } });
+          expect(inserted?.metadata).toMatchObject({ source: 'mcp', operation: 'updateEvent' });
+          insertedAuditBeforeFailure = Boolean(inserted);
           throw new Error('Synthetic failure after actual audit insertion');
+        }
       },
     };
     const bridge: Pick<AdminMcpGraphqlBridge, 'operation' | 'arguments' | 'execute'> = {
@@ -278,7 +287,7 @@ describe('administrative commands on disposable PostgreSQL', () => {
               if (mode === 'COMMENT_UNAUDITED') await tx.$executeRaw(Prisma.raw('/* domain transaction */ COMMIT'));
               const before = await tx.event.findUniqueOrThrow({
                 where: { id: args.id },
-                select: { description: true },
+                select: { description: true, name: true },
               });
               if (mode === 'RAW_QUERY_UNAUDITED') {
                 await tx.$queryRaw`WITH changed AS (UPDATE events SET description = ${args.input.description} WHERE id = ${args.id} RETURNING id) SELECT * FROM changed`;
@@ -287,7 +296,7 @@ describe('administrative commands on disposable PostgreSQL', () => {
               } else {
                 await tx.event.update({
                   where: { id: args.id },
-                  data: { description: args.input.description },
+                  data: { description: args.input.description, name: args.input.name },
                   select: { id: true },
                 });
               }
@@ -299,7 +308,14 @@ describe('administrative commands on disposable PostgreSQL', () => {
                 mode !== 'RAW_QUERY_UNAUDITED' &&
                 mode !== 'COMMENT_UNAUDITED'
               ) {
-                await checkedAudit.record(domainAudit(args.id, before.description ?? '', args.input.description), tx);
+                await checkedAudit.record(
+                  {
+                    ...domainAudit(args.id, before.description ?? '', args.input.description),
+                    before: { description: before.description, name: before.name },
+                    after: { description: args.input.description, name: args.input.name ?? before.name },
+                  },
+                  tx,
+                );
                 if (current?.transactionAudit) observedAudit.push({ ...current.transactionAudit });
               }
               return { id: args.id };
@@ -346,6 +362,7 @@ describe('administrative commands on disposable PostgreSQL', () => {
     invocations = 0;
     businessWrites = 0;
     observedAudit = [];
+    insertedAuditBeforeFailure = false;
     permissionBarrier = undefined;
     domainGate = undefined;
     // Keep earlier rows for delayed audit synchronization while isolating the
@@ -411,6 +428,48 @@ describe('administrative commands on disposable PostgreSQL', () => {
     );
   });
 
+  it('keeps multi-field arguments fresh across the PostgreSQL JSONB round trip', async () => {
+    const args = { id: eventId, input: { description: 'Two fields', name: 'Renamed event' } };
+    const proposal = await service.propose(user, delegationId, 'updateEvent', args, randomUUID());
+    const stored = await prisma.mcpAdminCommand.findUniqueOrThrow({ where: { id: proposal.proposalId } });
+    expect(Object.keys((stored.arguments as { input: object }).input)).not.toEqual(Object.keys(args.input));
+    const preview = await service.review(user, proposal.proposalId, {
+      arguments: args,
+      expectedFingerprint: stored.fingerprint,
+    });
+    await expect(service.decide(user, proposal.proposalId, decision(preview))).resolves.toBe('APPLIED');
+    expect(
+      await prisma.event.findUniqueOrThrow({ where: { id: eventId }, select: { name: true, description: true } }),
+    ).toEqual({ name: 'Renamed event', description: 'Two fields' });
+  });
+
+  it('returns one proposal for simultaneous identical keys even at the quota boundary', async () => {
+    await prisma.mcpAdminOperationDelegation.update({ where: { id: delegationId }, data: { maxProposals: 1 } });
+    const key = randomUUID();
+    const args = { id: eventId, input: { description: 'Concurrent proposal' } };
+    permissionBarrier = twoPartyBarrier();
+    const proposals = await Promise.all([
+      service.propose(user, delegationId, 'updateEvent', args, key),
+      service.propose(user, delegationId, 'updateEvent', args, key),
+    ]);
+    permissionBarrier = undefined;
+    expect(proposals[0].proposalId).toBe(proposals[1].proposalId);
+    expect(await prisma.mcpAdminCommand.count({ where: { delegationId } })).toBe(1);
+  });
+
+  it('accepts a validated no-op without creating an empty domain audit record', async () => {
+    const proposal = await stage();
+    const preview = await review(proposal.proposalId, 'Original description');
+    await expect(service.decide(user, proposal.proposalId, decision(preview))).resolves.toBe('APPLIED');
+    expect(businessWrites).toBe(1);
+    expect(observedAudit).toEqual([
+      { businessWrites: true, recorded: false },
+      { businessWrites: true, recorded: false, validatedNoop: true },
+    ]);
+    expect(await businessAuditCount(proposal.proposalId)).toBe(0);
+    expect(await currentDescription()).toBe('Original description');
+  });
+
   it('uses real PostgreSQL CAS so overlapping approvals invoke the business operation once', async () => {
     const proposal = await stage();
     const preview = await review(proposal.proposalId);
@@ -468,6 +527,9 @@ describe('administrative commands on disposable PostgreSQL', () => {
     const preview = await review(proposal.proposalId);
     mode = 'AUDIT_FAIL';
     await service.decide(user, proposal.proposalId, decision(preview));
+    expect(businessWrites).toBe(1);
+    expect(observedAudit).toEqual([{ businessWrites: true, recorded: false }]);
+    expect(insertedAuditBeforeFailure).toBe(true);
     expect(await currentDescription()).toBe('Original description');
     expect(await businessAuditCount(proposal.proposalId)).toBe(0);
     expect(await commandState(proposal.proposalId)).toBe('UNCERTAIN');
@@ -480,6 +542,13 @@ describe('administrative commands on disposable PostgreSQL', () => {
       const preview = await review(proposal.proposalId);
       mode = behavior;
       await service.decide(user, proposal.proposalId, decision(preview));
+      if (behavior === 'COMMENT_UNAUDITED') {
+        expect(businessWrites).toBe(0);
+        expect(observedAudit).toEqual([]);
+      } else {
+        expect(businessWrites).toBe(1);
+        expect(observedAudit).toEqual([{ businessWrites: true, recorded: false }]);
+      }
       expect(await currentDescription()).toBe('Original description');
       expect(await businessAuditCount(proposal.proposalId)).toBe(0);
       expect(await commandState(proposal.proposalId)).toBe('UNCERTAIN');

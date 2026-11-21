@@ -160,6 +160,38 @@ describe('McpAdminProposalsService', () => {
   beforeEach(() => jest.useFakeTimers().setSystemTime(new Date('2026-05-21T12:00:00.000Z')));
   afterEach(() => jest.useRealTimers());
 
+  it('returns an existing location proposal as stale before validating the changed event', async () => {
+    const f = context();
+    const proposal = {
+      ...f.storedProposal,
+      operation: 'EVENT_LOCATION',
+      afterValues: { locationName: 'Sala B' },
+      beforeValues: { locationName: 'Sala A' },
+    };
+    f.tx.mcpAdminProposal.findUnique.mockResolvedValue(proposal);
+    f.tx.event.findFirst.mockResolvedValue({ ...f.event, isVirtual: true, updatedAt: new Date(Date.now() + 1000) });
+    f.event.updatedAt = new Date(Date.now() + 1000);
+    const input = {
+      delegationId: f.input.delegationId,
+      eventId: f.input.eventId,
+      idempotencyKey: f.input.idempotencyKey,
+      expectedUpdatedAt: f.input.expectedUpdatedAt,
+      changes: { locationName: 'Sala B' },
+    };
+    await expect(f.service.proposeChange(f.user, 'EVENT_LOCATION', input)).resolves.toMatchObject({
+      proposalId: proposal.id,
+      state: 'STALE',
+    });
+    expect(f.tx.mcpAdminProposal.create).not.toHaveBeenCalled();
+    f.tx.mcpAdminProposal.findUnique.mockResolvedValue(null);
+    await expect(
+      f.service.proposeChange(f.user, 'EVENT_LOCATION', {
+        ...input,
+        expectedUpdatedAt: f.event.updatedAt.toISOString(),
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   function editedContext() {
     const ctx = context();
     const input: McpEventReviewInput = {
@@ -257,8 +289,10 @@ describe('McpAdminProposalsService', () => {
   ])('rejects a preview replay with %s before claiming or mutating', async (change) => {
     const { service, user, stored, tx, audit, event, reviewDecision } = editedContext();
     const decision = await reviewDecision();
-    if (change === 'another selection') decision.review!.selections = [{ field: 'name' }];
-    if (change === 'modified value') decision.review!.selections = [{ field: 'description', value: 'Texto diferente' }];
+    const review = decision.review;
+    if (!review) throw new Error('Missing signed review fixture');
+    if (change === 'another selection') review.selections = [{ field: 'name' }];
+    if (change === 'modified value') review.selections = [{ field: 'description', value: 'Texto diferente' }];
     if (change === 'proposal') stored.id = 'other-proposal';
     if (change === 'event target') stored.eventId = 'other-event';
     if (change === 'author') stored.delegation.userId = 'other-author';

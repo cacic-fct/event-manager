@@ -226,7 +226,7 @@ describe('CertificateIssuingService', () => {
 
   it('counts certificates using the same recipient, target, configuration, and revocation filters as the page', async () => {
     const prisma = {
-      $transaction: jest.fn((operations: Promise<unknown>[]) => Promise.all(operations)),
+      $transaction: jest.fn((work: (tx: unknown) => Promise<unknown>) => work(prisma)),
       certificate: {
         findMany: jest.fn().mockResolvedValue([mappedCertificateRecord]),
         count: jest.fn().mockResolvedValue(52),

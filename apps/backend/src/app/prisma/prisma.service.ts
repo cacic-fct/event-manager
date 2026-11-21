@@ -66,14 +66,17 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
             if (typeof operation !== 'function')
               throw new BadRequestException('Esta operação exige uma transação de domínio revisável.');
             return run((tx) => {
-              const transactionAudit = { businessWrites: false, recorded: false };
+              const transactionAudit: NonNullable<typeof execution.transactionAudit> = {
+                businessWrites: false,
+                recorded: false,
+              };
               return adminMcpExecution.run({ ...execution, inTransaction: true, transactionAudit }, async () => {
                 await adminMcpExecution.run(
                   { ...execution, inTransaction: true, transactionAudit, trustedRawRead: true },
                   () => execution.beforeTransaction?.(tx),
                 );
                 const result = await operation(tx);
-                if (transactionAudit.businessWrites && !transactionAudit.recorded) {
+                if (transactionAudit.businessWrites && !transactionAudit.recorded && !transactionAudit.validatedNoop) {
                   throw new BadRequestException('A alteração não possui auditoria transacional verificável.');
                 }
                 return result;

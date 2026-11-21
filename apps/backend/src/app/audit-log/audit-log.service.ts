@@ -131,6 +131,9 @@ export class AuditLogService {
     const after = normalizeAuditSnapshot(options.after);
     const changes = diffAuditRecords(before, after);
     if (!options.force && changes.length === 0) {
+      if (mcp?.phase === 'apply' && mcp.transactionAudit && before && after && Object.keys(before).length > 0) {
+        mcp.transactionAudit.validatedNoop = true;
+      }
       return;
     }
     const snapshots = compactAuditSnapshots(before, after, changes);
