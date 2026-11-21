@@ -1,3 +1,4 @@
+import { adminMcpExecution } from '../mcp/admin-operations/execution-context';
 import { EventManagerKeycloakRole } from '@cacic-fct/shared-permissions';
 import {
   BadRequestException,
@@ -103,6 +104,29 @@ export class AuditLogService {
   ) {}
 
   async record(options: AuditRecordOptions, prisma: AuditPrismaClient = this.prisma): Promise<void> {
+    const mcp = adminMcpExecution.getStore();
+    if (mcp?.phase === 'apply' && mcp.beforeTransaction && (!mcp.inTransaction || prisma === this.prisma)) {
+      throw new BadRequestException('A auditoria MCP deve compartilhar a transação da alteração.');
+    }
+    if (mcp?.phase === 'apply' && mcp.proposalId) {
+      options = {
+        ...options,
+        squashWindowMs: 0,
+        summary: `Alteração MCP aprovada por ${mcp.approvedByName ?? mcp.user.sub}. ${options.summary ?? ''}`.trim(),
+        metadata: {
+          ...options.metadata,
+          ...mcp.reviewMetadata,
+          source: 'mcp',
+          proposalId: mcp.proposalId,
+          delegationId: mcp.delegationId,
+          clientId: mcp.clientId,
+          operation: mcp.operation,
+          proposedById: mcp.user.sub,
+          approvedById: mcp.user.sub,
+          approvedByName: mcp.approvedByName,
+        },
+      };
+    }
     const before = normalizeAuditSnapshot(options.before);
     const after = normalizeAuditSnapshot(options.after);
     const changes = diffAuditRecords(before, after);
@@ -157,6 +181,9 @@ export class AuditLogService {
             : undefined,
       },
     });
+    if (mcp?.phase === 'apply' && mcp.transactionAudit) {
+      mcp.transactionAudit.recorded = true;
+    }
     synchronizeAuditLogEntry(entry, prisma, this.prisma, this.typesenseSearch);
   }
 

@@ -19,6 +19,7 @@ import { SportsMutationEventsService } from '../sports/realtime/sports-mutation-
 import { McpAdminMaintenanceService } from './mcp-admin-maintenance.service';
 import { McpEventContentSyncLockService } from './mcp-event-content-sync-lock.service';
 import { McpAdminProposalsService } from './mcp-admin-proposals.service';
+import type { McpEventReviewInput, McpProposalOperation } from '@cacic-fct/event-manager-mcp-contracts';
 
 const { jest } = import.meta;
 const RESOURCE = 'http://localhost:3000/api/mcp/admin';
@@ -42,10 +43,15 @@ const fixtureSql = `
     "startDate" TIMESTAMP(3) NOT NULL, "endDate" TIMESTAMP(3) NOT NULL,
     "updatedAt" TIMESTAMP(3) NOT NULL, "updatedById" TEXT, "deletedAt" TIMESTAMP(3),
     "majorEventId" TEXT, "eventGroupId" TEXT, "publicationState" TEXT NOT NULL DEFAULT 'PUBLISHED',
+    "shortDescription" TEXT, "locationDescription" TEXT,
+    latitude DOUBLE PRECISION, longitude DOUBLE PRECISION,
+    "lecturerInformation" TEXT, "collectorInformation" TEXT, "preparationUpdatedAt" TIMESTAMP(3),
+    "youtubeCode" TEXT, "twitchChannel" TEXT,
     "locationName" TEXT, "isVirtual" BOOLEAN NOT NULL DEFAULT false
   );
   CREATE TABLE mcp_test_audit (
-    id TEXT PRIMARY KEY, operation TEXT NOT NULL, "entityId" TEXT NOT NULL, metadata JSONB NOT NULL
+    id TEXT PRIMARY KEY, operation TEXT NOT NULL, "entityId" TEXT NOT NULL, metadata JSONB NOT NULL,
+    "beforeValues" JSONB, "afterValues" JSONB
   );
   CREATE TABLE mcp_test_event_updates ("eventId" TEXT NOT NULL, description TEXT);
   CREATE FUNCTION mcp_test_capture_event_update() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -151,6 +157,12 @@ describe('MCP real PostgreSQL transactions', () => {
       'utf8',
     );
     await sql.query(migration);
+    await sql.query(
+      await readFile(
+        resolve(import.meta.dirname, '../../../prisma/migrations/20261119220000_expand_admin_mcp/migration.sql'),
+        'utf8',
+      ),
+    );
     prisma = new PrismaService();
     await prisma.$connect();
     const authorization = {
@@ -165,8 +177,9 @@ describe('MCP real PostgreSQL transactions', () => {
       record: jest.fn(async (options: AuditRecordOptions, tx?: Prisma.TransactionClient) => {
         if (!tx) throw new Error('Audit evidence must use the provided business transaction.');
         await tx.$executeRaw(Prisma.sql`
-          INSERT INTO mcp_test_audit (id, operation, "entityId", metadata)
-          VALUES (${randomUUID()}, ${options.operation}, ${options.entityId}, ${JSON.stringify(options.metadata ?? {})}::jsonb)
+          INSERT INTO mcp_test_audit (id, operation, "entityId", metadata, "beforeValues", "afterValues")
+          VALUES (${randomUUID()}, ${options.operation}, ${options.entityId}, ${JSON.stringify(options.metadata ?? {})}::jsonb,
+            ${JSON.stringify(options.before ?? null)}::jsonb, ${JSON.stringify(options.after ?? null)}::jsonb)
         `);
         if (failAudit) throw new Error('Synthetic audit failure after INSERT');
       }),
@@ -185,6 +198,7 @@ describe('MCP real PostgreSQL transactions', () => {
       config,
     );
     const frozen = {
+      assertLoadedEventMutable: async () => undefined,
       forTransaction: (tx: Prisma.TransactionClient) => ({
         assertEventUpdateMutable: async () => {
           await mutableHook?.(tx);
@@ -266,6 +280,316 @@ describe('MCP real PostgreSQL transactions', () => {
       updates: (await sql.query('SELECT * FROM mcp_test_event_updates')).rowCount,
     }));
   }
+
+  async function queuedChange(operation: McpProposalOperation, changes: Record<string, unknown>) {
+    return asTransactionWork(async () => {
+      const delegation = await access.create(user(), {
+        clientId: CLIENT_ID,
+        eventIds: [eventId],
+        capabilities: [
+          'EVENT_READ',
+          'EVENT_CONTENT_PROPOSE',
+          'LOCATION_PROPOSE',
+          'PREPARATION_PROPOSE',
+          'LIVESTREAM_PROPOSE',
+        ],
+        maxProposals: 10,
+        expiresAt: new Date(Date.now() + 60 * 60_000).toISOString(),
+      });
+      const input = {
+        delegationId: delegation.id,
+        eventId,
+        changes,
+        idempotencyKey: randomUUID(),
+        expectedUpdatedAt: updatedAt.toISOString(),
+      };
+      const proposal = await proposals.proposeChange(user(), operation, input);
+      await sql.query('DELETE FROM mcp_test_audit');
+      return { delegationId: delegation.id, proposalId: proposal.proposalId, input };
+    });
+  }
+
+  const expandedCases: {
+    operation: McpProposalOperation;
+    changes: Record<string, unknown>;
+    expected: Record<string, unknown>;
+  }[] = [
+    {
+      operation: 'EVENT_CONTENT',
+      changes: { name: '  Novo nome  ', shortDescription: ' Resumo ' },
+      expected: { name: 'Novo nome', shortDescription: 'Resumo' },
+    },
+    {
+      operation: 'EVENT_LOCATION',
+      changes: { isVirtual: true },
+      expected: { isVirtual: true, locationName: null, locationDescription: null, latitude: null, longitude: null },
+    },
+    {
+      operation: 'EVENT_PREPARATION',
+      changes: { lecturerInformation: ' Orientações ', collectorInformation: ' Coleta ' },
+      expected: { lecturerInformation: 'Orientações', collectorInformation: 'Coleta' },
+    },
+    {
+      operation: 'EVENT_LIVESTREAM',
+      changes: {
+        youtubeCode: 'https://youtu.be/abc_123?tracking=gone',
+        twitchChannel: 'https://twitch.tv/Test_Channel',
+      },
+      expected: { youtubeCode: 'abc_123', twitchChannel: 'test_channel' },
+    },
+  ];
+
+  it.each([false, true])(
+    'applies only the signed amended selection and rolls back on audit failure (%s)',
+    async (rollback) => {
+      const queued = await queuedChange('EVENT_CONTENT', {
+        name: 'Nome que será descartado',
+        description: 'Descrição sugerida',
+      });
+      const review: McpEventReviewInput = {
+        expectedUpdatedAt: updatedAt.toISOString(),
+        expectedOperation: 'EVENT_CONTENT',
+        selections: [{ field: 'description', value: '  Revisão da autora  ' }],
+      };
+      const preview = await asTransactionWork(() => proposals.prepareReview(user(), queued.proposalId, review));
+      expect(preview.changes).toEqual([
+        { field: 'description', label: 'Descrição', before: 'Before description', after: 'Revisão da autora' },
+      ]);
+      failAudit = rollback;
+      const request = asTransactionWork(() =>
+        proposals.decide(user(), queued.proposalId, {
+          decision: 'APPROVE',
+          expectedOperation: review.expectedOperation,
+          expectedUpdatedAt: review.expectedUpdatedAt,
+          review: { token: preview.token, selections: review.selections },
+        }),
+      );
+      if (rollback) await expect(request).rejects.toThrow('Synthetic audit failure after INSERT');
+      else await expect(request).resolves.toBe(eventId);
+
+      const result = await state(queued.proposalId);
+      expect(result.proposal?.state).toBe(rollback ? 'PENDING' : 'APPLIED');
+      expect(result.proposal?.afterValues).toEqual({
+        name: 'Nome que será descartado',
+        description: 'Descrição sugerida',
+      });
+      expect(result.event?.description).toBe(rollback ? 'Before description' : 'Revisão da autora');
+      expect((await sql.query('SELECT name FROM events WHERE id = $1', [eventId])).rows[0].name).toBe(
+        'Synthetic Event',
+      );
+      expect(result.updates).toBe(rollback ? 0 : 1);
+      if (rollback) {
+        expect(result.audit).toEqual([]);
+        expect(result.outbox).toBeNull();
+      } else {
+        expect(result.audit).toEqual([
+          expect.objectContaining({
+            beforeValues: { description: 'Before description' },
+            afterValues: { description: 'Revisão da autora' },
+            metadata: expect.objectContaining({
+              source: 'mcp',
+              approvedById: USER_ID,
+              proposedById: USER_ID,
+              proposalId: queued.proposalId,
+              delegationId: queued.delegationId,
+              clientId: CLIENT_ID,
+              review: { selectedFields: ['description'], discardedFields: ['name'], editedFields: ['description'] },
+            }),
+          }),
+        ]);
+        expect(result.outbox).not.toBeNull();
+      }
+    },
+  );
+
+  it.each(expandedCases)(
+    'applies exactly the displayed normalized fields for $operation and records attribution',
+    async ({ operation, changes, expected }) => {
+      await sql.query(
+        'UPDATE events SET "locationName" = $1, "locationDescription" = $2, latitude = $3, longitude = $4 WHERE id = $5',
+        ['Sala', 'Prédio', -22, -51, eventId],
+      );
+      await sql.query('UPDATE events SET "preparationUpdatedAt" = $1 WHERE id = $2', [
+        updatedAt.toISOString(),
+        eventId,
+      ]);
+      const queued = await queuedChange(operation, changes);
+      const pending = await asTransactionWork(() => proposals.list(user(), 0, queued.proposalId));
+      expect(pending.items[0].operation).toBe(operation);
+      expect((pending.items[0].changes ?? []).map((change) => change.field).sort()).toEqual(
+        Object.keys(expected).sort(),
+      );
+      const beforeEvent = (await sql.query('SELECT * FROM events WHERE id = $1', [eventId])).rows[0];
+      expect(beforeEvent.name).toBe('Synthetic Event');
+      const stored = await prisma.mcpAdminProposal.findUniqueOrThrow({ where: { id: queued.proposalId } });
+      expect(stored.afterValues).toEqual(expected);
+      await asTransactionWork(() =>
+        proposals.decide(user(), queued.proposalId, {
+          decision: 'APPROVE',
+          expectedOperation: operation,
+          expectedUpdatedAt: updatedAt.toISOString(),
+        }),
+      );
+      const afterEvent = (await sql.query('SELECT * FROM events WHERE id = $1', [eventId])).rows[0];
+      for (const [key, value] of Object.entries(expected)) expect(afterEvent[key]).toEqual(value);
+      for (const key of ['publicationState', 'majorEventId', 'eventGroupId', 'deletedAt', 'description']) {
+        expect(afterEvent[key]).toEqual(beforeEvent[key]);
+      }
+      if (operation === 'EVENT_PREPARATION') {
+        expect(afterEvent.preparationUpdatedAt.getTime()).toBeGreaterThan(beforeEvent.preparationUpdatedAt.getTime());
+      }
+      const evidence = (await sql.query('SELECT * FROM mcp_test_audit')).rows;
+      expect(evidence).toHaveLength(1);
+      expect(evidence[0].metadata).toMatchObject({
+        operation,
+        approvedById: USER_ID,
+        proposedById: USER_ID,
+        proposalId: queued.proposalId,
+      });
+      expect(evidence[0].afterValues).toEqual(expected);
+      expect(evidence[0].beforeValues).toEqual(stored.beforeValues);
+      await expect(
+        asTransactionWork(() =>
+          proposals.decide(user(), queued.proposalId, {
+            decision: 'APPROVE',
+            expectedOperation: operation,
+            expectedUpdatedAt: updatedAt.toISOString(),
+          }),
+        ),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect((await sql.query('SELECT * FROM mcp_test_audit')).rows).toHaveLength(1);
+    },
+  );
+
+  it.each([undefined, 'EVENT_LOCATION'] as const)(
+    'requires the displayed operation for expanded approval: %s',
+    async (expectedOperation) => {
+      const queued = await queuedChange('EVENT_CONTENT', { name: 'Novo nome' });
+      await expect(
+        asTransactionWork(() =>
+          proposals.decide(user(), queued.proposalId, {
+            decision: 'APPROVE',
+            expectedOperation,
+            expectedUpdatedAt: updatedAt.toISOString(),
+          }),
+        ),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect((await state(queued.proposalId)).proposal?.state).toBe('PENDING');
+      expect((await sql.query('SELECT name FROM events WHERE id = $1', [eventId])).rows[0].name).toBe(
+        'Synthetic Event',
+      );
+    },
+  );
+
+  it('rejects a stale expanded field even when updatedAt was unchanged', async () => {
+    const queued = await queuedChange('EVENT_CONTENT', { name: 'Novo nome' });
+    await sql.query('UPDATE events SET name = $1 WHERE id = $2', ['Concurrent name', eventId]);
+    await expect(
+      asTransactionWork(() =>
+        proposals.decide(user(), queued.proposalId, {
+          decision: 'APPROVE',
+          expectedOperation: 'EVENT_CONTENT',
+          expectedUpdatedAt: updatedAt.toISOString(),
+        }),
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+    const result = await state(queued.proposalId);
+    expect(result.proposal?.state).toBe('PENDING');
+    expect(result.outbox).toBeNull();
+    expect(result.audit).toEqual([]);
+  });
+
+  it('requires the exact operation capability again at approval', async () => {
+    const queued = await queuedChange('EVENT_LIVESTREAM', { youtubeCode: 'abc' });
+    await prisma.mcpAdminDelegation.update({
+      where: { id: queued.delegationId },
+      data: { capabilities: ['EVENT_READ', 'EVENT_CONTENT_PROPOSE'] },
+    });
+    await expect(
+      asTransactionWork(() =>
+        proposals.decide(user(), queued.proposalId, {
+          decision: 'APPROVE',
+          expectedOperation: 'EVENT_LIVESTREAM',
+          expectedUpdatedAt: updatedAt.toISOString(),
+        }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect((await state(queued.proposalId)).audit).toEqual([]);
+  });
+
+  it('refuses persisted filter objects masquerading as reviewed scalar before values', async () => {
+    const queued = await queuedChange('EVENT_CONTENT', { name: 'Novo nome' });
+    await sql.query('UPDATE mcp_admin_proposals SET "beforeValues" = $1::jsonb WHERE id = $2', [
+      JSON.stringify({ name: { not: 'Novo nome' } }),
+      queued.proposalId,
+    ]);
+    await expect(
+      asTransactionWork(() =>
+        proposals.decide(user(), queued.proposalId, {
+          decision: 'APPROVE',
+          expectedOperation: 'EVENT_CONTENT',
+          expectedUpdatedAt: updatedAt.toISOString(),
+        }),
+      ),
+    ).rejects.toThrow('Valores anteriores inválidos');
+    const result = await state(queued.proposalId);
+    expect(result.proposal?.state).toBe('PENDING');
+    expect(result.audit).toEqual([]);
+    expect(result.outbox).toBeNull();
+  });
+
+  it('binds idempotency to operation and normalized values, including after application', async () => {
+    const queued = await queuedChange('EVENT_LIVESTREAM', { youtubeCode: 'https://youtu.be/abc' });
+    const retry = await asTransactionWork(() =>
+      proposals.proposeChange(user(), 'EVENT_LIVESTREAM', { ...queued.input, changes: { youtubeCode: 'abc' } }),
+    );
+    expect(retry.proposalId).toBe(queued.proposalId);
+    await expect(
+      asTransactionWork(() =>
+        proposals.proposeChange(user(), 'EVENT_CONTENT', { ...queued.input, changes: { name: 'Novo nome' } }),
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(
+      asTransactionWork(() =>
+        proposals.proposeChange(user(), 'EVENT_LIVESTREAM', { ...queued.input, changes: { youtubeCode: 'different' } }),
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+    await asTransactionWork(() =>
+      proposals.decide(user(), queued.proposalId, {
+        decision: 'APPROVE',
+        expectedOperation: 'EVENT_LIVESTREAM',
+        expectedUpdatedAt: updatedAt.toISOString(),
+      }),
+    );
+    const replay = await asTransactionWork(() =>
+      proposals.proposeChange(user(), 'EVENT_LIVESTREAM', { ...queued.input, changes: { youtubeCode: 'abc' } }),
+    );
+    expect(replay.state).toBe('APPLIED');
+    expect((await state(queued.proposalId)).audit).toHaveLength(1);
+  });
+
+  it.each(expandedCases)(
+    'rolls back every $operation field when transactional audit insertion fails',
+    async ({ operation, changes }) => {
+      const queued = await queuedChange(operation, changes);
+      const before = (await sql.query('SELECT * FROM events WHERE id = $1', [eventId])).rows[0];
+      failAudit = true;
+      await expect(
+        asTransactionWork(() =>
+          proposals.decide(user(), queued.proposalId, {
+            decision: 'APPROVE',
+            expectedOperation: operation,
+            expectedUpdatedAt: updatedAt.toISOString(),
+          }),
+        ),
+      ).rejects.toThrow('Synthetic audit failure after INSERT');
+      expect((await sql.query('SELECT * FROM events WHERE id = $1', [eventId])).rows[0]).toEqual(before);
+      const result = await state(queued.proposalId);
+      expect(result.proposal?.state).toBe('PENDING');
+      expect(result.outbox).toBeNull();
+      expect(result.audit).toEqual([]);
+    },
+  );
 
   it('commits only one overlapping approval across independent PostgreSQL sessions', async () => {
     const queued = await queuedProposal();

@@ -1,3 +1,4 @@
+import { adminMcpExecution } from '../mcp/admin-operations/execution-context';
 import {
   BadRequestException,
   ConflictException,
@@ -84,6 +85,19 @@ export class CurrentUserContextService {
     options: ResolveCurrentUserContextOptions,
   ): Promise<ResolvedCurrentUserContext> {
     const effectiveUser = await this.resolveMergedAuthenticatedUser(authenticatedUser);
+    if (adminMcpExecution.getStore()) {
+      if (!effectiveUser.sub) throw new UnauthorizedException('Missing MCP identity.');
+      const [storedUser, people] = await Promise.all([
+        this.prisma.user.findUnique({ where: { id: effectiveUser.sub }, select: USER_SELECT }),
+        this.prisma.people.findMany({
+          where: { userId: effectiveUser.sub, deletedAt: null, mergedIntoId: null },
+          select: PERSON_SELECT,
+          take: 2,
+        }),
+      ]);
+      if (people.length !== 1) throw new UnauthorizedException('MCP requires one existing linked person.');
+      return { user: storedUser, person: people[0] };
+    }
     const user = await this.resolveCurrentUser(effectiveUser);
     if (user && user.id === effectiveUser.sub) {
       await this.reconcileTicketAccountRelations(user.id);
@@ -115,6 +129,7 @@ export class CurrentUserContextService {
       return person;
     }
 
+    if (adminMcpExecution.getStore()) throw new UnauthorizedException('MCP cannot create an implicit identity.');
     return this.createCurrentPerson(authenticatedUser);
   }
 

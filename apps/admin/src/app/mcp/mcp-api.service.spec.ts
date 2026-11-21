@@ -24,6 +24,20 @@ describe('McpApi session boundary', () => {
     expect(read.request.headers.has('X-MCP-Review')).toBe(false);
     read.flush({ enabled: true });
     await settings;
+    const input = {
+      expectedOperation: 'EVENT_DESCRIPTION' as const,
+      expectedUpdatedAt: new Date().toISOString(),
+      selections: [{ field: 'description' as const, value: 'Descrição revisada.' }],
+    };
+    const review = api.prepareReview('proposal/id', input);
+    const prepare = http.expectOne('/api/admin/mcp/proposals/proposal%2Fid/review');
+    expect(prepare.request.method).toBe('POST');
+    expect(prepare.request.withCredentials).toBe(true);
+    expect(prepare.request.headers.get('X-MCP-Review')).toBe('1');
+    expect(prepare.request.headers.has('Authorization')).toBe(false);
+    expect(prepare.request.body).toEqual(input);
+    prepare.flush({ token: 'proof', changes: [] });
+    await review;
     const decision = api.decide('proposal/id', { decision: 'REJECT', expectedUpdatedAt: new Date().toISOString() });
     const write = http.expectOne('/api/admin/mcp/proposals/proposal%2Fid/decision');
     expect(write.request.method).toBe('POST');

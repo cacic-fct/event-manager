@@ -1,11 +1,8 @@
+import { normalizeInformation } from './event-preparation-text';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
-import {
-  parseEventMaterials,
-  MAX_EVENT_INFORMATION_LENGTH,
-  type EventMaterial,
-} from '@cacic-fct/shared-event-preparation';
+import { parseEventMaterials, type EventMaterial } from '@cacic-fct/shared-event-preparation';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
@@ -325,11 +322,6 @@ export class EventPreparationResolver {
   }
 }
 
-function normalizeInformation(content: string | null): string | null {
-  if (content != null && content.length > MAX_EVENT_INFORMATION_LENGTH)
-    throw new BadRequestException('Use até 10.000 caracteres por orientação.');
-  return content?.trim() || null;
-}
 function assertRevision(actual: Date | null, expected: Date | null): void {
   if ((actual?.getTime() ?? null) !== (expected?.getTime() ?? null)) {
     throw new ConflictException('Estas informações foram alteradas. Recarregue antes de salvar novamente.');

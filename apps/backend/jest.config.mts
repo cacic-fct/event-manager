@@ -7,6 +7,7 @@ export default {
   // Keep the PGlite and PostgreSQL suites in their dedicated integration targets.
   testPathIgnorePatterns: [
     '/node_modules/',
+    '\\.postgres\\.spec\\.ts$',
     'data-transfer/.*\\.integration\\.spec\\.ts$',
     'transfer-http\\.e2e\\.spec\\.ts$',
     'data-transfer\\.postgres\\.spec\\.ts$',

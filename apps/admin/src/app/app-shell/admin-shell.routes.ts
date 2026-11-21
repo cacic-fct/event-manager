@@ -85,6 +85,12 @@ export const routes: Route[] = [
     loadComponent: () => import('./admin-shell.component').then((m) => m.AdminShellComponent),
     children: [
       {
+        path: 'mcp/operations',
+        data: getFeatureRouteData('mcp'),
+        loadComponent: () =>
+          import('../mcp/admin-operations/admin-operations-page.component').then((m) => m.AdminOperationsPageComponent),
+      },
+      {
         path: '',
         loadChildren: () => import('../dashboard/home.routes').then((m) => m.routes),
       },
