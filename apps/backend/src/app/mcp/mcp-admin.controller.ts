@@ -1,5 +1,5 @@
 import type { McpAdminSettings } from '@cacic-fct/event-manager-mcp-contracts';
-import { Body, Controller, Get, Param, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiBody, ApiCookieAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { Public } from '../auth/decorators/public.decorator';
@@ -10,7 +10,13 @@ import { McpAdminMaintenanceService } from './mcp-admin-maintenance.service';
 import { McpAdminProposalsService } from './mcp-admin-proposals.service';
 import { McpAdminSessionGuard } from './mcp-admin-session.guard';
 import { McpAdminOperationInterceptor } from './mcp-admin-operation.interceptor';
-import { mcpDecisionSchema, mcpDelegationInputSchema, mcpIdSchema, parseMcpInput } from './mcp-admin.schemas';
+import {
+  mcpDecisionSchema,
+  mcpDelegationInputSchema,
+  mcpEventReviewSchema,
+  mcpIdSchema,
+  parseMcpInput,
+} from './mcp-admin.schemas';
 
 @ApiTags('Admin MCP')
 @ApiCookieAuth()
@@ -94,7 +100,7 @@ export class McpAdminController {
   }
 
   @Post('proposals/:id/decision')
-  @ApiOperation({ summary: 'Revisar e decidir uma proposta imutável; aprovação aplica a alteração uma única vez.' })
+  @ApiOperation({ summary: 'Decidir uma proposta; a aprovação aplica a revisão confirmada uma única vez.' })
   @ApiBody({ schema: { example: { decision: 'APPROVE', expectedUpdatedAt: '2026-11-19T12:00:00Z' } } })
   @ApiResponse({ status: 201, schema: { example: { success: true } } })
   @ApiResponse({ status: 409, description: 'Proposta expirada, já decidida ou evento alterado.' })
@@ -104,5 +110,33 @@ export class McpAdminController {
     // Committed business state and its audit remain successful if projections need retry.
     if (eventId) await this.maintenance.flush(eventId).catch(() => undefined);
     return { success: true };
+  }
+
+  @Post('proposals/:id/review')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Validar campos escolhidos e preparar a comparação final para a confirmação web.' })
+  @ApiBody({
+    schema: {
+      example: {
+        expectedOperation: 'EVENT_CONTENT',
+        expectedUpdatedAt: '2026-11-19T12:00:00Z',
+        selections: [{ field: 'name' }, { field: 'description', value: 'Descrição revisada.' }],
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    schema: {
+      example: {
+        token: '1795090200000.signature',
+        changes: [{ field: 'name', label: 'Nome', before: 'Nome anterior', after: 'Nome revisado' }],
+        approvalEffects: 'Somente os campos exibidos serão alterados.',
+      },
+    },
+  })
+  @ApiResponse({ status: 409, description: 'Proposta expirada, já decidida ou evento alterado.' })
+  prepareProposalReview(@Req() request: McpAuthenticatedRequest, @Param('id') id: string, @Body() body: unknown) {
+    const input = parseMcpInput(mcpEventReviewSchema, body);
+    return this.proposals.prepareReview(request.user, parseMcpInput(mcpIdSchema, id), input);
   }
 }

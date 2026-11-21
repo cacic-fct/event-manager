@@ -1,5 +1,4 @@
 import { DatePipe } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
 import {
   Component,
   DestroyRef,
@@ -27,6 +26,7 @@ import type {
   McpAdminProposal,
   McpAdminProposalPage,
   McpAdminSettings,
+  McpProposalChange,
   McpProposalStatus,
 } from '@cacic-fct/event-manager-mcp-contracts';
 import { auditTime, firstValueFrom, map } from 'rxjs';
@@ -37,7 +37,8 @@ import { ReviewQueuePaginationComponent } from '../shared/review-queue/review-qu
 import { EventApiService } from '../graphql/event-api.service';
 import type { EventContextRef } from '../shared/event-context-picker.component';
 import { McpEventDialogComponent } from './mcp-event-dialog.component';
-import { McpApi } from './mcp-api.service';
+import { McpEventReviewDialogComponent } from './mcp-event-review-dialog.component';
+import { McpApi, mcpErrorMessage } from './mcp-api.service';
 
 const STATUS_LABELS: Record<McpProposalStatus, string> = {
   PENDING: 'Pendente',
@@ -94,7 +95,16 @@ export class McpPageComponent {
   readonly capabilityOptions: { value: McpAdminCapability; label: string }[] = [
     { value: 'EVENT_READ', label: 'Consultar eventos' },
     { value: 'ATTENDANCE_READ', label: 'Consultar totais de presença' },
+    { value: 'PREPARATION_READ', label: 'Consultar instruções privadas de preparação' },
+    { value: 'MATERIALS_READ', label: 'Consultar materiais e seus endereços de acesso' },
+    { value: 'SUBSCRIPTIONS_READ', label: 'Consultar totais de inscrições' },
+    { value: 'FORMS_READ', label: 'Consultar formulários do evento' },
+    { value: 'CONTENT_REVIEWS_READ', label: 'Consultar revisões de materiais' },
     { value: 'DESCRIPTION_PROPOSE', label: 'Propor alterações de descrição' },
+    { value: 'EVENT_CONTENT_PROPOSE', label: 'Propor alterações de conteúdo do evento' },
+    { value: 'LOCATION_PROPOSE', label: 'Propor alterações de local' },
+    { value: 'PREPARATION_PROPOSE', label: 'Propor alterações de preparação' },
+    { value: 'LIVESTREAM_PROPOSE', label: 'Propor alterações de transmissão' },
   ];
   readonly form = new FormGroup({
     clientId: new FormControl('', { nonNullable: true, validators: Validators.required }),
@@ -153,7 +163,7 @@ export class McpPageComponent {
       this.loadError.set('');
     } catch (error) {
       if (request === this.request && !background) {
-        this.loadError.set(this.errorMessage(error, 'Não foi possível carregar a fila. Tente novamente.'));
+        this.loadError.set(mcpErrorMessage(error, 'Não foi possível carregar a fila. Tente novamente.'));
       }
     } finally {
       if (request === this.request) this.loading.set(false);
@@ -175,6 +185,31 @@ export class McpPageComponent {
 
   capabilityLabel(value: McpAdminCapability): string {
     return this.capabilityOptions.find((option) => option.value === value)?.label ?? value;
+  }
+
+  isProposalCapability(value: McpAdminCapability): boolean {
+    return value.endsWith('_PROPOSE');
+  }
+
+  invalidCapabilities(): boolean {
+    const capabilities = this.form.controls.capabilities.value;
+    return (
+      !capabilities.includes('EVENT_READ') ||
+      (!this.settings()?.proposalsEnabled && capabilities.some((value) => this.isProposalCapability(value)))
+    );
+  }
+
+  proposalChanges(proposal: McpAdminProposal): McpProposalChange[] {
+    return (
+      proposal.changes ?? [
+        {
+          field: 'description',
+          label: 'Descrição',
+          before: proposal.descriptionBefore,
+          after: proposal.descriptionAfter,
+        },
+      ]
+    );
   }
 
   statusLabel(status: McpProposalStatus): string {
@@ -233,7 +268,7 @@ export class McpPageComponent {
     const fields = this.form.getRawValue();
     if (this.form.invalid || !this.selectedEvents().length || this.selectedEvents().length > 20) return;
     if (!this.settings()?.clients.some(({ id }) => id === fields.clientId)) return;
-    if (!this.settings()?.proposalsEnabled && fields.capabilities.includes('DESCRIPTION_PROPOSE')) return;
+    if (this.invalidCapabilities()) return;
     this.busy.set(true);
     this.actionError.set('');
     this.feedback.set('');
@@ -270,19 +305,46 @@ export class McpPageComponent {
     );
   }
 
-  async decide(proposal: McpAdminProposal, decision: 'APPROVE' | 'REJECT', event?: Event): Promise<void> {
+  async review(proposal: McpAdminProposal, event?: Event): Promise<void> {
+    if (
+      this.busy() ||
+      this.loading() ||
+      proposal.status !== 'PENDING' ||
+      !proposal.canApprove ||
+      proposal.baseUpdatedAt !== proposal.currentUpdatedAt ||
+      !proposal.reviewFields?.length
+    )
+      return;
+    await this.runDialogAction(async () => {
+      const applied = await firstValueFrom(
+        this.dialog
+          .open<McpEventReviewDialogComponent, McpAdminProposal, boolean>(McpEventReviewDialogComponent, {
+            data: proposal,
+            autoFocus: 'first-heading',
+            restoreFocus: false,
+            width: '42rem',
+            maxWidth: 'calc(100vw - 2rem)',
+          })
+          .afterClosed(),
+      );
+      if (applied) this.feedback.set('Proposta aprovada e aplicada.');
+      return !!applied;
+    }, event?.currentTarget);
+  }
+
+  async reject(proposal: McpAdminProposal, event?: Event): Promise<void> {
     if (this.busy() || this.loading() || proposal.status !== 'PENDING') return;
-    const approve = decision === 'APPROVE';
-    if (approve && (!proposal.canApprove || proposal.baseUpdatedAt !== proposal.currentUpdatedAt)) return;
     await this.confirmAction(
-      approve ? 'Aprovar esta proposta?' : 'Rejeitar esta proposta?',
-      approve
-        ? `${proposal.eventName}: ${proposal.approvalEffects} A descrição será substituída exatamente pelo texto proposto exibido nesta página.`
-        : `A proposta para ${proposal.eventName} será encerrada sem alterar a descrição.`,
-      approve ? 'Aprovar proposta' : 'Rejeitar proposta',
+      'Rejeitar esta proposta?',
+      `A proposta para ${proposal.eventName} será encerrada sem alterar o evento.`,
+      'Rejeitar proposta',
       async () => {
-        await this.api.decide(proposal.id, { decision, expectedUpdatedAt: proposal.baseUpdatedAt });
-        this.feedback.set(approve ? 'Proposta aprovada e aplicada.' : 'Proposta rejeitada.');
+        await this.api.decide(proposal.id, {
+          decision: 'REJECT',
+          expectedUpdatedAt: proposal.baseUpdatedAt,
+          ...(proposal.operation ? { expectedOperation: proposal.operation } : {}),
+        });
+        this.feedback.set('Proposta rejeitada.');
       },
       event?.currentTarget,
     );
@@ -295,11 +357,7 @@ export class McpPageComponent {
     action: () => Promise<void>,
     trigger?: EventTarget | null,
   ): Promise<void> {
-    this.busy.set(true);
-    this.actionError.set('');
-    this.feedback.set('');
-    let cancelled = false;
-    try {
+    await this.runDialogAction(async () => {
       const confirmed = await firstValueFrom(
         this.dialog
           .open(ConfirmationDialogComponent, {
@@ -308,11 +366,20 @@ export class McpPageComponent {
           })
           .afterClosed(),
       );
-      if (!confirmed) {
-        cancelled = true;
-        return;
-      }
+      if (!confirmed) return false;
       await action();
+      return true;
+    }, trigger);
+  }
+
+  private async runDialogAction(action: () => Promise<boolean>, trigger?: EventTarget | null): Promise<void> {
+    this.busy.set(true);
+    this.actionError.set('');
+    this.feedback.set('');
+    let cancelled = false;
+    try {
+      cancelled = !(await action());
+      if (cancelled) return;
       await this.load();
       afterNextRender(() => this.heading()?.nativeElement.focus(), { injector: this.injector });
     } catch (error) {
@@ -333,17 +400,7 @@ export class McpPageComponent {
   }
 
   private showError(error: unknown, fallback: string): void {
-    this.actionError.set(this.errorMessage(error, fallback));
+    this.actionError.set(mcpErrorMessage(error, fallback));
     afterNextRender(() => this.alert()?.nativeElement.focus(), { injector: this.injector });
-  }
-
-  private errorMessage(error: unknown, fallback: string): string {
-    if (error instanceof HttpErrorResponse) {
-      const body: unknown = error.error;
-      if (body && typeof body === 'object' && 'message' in body && typeof body.message === 'string')
-        return body.message;
-      return fallback;
-    }
-    return error instanceof Error ? error.message : fallback;
   }
 }

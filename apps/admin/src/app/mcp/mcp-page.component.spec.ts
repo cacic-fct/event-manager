@@ -1,11 +1,17 @@
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
-import type { McpAdminDelegation, McpAdminProposal } from '@cacic-fct/event-manager-mcp-contracts';
+import {
+  MCP_ADMIN_CAPABILITIES,
+  type McpAdminDelegation,
+  type McpAdminProposal,
+  type McpProposalChange,
+} from '@cacic-fct/event-manager-mcp-contracts';
 import { of, Subject } from 'rxjs';
 import { RealtimeApiService } from '../graphql/realtime-api.service';
 import { EventApiService } from '../graphql/event-api.service';
 import { McpApi } from './mcp-api.service';
+import { McpEventReviewDialogComponent } from './mcp-event-review-dialog.component';
 import { McpPageComponent } from './mcp-page.component';
 
 function proposal(): McpAdminProposal {
@@ -21,6 +27,7 @@ function proposal(): McpAdminProposal {
     status: 'PENDING',
     descriptionBefore: 'Antes',
     descriptionAfter: '<script>texto</script>',
+    reviewFields: [{ field: 'description', label: 'Descrição', proposedValue: '<script>texto</script>' }],
     baseUpdatedAt: now,
     currentUpdatedAt: now,
     currentDescription: 'Antes',
@@ -36,14 +43,12 @@ function proposal(): McpAdminProposal {
 describe('McpPageComponent', () => {
   async function setup(item = proposal(), events = new Subject<void>()) {
     const api = {
-      settings: vi
-        .fn()
-        .mockResolvedValue({
-          enabled: true,
-          proposalsEnabled: true,
-          resourceUrl: '/mcp',
-          clients: [{ id: 'client', name: 'Aplicativo' }],
-        }),
+      settings: vi.fn().mockResolvedValue({
+        enabled: true,
+        proposalsEnabled: true,
+        resourceUrl: '/mcp',
+        clients: [{ id: 'client', name: 'Aplicativo' }],
+      }),
       delegations: vi.fn().mockResolvedValue([]),
       proposals: vi.fn().mockResolvedValue({ items: [item], hasMore: false }),
       decide: vi.fn().mockResolvedValue(undefined),
@@ -72,40 +77,103 @@ describe('McpPageComponent', () => {
     return { fixture, component: fixture.componentInstance, api, open, events };
   }
 
-  it('escapes proposal text and confirms the immutable revision before approval, then refreshes', async () => {
+  it('escapes proposal text and passes the displayed proposal to the review dialog before refreshing', async () => {
     const item = proposal();
     const { fixture, component, api, open } = await setup(item);
     expect(fixture.nativeElement.querySelector('app-review-text-comparison').textContent).toContain(
       '<script>texto</script>',
     );
     expect(fixture.nativeElement.querySelector('script')).toBeNull();
-    await component.decide(item, 'APPROVE');
+    await component.review(item);
     expect(open).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        data: expect.objectContaining({
-          confirmLabel: 'Aprovar proposta',
-          message: expect.stringContaining('exatamente'),
-        }),
-      }),
+      McpEventReviewDialogComponent,
+      expect.objectContaining({ data: item, restoreFocus: false }),
     );
-    expect(api.decide).toHaveBeenCalledWith('proposal', { decision: 'APPROVE', expectedUpdatedAt: item.baseUpdatedAt });
+    expect(component.feedback()).toBe('Proposta aprovada e aplicada.');
     expect(api.proposals).toHaveBeenCalledTimes(2);
   });
 
   it('does not mutate or refresh after cancelling approval', async () => {
     const { component, api, open } = await setup();
     open.mockReturnValue({ afterClosed: () => of(false) });
-    await component.decide(component.result().items[0], 'APPROVE');
+    await component.review(component.result().items[0]);
     expect(api.decide).not.toHaveBeenCalled();
     expect(api.proposals).toHaveBeenCalledTimes(1);
     expect(component.busy()).toBe(false);
   });
 
+  it.each(['EVENT_LOCATION', 'EVENT_PREPARATION'] as const)(
+    'compares only the stored fields and opens the editor for %s',
+    async (operation) => {
+      const changes: McpProposalChange[] =
+        operation === 'EVENT_LOCATION'
+          ? [
+              { field: 'isVirtual', label: 'Evento virtual', before: 'Não', after: 'Sim' },
+              { field: 'locationName', label: 'Nome do local', before: 'Sala 1', after: null },
+              { field: 'locationDescription', label: 'Descrição do local', before: 'Primeiro andar', after: null },
+              { field: 'latitude', label: 'Latitude', before: '-22.12', after: null },
+              { field: 'longitude', label: 'Longitude', before: '-51.4', after: null },
+            ]
+          : [
+              {
+                field: 'lecturerInformation',
+                label: 'Orientações para palestrantes',
+                before: null,
+                after: '<script>instruções</script>',
+              },
+              {
+                field: 'collectorInformation',
+                label: 'Orientações para coletores',
+                before: 'Chegue antes da oficina.',
+                after: 'Abra a coleta no início da oficina.',
+              },
+            ];
+      const item: McpAdminProposal = {
+        ...proposal(),
+        operation,
+        operationLabel: operation === 'EVENT_LOCATION' ? 'Local do evento' : 'Orientações de preparação',
+        changes,
+        reviewFields:
+          operation === 'EVENT_LOCATION'
+            ? [{ field: 'isVirtual', label: 'Evento virtual', proposedValue: true }]
+            : [
+                {
+                  field: 'lecturerInformation',
+                  label: 'Orientações para palestrantes',
+                  proposedValue: '<script>instruções</script>',
+                },
+              ],
+      };
+      const { fixture, component, open } = await setup(item);
+      const comparisons = fixture.nativeElement.querySelectorAll('app-review-text-comparison');
+      expect(comparisons).toHaveLength(changes.length);
+      changes.forEach((change, index) => {
+        expect(comparisons[index].textContent).toContain(change.before ?? 'Sem valor.');
+        expect(comparisons[index].textContent).toContain(change.after ?? 'Sem valor.');
+      });
+      expect(fixture.nativeElement.querySelector('mat-panel-title').textContent).toContain(item.operationLabel);
+      expect(fixture.nativeElement.querySelector('script')).toBeNull();
+      expect(fixture.nativeElement.textContent).not.toContain(item.descriptionAfter);
+      await component.review(item);
+      expect(open).toHaveBeenCalledWith(McpEventReviewDialogComponent, expect.objectContaining({ data: item }));
+    },
+  );
+
+  it('binds rejection to the stored operation too', async () => {
+    const item: McpAdminProposal = { ...proposal(), operation: 'EVENT_LIVESTREAM' };
+    const { component, api } = await setup(item);
+    await component.reject(item);
+    expect(api.decide).toHaveBeenCalledWith(item.id, {
+      decision: 'REJECT',
+      expectedUpdatedAt: item.baseUpdatedAt,
+      expectedOperation: 'EVENT_LIVESTREAM',
+    });
+  });
+
   it('confirms rejection and sends the same stored revision', async () => {
     const { component, api } = await setup();
     const item = component.result().items[0];
-    await component.decide(item, 'REJECT');
+    await component.reject(item);
     expect(api.decide).toHaveBeenCalledWith(item.id, { decision: 'REJECT', expectedUpdatedAt: item.baseUpdatedAt });
     expect(component.feedback()).toBe('Proposta rejeitada.');
   });
@@ -121,7 +189,7 @@ describe('McpPageComponent', () => {
     const { fixture, component, api, open } = await setup(item);
     expect(fixture.nativeElement.textContent).toContain('Texto atual');
     expect(fixture.nativeElement.textContent).toContain('O evento está congelado.');
-    await component.decide(item, 'APPROVE');
+    await component.review(item);
     expect(open).not.toHaveBeenCalled();
     expect(api.decide).not.toHaveBeenCalled();
   });
@@ -130,7 +198,7 @@ describe('McpPageComponent', () => {
     const { component, api } = await setup();
     const item = component.result().items[0];
     api.decide.mockRejectedValue(new Error('A autorização expirou.'));
-    await component.decide(item, 'APPROVE');
+    await component.reject(item);
     expect(component.result().items).toEqual([item]);
     expect(component.actionError()).toBe('A autorização expirou.');
     expect(component.busy()).toBe(false);
@@ -168,6 +236,33 @@ describe('McpPageComponent', () => {
     await component.createDelegation();
     expect(component.selectedEvents()).toHaveLength(1);
     expect(component.actionError()).toBe('Sem permissão para este evento.');
+  });
+
+  it('offers every capability and blocks every proposal capability while proposal creation is disabled', async () => {
+    const { component, api } = await setup();
+    expect(component.capabilityOptions.map(({ value }) => value).sort()).toEqual([...MCP_ADMIN_CAPABILITIES].sort());
+    component.settings.update((settings) => settings && { ...settings, proposalsEnabled: false });
+    component.selectedEvents.set([{ id: 'event', name: 'Oficina' }]);
+    component.form.patchValue({ clientId: 'client' });
+    for (const capability of MCP_ADMIN_CAPABILITIES.filter((value) => value.endsWith('_PROPOSE'))) {
+      component.form.controls.capabilities.setValue(['EVENT_READ', capability]);
+      expect(component.invalidCapabilities()).toBe(true);
+      await component.createDelegation();
+    }
+    expect(api.create).not.toHaveBeenCalled();
+    component.form.controls.capabilities.setValue(['EVENT_READ', 'PREPARATION_READ', 'MATERIALS_READ']);
+    expect(component.invalidCapabilities()).toBe(false);
+    await component.createDelegation();
+    expect(api.create).toHaveBeenCalledOnce();
+  });
+
+  it('requires event read even when another capability was selected programmatically', async () => {
+    const { component, api } = await setup();
+    component.selectedEvents.set([{ id: 'event', name: 'Oficina' }]);
+    component.form.patchValue({ clientId: 'client', capabilities: ['LOCATION_PROPOSE'] });
+    expect(component.invalidCapabilities()).toBe(true);
+    await component.createDelegation();
+    expect(api.create).not.toHaveBeenCalled();
   });
 
   it('confirms revocation and refreshes its consequences only after success', async () => {
@@ -219,7 +314,7 @@ describe('McpPageComponent', () => {
     const displayed = component.result().items[0];
     const confirmation = new Subject<boolean>();
     open.mockReturnValue({ afterClosed: () => confirmation });
-    const deciding = component.decide(displayed, 'APPROVE');
+    const deciding = component.review(displayed);
     vi.useFakeTimers();
     try {
       api.proposals.mockResolvedValue({ items: [], hasMore: false });
@@ -248,7 +343,7 @@ describe('McpPageComponent', () => {
           finishDecision = resolve;
         }),
     );
-    const deciding = component.decide(displayed, 'APPROVE');
+    const deciding = component.reject(displayed);
     vi.useFakeTimers();
     try {
       await vi.advanceTimersByTimeAsync(0);
@@ -260,7 +355,7 @@ describe('McpPageComponent', () => {
       finishDecision();
       await deciding;
       expect(api.decide).toHaveBeenCalledWith(displayed.id, {
-        decision: 'APPROVE',
+        decision: 'REJECT',
         expectedUpdatedAt: displayed.baseUpdatedAt,
       });
       expect(api.proposals).toHaveBeenCalledTimes(2);
@@ -286,7 +381,7 @@ describe('McpPageComponent', () => {
     try {
       events.next();
       await vi.advanceTimersByTimeAsync(250);
-      const deciding = component.decide(displayed, 'APPROVE');
+      const deciding = component.review(displayed);
       finishRefresh({ items: [], hasMore: false });
       await vi.advanceTimersByTimeAsync(0);
       expect(component.result().items).toEqual([displayed]);

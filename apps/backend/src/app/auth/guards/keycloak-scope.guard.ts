@@ -1,3 +1,4 @@
+import { trustedAdminMcpPrincipal } from '../../mcp/admin-operations/execution-context';
 import { type CanActivate, type ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { GqlExecutionContext } from '@nestjs/graphql';
@@ -48,6 +49,20 @@ export class KeycloakScopeGuard implements CanActivate {
         context.getHandler(),
         context.getClass(),
       ]) ?? [];
+
+    const internalPrincipal =
+      context.getType<'http' | 'graphql'>() === 'graphql' ? trustedAdminMcpPrincipal(request) : undefined;
+    if (internalPrincipal) {
+      request.user = internalPrincipal;
+      this.assertOnboardingAllowed(context, internalPrincipal);
+      this.assertRequiredRoles(internalPrincipal, roles);
+      await this.authorizationPolicy.assertPermissions(
+        internalPrincipal,
+        permissions,
+        this.getAuthorizationResourceContext(context, permissions),
+      );
+      return true;
+    }
 
     const accessToken = this.extractBearerToken(request.headers.authorization);
     if (accessToken) {

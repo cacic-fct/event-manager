@@ -62,6 +62,17 @@ export class McpAdminMaintenanceService {
     await this.prisma.mcpAdminOperationLog.deleteMany({
       where: { id: { in: logs.map((entry) => entry.id) }, createdAt: { lt: cutoff } },
     });
+    // Cascading deletion removes command payloads only after their consent has
+    // expired for 90 days. This maintenance never executes or retries commands.
+    const operationDelegations = await this.prisma.mcpAdminOperationDelegation.findMany({
+      where: { expiresAt: { lt: cutoff } },
+      select: { id: true },
+      orderBy: [{ expiresAt: 'asc' }, { id: 'asc' }],
+      take: 100,
+    });
+    await this.prisma.mcpAdminOperationDelegation.deleteMany({
+      where: { id: { in: operationDelegations.map((entry) => entry.id) }, expiresAt: { lt: cutoff } },
+    });
     const delegations = await this.prisma.mcpAdminDelegation.findMany({
       where: { expiresAt: { lt: cutoff } },
       select: { id: true },

@@ -7,7 +7,10 @@ if (process.env['MCP_POSTGRES_ISOLATED_CLUSTER'] !== '1' || !process.env['MCP_PO
 export default {
   ...backend,
   displayName: 'mcp-postgres',
-  testMatch: ['<rootDir>/src/app/mcp/mcp-admin.postgres.spec.ts'],
+  testMatch: [
+    '<rootDir>/src/app/mcp/mcp-admin.postgres.spec.ts',
+    '<rootDir>/src/app/mcp/admin-operations/command.postgres.spec.ts',
+  ],
   testPathIgnorePatterns: ['/node_modules/'],
   collectCoverage: false,
   testTimeout: 20_000,

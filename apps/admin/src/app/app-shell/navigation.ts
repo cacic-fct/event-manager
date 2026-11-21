@@ -219,7 +219,7 @@ export const navigationItems = [
     id: 'mcp',
     path: 'mcp',
     label: 'Aplicativos e propostas MCP',
-    description: 'Autorize aplicativos e revise propostas de descrição dos seus eventos.',
+    description: 'Autorize aplicativos e revise operações administrativas, eventos e esportes.',
     icon: 'extension',
     group: 'Administração',
     helpLink: undefined,
