@@ -215,6 +215,7 @@ export const LGPD_MCP_ADMIN_DELEGATION_SELECT = {
 } satisfies Prisma.McpAdminDelegationSelect;
 
 export const LGPD_MCP_ADMIN_PROPOSAL_SELECT = {
+  operation: true,
   id: true,
   delegationId: true,
   eventId: true,
@@ -237,3 +238,31 @@ export const LGPD_MCP_ADMIN_OPERATION_LOG_SELECT = {
   outcome: true,
   createdAt: true,
 } satisfies Prisma.McpAdminOperationLogSelect;
+
+export const LGPD_MCP_OPERATION_DELEGATION_SELECT = {
+  id: true,
+  userId: true,
+  clientId: true,
+  resource: true,
+  operations: true,
+  scope: true,
+  personalData: true,
+  maxProposals: true,
+  createdAt: true,
+  expiresAt: true,
+  revokedAt: true,
+} satisfies Prisma.McpAdminOperationDelegationSelect;
+
+// Command arguments may contain other people's contacts or financial information.
+// Export decision evidence only, without payloads, fingerprints or idempotency keys.
+export const LGPD_MCP_COMMAND_SELECT = {
+  id: true,
+  delegationId: true,
+  operation: true,
+  state: true,
+  createdAt: true,
+  expiresAt: true,
+  decidedAt: true,
+  approvedById: true,
+  approvedByName: true,
+} satisfies Prisma.McpAdminCommandSelect;

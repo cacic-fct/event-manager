@@ -2,6 +2,23 @@ enum McpAdminCapability {
   EVENT_READ
   ATTENDANCE_READ
   DESCRIPTION_PROPOSE
+  PREPARATION_READ
+  MATERIALS_READ
+  SUBSCRIPTIONS_READ
+  FORMS_READ
+  CONTENT_REVIEWS_READ
+  EVENT_CONTENT_PROPOSE
+  LOCATION_PROPOSE
+  PREPARATION_PROPOSE
+  LIVESTREAM_PROPOSE
+}
+
+enum McpProposalOperation {
+  EVENT_DESCRIPTION
+  EVENT_CONTENT
+  EVENT_LOCATION
+  EVENT_PREPARATION
+  EVENT_LIVESTREAM
 }
 
 enum McpProposalState {
@@ -30,6 +47,9 @@ model McpAdminDelegation {
 }
 
 model McpAdminProposal {
+  operation         McpProposalOperation @default(EVENT_DESCRIPTION)
+  beforeValues      Json?
+  afterValues       Json?
   id                String             @id @default(uuid(7))
   delegationId      String
   delegation        McpAdminDelegation @relation(fields: [delegationId], references: [id], onDelete: Cascade)
@@ -80,4 +100,46 @@ model McpAdminOperationLog {
   @@index([userId, createdAt])
   @@index([createdAt])
   @@map("mcp_admin_operation_logs")
+}
+
+model McpAdminOperationDelegation {
+  id            String   @id @default(uuid(7))
+  userId        String
+  clientId      String
+  resource      String
+  operations    String[]
+  scope         Json
+  personalData  Boolean  @default(false)
+  maxProposals  Int
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  proposals     McpAdminCommand[]
+
+  @@index([userId, clientId, expiresAt])
+  @@index([expiresAt])
+  @@map("mcp_admin_operation_delegations")
+}
+
+model McpAdminCommand {
+  id             String   @id @default(uuid(7))
+  delegationId   String
+  delegation     McpAdminOperationDelegation @relation(fields: [delegationId], references: [id], onDelete: Cascade)
+  operation      String
+  arguments      Json
+  fingerprint    String
+  idempotencyKey String
+  state          String   @default("PENDING")
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime
+  decidedAt      DateTime?
+  approvedById   String?
+  approvedByName String?
+  reviewedArguments Json?
+
+  @@unique([delegationId, idempotencyKey])
+  @@index([delegationId, createdAt])
+  @@index([state, decidedAt])
+  @@index([expiresAt])
+  @@map("mcp_admin_commands")
 }

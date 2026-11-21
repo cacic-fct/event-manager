@@ -2,6 +2,7 @@
   <header class="queue-header">
     <h1 id="proposals-title" #heading tabindex="-1">Propostas MCP</h1>
     <div class="actions">
+      <a mat-button routerLink="/mcp/operations">Operações administrativas e esportes</a>
       @if (proposalId()) {
         <a mat-button routerLink="/mcp">Ver toda a fila</a>
       }
@@ -28,19 +29,28 @@
             <mat-panel-title>
               <span>{{ proposal.eventName }}</span>
               <span class="proposal-summary"
-                >{{ statusLabel(proposal.status) }} - {{ clientName(proposal.clientId) }}</span
+                >{{ proposal.operationLabel ?? 'Descrição' }} - {{ statusLabel(proposal.status) }} -
+                {{ clientName(proposal.clientId) }}</span
               >
             </mat-panel-title>
           </mat-expansion-panel-header>
           <div class="review-content">
-            <app-review-text-comparison
-              [before]="proposal.descriptionBefore"
-              [after]="proposal.descriptionAfter"
-              beforeLabel="Descrição anterior"
-              afterLabel="Descrição proposta"
-              emptyLabel="Sem descrição." />
+            @for (change of proposalChanges(proposal); track change.field) {
+              <section [attr.aria-label]="change.label">
+                <h2>{{ change.label }}</h2>
+                <app-review-text-comparison
+                  [before]="change.before"
+                  [after]="change.after"
+                  beforeLabel="Antes"
+                  afterLabel="Proposto"
+                  emptyLabel="Sem valor." />
+              </section>
+            }
             <p>{{ proposal.approvalEffects }}</p>
-            @if (proposal.baseUpdatedAt !== proposal.currentUpdatedAt) {
+            @if (
+              proposal.baseUpdatedAt !== proposal.currentUpdatedAt &&
+              (!proposal.operation || proposal.operation === 'EVENT_DESCRIPTION')
+            ) {
               <div class="current-description">
                 <h2>Descrição atual do evento</h2>
                 <p>{{ proposal.currentDescription ?? 'Sem descrição.' }}</p>
@@ -77,21 +87,21 @@
             </details>
             @if (proposal.status === 'PENDING') {
               <div class="actions">
-                <button
-                  mat-button
-                  type="button"
-                  [disabled]="busy() || loading()"
-                  (click)="decide(proposal, 'REJECT', $event)">
+                <button mat-button type="button" [disabled]="busy() || loading()" (click)="reject(proposal, $event)">
                   Rejeitar proposta
                 </button>
                 <button
                   mat-flat-button
                   type="button"
                   [disabled]="
-                    busy() || loading() || !proposal.canApprove || proposal.baseUpdatedAt !== proposal.currentUpdatedAt
+                    busy() ||
+                    loading() ||
+                    !proposal.canApprove ||
+                    proposal.baseUpdatedAt !== proposal.currentUpdatedAt ||
+                    !proposal.reviewFields?.length
                   "
-                  (click)="decide(proposal, 'APPROVE', $event)">
-                  Aprovar proposta
+                  (click)="review(proposal, $event)">
+                  Revisar proposta
                 </button>
               </div>
             }
@@ -139,12 +149,15 @@
                 @for (option of capabilityOptions; track option.value) {
                   <mat-option
                     [value]="option.value"
-                    [disabled]="option.value === 'DESCRIPTION_PROPOSE' && !config.proposalsEnabled"
+                    [disabled]="
+                      option.value === 'EVENT_READ' || (isProposalCapability(option.value) && !config.proposalsEnabled)
+                    "
                     >{{ option.label }}</mat-option
                   >
                 }
               </mat-select>
               <mat-error>Escolha ao menos um acesso.</mat-error>
+              <mat-hint>Consultar eventos é obrigatório.</mat-hint>
             </mat-form-field>
           </div>
           <h2>Eventos ({{ selectedEvents().length }}/20)</h2>
@@ -192,7 +205,7 @@
           <button
             mat-flat-button
             type="submit"
-            [disabled]="busy() || loading() || form.invalid || !selectedEvents().length">
+            [disabled]="busy() || loading() || form.invalid || invalidCapabilities() || !selectedEvents().length">
             Criar autorização
           </button>
         </form>

@@ -25,8 +25,8 @@ async function withGeneratedMetadata(prepareSchema, verify) {
       [prismaCliPath, 'generate', '--schema', fixtureSchemaDirectory, '--generator', 'audienceRelations'],
       { cwd: repositoryRoot, encoding: 'utf8', stdio: 'pipe' },
     );
-    const { AUDIENCE_RELATIONS } = await import(pathToFileURL(fixtureOutputPath).href);
-    await verify(AUDIENCE_RELATIONS);
+    const { AUDIENCE_RELATIONS, PRISMA_MODEL_IDENTITIES } = await import(pathToFileURL(fixtureOutputPath).href);
+    await verify(AUDIENCE_RELATIONS, PRISMA_MODEL_IDENTITIES);
   } finally {
     rmSync(fixtureRoot, { recursive: true, force: true });
   }
@@ -45,8 +45,15 @@ test('prisma generate keeps checked-in audience metadata synchronized with the s
         ),
       );
     },
-    async (generated) => {
-      const { AUDIENCE_RELATIONS } = await import(pathToFileURL(metadataPath).href);
+    async (generated, identities) => {
+      const { AUDIENCE_RELATIONS, PRISMA_MODEL_IDENTITIES } = await import(pathToFileURL(metadataPath).href);
+      assert.deepEqual(PRISMA_MODEL_IDENTITIES, identities, 'Prisma mapped identity metadata must be regenerated.');
+      assert.equal(identities.Event.table, 'events');
+      assert.deepEqual(identities.Event.idFields, [{ name: 'id', column: 'id' }]);
+      assert.deepEqual(
+        identities.EventAttendance.idFields.map((field) => field.name),
+        ['personId', 'eventId'],
+      );
       assert.deepEqual(
         AUDIENCE_RELATIONS,
         generated,

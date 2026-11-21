@@ -1,3 +1,4 @@
+import type { McpEventReviewInput, McpProposalDecisionInput } from '@cacic-fct/event-manager-mcp-contracts';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { AuditLogEntityType, AuditLogOperation, type McpAdminDelegation, Prisma } from '@prisma/client';
@@ -158,6 +159,151 @@ function context() {
 describe('McpAdminProposalsService', () => {
   beforeEach(() => jest.useFakeTimers().setSystemTime(new Date('2026-05-21T12:00:00.000Z')));
   afterEach(() => jest.useRealTimers());
+
+  function editedContext() {
+    const ctx = context();
+    const input: McpEventReviewInput = {
+      expectedOperation: 'EVENT_CONTENT',
+      expectedUpdatedAt: ctx.decision.expectedUpdatedAt,
+      selections: [{ field: 'description', value: '  Descrição ajustada pela autora.  ' }],
+    };
+    const stored = {
+      ...ctx.storedProposal,
+      operation: 'EVENT_CONTENT',
+      beforeValues: { name: ctx.event.name, description: ctx.event.description },
+      afterValues: { name: 'Novo nome proposto', description: ctx.storedProposal.descriptionAfter },
+    };
+    ctx.tx.mcpAdminProposal.findFirst.mockResolvedValue(stored);
+    async function reviewDecision(): Promise<McpProposalDecisionInput> {
+      const preview = await ctx.service.prepareReview(ctx.user, stored.id, input);
+      return {
+        decision: 'APPROVE',
+        expectedOperation: input.expectedOperation,
+        expectedUpdatedAt: input.expectedUpdatedAt,
+        review: { token: preview.token, selections: input.selections },
+      };
+    }
+    return { ...ctx, input, stored, reviewDecision };
+  }
+
+  it('shows the normalized selected patch and audits an adjusted approval without rewriting the proposal', async () => {
+    const { service, user, input, stored, tx, access, frozenPolicy, sports, audit, event } = editedContext();
+    const preview = await service.prepareReview(user, stored.id, input);
+
+    expect(preview.changes).toEqual([
+      {
+        field: 'description',
+        label: 'Descrição',
+        before: event.description,
+        after: 'Descrição ajustada pela autora.',
+      },
+    ]);
+    expect(tx.event.updateMany).not.toHaveBeenCalled();
+    expect(tx.mcpAdminProposal.updateMany).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+
+    await service.decide(user, stored.id, {
+      decision: 'APPROVE',
+      expectedOperation: input.expectedOperation,
+      expectedUpdatedAt: input.expectedUpdatedAt,
+      review: { token: preview.token, selections: input.selections },
+    });
+
+    expect(access.assertEventPermission).toHaveBeenCalledTimes(2);
+    expect(frozenPolicy.assertEventUpdateMutable).toHaveBeenCalledTimes(2);
+    expect(sports.assertEventUpdateAllowed).toHaveBeenLastCalledWith(tx, event.id, {
+      description: 'Descrição ajustada pela autora.',
+    });
+    expect(tx.event.updateMany).toHaveBeenCalledWith({
+      where: { id: event.id, deletedAt: null, updatedAt: event.updatedAt, description: event.description },
+      data: { description: 'Descrição ajustada pela autora.', updatedById: user.sub },
+    });
+    expect(tx.mcpAdminProposal.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { state: 'APPLIED', decidedAt: new Date(), approvedById: user.sub, approvedByName: 'Autora Humana' },
+      }),
+    );
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        summary: 'Alteração MCP ajustada e aprovada por Autora Humana.',
+        before: { description: event.description },
+        after: { description: 'Descrição ajustada pela autora.' },
+        metadata: expect.objectContaining({
+          source: 'mcp',
+          proposalId: stored.id,
+          delegationId: stored.delegationId,
+          clientId: stored.delegation.clientId,
+          proposedById: stored.delegation.userId,
+          approvedById: user.sub,
+          approvedByName: 'Autora Humana',
+          review: { selectedFields: ['description'], discardedFields: ['name'], editedFields: ['description'] },
+        }),
+      }),
+      tx,
+    );
+  });
+
+  it.each([
+    'another selection',
+    'modified value',
+    'proposal',
+    'event target',
+    'author',
+    'client',
+    'publication',
+    'original',
+    'base revision',
+    'expired token',
+  ])('rejects a preview replay with %s before claiming or mutating', async (change) => {
+    const { service, user, stored, tx, audit, event, reviewDecision } = editedContext();
+    const decision = await reviewDecision();
+    if (change === 'another selection') decision.review!.selections = [{ field: 'name' }];
+    if (change === 'modified value') decision.review!.selections = [{ field: 'description', value: 'Texto diferente' }];
+    if (change === 'proposal') stored.id = 'other-proposal';
+    if (change === 'event target') stored.eventId = 'other-event';
+    if (change === 'author') stored.delegation.userId = 'other-author';
+    if (change === 'client') stored.delegation.clientId = 'other-client';
+    if (change === 'publication') event.publicationState = 'UNPUBLISHED';
+    if (change === 'original') stored.afterValues.name = 'Proposta diferente';
+    if (change === 'base revision') {
+      stored.baseUpdatedAt = new Date(Date.now() + 1);
+      event.updatedAt = stored.baseUpdatedAt;
+      decision.expectedUpdatedAt = stored.baseUpdatedAt.toISOString();
+    }
+    if (change === 'expired token') jest.setSystemTime(Date.now() + 11 * 60_000);
+
+    await expect(service.decide(user, stored.id, decision)).rejects.toBeInstanceOf(ConflictException);
+    expect(tx.mcpAdminProposal.updateMany).not.toHaveBeenCalled();
+    expect(tx.event.updateMany).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
+  it.each(['permission', 'frozen', 'revoked', 'expired', 'stale'])(
+    'rechecks %s after preparing a review',
+    async (failure) => {
+      const { service, user, stored, tx, access, frozenPolicy, event, reviewDecision } = editedContext();
+      const decision = await reviewDecision();
+      if (failure === 'permission') access.assertEventPermission.mockRejectedValue(new ForbiddenException());
+      if (failure === 'frozen') frozenPolicy.assertEventUpdateMutable.mockRejectedValue(new ForbiddenException());
+      if (failure === 'revoked') stored.delegation.revokedAt = new Date();
+      if (failure === 'expired') stored.expiresAt = new Date();
+      if (failure === 'stale') event.updatedAt = new Date(Date.now() + 1);
+
+      await expect(service.decide(user, stored.id, decision)).rejects.toThrow();
+      expect(tx.event.updateMany).not.toHaveBeenCalled();
+    },
+  );
+
+  it('denies MCP principals before preview and decision reads or writes', async () => {
+    const { service, user, stored, input, tx, reviewDecision } = editedContext();
+    const decision = await reviewDecision();
+    tx.mcpAdminProposal.findFirst.mockClear();
+    user.authenticationTransport = 'mcp';
+    await expect(service.prepareReview(user, stored.id, input)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.decide(user, stored.id, decision)).rejects.toBeInstanceOf(ForbiddenException);
+    expect(tx.mcpAdminProposal.findFirst).not.toHaveBeenCalled();
+    expect(tx.event.updateMany).not.toHaveBeenCalled();
+  });
 
   it('returns a review link on the configured application origin without changing OAuth resource binding', async () => {
     const { service, config, user, input, access, storedDelegation } = context();
@@ -404,7 +550,8 @@ describe('McpAdminProposalsService', () => {
           proposedById: storedProposal.delegation.userId,
           approvedById: user.sub,
           approvedByName: 'Autora Humana',
-          effects: 'event-description-only',
+          effects: 'EVENT_DESCRIPTION',
+          operation: 'EVENT_DESCRIPTION',
         },
         squashWindowMs: 0,
       }),

@@ -982,6 +982,24 @@ export const AUDIENCE_RELATIONS = {
     },
   ],
   McpAdminOperationLog: [],
+  McpAdminOperationDelegation: [
+    {
+      name: 'proposals',
+      type: 'McpAdminCommand',
+      isList: true,
+      isRequired: true,
+      ownsRelation: false,
+    },
+  ],
+  McpAdminCommand: [
+    {
+      name: 'delegation',
+      type: 'McpAdminOperationDelegation',
+      isList: false,
+      isRequired: true,
+      ownsRelation: true,
+    },
+  ],
   PeopleMergeOperation: [
     {
       name: 'targetPerson',
@@ -2968,4 +2986,1114 @@ export const AUDIENCE_RELATIONS = {
       ownsRelation: true,
     },
   ],
+} as const;
+export const PRISMA_MODEL_IDENTITIES = {
+  AttendanceReviewFlag: {
+    table: 'attendance_review_flags',
+    labelColumn: 'title',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  AttendanceScanAttemptCounter: {
+    table: 'attendance_scan_attempt_counters',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  EventAttendance: {
+    table: 'event_attendances',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'personId',
+        column: 'personId',
+      },
+      {
+        name: 'eventId',
+        column: 'eventId',
+      },
+    ],
+  },
+  EventAttendanceCollector: {
+    table: 'event_attendance_collectors',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'eventId',
+        column: 'eventId',
+      },
+      {
+        name: 'personId',
+        column: 'personId',
+      },
+    ],
+  },
+  OfflineEventAttendanceSubmission: {
+    table: 'offline_event_attendance_submissions',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  EventAudienceInvitation: {
+    table: 'event_audience_invitations',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'eventId',
+        column: 'eventId',
+      },
+      {
+        name: 'personId',
+        column: 'personId',
+      },
+    ],
+  },
+  EventGroupAudienceInvitation: {
+    table: 'event_group_audience_invitations',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'eventGroupId',
+        column: 'eventGroupId',
+      },
+      {
+        name: 'personId',
+        column: 'personId',
+      },
+    ],
+  },
+  MajorEventAudienceInvitation: {
+    table: 'major_event_audience_invitations',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'majorEventId',
+        column: 'majorEventId',
+      },
+      {
+        name: 'personId',
+        column: 'personId',
+      },
+    ],
+  },
+  AuditLogEntry: {
+    table: 'audit_log_entries',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  LgpdStorageCleanupOutbox: {
+    table: 'lgpd_storage_cleanup_outbox',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  CertificateTemplate: {
+    table: 'certificate_templates',
+    labelColumn: 'name',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  CertificateFolder: {
+    table: 'certificate_folders',
+    labelColumn: 'name',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  CertificateConfig: {
+    table: 'certificate_configs',
+    labelColumn: 'name',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  Certificate: {
+    table: 'certificates',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  CertificateIssuanceRun: {
+    table: 'certificate_issuance_runs',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  CertificateNotificationOutbox: {
+    table: 'certificate_notification_outbox',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  CertificateManualRecipient: {
+    table: 'certificate_manual_recipients',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'configId',
+        column: 'configId',
+      },
+      {
+        name: 'personId',
+        column: 'personId',
+      },
+    ],
+  },
+  ContentReview: {
+    table: 'content_reviews',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  EventGroup: {
+    table: 'event_groups',
+    labelColumn: 'name',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  Event: {
+    table: 'events',
+    labelColumn: 'name',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  EventDraft: {
+    table: 'event_drafts',
+    labelColumn: 'name',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  PlacePreset: {
+    table: 'place_presets',
+    labelColumn: 'name',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  EventLecturer: {
+    table: 'event_lecturers',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'eventId',
+        column: 'eventId',
+      },
+      {
+        name: 'personId',
+        column: 'personId',
+      },
+    ],
+  },
+  PublicationPreview: {
+    table: 'publication_previews',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  ExternalImportRecord: {
+    table: 'external_import_records',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'sourceNamespace',
+        column: 'sourceNamespace',
+      },
+      {
+        name: 'entityType',
+        column: 'entityType',
+      },
+      {
+        name: 'sourceId',
+        column: 'sourceId',
+      },
+    ],
+  },
+  EventForm: {
+    table: 'event_forms',
+    labelColumn: 'name',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  EventFormImage: {
+    table: 'event_form_images',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  EventFormLink: {
+    table: 'event_form_links',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  EventFormLinkPriceTier: {
+    table: 'event_form_link_price_tiers',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'linkId',
+        column: 'linkId',
+      },
+      {
+        name: 'priceTierId',
+        column: 'priceTierId',
+      },
+    ],
+  },
+  EventFormResponse: {
+    table: 'event_form_responses',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  EventFormDraft: {
+    table: 'event_form_drafts',
+    labelColumn: 'name',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  EventInterest: {
+    table: 'event_interests',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  LecturerProfile: {
+    table: 'lecturer_profiles',
+    labelColumn: 'displayName',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  MajorEvent: {
+    table: 'major_events',
+    labelColumn: 'name',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  PaymentInfo: {
+    table: 'payment_info',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  MajorEventReceipt: {
+    table: 'major_event_receipts',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  MajorEventReceiptValidationAction: {
+    table: 'major_event_receipt_validation_actions',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  MajorEventPrice: {
+    table: 'major_event_prices',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  PriceTier: {
+    table: 'price_tiers',
+    labelColumn: 'name',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  McpAdminDelegation: {
+    table: 'mcp_admin_delegations',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  McpAdminProposal: {
+    table: 'mcp_admin_proposals',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  McpEventContentSync: {
+    table: 'mcp_event_content_sync',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'eventId',
+        column: 'eventId',
+      },
+    ],
+  },
+  McpAdminOperationLog: {
+    table: 'mcp_admin_operation_logs',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  McpAdminOperationDelegation: {
+    table: 'mcp_admin_operation_delegations',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  McpAdminCommand: {
+    table: 'mcp_admin_commands',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  PeopleMergeOperation: {
+    table: 'people_merge_operations',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  MergeCandidate: {
+    table: 'merge_candidates',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  People: {
+    table: 'people',
+    labelColumn: 'name',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  EventManagerRole: {
+    table: 'event_manager_roles',
+    labelColumn: 'name',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  EventManagerRolePermission: {
+    table: 'event_manager_role_permissions',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'roleId',
+        column: 'roleId',
+      },
+      {
+        name: 'permission',
+        column: 'permission',
+      },
+    ],
+  },
+  EventManagerRoleInheritance: {
+    table: 'event_manager_role_inheritances',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  EventManagerRoleAssignment: {
+    table: 'event_manager_role_assignments',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  EventManagerRoleAssignmentScope: {
+    table: 'event_manager_role_assignment_scopes',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  EventManagerPermissionGroup: {
+    table: 'event_manager_permission_groups',
+    labelColumn: 'name',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  EventManagerPermissionGroupMember: {
+    table: 'event_manager_permission_group_members',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  PrizeDraw: {
+    table: 'prize_draws',
+    labelColumn: 'title',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  PrizeDrawPlannedSpin: {
+    table: 'prize_draw_planned_spins',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  PrizeDrawManualEntry: {
+    table: 'prize_draw_manual_entries',
+    labelColumn: 'name',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  PrizeDrawWeightOverride: {
+    table: 'prize_draw_weight_overrides',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  PrizeDrawExcludedPerson: {
+    table: 'prize_draw_excluded_people',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  PrizeDrawFrozenEntry: {
+    table: 'prize_draw_frozen_entries',
+    labelColumn: 'displayName',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  PrizeDrawSpin: {
+    table: 'prize_draw_spins',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  PrizeDrawSpinEntry: {
+    table: 'prize_draw_spin_entries',
+    labelColumn: 'displayName',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  SportsTournament: {
+    table: 'sports_tournaments',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  SportsCategory: {
+    table: 'sports_categories',
+    labelColumn: 'name',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  SportsTeam: {
+    table: 'sports_teams',
+    labelColumn: 'name',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  SportsTournamentParticipant: {
+    table: 'sports_tournament_participants',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  SportsTeamMember: {
+    table: 'sports_team_members',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  SportsTeamRepresentative: {
+    table: 'sports_team_representatives',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  SportsRegistration: {
+    table: 'sports_registrations',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  SportsRegistrationMember: {
+    table: 'sports_registration_members',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  SportsTeamChangeRequest: {
+    table: 'sports_team_change_requests',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  SportsIdentityClaim: {
+    table: 'sports_identity_claims',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  SportsVenue: {
+    table: 'sports_venues',
+    labelColumn: 'name',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  SportsStage: {
+    table: 'sports_stages',
+    labelColumn: 'name',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  SportsMatch: {
+    table: 'sports_matches',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  SportsMatchRoster: {
+    table: 'sports_match_rosters',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  SportsMatchRosterEntry: {
+    table: 'sports_match_roster_entries',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  SportsOfficialAssignment: {
+    table: 'sports_official_assignments',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  SportsMatchAction: {
+    table: 'sports_match_actions',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  SportsStanding: {
+    table: 'sports_standings',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  SportsCategoryPlacement: {
+    table: 'sports_category_placements',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  SportsTournamentScoreEntry: {
+    table: 'sports_tournament_score_entries',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  SportsPlayerApplication: {
+    table: 'sports_player_applications',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  SportsPlayerApplicationCategory: {
+    table: 'sports_player_application_categories',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'applicationId',
+        column: 'applicationId',
+      },
+      {
+        name: 'categoryId',
+        column: 'categoryId',
+      },
+    ],
+  },
+  EventSubscription: {
+    table: 'event_subscriptions',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  EventGroupSubscription: {
+    table: 'event_group_subscriptions',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  MajorEventSubscription: {
+    table: 'major_event_subscriptions',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  MajorEventSubscriptionEventSelection: {
+    table: 'major_event_subscription_event_selections',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  TicketConfig: {
+    table: 'ticket_configs',
+    labelColumn: 'displayName',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  TicketPriceOption: {
+    table: 'ticket_price_options',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  EventTicket: {
+    table: 'event_tickets',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  EventTicketHistory: {
+    table: 'event_ticket_history',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  TicketTransfer: {
+    table: 'ticket_transfers',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  TicketTransferResolutionOutbox: {
+    table: 'ticket_transfer_resolution_outbox',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  TicketTransferAuthorCooldown: {
+    table: 'ticket_transfer_author_cooldowns',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'userId',
+        column: 'userId',
+      },
+    ],
+  },
+  TicketPurchase: {
+    table: 'ticket_purchases',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  TicketNotificationOutbox: {
+    table: 'ticket_notification_outbox',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  TicketRealtimeOutbox: {
+    table: 'ticket_realtime_outbox',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  TicketEntitlementReconciliation: {
+    table: 'ticket_entitlement_reconciliation',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  User: {
+    table: 'users',
+    labelColumn: 'name',
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  UserCalendarFeedSettings: {
+    table: 'user_calendar_feed_settings',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'userId',
+        column: 'userId',
+      },
+    ],
+  },
+  UserAdminCalendarFeedSettings: {
+    table: 'user_admin_calendar_feed_settings',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'userId',
+        column: 'userId',
+      },
+    ],
+  },
+  SuperAdminCalendarFeedSettings: {
+    table: 'super_admin_calendar_feed_settings',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  AccountUserMerge: {
+    table: 'account_user_merges',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'oldUserId',
+        column: 'oldUserId',
+      },
+    ],
+  },
+  ExternalAccountMergeOperation: {
+    table: 'external_account_merge_operations',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
 } as const;

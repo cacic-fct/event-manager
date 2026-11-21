@@ -1,3 +1,4 @@
+import { adminMcpExecution } from '../mcp/admin-operations/execution-context';
 import {
   EVENT_MANAGER_PERMISSION_CATALOG,
   EVENT_MANAGER_PERMISSION_SET,
@@ -118,6 +119,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     const resolveTarget = this.createGrantTargetResolver(context);
     await this.assertGrantedPermissions(user, requirements, context, resolveTarget);
     await this.assertAudienceForTargets(requirements, resolveTarget, audienceContext.getStore());
+    await adminMcpExecution.getStore()?.assertScope?.(requirements, context);
   }
 
   /** Requires a compatible grant and reports whether the collection can be read globally. */
@@ -513,6 +515,26 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     }
 
     return context;
+  }
+
+  async resolveOperationTargets(
+    permissions: readonly Permission[],
+    context: AuthorizationResourceContext,
+  ): Promise<ResolvedGrantTarget> {
+    const resolve = this.createGrantTargetResolver(context);
+    const merged: ResolvedGrantTarget = {
+      eventIds: new Set(),
+      eventGroupIds: new Set(),
+      majorEventIds: new Set(),
+      folderIds: new Set(),
+    };
+    for (const permission of permissions) {
+      const target = await resolve(permission);
+      for (const key of ['eventIds', 'eventGroupIds', 'majorEventIds', 'folderIds'] as const) {
+        for (const id of target[key]) merged[key].add(id);
+      }
+    }
+    return merged;
   }
 
   private async hasPermission(

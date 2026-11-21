@@ -1,3 +1,4 @@
+import { MCP_ADMIN_PROPOSAL_TOOLS } from './mcp-admin-tools';
 import {
   type CanActivate,
   type ExecutionContext,
@@ -69,11 +70,12 @@ export class McpAdminAuthGuard implements CanActivate {
       const params =
         isRecord(body) && body['method'] === 'tools/call' && isRecord(body['params']) ? body['params'] : undefined;
       if (params) {
-        const requiredScope = ['propose_event_description_change', 'get_proposal_status'].includes(
-          String(params['name']),
-        )
-          ? MCP_ADMIN_PROPOSE_SCOPE
-          : MCP_ADMIN_READ_SCOPE;
+        const requiredScope =
+          MCP_ADMIN_PROPOSAL_TOOLS.some((name) => name === params['name']) ||
+          (typeof params['name'] === 'string' &&
+            (params['name'].startsWith('propose_admin_') || params['name'] === 'get_admin_proposal_status'))
+            ? MCP_ADMIN_PROPOSE_SCOPE
+            : MCP_ADMIN_READ_SCOPE;
         if (!user.oidcScopeSet.has(requiredScope)) {
           response.setHeader(
             'WWW-Authenticate',

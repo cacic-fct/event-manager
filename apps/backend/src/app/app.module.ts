@@ -1,3 +1,9 @@
+import { AdminMcpGraphqlBridge } from './mcp/admin-operations/graphql-bridge';
+import { AdminMcpCommandService } from './mcp/admin-operations/command-service';
+import { AdminMcpScopePolicy } from './mcp/admin-operations/scope-policy';
+import { AdminMcpOperationTools } from './mcp/admin-operations/tools';
+import { AdminMcpOperationsController } from './mcp/admin-operations/controller';
+import { McpAdminWorkspaceReadService } from './mcp/mcp-admin-workspace-read.service';
 import { EventPreparationResolver } from './events/event-preparation.resolver';
 import { EventManualNotificationResolver } from './events/event-manual-notification.resolver';
 import { EventManualNotificationProcessor } from './events/event-manual-notification.processor';
@@ -478,6 +484,7 @@ const schedulerProviders = useInMemoryTestInfra
   ],
   controllers: [
     McpAdminController,
+    AdminMcpOperationsController,
     McpAdminTransportController,
     McpAdminMetadataController,
     McpAdminRealtimeController,
@@ -745,6 +752,10 @@ const schedulerProviders = useInMemoryTestInfra
     VotingIntegrationService,
     TurnstileService,
     McpAdminConfig,
+    AdminMcpGraphqlBridge,
+    AdminMcpCommandService,
+    AdminMcpScopePolicy,
+    AdminMcpOperationTools,
     McpAdminAccessService,
     McpAdminAuthGuard,
     McpAdminSessionGuard,
@@ -752,6 +763,7 @@ const schedulerProviders = useInMemoryTestInfra
     McpAdminOperationInterceptor,
     McpAdminInvalidationService,
     McpAdminReadService,
+    McpAdminWorkspaceReadService,
     McpAdminProposalsService,
     McpAdminToolServer,
     McpAdminMaintenanceService,

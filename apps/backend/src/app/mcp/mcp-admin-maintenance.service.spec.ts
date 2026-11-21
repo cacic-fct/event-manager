@@ -18,6 +18,10 @@ function context() {
       findMany: jest.fn().mockResolvedValue([{ id: 'old-log' }]),
       deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
+    mcpAdminOperationDelegation: {
+      findMany: jest.fn().mockResolvedValue([{ id: 'expired-operation-delegation' }]),
+      deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
     mcpAdminDelegation: {
       findMany: jest.fn().mockResolvedValue([{ id: 'expired-delegation' }]),
       deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
@@ -153,7 +157,17 @@ describe('McpAdminMaintenanceService', () => {
     expect(prisma.mcpAdminDelegation.deleteMany).toHaveBeenCalledWith({
       where: { id: { in: ['expired-delegation'] }, expiresAt: { lt: cutoff } },
     });
+    expect(prisma.mcpAdminOperationDelegation.findMany).toHaveBeenCalledWith({
+      where: { expiresAt: { lt: cutoff } },
+      select: { id: true },
+      orderBy: [{ expiresAt: 'asc' }, { id: 'asc' }],
+      take: 100,
+    });
+    expect(prisma.mcpAdminOperationDelegation.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ['expired-operation-delegation'] }, expiresAt: { lt: cutoff } },
+    });
     expect(prisma.mcpEventContentSync.deleteMany).not.toHaveBeenCalled();
+    expect(effects.syncEventContent).not.toHaveBeenCalled();
 
     // Recovery has only an event identifier and still runs after personal rows are pruned.
     await service.flush();

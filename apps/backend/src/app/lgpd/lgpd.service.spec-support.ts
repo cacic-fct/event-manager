@@ -175,6 +175,8 @@ function createPrismaMock() {
     externalAccountMergeOperation: {
       findMany: jest.fn(),
     },
+    mcpAdminOperationDelegation: findManyDelegate(),
+    mcpAdminCommand: findManyDelegate(),
     mcpAdminDelegation: findManyDelegate(),
     mcpAdminProposal: findManyDelegate(),
     mcpAdminOperationLog: findManyDelegate(),
@@ -226,6 +228,8 @@ function createTransactionMock() {
   });
 
   return {
+    mcpAdminCommand: writeManyDelegate(),
+    mcpAdminOperationDelegation: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
     mcpAdminProposal: writeManyDelegate(),
     mcpAdminDelegation: deleteManyDelegate(),
     mcpAdminOperationLog: deleteManyDelegate(),

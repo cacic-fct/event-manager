@@ -80,8 +80,10 @@ export const WORKSPACE_TAB_PERMISSIONS = [
   {
     id: WorkspacePermissionTab.Mcp,
     label: 'Aplicativos e propostas MCP',
-    read: [Permission.Event.Read],
-    edit: [Permission.Event.Read],
+    // This tab manages the actor's own delegations; each domain operation is
+    // authorized separately on the backend, including sports-only organizers.
+    read: [],
+    edit: [],
     delete: [],
   },
   {
