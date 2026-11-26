@@ -20,11 +20,13 @@ import { KeycloakAuthService } from '../../auth/keycloak-auth.service';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { PermissionManagementResolver } from '../../authorization/permission-management.resolver';
 import { PermissionManagementService } from '../../authorization/permission-management.service';
+import { DataTransferService } from '../../data-transfer/data-transfer.service';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { McpAdminConfig } from '../mcp-admin.config';
 import { adminMcpExecution } from './execution-context';
 import { AdminMcpGraphqlBridge, boundedJson } from './graphql-bridge';
+import { AdminMcpRestOperations } from './rest-operations';
 const { jest } = import.meta;
 
 @Injectable()
@@ -99,6 +101,20 @@ describe('administrative MCP bridge through actual Nest GraphQL guards', () => {
         PermissionManagementService,
         { provide: PrismaService, useValue: prisma },
         { provide: AuditLogService, useValue: {} },
+        {
+          provide: DataTransferService,
+          useValue: {
+            getSchema: jest.fn(async () => ({ format: 'cacic-event-data', version: 1 })),
+            export: jest.fn(async () => ({ document: { resources: [] }, issues: [] })),
+            preview: jest.fn(async () => ({ items: [], summary: {}, planHash: '0'.repeat(64), canApply: false })),
+            history: jest.fn(async () => []),
+            apply: jest.fn(async () => ({ applied: true })),
+            validateReviewedApply: jest.fn(async () => undefined),
+            undo: jest.fn(async () => ({ undone: true })),
+            validateUndo: jest.fn(async () => undefined),
+          },
+        },
+        AdminMcpRestOperations,
         AdminMcpGraphqlBridge,
         { provide: McpAdminConfig, useValue: { resourceUrl: 'https://events.example.test/api/mcp/admin' } },
         { provide: AuthorizationPolicyService, useValue: policy },
@@ -217,15 +233,32 @@ describe('administrative MCP bridge through actual Nest GraphQL guards', () => {
         .map((entry) => entry.field)
         .sort(),
     ).toEqual([
+      'applyDataTransfer',
       'archivePermissionGroup',
       'archivePermissionRole',
+      'dataTransferHistory',
+      'dataTransferSchema',
+      'exportDataTransfer',
       'permissionGroups',
       'permissionRoles',
       'permissionScopeTargets',
       'placePreset',
+      'previewDataTransfer',
       'savePermissionGroup',
       'savePermissionRole',
+      'undoDataTransfer',
       'updatePlacePreset',
     ]);
+  });
+
+  it('routes REST-only transfer operations through the typed service adapter', async () => {
+    const result = await bridge.execute('dataTransferSchema', {}, user(), {
+      ...execution,
+      operation: 'dataTransferSchema',
+    });
+    expect(result).toEqual({ format: 'cacic-event-data', version: 1 });
+    expect(() =>
+      bridge.arguments('exportDataTransfer', { target: { kind: 'event', id: 'e1' }, extra: true }),
+    ).toThrow();
   });
 });

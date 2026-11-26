@@ -1,4 +1,5 @@
-import { randomUUID } from 'node:crypto';
+import { McpAdminFileArtifactService } from './artifact-files';
+import { createHash, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { BadRequestException, ConflictException } from '@nestjs/common';
@@ -11,6 +12,7 @@ import { AuditLogService } from '../../audit-log/audit-log.service';
 import type { AuditRecordOptions } from '../../audit-log/audit-log.types';
 import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { audienceContext } from '../../audiences/audience-context';
+import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { McpAdminConfig, MCP_ADMIN_PROPOSE_SCOPE, MCP_ADMIN_READ_SCOPE } from '../mcp-admin.config';
 import { commandDecisionSchema } from './schemas';
@@ -213,6 +215,7 @@ describe('administrative commands on disposable PostgreSQL', () => {
       '20261119000000_admin_mcp',
       '20261119220000_expand_admin_mcp',
       '20261120090000_admin_mcp_operations',
+      '20261122120000_admin_mcp_artifacts',
     ]) {
       await sql.query(
         await readFile(
@@ -250,7 +253,8 @@ describe('administrative commands on disposable PostgreSQL', () => {
         }
       },
     };
-    const bridge: Pick<AdminMcpGraphqlBridge, 'operation' | 'arguments' | 'execute'> = {
+    const bridge: Pick<AdminMcpGraphqlBridge, 'operation' | 'arguments' | 'execute' | 'preflight'> = {
+      preflight: async () => undefined,
       operation: (field) => {
         const definition = ADMIN_MCP_OPERATIONS.find((entry) => entry.field === field);
         if (!definition) throw new BadRequestException('Unknown named administrative operation.');
@@ -388,6 +392,40 @@ describe('administrative commands on disposable PostgreSQL', () => {
     delegationId = delegation.id;
   });
 
+  it('persists verified private files and erases bytes through the delegation cascade', async () => {
+    await prisma.mcpAdminOperationDelegation.update({
+      where: { id: delegationId },
+      data: { operations: ['uploadSportsTeamLogo'] },
+    });
+    const artifacts = new McpAdminFileArtifactService(prisma, new AuthorizationPolicyService(prisma), {
+      enabled: true,
+      proposalsEnabled: true,
+      allowedClients: [CLIENT_ID],
+      resourceUrl: RESOURCE,
+    } as McpAdminConfig);
+    const bytes = Buffer.from('synthetic-private-file');
+    const owner = { userId: USER_ID, clientId: CLIENT_ID, delegationId, operation: 'uploadSportsTeamLogo' };
+    const file = await artifacts.createUpload({
+      ...owner,
+      purpose: 'team-logo',
+      target: { teamId: 'synthetic-team' },
+      fileName: 'synthetic.png',
+      contentType: 'image/png',
+      bytes,
+      expectedSizeBytes: bytes.length,
+      expectedSha256: createHash('sha256').update(bytes).digest('hex'),
+    });
+    expect(await artifacts.loadUpload({ ...owner, artifactId: file.artifactId })).toEqual(bytes);
+    await expect(
+      artifacts.loadUpload({ ...owner, clientId: 'other-client', artifactId: file.artifactId }),
+    ).rejects.toThrow();
+    await expect(
+      sql.query('UPDATE mcp_admin_file_artifacts SET "uploadedBytes" = 0 WHERE id = $1', [file.artifactId]),
+    ).rejects.toThrow();
+    await prisma.mcpAdminOperationDelegation.delete({ where: { id: delegationId } });
+    expect(await prisma.mcpAdminFileArtifact.count({ where: { id: file.artifactId } })).toBe(0);
+  });
+
   it('stages only immutable JSON arguments and applies only the signed human-adjusted values', async () => {
     const proposal = await stage();
     expect(await currentDescription()).toBe('Original description');
@@ -396,6 +434,7 @@ describe('administrative commands on disposable PostgreSQL', () => {
     const parsedDecision = decision(preview);
     expect(Object.keys(parsedDecision.review ?? {})).not.toEqual(Object.keys(preview));
     await expect(service.decide(user, proposal.proposalId, parsedDecision)).resolves.toBe('APPLIED');
+    await expect(service.status(user, proposal.proposalId)).resolves.toMatchObject({ result: { id: eventId } });
     expect(await currentDescription()).toBe('Human reviewed description');
     expect(await commandState(proposal.proposalId)).toBe('APPLIED');
     expect(observedAudit).toEqual([

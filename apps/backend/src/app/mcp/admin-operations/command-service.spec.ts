@@ -94,6 +94,7 @@ function fixture() {
             approvedById: null,
             approvedByName: null,
             reviewedArguments: null,
+            result: null,
           };
           return { ...command };
         },
@@ -101,7 +102,7 @@ function fixture() {
       updateMany: jest.fn(
         async (input: {
           where: { id: string; state: string; expiresAt?: { gt: Date } };
-          data: Partial<McpAdminCommand>;
+          data: Partial<Omit<McpAdminCommand, 'result'>> & { result?: unknown };
         }) => {
           if (
             !command ||
@@ -110,7 +111,17 @@ function fixture() {
             (input.where.expiresAt && command.expiresAt <= input.where.expiresAt.gt)
           )
             return { count: 0 };
-          command = { ...command, ...input.data };
+          const result = input.data.result;
+          command = {
+            ...command,
+            ...input.data,
+            result:
+              result === undefined
+                ? command.result
+                : result === Prisma.JsonNull
+                  ? null
+                  : (result as McpAdminCommand['result']),
+          };
           return { count: 1 };
         },
       ),
@@ -141,6 +152,7 @@ function fixture() {
   };
   const domainWrite = jest.fn(async () => ({ id: 'event-a' }));
   const bridge = {
+    preflight: jest.fn(async () => undefined),
     operation: jest.fn((field: string) => {
       const definition = ADMIN_MCP_OPERATIONS.find((entry) => entry.field === field);
       if (!definition) throw new BadRequestException('Unknown operation');
@@ -240,6 +252,10 @@ describe('administrative MCP reviewed command lifecycle', () => {
     );
     expect(f.bridge.execute).not.toHaveBeenCalled();
     expect(f.domainWrite).not.toHaveBeenCalled();
+    expect(f.bridge.preflight).toHaveBeenCalledWith('updateEvent', f.args, f.user, {
+      delegationId: f.delegation.id,
+      clientId: f.delegation.clientId,
+    });
     expect(f.audit.record).toHaveBeenCalledWith(
       expect.objectContaining({ metadata: expect.objectContaining({ queueOnly: true, proposalId: 'command-a' }) }),
       f.prisma,
@@ -294,6 +310,7 @@ describe('administrative MCP reviewed command lifecycle', () => {
     const first = await f.propose();
     await expect(f.propose()).resolves.toEqual(first);
     expect(f.prisma.mcpAdminCommand.create).toHaveBeenCalledTimes(1);
+    expect(f.bridge.preflight).toHaveBeenCalledTimes(1);
     await expect(
       f.service.propose(
         f.user,
@@ -303,6 +320,98 @@ describe('administrative MCP reviewed command lifecycle', () => {
         'idempotent-a',
       ),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('stores the applied domain result and serves repeat status reads without re-executing', async () => {
+    const f = fixture();
+    const result = { id: 'event-a', message: 'Evento atualizado' };
+    f.domainWrite.mockResolvedValue(result);
+
+    await expect(f.approve()).resolves.toBe('APPLIED');
+    expect(f.command()?.result).toEqual(result);
+
+    f.bridge.execute.mockClear();
+    f.policy.assertPermissions.mockClear();
+    const firstStatus = await f.service.status(f.user, 'command-a');
+    const secondStatus = await f.service.status(f.user, 'command-a');
+    expect(firstStatus).toEqual(expect.objectContaining({ state: 'APPLIED', result }));
+    expect(secondStatus).toEqual(firstStatus);
+    expect(f.policy.assertPermissions).toHaveBeenCalledWith(
+      f.user,
+      [Permission.Event.Update],
+      expect.objectContaining({ eventId: 'event-a' }),
+    );
+    await expect(f.service.status({ ...f.user, sub: 'other-operator' }, 'command-a')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(f.bridge.execute).not.toHaveBeenCalled();
+  });
+
+  it('omits a result after an uncertain execution', async () => {
+    const f = fixture();
+    f.bridge.execute.mockRejectedValueOnce(new Error('unconfirmed execution'));
+
+    await expect(f.approve()).resolves.toBe('UNCERTAIN');
+    expect(f.command()?.result).toBeNull();
+    f.bridge.execute.mockClear();
+
+    const status = await f.service.status(f.user, 'command-a');
+    expect(status).toMatchObject({ state: 'UNCERTAIN' });
+    expect(status).not.toHaveProperty('result');
+    expect(f.bridge.execute).not.toHaveBeenCalled();
+  });
+
+  it('does not expose an applied result without MCP read scope', async () => {
+    const f = fixture();
+    await f.approve();
+    f.user.oidcScopeSet.delete(MCP_ADMIN_READ_SCOPE);
+    f.bridge.execute.mockClear();
+
+    const status = await f.service.status(f.user, 'command-a');
+    expect(status).toMatchObject({ state: 'APPLIED' });
+    expect(status).not.toHaveProperty('result');
+    expect(f.bridge.execute).not.toHaveBeenCalled();
+  });
+
+  it('allows a read-only client to retrieve a past applied result when proposals are disabled', async () => {
+    const f = fixture();
+    const result = { id: 'event-a', message: 'Evento atualizado' };
+    f.domainWrite.mockResolvedValue(result);
+    await f.approve();
+    f.user.oidcScopeSet.delete(MCP_ADMIN_PROPOSE_SCOPE);
+    f.config.proposalsEnabled = false;
+    f.bridge.execute.mockClear();
+
+    await expect(f.service.status(f.user, 'command-a')).resolves.toEqual(
+      expect.objectContaining({ state: 'APPLIED', result }),
+    );
+    expect(f.bridge.execute).not.toHaveBeenCalled();
+  });
+
+  it('rechecks personal-data consent before exposing a sensitive applied result', async () => {
+    const f = fixture();
+    const args = { id: 'person-a' };
+    f.delegation.operations = ['deletePerson'];
+    f.delegation.personalData = true;
+    await f.service.propose(f.user, f.delegation.id, 'deletePerson', args, 'personal-a');
+    const command = f.command();
+    if (!command) throw new Error('Proposal missing');
+    const review = await f.service.review(f.user, command.id, {
+      arguments: args,
+      expectedFingerprint: command.fingerprint,
+    });
+    await expect(
+      f.service.decide(f.user, command.id, {
+        decision: 'APPROVE',
+        expectedFingerprint: review.expectedFingerprint,
+        review,
+      }),
+    ).resolves.toBe('APPLIED');
+
+    f.delegation.personalData = false;
+    f.bridge.execute.mockClear();
+    await expect(f.service.status(f.user, command.id)).rejects.toBeInstanceOf(ForbiddenException);
+    expect(f.bridge.execute).not.toHaveBeenCalled();
   });
 
   it('rechecks idempotency inside the transaction before the quota', async () => {
@@ -417,7 +526,13 @@ describe('administrative MCP reviewed command lifecycle', () => {
 
   it('requires an exact signed final preview, including manually edited values and effects', async () => {
     const f = fixture();
-    const preview = await f.review({ id: 'event-a', input: { name: 'Nome revisado' } });
+    const reviewedArguments = { id: 'event-a', input: { name: 'Nome revisado' } };
+    const preview = await f.review(reviewedArguments);
+    expect(f.bridge.preflight).toHaveBeenNthCalledWith(2, 'updateEvent', reviewedArguments, f.user, {
+      delegationId: f.delegation.id,
+      clientId: f.delegation.clientId,
+      proposalId: 'command-a',
+    });
     const fingerprint = preview.expectedFingerprint;
     await expect(
       f.service.decide(f.user, 'command-a', { decision: 'APPROVE', expectedFingerprint: fingerprint }),

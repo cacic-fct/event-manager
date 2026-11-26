@@ -2,6 +2,7 @@ import { GraphQLSchemaBuilderModule, GraphQLSchemaFactory, GraphQLSchemaHost } f
 import { Test } from '@nestjs/testing';
 import { parse, validate } from 'graphql';
 import { AdminMcpGraphqlBridge } from './graphql-bridge';
+import { AdminMcpRestOperations, REST_ADMIN_OPERATION_FIELDS } from './rest-operations';
 import { McpAdminConfig } from '../mcp-admin.config';
 import { ADMIN_MCP_OPERATIONS } from './catalog';
 import { UsageReportResolver } from '../../analytics/usage-report.resolver';
@@ -47,6 +48,8 @@ import { EventAttendancesMutationsResolver } from '../../events/attendances/even
 import { EventAttendanceCsvImportResolver } from '../../events/attendances/event-attendances.csv-import.resolver';
 import { EventAttendancesQueriesResolver } from '../../events/attendances/event-attendances.queries.resolver';
 import { MajorEventSubscriptionCsvImportResolver } from '../../events/attendances/major-event-subscription-csv-import.resolver';
+import { EventManualNotificationResolver } from '../../events/event-manual-notification.resolver';
+import { DataTransferService } from '../../data-transfer/data-transfer.service';
 
 describe('administrative MCP catalog against the actual Nest schema', () => {
   it('validates every candidate field and exact projection', async () => {
@@ -87,6 +90,7 @@ describe('administrative MCP catalog against the actual Nest schema', () => {
           SportsPlayerApplicationAdminReadResolver,
           EventGroupsResolver,
           EventSubscriberInformationResolver,
+          EventManualNotificationResolver,
           EventsResolver,
           EventAttendanceCollectorsResolver,
           EventLecturersResolver,
@@ -99,17 +103,19 @@ describe('administrative MCP catalog against the actual Nest schema', () => {
           EventAttendancesQueriesResolver,
           MajorEventSubscriptionCsvImportResolver,
         ]);
+      const restOperations = new AdminMcpRestOperations({} as DataTransferService);
       const bridge = new AdminMcpGraphqlBridge(
         { schema } as GraphQLSchemaHost,
         { resourceUrl: 'https://events.example.test/api/mcp/admin' } as McpAdminConfig,
+        restOperations,
       );
-      expect(bridge.coverage()).toEqual({
-        candidates: ADMIN_MCP_OPERATIONS.length,
-        available: ADMIN_MCP_OPERATIONS.length,
-        unavailable: [],
-      });
+      const coverage = bridge.coverage();
       const failures: string[] = [];
+      expect(new Set(REST_ADMIN_OPERATION_FIELDS)).toEqual(
+        new Set(ADMIN_MCP_OPERATIONS.filter((operation) => operation.transport === 'REST').map((entry) => entry.field)),
+      );
       for (const operation of ADMIN_MCP_OPERATIONS) {
+        if (operation.transport === 'REST') continue;
         const root = operation.kind === 'query' ? schema.getQueryType() : schema.getMutationType();
         const field = root?.getFields()[operation.field];
         if (!field) {
@@ -127,6 +133,11 @@ describe('administrative MCP catalog against the actual Nest schema', () => {
         for (const error of validate(schema, document)) failures.push(operation.field + ': ' + error.message);
       }
       expect(failures).toEqual([]);
+      expect(coverage).toEqual({
+        candidates: ADMIN_MCP_OPERATIONS.length,
+        available: ADMIN_MCP_OPERATIONS.length,
+        unavailable: [],
+      });
     } finally {
       await module.close();
     }

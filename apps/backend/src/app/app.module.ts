@@ -1,5 +1,9 @@
+import { McpAdminFileArtifactService } from './mcp/admin-operations/artifact-files';
+import { McpAdminArtifactTools } from './mcp/admin-operations/artifact-tools';
+import { McpAdminArtifactController } from './mcp/admin-operations/artifact-controller';
 import { AdminMcpGraphqlBridge } from './mcp/admin-operations/graphql-bridge';
 import { AdminMcpCommandService } from './mcp/admin-operations/command-service';
+import { AdminMcpRestOperations } from './mcp/admin-operations/rest-operations';
 import { AdminMcpScopePolicy } from './mcp/admin-operations/scope-policy';
 import { AdminMcpOperationTools } from './mcp/admin-operations/tools';
 import { AdminMcpOperationsController } from './mcp/admin-operations/controller';
@@ -485,6 +489,7 @@ const schedulerProviders = useInMemoryTestInfra
   controllers: [
     McpAdminController,
     AdminMcpOperationsController,
+    McpAdminArtifactController,
     McpAdminTransportController,
     McpAdminMetadataController,
     McpAdminRealtimeController,
@@ -753,9 +758,12 @@ const schedulerProviders = useInMemoryTestInfra
     TurnstileService,
     McpAdminConfig,
     AdminMcpGraphqlBridge,
+    AdminMcpRestOperations,
     AdminMcpCommandService,
     AdminMcpScopePolicy,
     AdminMcpOperationTools,
+    McpAdminFileArtifactService,
+    McpAdminArtifactTools,
     McpAdminAccessService,
     McpAdminAuthGuard,
     McpAdminSessionGuard,

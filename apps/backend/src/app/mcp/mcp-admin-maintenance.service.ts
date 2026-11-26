@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { McpAdminFileArtifactService } from './admin-operations/artifact-files';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { EventPostCommitEffectsService } from '../events/event-post-commit-effects.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SportsMutationEventsService } from '../sports/realtime/sports-mutation-events.service';
@@ -13,6 +14,7 @@ export class McpAdminMaintenanceService {
     private readonly effects: EventPostCommitEffectsService,
     private readonly sportsEvents: SportsMutationEventsService,
     private readonly syncLock: McpEventContentSyncLockService,
+    @Optional() private readonly artifacts?: McpAdminFileArtifactService,
   ) {}
 
   async flush(eventId?: string): Promise<void> {
@@ -53,6 +55,7 @@ export class McpAdminMaintenanceService {
   }
 
   async prune(): Promise<void> {
+    await this.artifacts?.cleanup();
     const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60_000);
     const logs = await this.prisma.mcpAdminOperationLog.findMany({
       where: { createdAt: { lt: cutoff } },

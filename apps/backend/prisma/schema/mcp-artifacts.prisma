@@ -1,0 +1,32 @@
+// Temporary private files. Ownership follows the operation delegation and its erasure lifecycle.
+model McpAdminFileArtifact {
+  id String @id @default(uuid(7))
+  delegationId String
+  delegation McpAdminOperationDelegation @relation(fields: [delegationId], references: [id], onDelete: Cascade)
+  operation String
+  purpose String
+  target Json
+  fileName String
+  contentType String
+  sizeBytes Int
+  sha256 String
+  uploadedBytes Int @default(0)
+  ready Boolean @default(false)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  chunks McpAdminFileArtifactChunk[]
+
+  @@index([delegationId, expiresAt])
+  @@index([expiresAt])
+  @@map("mcp_admin_file_artifacts")
+}
+
+model McpAdminFileArtifactChunk {
+  artifactId String
+  artifact McpAdminFileArtifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  offset Int
+  bytes Bytes @db.ByteA
+
+  @@id([artifactId, offset])
+  @@map("mcp_admin_file_artifact_chunks")
+}

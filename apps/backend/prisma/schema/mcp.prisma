@@ -115,6 +115,7 @@ model McpAdminOperationDelegation {
   expiresAt     DateTime
   revokedAt     DateTime?
   proposals     McpAdminCommand[]
+  fileArtifacts McpAdminFileArtifact[]
 
   @@index([userId, clientId, expiresAt])
   @@index([expiresAt])
@@ -136,6 +137,7 @@ model McpAdminCommand {
   approvedById   String?
   approvedByName String?
   reviewedArguments Json?
+  result         Json?
 
   @@unique([delegationId, idempotencyKey])
   @@index([delegationId, createdAt])

@@ -244,6 +244,66 @@ export class DataTransferService {
     };
   }
 
+  /** Validate the exact import plan a human is being asked to approve without consuming its allocation or writing. */
+  async validateReviewedApply(
+    input: TransferApplyRequest,
+    user: AuthenticatedUser | undefined,
+  ): Promise<TransferPreview> {
+    await this.assertGate(Permission.DataTransfer.Import, user);
+    if (!this.journal)
+      throw new ServiceUnavailableException(
+        'O registro reversível de importações não está disponível. Nenhuma alteração foi aplicada.',
+      );
+    const rawDocument = this.parseDocument(input.document);
+    const personDecisions = validatePersonDecisions(input.personDecisions);
+    this.assertScope(input.scope);
+    if (input.scope) await this.assertScopeReadable(input.scope, user);
+    if (typeof input.planHash !== 'string' || !/^[a-f0-9]{64}$/.test(input.planHash)) {
+      throw new BadRequestException('A prévia de importação é inválida. Gere uma nova prévia.');
+    }
+    if (typeof input.allowPartial !== 'boolean') {
+      throw new BadRequestException('Informe se as linhas válidas podem ser aplicadas parcialmente.');
+    }
+    if (
+      input.allocationToken !== undefined &&
+      (typeof input.allocationToken !== 'string' || !/^[a-f0-9]{64}$/.test(input.allocationToken))
+    ) {
+      throw new BadRequestException('A alocação de IDs é inválida. Gere uma nova prévia.');
+    }
+
+    const actorId = this.requireActorId(user);
+    return runSerializablePrismaTransaction(
+      this.prisma,
+      async (tx) => {
+        const document = this.keyAllocations.apply(rawDocument, actorId, input.allocationToken);
+        const allocatedIds = allocatedIdsFor(rawDocument, document);
+        const plan = await this.buildPlan(document, input.scope, user, tx, allocatedIds, personDecisions);
+        if (!timingSafeEqualHex(plan.preview.planHash, input.planHash)) {
+          throw new ConflictException('Os dados ou permissões mudaram desde a prévia. Gere uma nova prévia.');
+        }
+        if (plan.preview.personPrompts?.length)
+          throw new ConflictException(
+            'Confirme a criação, a mesclagem ou ignore todas as pessoas pendentes antes de aplicar.',
+          );
+        if (!input.allowPartial && plan.preview.summary.skip > 0) {
+          throw new ConflictException('Há linhas bloqueadas. Revise a prévia ou confirme a aplicação parcial.');
+        }
+        if (!plan.rows.some((row) => row.status === 'ready' && (row.action === 'create' || row.action === 'update'))) {
+          throw new ConflictException(
+            'Não há alterações prontas para aplicar. Gere uma nova prévia após editar o arquivo.',
+          );
+        }
+        return plan.preview;
+      },
+      TRANSFER_TRANSACTION_OPTIONS,
+    );
+  }
+
+  async validateUndo(batchId: string, user: AuthenticatedUser | undefined): Promise<void> {
+    if (!this.journal) throw new ServiceUnavailableException('O registro reversível não está disponível.');
+    await this.journal.validateUndo(batchId, user);
+  }
+
   async apply(input: TransferApplyRequest, user: AuthenticatedUser | undefined): Promise<TransferResult> {
     await this.assertGate(Permission.DataTransfer.Import, user);
     if (!this.journal)

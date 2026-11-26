@@ -1,3 +1,4 @@
+import { mcpJobAttribution } from '../audit-log/mcp-job-attribution';
 import { ConflictException } from '@nestjs/common';
 import { Prisma, type CertificateIssuanceRun } from '@prisma/client';
 import { audienceContext } from '../audiences/audience-context';
@@ -35,6 +36,7 @@ function fixture() {
     updatedAt: now,
   };
   const prisma = {
+    auditLogEntry: { findFirst: jest.fn().mockResolvedValue(null) },
     certificateIssuanceRun: {
       create: jest.fn().mockResolvedValue(run),
       findMany: jest.fn().mockResolvedValue([]),
@@ -332,5 +334,20 @@ describe('CertificateIssuanceJobsService', () => {
     });
     prisma.certificateIssuanceRun.updateMany.mockResolvedValueOnce({ count: 0 });
     await expect(service.cancel('config', 'run')).rejects.toBeInstanceOf(ConflictException);
+  });
+});
+
+describe('certificate job MCP attribution', () => {
+  it('restores only persisted attribution without restoring execution authority', async () => {
+    const { prisma, issuing, service } = fixture();
+    const metadata = { source: 'mcp', proposalId: 'proposal', approvedById: 'admin', approvedByName: 'Admin' };
+    prisma.auditLogEntry.findFirst.mockResolvedValue({ metadata } as never);
+    issuing.issueMissedCertificates.mockImplementation(async () => {
+      expect(mcpJobAttribution.getStore()).toEqual(metadata);
+      return [];
+    });
+    await service.process('run', true);
+    expect(issuing.issueMissedCertificates).toHaveBeenCalled();
+    expect(mcpJobAttribution.getStore()).toBeUndefined();
   });
 });

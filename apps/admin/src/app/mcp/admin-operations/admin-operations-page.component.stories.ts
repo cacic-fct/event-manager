@@ -204,3 +204,35 @@ export const SearchableCatalog: Story = {
     await expect(canvas.getByRole('checkbox', { name: 'Consultar contas (consulta)' })).toBeDisabled();
   },
 };
+
+export const StagedFileInspection: Story = {
+  parameters: handlers({
+    ...sportsCommand(),
+    id: '00000000-0000-4000-8000-000000000001',
+    operation: 'uploadSportsTeamLogo',
+    operationLabel: 'Enviar logo da equipe',
+    arguments: {
+      artifactId: '00000000-0000-4000-8000-000000000002',
+      sha256: 'a'.repeat(64),
+      fileName: 'equipe-demo.png',
+    },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        artifactId: { type: 'string' },
+        sha256: { type: 'string' },
+        fileName: { type: 'string' },
+      },
+    },
+    effects: 'Substitui o logo da equipe após a conferência e aprovação.',
+  }),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const link = await canvas.findByRole('link', { name: 'Baixar arquivo 1' });
+    await expect(link).toHaveAttribute(
+      'href',
+      '/api/admin/mcp/operations/proposals/00000000-0000-4000-8000-000000000001/files/00000000-0000-4000-8000-000000000002',
+    );
+    await expect(link).toHaveAttribute('rel', 'noopener');
+  },
+};

@@ -35,98 +35,124 @@ export class MergeCandidateOperationsService {
   ) {}
 
   async scanMergeCandidates(actorId: string | null): Promise<number> {
-    const staleResult = await this.prisma.mergeCandidate.updateMany({
-      where: stalePendingMergeCandidateWhere,
-      data: {
-        status: 'STALE',
-        updatedById: actorId ?? undefined,
-      },
-    });
-
-    const people = await this.prisma.people.findMany({
-      where: {
-        deletedAt: null,
-        mergedIntoId: null,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        identityDocument: true,
-      },
-      orderBy: {
-        id: 'asc',
-      },
-    });
-
-    const matches = new Map<string, CandidateMatch>();
-    collectCpfMatches(people, matches);
-    collectEmailMatches(people, matches);
-    collectNameMatches(people, matches);
-
-    if (matches.size === 0) {
-      return staleResult.count;
-    }
-
-    const pairKeys = [...matches.keys()];
-    const existingCandidates = await this.prisma.mergeCandidate.findMany({
-      where: {
-        pairKey: {
-          in: pairKeys,
-        },
-      },
-      select: {
-        id: true,
-        pairKey: true,
-        status: true,
-      },
-    });
-
-    const existingByPairKey = new Map(existingCandidates.map((candidate) => [candidate.pairKey, candidate]));
-
-    let touchedCandidates = 0;
-
-    for (const match of matches.values()) {
-      const existingCandidate = existingByPairKey.get(match.pairKey);
-      if (!existingCandidate) {
-        await this.prisma.mergeCandidate.create({
+    return this.prisma.$transaction(
+      async (tx) => {
+        const staleResult = await tx.mergeCandidate.updateMany({
+          where: stalePendingMergeCandidateWhere,
           data: {
-            personAId: match.personAId,
-            personBId: match.personBId,
-            pairKey: match.pairKey,
-            score: match.score,
-            matchMethod: match.method,
-            matchValue: match.matchValue,
-            status: 'PENDING',
-            createdById: actorId ?? undefined,
+            status: 'STALE',
+            updatedById: actorId ?? undefined,
           },
         });
-        touchedCandidates += 1;
-        continue;
-      }
 
-      if (existingCandidate.status !== 'PENDING' && existingCandidate.status !== 'STALE') {
-        continue;
-      }
+        const people = await tx.people.findMany({
+          where: {
+            deletedAt: null,
+            mergedIntoId: null,
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            identityDocument: true,
+          },
+          orderBy: {
+            id: 'asc',
+          },
+        });
 
-      await this.prisma.mergeCandidate.update({
-        where: {
-          id: existingCandidate.id,
-        },
-        data: {
-          personAId: match.personAId,
-          personBId: match.personBId,
-          score: match.score,
-          matchMethod: match.method,
-          matchValue: match.matchValue,
-          status: 'PENDING',
-          updatedById: actorId ?? undefined,
-        },
-      });
-      touchedCandidates += 1;
-    }
+        const matches = new Map<string, CandidateMatch>();
+        collectCpfMatches(people, matches);
+        collectEmailMatches(people, matches);
+        collectNameMatches(people, matches);
 
-    return touchedCandidates + staleResult.count;
+        if (matches.size === 0) {
+          await this.recordScan(tx, actorId, staleResult.count, 0);
+          return staleResult.count;
+        }
+
+        const pairKeys = [...matches.keys()];
+        const existingCandidates = await tx.mergeCandidate.findMany({
+          where: {
+            pairKey: {
+              in: pairKeys,
+            },
+          },
+          select: {
+            id: true,
+            pairKey: true,
+            status: true,
+          },
+        });
+
+        const existingByPairKey = new Map(existingCandidates.map((candidate) => [candidate.pairKey, candidate]));
+
+        let touchedCandidates = 0;
+
+        for (const match of matches.values()) {
+          const existingCandidate = existingByPairKey.get(match.pairKey);
+          if (!existingCandidate) {
+            await tx.mergeCandidate.create({
+              data: {
+                personAId: match.personAId,
+                personBId: match.personBId,
+                pairKey: match.pairKey,
+                score: match.score,
+                matchMethod: match.method,
+                matchValue: match.matchValue,
+                status: 'PENDING',
+                createdById: actorId ?? undefined,
+              },
+            });
+            touchedCandidates += 1;
+            continue;
+          }
+
+          if (existingCandidate.status !== 'PENDING' && existingCandidate.status !== 'STALE') {
+            continue;
+          }
+
+          await tx.mergeCandidate.update({
+            where: {
+              id: existingCandidate.id,
+            },
+            data: {
+              personAId: match.personAId,
+              personBId: match.personBId,
+              score: match.score,
+              matchMethod: match.method,
+              matchValue: match.matchValue,
+              status: 'PENDING',
+              updatedById: actorId ?? undefined,
+            },
+          });
+          touchedCandidates += 1;
+        }
+
+        await this.recordScan(tx, actorId, staleResult.count, touchedCandidates);
+        return touchedCandidates + staleResult.count;
+      },
+      { timeout: 60_000 },
+    );
+  }
+
+  private async recordScan(tx: Prisma.TransactionClient, actorId: string | null, stale: number, matched: number) {
+    await this.auditLog.record(
+      {
+        entityType: AuditLogEntityType.SYSTEM,
+        entityId: 'merge-candidate-scan',
+        operation: AuditLogOperation.SUBMIT,
+        actor: actorId
+          ? { id: actorId, name: actorId, type: AuditLogActorType.USER }
+          : { name: 'Verificação de duplicidades', type: AuditLogActorType.SYSTEM },
+        scope: { permission: Permission.MergeCandidate.Scan },
+        summary: 'Verificação de possíveis cadastros duplicados concluída.',
+        metadata: { staleCandidates: stale, matchedCandidates: matched },
+        force: true,
+        squashWindowMs: 0,
+      },
+      tx,
+    );
   }
 
   async mergeCandidatePeople(input: MergeCandidateMergeInput, actorId: string | null) {

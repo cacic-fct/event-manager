@@ -947,6 +947,31 @@ export const AUDIENCE_RELATIONS = {
       ownsRelation: false,
     },
   ],
+  McpAdminFileArtifact: [
+    {
+      name: 'delegation',
+      type: 'McpAdminOperationDelegation',
+      isList: false,
+      isRequired: true,
+      ownsRelation: true,
+    },
+    {
+      name: 'chunks',
+      type: 'McpAdminFileArtifactChunk',
+      isList: true,
+      isRequired: true,
+      ownsRelation: false,
+    },
+  ],
+  McpAdminFileArtifactChunk: [
+    {
+      name: 'artifact',
+      type: 'McpAdminFileArtifact',
+      isList: false,
+      isRequired: true,
+      ownsRelation: true,
+    },
+  ],
   McpAdminDelegation: [
     {
       name: 'proposals',
@@ -986,6 +1011,13 @@ export const AUDIENCE_RELATIONS = {
     {
       name: 'proposals',
       type: 'McpAdminCommand',
+      isList: true,
+      isRequired: true,
+      ownsRelation: false,
+    },
+    {
+      name: 'fileArtifacts',
+      type: 'McpAdminFileArtifact',
       isList: true,
       isRequired: true,
       ownsRelation: false,
@@ -3415,6 +3447,30 @@ export const PRISMA_MODEL_IDENTITIES = {
       {
         name: 'id',
         column: 'id',
+      },
+    ],
+  },
+  McpAdminFileArtifact: {
+    table: 'mcp_admin_file_artifacts',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'id',
+        column: 'id',
+      },
+    ],
+  },
+  McpAdminFileArtifactChunk: {
+    table: 'mcp_admin_file_artifact_chunks',
+    labelColumn: null,
+    idFields: [
+      {
+        name: 'artifactId',
+        column: 'artifactId',
+      },
+      {
+        name: 'offset',
+        column: 'offset',
       },
     ],
   },

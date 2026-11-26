@@ -6,6 +6,9 @@ import { EventManualNotificationProcessor } from './event-manual-notification.pr
 function setup(audience: 'LECTURERS' | 'SUBSCRIBERS' = 'LECTURERS') {
   const event = { name: 'Evento', majorEventId: 'major', eventGroupId: null };
   const prisma = {
+    auditLogEntry: {
+      findFirst: jest.fn<() => Promise<{ metadata: Record<string, string> } | null>>().mockResolvedValue(null),
+    },
     event: { findFirst: jest.fn().mockResolvedValue(event) },
     people: {
       findFirst: jest
@@ -46,6 +49,25 @@ function setup(audience: 'LECTURERS' | 'SUBSCRIBERS' = 'LECTURERS') {
 }
 
 describe('manual event notification processing', () => {
+  it('uses persisted approval attribution after privacy cleanup, not queue-supplied identities', async () => {
+    const { prisma, job, processor, audit } = setup();
+    job.data.mcpProposalId = 'proposal';
+    prisma.auditLogEntry.findFirst.mockResolvedValue({
+      metadata: {
+        source: 'mcp',
+        proposalId: 'proposal',
+        approvedById: 'anonymous',
+        approvedByName: 'Pessoa anonimizada',
+      },
+    });
+    await processor.process(job as never);
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({ proposalId: 'proposal', approvedByName: 'Pessoa anonimizada' }),
+      }),
+    );
+  });
+
   describe.each(['event', 'event-group', 'major-event'] as const)('%s notification links', (targetType) => {
     it.each(['LECTURERS', 'SUBSCRIBERS'] as const)(
       'preserves the destination and retry generation for %s',

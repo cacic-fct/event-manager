@@ -1,5 +1,6 @@
 const DOMAIN_LABELS: Record<string, string> = {
   analytics: 'Métricas',
+  'data-transfer': 'Transferência de dados',
   'content-review': 'Revisão de conteúdo',
   'event-context': 'Estrutura',
   users: 'Contas',
@@ -48,6 +49,21 @@ const ARGUMENT_LABELS: Record<string, string> = {
   endDate: 'Data de término',
   score: 'Pontuação',
   notes: 'Observações',
+  artifactId: 'Arquivo',
+  documentArtifactId: 'Arquivo de transferência',
+  sha256: 'Integridade do arquivo',
+  documentSha256: 'Integridade do documento',
+  fileName: 'Nome do arquivo',
+  contentType: 'Tipo do arquivo',
+  sportsTeamId: 'Equipe',
+  expectedRevision: 'Versão esperada',
+  target: 'Destino',
+  targetType: 'Tipo de destino',
+  targetId: 'Destino',
+  scope: 'Escopo',
+  allowPartial: 'Permitir aplicação parcial',
+  planHash: 'Identificador do plano',
+  allocationToken: 'Identificador da prévia',
 };
 
 export function adminOperationDomainLabel(domain: string): string {

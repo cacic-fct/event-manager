@@ -38,8 +38,8 @@ import { assertMcpReviewToken, canonicalMcpValue, signMcpReview } from '../mcp-r
 import { parseMcpInput } from '../mcp-admin.schemas';
 import { AdminMcpGraphqlBridge } from './graphql-bridge';
 import { AdminMcpScopePolicy, operationContexts } from './scope-policy';
-import { Permission } from '@cacic-fct/shared-permissions';
 import { adminScopeSchema } from './schemas';
+import { assertDynamicAdminMcpAdmission } from './dynamic-admission';
 
 function json(value: unknown): Prisma.InputJsonObject {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonObject;
@@ -217,29 +217,13 @@ export class AdminMcpCommandService {
         const context = this.policy.buildResourceContext(args, operation.permissions);
         await this.policy.assertPermissions(user, operation.permissions, {
           ...context,
-          allowScopedCollection: operation.kind === 'query',
+          allowScopedCollection:
+            operation.kind === 'query' ||
+            (operation.serviceAuthorized && operation.target !== 'GLOBAL' && operation.target.mode === 'SERVICE'),
         });
       }
     } else if (operation.kind === 'mutation') {
-      // Dynamic permission decisions still run in the owning service. Admission
-      // requires a current relevant grant, or super-admin, before a proposal exists.
-      const known: Record<string, readonly Permission[]> = {
-        savePermissionRole: [
-          args['input'] && typeof args['input'] === 'object' && 'id' in args['input'] && Boolean(args['input'].id)
-            ? Permission.PermissionGrant.Update
-            : Permission.PermissionGrant.Create,
-        ],
-        savePermissionGroup: [
-          args['input'] && typeof args['input'] === 'object' && 'id' in args['input'] && Boolean(args['input'].id)
-            ? Permission.PermissionGrant.Update
-            : Permission.PermissionGrant.Create,
-        ],
-        updateEventMaterials: [Permission.Event.Update],
-      };
-      if (known[field])
-        await this.policy.assertPermissions(user, known[field], this.policy.buildResourceContext(args, known[field]));
-      else if (!this.policy.isSuperAdmin(user))
-        throw new ForbiddenException('Esta operação dinâmica exige validação administrativa adicional.');
+      await assertDynamicAdminMcpAdmission(field, args, user, { prisma: this.prisma, policy: this.policy });
     }
     return row;
   }
@@ -299,6 +283,7 @@ export class AdminMcpCommandService {
     if (existing) {
       return this.statusResult(sameProposal(existing));
     }
+    await this.bridge.preflight(field, args, user, { delegationId: row.id, clientId: row.clientId });
     const fingerprint = await this.fingerprint(field, args);
     const created = await runSerializablePrismaTransaction(this.prisma, async (tx) => {
       const previous = await tx.mcpAdminCommand.findUnique({
@@ -338,13 +323,14 @@ export class AdminMcpCommandService {
     await this.invalidations.publish(mcpUserId(user));
     return this.statusResult(created);
   }
-  private statusResult(command: McpAdminCommand) {
+  private statusResult(command: McpAdminCommand, includeResult = false) {
     return {
       proposalId: command.id,
       state: command.state,
       expiresAt: command.expiresAt,
       reviewUrl: new URL(`/admin/mcp/operations?proposal=${command.id}`, this.config.applicationOrigin).href,
       appliesAutomatically: false,
+      ...(includeResult && command.state === 'APPLIED' ? { result: command.result } : {}),
     };
   }
   async status(user: AuthenticatedUser, id: string) {
@@ -354,9 +340,9 @@ export class AdminMcpCommandService {
       command.delegationId,
       command.operation,
       command.arguments as Record<string, unknown>,
-      'propose',
+      user.oidcScopeSet.has(MCP_ADMIN_READ_SCOPE) ? 'read' : 'propose',
     );
-    return this.statusResult(command);
+    return this.statusResult(command, user.oidcScopeSet.has(MCP_ADMIN_READ_SCOPE));
   }
   private async owned(user: AuthenticatedUser, id: string) {
     const command = await this.prisma.mcpAdminCommand.findFirst({
@@ -387,6 +373,18 @@ export class AdminMcpCommandService {
     const destruction = /^(?:delete|archive|merge|revert|undo)/i.test(field)
       ? ' A remoção, mescla ou reversão pode afetar dependentes e não ser reversível.'
       : '';
+    if (field === 'applyDataTransfer') {
+      return `${info.label}. Pode criar, atualizar ou remover recursos de eventos, esportes e configurações relacionadas, conforme o documento e as decisões revisadas. Confira cada destino e cada alteração prevista.`;
+    }
+    if (field === 'undoDataTransfer') {
+      return `${info.label}. Pode restaurar alterações de importação em eventos, esportes e configurações relacionadas. Confira o lote, os recursos restaurados e os dependentes afetados.`;
+    }
+    if (field === 'uploadSportsTeamLogo') {
+      return `${info.label}. O arquivo enviado pode substituir o logotipo exibido para esta equipe esportiva. Confira a equipe e a imagem antes da aprovação.`;
+    }
+    if (field === 'uploadEventFormImage' || field === 'uploadPendingEventFormImage') {
+      return `${info.label}. O arquivo enviado pode substituir uma imagem usada no formulário ou em uma pergunta. Confira o formulário e a imagem antes da aprovação.`;
+    }
     return `${info.label}. ${effects[definition.domain] ?? 'Aplica a alteração pelos serviços administrativos existentes e pode afetar recursos relacionados.'}${destruction} Confira os destinos e todos os argumentos finais.`;
   }
   private async reviewEffects(field: string, args: Record<string, unknown>): Promise<string> {
@@ -502,7 +500,12 @@ export class AdminMcpCommandService {
       throw new ConflictException('Proposta alterada, decidida ou expirada.');
     const args = this.bridge.arguments(command.operation, input.arguments);
     preserveTargets(command.arguments, args);
-    await this.grant(user, command.delegationId, command.operation, args, 'apply');
+    const delegation = await this.grant(user, command.delegationId, command.operation, args, 'apply');
+    await this.bridge.preflight(command.operation, args, user, {
+      delegationId: delegation.id,
+      clientId: delegation.clientId,
+      proposalId: id,
+    });
     if (
       (await this.fingerprint(command.operation, command.arguments as Record<string, unknown>)) !== command.fingerprint
     )
@@ -580,7 +583,7 @@ export class AdminMcpCommandService {
     let outcome: 'APPLIED' | 'UNCERTAIN' = 'APPLIED';
     try {
       const scope = parseMcpInput(adminScopeSchema, delegation.scope);
-      await this.bridge.execute(command.operation, preview.arguments, user, {
+      const result = await this.bridge.execute(command.operation, preview.arguments, user, {
         phase: 'apply',
         proposalId: id,
         delegationId: delegation.id,
@@ -601,7 +604,7 @@ export class AdminMcpCommandService {
         },
         assertScope: (permissions, context) => this.scopes.assert(scope, permissions, context),
       });
-      await this.finish(user, id, 'APPLIED', command.operation);
+      await this.finish(user, id, 'APPLIED', command.operation, result);
     } catch {
       // Never retry a potentially committed domain operation. Its own transaction
       // audit has proposalId; a person must inspect history after ambiguous failure.
@@ -611,9 +614,22 @@ export class AdminMcpCommandService {
     await this.invalidations.publish(mcpUserId(user));
     return outcome;
   }
-  private async finish(user: AuthenticatedUser, id: string, state: 'APPLIED' | 'UNCERTAIN', operation: string) {
+  private async finish(
+    user: AuthenticatedUser,
+    id: string,
+    state: 'APPLIED' | 'UNCERTAIN',
+    operation: string,
+    result?: unknown,
+  ) {
+    const persistedResult =
+      state === 'APPLIED' && result != null
+        ? (JSON.parse(JSON.stringify(result)) as Prisma.InputJsonValue)
+        : Prisma.JsonNull;
     await runSerializablePrismaTransaction(this.prisma, async (tx) => {
-      await tx.mcpAdminCommand.updateMany({ where: { id, state: 'APPLYING' }, data: { state } });
+      await tx.mcpAdminCommand.updateMany({
+        where: { id, state: 'APPLYING' },
+        data: { state, result: persistedResult },
+      });
       await this.queueAudit(
         tx,
         user,

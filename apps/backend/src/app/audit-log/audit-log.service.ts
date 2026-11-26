@@ -1,3 +1,4 @@
+import { mcpJobAttribution } from './mcp-job-attribution';
 import { adminMcpExecution } from '../mcp/admin-operations/execution-context';
 import { EventManagerKeycloakRole } from '@cacic-fct/shared-permissions';
 import {
@@ -125,6 +126,16 @@ export class AuditLogService {
           approvedById: mcp.user.sub,
           approvedByName: mcp.approvedByName,
         },
+      };
+    }
+    const jobAttribution = mcpJobAttribution.getStore();
+    if (jobAttribution?.['proposalId'] && !mcp) {
+      options = {
+        ...options,
+        squashWindowMs: 0,
+        summary:
+          `Alteração MCP aprovada por ${jobAttribution['approvedByName'] ?? jobAttribution['approvedById'] ?? 'responsável'}. ${options.summary ?? ''}`.trim(),
+        metadata: { ...options.metadata, ...jobAttribution },
       };
     }
     const before = normalizeAuditSnapshot(options.before);

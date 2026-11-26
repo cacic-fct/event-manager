@@ -63,6 +63,16 @@
             (include)="includeArgument($event)"
             (edit)="editArgument(command, $event.field, $event.event)" />
         }
+        @if (command.state === 'PENDING' && !expired(command)) {
+          @let files = commandFiles(command.id, previews()[command.id]?.arguments ?? command.arguments);
+          @if (files.length) {
+            <h4>Arquivos para conferência</h4>
+            <p>Baixe e confira os arquivos antes de aprovar a operação.</p>
+            @for (file of files; track file.id; let index = $index) {
+              <a mat-button [href]="file.href" target="_blank" rel="noopener">Baixar arquivo {{ index + 1 }}</a>
+            }
+          }
+        }
         <details>
           <summary>Detalhes técnicos da proposta</summary>
           <pre>{{ serialize(command.arguments) }}</pre>

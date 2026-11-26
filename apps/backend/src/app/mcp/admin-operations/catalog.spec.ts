@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { Kind, parse, visit } from 'graphql';
 import ts from 'typescript';
 import { ADMIN_MCP_EXCLUSIONS, ADMIN_MCP_OPERATIONS } from './catalog';
+import { REST_ADMIN_OPERATION_FIELDS } from './rest-operations';
 
 function sourceFile(path: string): ts.SourceFile {
   return ts.createSourceFile(
@@ -42,6 +43,30 @@ function operationMethods(source: ts.SourceFile): Map<string, ts.MethodDeclarati
   return methods;
 }
 
+function projectionPaths(field: string): Set<string> {
+  const operation = ADMIN_MCP_OPERATIONS.find((entry) => entry.field === field);
+  if (!operation?.selection) return new Set();
+  const document = parse(`query CatalogProjection { operation { ${operation.selection} } }`);
+  const definition = document.definitions[0];
+  if (definition.kind !== Kind.OPERATION_DEFINITION) return new Set();
+  const root = definition.selectionSet.selections.find(
+    (selection) => selection.kind === Kind.FIELD && selection.name.value === 'operation',
+  );
+  if (!root || root.kind !== Kind.FIELD || !root.selectionSet) return new Set();
+  const paths = new Set<string>();
+  const collect = (selectionSet: typeof root.selectionSet, parent = '') => {
+    if (!selectionSet) return;
+    for (const selection of selectionSet.selections) {
+      if (selection.kind !== Kind.FIELD) continue;
+      const path = parent ? `${parent}.${selection.name.value}` : selection.name.value;
+      paths.add(path);
+      if (selection.selectionSet) collect(selection.selectionSet, path);
+    }
+  };
+  collect(root.selectionSet);
+  return paths;
+}
+
 describe('static administrative MCP catalog', () => {
   it('classifies every resolver operation so new fields require deliberate review', () => {
     const catalog = new Set(ADMIN_MCP_OPERATIONS.map((entry) => entry.field));
@@ -69,6 +94,12 @@ describe('static administrative MCP catalog', () => {
     expect(new Set(ADMIN_MCP_OPERATIONS.map((entry) => entry.field)).size).toBe(ADMIN_MCP_OPERATIONS.length);
     const sources = new Map<string, Map<string, ts.MethodDeclaration>>();
     for (const operation of ADMIN_MCP_OPERATIONS) {
+      if (operation.transport === 'REST') {
+        expect(REST_ADMIN_OPERATION_FIELDS).toContain(operation.field);
+        expect(operation.source).toContain('controller.ts');
+        expect(ADMIN_MCP_EXCLUSIONS[operation.field]).toBeUndefined();
+        continue;
+      }
       let methods = sources.get(operation.source);
       if (!methods) {
         methods = operationMethods(sourceFile(operation.source));
@@ -91,17 +122,32 @@ describe('static administrative MCP catalog', () => {
     }
   });
 
-  it('never selects credentials, private storage fields or nested collection relations', () => {
+  it('keeps projections explicit and excludes credentials and private storage fields', () => {
     const forbidden =
       /token|secret|password|storage|objectKey|accessCode|scannerCode|aztecCode|credential|presigned|downloadUrl|receiptUrl|previewUrl/i;
+    const allowedJsonFields = new Set([
+      'answersJson',
+      'elementsJson',
+      'overallScoringRulesJson',
+      'bracketRulesJson',
+      'rosterRulesJson',
+      'scoreRulesJson',
+      'settingsJson',
+      'standingsRulesJson',
+      'summaryJson',
+      'timerRulesJson',
+    ]);
+    const explicitlyExcludedDataFields = /^(payloadJson|fieldRevisionsJson|metadataJson|beforeJson|afterJson)$/i;
     for (const operation of ADMIN_MCP_OPERATIONS) {
       expect(operation.field).not.toMatch(/^(public[A-Z]|currentUser|my[A-Z]|login|logout|refresh|totp)/);
+      if (operation.transport === 'REST') continue;
       if (!operation.selection) continue;
       const document = parse(`query CatalogSelection { operation { ${operation.selection} } }`);
       visit(document, {
         Field(node) {
           expect(node.name.value).not.toMatch(forbidden);
-          expect(node.name.value).not.toMatch(/json$|payload|snapshot|fieldRevisions/i);
+          expect(node.name.value).not.toMatch(explicitlyExcludedDataFields);
+          if (/json$/i.test(node.name.value)) expect(allowedJsonFields.has(node.name.value)).toBe(true);
           expect(node.arguments ?? []).toHaveLength(0);
         },
         FragmentSpread() {
@@ -114,6 +160,77 @@ describe('static administrative MCP catalog', () => {
     expect(
       ADMIN_MCP_OPERATIONS.filter((entry) => entry.personalData).every((entry) => entry.risk === 'SENSITIVE'),
     ).toBe(true);
+  });
+
+  it('exposes complete safe projections for the reviewed administrative workflows', () => {
+    const has = (field: string, ...paths: string[]) => {
+      const selected = projectionPaths(field);
+      for (const path of paths)
+        expect({ field, path, selected: selected.has(path) }).toEqual({ field, path, selected: true });
+    };
+    const personal = (field: string) => {
+      const operation = ADMIN_MCP_OPERATIONS.find((entry) => entry.field === field);
+      expect(operation?.personalData).toBe(true);
+      expect(operation?.risk).toBe('SENSITIVE');
+    };
+
+    for (const field of ['eventForms', 'eventForm', 'saveEventForm', 'publishEventForm']) {
+      has(field, 'elementsJson', 'links.target.name', 'links.audiences', 'publicationState');
+    }
+    has('eventFormResults', 'summaryJson', 'form.elementsJson', 'responses.answersJson', 'responses.respondentEmail');
+    personal('eventFormResults');
+
+    has('publicationWorkspace', 'tree.children.children.id', 'items.id', 'warnings.type', 'warnings.description');
+    personal('publicationWorkspace');
+
+    has('adminReceiptValidationQueue', 'items.personName', 'items.receipt.ocrText', 'items.events.name');
+    expect(projectionPaths('adminReceiptValidationQueue').has('items.receipt.imageUrl')).toBe(false);
+    for (const field of ['adminReceiptValidationQueue', 'approveAdminReceipt', 'rejectAdminReceipt']) personal(field);
+
+    has('contentReviews', 'groups.items.fields.before', 'groups.items.fields.after', 'groups.items.afterMaterial.url');
+    personal('contentReviews');
+    has('auditLogExplorer', 'entries.summary', 'entries.changedFields', 'entries.changes.beforeValue');
+    for (const path of ['entries.beforeJson', 'entries.afterJson', 'entries.metadataJson']) {
+      expect(projectionPaths('auditLogExplorer').has(path)).toBe(false);
+    }
+    personal('auditLogExplorer');
+
+    has('permissionRoles', 'assignments.subjectName', 'assignments.scopes.scope', 'permissions');
+    has('permissionGroups', 'members.person.email', 'assignedRoleIds');
+    personal('permissionRoles');
+    personal('permissionGroups');
+
+    has('people', 'email', 'identityDocument', 'user.unespRole');
+    has('person', 'secondaryEmails', 'user.role', 'lecturerProfile.biography');
+    has('createPerson', 'lecturerProfile.whatsapp');
+    has('updatePerson', 'lecturerProfile.linkedin');
+
+    has(
+      'adminSportsTournamentRead',
+      'categories.timerRulesJson',
+      'teams.id',
+      'scoreEntries.points',
+      'participants.person.name',
+    );
+    has(
+      'adminSportsCategoryRead',
+      'stages.settingsJson',
+      'matches.scoreboard.homeScore',
+      'standings.points',
+      'placements.placement',
+    );
+    has('adminSportsTeamRead', 'members.person.name', 'representatives.person.name', 'changeRequests.status');
+    has('adminSportsRegistrationRead', 'members.person.name', 'lineupMembers.person.name', 'rosters.entries.role');
+    has('adminSportsMatchReviewRead', 'actions.reviewStatus', 'rosters.entries.status', 'officials.person.name');
+    for (const field of [
+      'adminSportsTournamentRead',
+      'adminSportsCategoryRead',
+      'adminSportsTeamRead',
+      'adminSportsRegistrationRead',
+      'adminSportsMatchReviewRead',
+    ]) {
+      personal(field);
+    }
   });
 
   it('covers the sports administrative workflow through named tools', () => {
@@ -176,7 +293,24 @@ describe('static administrative MCP catalog', () => {
   it('records explicit exclusions for bearer credentials and unattributable jobs', () => {
     expect(ADMIN_MCP_EXCLUSIONS.createAdminOfflineAttendanceCollectorCredential).toContain('bearer');
     expect(ADMIN_MCP_EXCLUSIONS.createPublicationPreview).toContain('bearer');
-    expect(ADMIN_MCP_EXCLUSIONS.requestCertificateIssuance).toContain('audit context');
-    expect(ADMIN_MCP_EXCLUSIONS.notifyEventParticipants).toContain('audit context');
+    for (const field of [
+      'requestCertificateIssuance',
+      'restoreCertificate',
+      'reissueAllCertificates',
+      'scanMergeCandidates',
+      'notifyEventParticipants',
+      'dataTransferSchema',
+      'exportDataTransfer',
+      'previewDataTransfer',
+      'dataTransferHistory',
+      'applyDataTransfer',
+      'undoDataTransfer',
+    ]) {
+      expect(ADMIN_MCP_OPERATIONS.some((entry) => entry.field === field)).toBe(true);
+      expect(ADMIN_MCP_EXCLUSIONS[field]).toBeUndefined();
+    }
+    expect(new Set(REST_ADMIN_OPERATION_FIELDS)).toEqual(
+      new Set(ADMIN_MCP_OPERATIONS.filter((entry) => entry.transport === 'REST').map((entry) => entry.field)),
+    );
   });
 });

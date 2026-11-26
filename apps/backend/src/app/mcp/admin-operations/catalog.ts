@@ -12,6 +12,7 @@ export type AdminMcpOperationTarget =
 export interface AdminMcpOperation {
   readonly field: string;
   readonly kind: 'query' | 'mutation';
+  readonly transport?: 'GRAPHQL' | 'REST';
   readonly domain: string;
   readonly permissions: readonly Permission[];
   readonly target: AdminMcpOperationTarget;
@@ -22,6 +23,108 @@ export interface AdminMcpOperation {
   readonly source: string;
   readonly description: string;
 }
+
+const EVENT_FORM_LINK_SELECTION = `
+  id formId targetType eventId majorEventId priceTierIds
+  target { type id name emoji }
+  audiences insertInSubscriptionFlow requiredInSubscriptionFlow displayOrder
+  availableFrom availableUntil notifyOnPublish allowLecturerManualPublish lastNotifiedAt
+  responseCount createdAt updatedAt
+`;
+
+const EVENT_FORM_SELECTION = `
+  id name description ownerEventId ownerMajorEventId owner { type id name emoji }
+  elementsJson sigilo responseMode resultsPublic resultsLive allowResponseEdits
+  publicationState scheduledPublishAt publishedAt unpublishedAt
+  links { ${EVENT_FORM_LINK_SELECTION} }
+  responseCount deletedAt createdAt updatedAt
+`;
+
+const PUBLICATION_NODE_SELECTION = `
+  targetType id label emoji publicationState statusLabel scheduledPublishAt publishedAt unpublishedAt
+  isPubliclyListed parentLabel childCount
+`;
+
+const RECEIPT_EVENT_SELECTION = `
+  id name emoji type startDate endDate locationDescription slots slotsAvailable
+  eventGroupId eventGroupName preferenceOrder autoSubscribe selectedForConfirmation
+  hasScheduleConflict hasNoSlots
+`;
+
+const RECEIPT_QUEUE_ITEM_SELECTION = `
+  category purchaseId ticketName subscriptionCreatedAt subscriptionId majorEventId majorEventName
+  majorEventCreatedAt majorEventEndDate personId personName personEmail personPhone amountPaid paymentTier
+  subscriptionFlow desiredCourses desiredLectures desiredUncategorized subscriptionStatus subscriptionUpdatedAt
+  receiptRejectionReason
+  receipt {
+    id fileName mimeType sizeBytes uploadedAt expiresAt processingStatus ocrText
+    amountMatched matchedAmountText nameMatched matchedNameText
+  }
+  events { ${RECEIPT_EVENT_SELECTION} }
+`;
+
+const PERSON_ADMIN_DETAIL_SELECTION = `
+  id name email secondaryEmails materialEditingBlocked phone identityDocument academicId userId mergedIntoId externalRef
+  deletedAt createdAt createdById updatedAt updatedById
+  user { id name email role unespRole }
+  lecturerProfile {
+    id personId displayName biography selfEditingBlocked publishGoogleUserPicture googleUserPicture
+    email whatsapp linkedin createdAt createdById updatedAt updatedById
+  }
+`;
+
+const AUDIT_LOG_REVIEW_SELECTION = `
+  id entityType entityId entityLabel operation summary actorId actorName actorType permission
+  eventId majorEventId eventGroupId changedFields groupedCount firstRecordedAt lastRecordedAt createdAt
+  revertedAt revertedById revertedByName revertedByEntryId revertTargetId revertMode canRevert
+  changes { field label beforeValue afterValue }
+`;
+
+const SPORTS_TOURNAMENT_SELECTION = `
+  id majorEventId status scoringMode registrationStartDate registrationEndDate selfSubscriptionEnabled
+  selfSubscriptionAllowNoTeam selfSubscriptionAllowNoCategory allowPlayerMultipleTeams shouldIssueCertificate
+  revision finishedAt categoryCount teamCount createdAt updatedAt deletedAt
+`;
+
+const SPORTS_CATEGORY_SELECTION = `
+  id tournamentId eventGroupId name emoji sport customSportName division format status shouldIssueCertificate
+  registrationStartDate registrationEndDate minimumRosterSize maximumRosterSize maximumCaptains maximumCoaches
+  allowPlayerMultipleTeams athleteIdentifierMode joiningInstructions periodsEnabled maximumPeriods periodLabel
+  timerRulesJson scoreRulesJson overallScoringRulesJson rosterRulesJson bracketRulesJson standingsRulesJson rulesText
+  registrationFormId revision finishedAt createdAt updatedAt deletedAt
+`;
+
+const SPORTS_TEAM_SELECTION = `id tournamentId name institution status revision createdAt updatedAt deletedAt`;
+
+const SPORTS_REGISTRATION_SELECTION = `id teamId categoryId status revision createdAt updatedAt deletedAt`;
+
+const SPORTS_MATCH_SELECTION = `
+  id eventId categoryId stageId venueId homeRegistrationId awayRegistrationId state canonicalState reviewStatus
+  scoreboard { homeScore awayScore periods { number label homeScore awayScore completed } activePeriod }
+  canonicalScoreboard { homeScore awayScore periods { number label homeScore awayScore completed } activePeriod }
+  winnerRegistrationId loserRegistrationId lossReason lossReasonDetail drawWillReschedule notes livestreamProvider livestreamUrl
+  timerStartedAt timerPausedAt elapsedBeforePauseMs periodTimers {
+    periodNumber elapsedBeforePauseMs scheduledStartOffsetMs capMs allowOvertime
+  }
+  overallTimerEnabled periodTimerEnabled roundNumber bracketPosition groupKey winnerAdvancesToId winnerAdvancesToSide
+  loserAdvancesToId loserAdvancesToSide revision operationSequence createdAt updatedAt deletedAt
+`;
+
+const SPORTS_ACTION_SELECTION = `
+  id matchId baseRevision sequence type reviewStatus scorerRosterEntryId actorPersonId actorRole
+  authoredAt submittedAt offline reviewedAt reviewMessage createdAt updatedAt
+`;
+const SPORTS_ROSTER_SELECTION = `
+  id matchId registrationId status revision manuallyEdited copiedFromRosterId createdAt updatedAt deletedAt
+  entries {
+    id rosterId registrationMemberId status role shirtNumber checkedInAt createdAt updatedAt deletedAt
+    registrationMember { id registrationId categoryId teamMemberId role eligibility gameNickname gameAccountName gameAccountUrl }
+  }
+`;
+const SPORTS_OFFICIAL_SELECTION = `
+  id tournamentId categoryId matchId personId role active assignedAt revokedAt revision createdAt updatedAt
+  person { id name }
+`;
 
 // Reviewed, static surface. Schema discovery must never append operations to this list.
 // Empty permission lists intentionally defer dynamic permission choices to the owning service.
@@ -67,7 +170,17 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: true,
     source: 'apps/backend/src/app/content-review/content-review.resolver.ts',
-    selection: 'hasNextPage groups { id revision updatedAt targetName isProfile profileEditingBlocked }',
+    selection: `
+      hasNextPage groups {
+        id revision updatedAt targetName isProfile profileEditingBlocked
+        items {
+          key authorName authorEditingBlocked
+          fields { key before after }
+          beforeMaterial { id title url releaseAfterEvent }
+          afterMaterial { id title url releaseAfterEvent }
+        }
+      }
+    `,
     description: 'Consultar contentReviews; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -111,8 +224,8 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
       mode: 'COLLECTION',
       reason: 'The owning resolver/service filters each row by the actor permissions and audience.',
     },
-    risk: 'READ',
-    personalData: false,
+    risk: 'SENSITIVE',
+    personalData: true,
     serviceAuthorized: true,
     source: 'apps/backend/src/app/event-context/event-context.resolver.ts',
     selection: 'nextCursor take nodes { kind id name emoji startDate endDate publicationState }',
@@ -162,6 +275,238 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     description: 'Consultar workspaceDashboardInsights; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
+    field: 'dataTransferSchema',
+    kind: 'query',
+    transport: 'REST',
+    domain: 'data-transfer',
+    permissions: [],
+    target: {
+      mode: 'SERVICE',
+      reason: 'The transfer controller and service authorize the current collection scope.',
+    },
+    risk: 'READ',
+    personalData: false,
+    serviceAuthorized: true,
+    source: 'apps/backend/src/app/data-transfer/data-transfer.controller.ts',
+    description: 'Consultar dataTransferSchema; preserva autorização, escopo e regras do serviço responsável.',
+  },
+  {
+    field: 'exportDataTransfer',
+    kind: 'query',
+    transport: 'REST',
+    domain: 'data-transfer',
+    permissions: [Permission.DataTransfer.Export],
+    target: {
+      mode: 'SERVICE',
+      reason: 'The transfer service resolves and authorizes every exported target.',
+    },
+    risk: 'SENSITIVE',
+    personalData: true,
+    serviceAuthorized: true,
+    source: 'apps/backend/src/app/data-transfer/data-transfer.controller.ts',
+    description: 'Consultar exportDataTransfer; preserva autorização, escopo e regras do serviço responsável.',
+  },
+  {
+    field: 'previewDataTransfer',
+    kind: 'query',
+    transport: 'REST',
+    domain: 'data-transfer',
+    permissions: [Permission.DataTransfer.Import],
+    target: {
+      mode: 'SERVICE',
+      reason: 'The transfer service validates and authorizes every preview target.',
+    },
+    risk: 'SENSITIVE',
+    personalData: true,
+    serviceAuthorized: true,
+    source: 'apps/backend/src/app/data-transfer/data-transfer.controller.ts',
+    description: 'Consultar previewDataTransfer; preserva autorização, escopo e regras do serviço responsável.',
+  },
+  {
+    field: 'dataTransferHistory',
+    kind: 'query',
+    transport: 'REST',
+    domain: 'data-transfer',
+    permissions: [],
+    target: {
+      mode: 'SERVICE',
+      reason: 'The transfer service filters history to batches visible to the current actor.',
+    },
+    risk: 'READ',
+    personalData: false,
+    serviceAuthorized: true,
+    source: 'apps/backend/src/app/data-transfer/data-transfer.controller.ts',
+    description: 'Consultar dataTransferHistory; preserva autorização, escopo e regras do serviço responsável.',
+  },
+  {
+    field: 'applyDataTransfer',
+    kind: 'mutation',
+    transport: 'REST',
+    domain: 'data-transfer',
+    permissions: [Permission.DataTransfer.Import],
+    target: {
+      mode: 'SERVICE',
+      reason: 'The transfer service revalidates the plan and authorizes every write target.',
+    },
+    risk: 'SENSITIVE',
+    personalData: true,
+    serviceAuthorized: true,
+    source: 'apps/backend/src/app/data-transfer/data-transfer.controller.ts',
+    description: 'Propor applyDataTransfer; preserva autorização, escopo e regras do serviço responsável.',
+  },
+  {
+    field: 'undoDataTransfer',
+    kind: 'mutation',
+    transport: 'REST',
+    domain: 'data-transfer',
+    permissions: [Permission.DataTransfer.Undo],
+    target: {
+      mode: 'SERVICE',
+      reason: 'The transfer service checks current permission and later changes before undoing a batch.',
+    },
+    risk: 'WRITE',
+    personalData: false,
+    serviceAuthorized: true,
+    source: 'apps/backend/src/app/data-transfer/data-transfer.controller.ts',
+    description: 'Propor undoDataTransfer; preserva autorização, escopo e regras do serviço responsável.',
+  },
+  {
+    field: 'uploadSportsTeamLogo',
+    kind: 'mutation',
+    transport: 'REST',
+    domain: 'sports',
+    permissions: [Permission.SportsTeam.Update],
+    target: { mode: 'ARGUMENTS', paths: [{ argument: 'sportsTeamId', context: 'sportsTeamId' }] },
+    risk: 'SENSITIVE',
+    personalData: true,
+    serviceAuthorized: true,
+    source: 'apps/backend/src/app/sports/logos/sports-team-logo.controller.ts',
+    description: 'Propor envio de logo esportivo; o arquivo é validado e aplicado pelo serviço atual após aprovação.',
+  },
+  {
+    field: 'downloadSportsTeamLogo',
+    kind: 'query',
+    transport: 'REST',
+    domain: 'sports',
+    permissions: [Permission.SportsTeam.Read],
+    target: { mode: 'ARGUMENTS', paths: [{ argument: 'sportsTeamId', context: 'sportsTeamId' }] },
+    risk: 'SENSITIVE',
+    personalData: true,
+    serviceAuthorized: true,
+    source: 'apps/backend/src/app/sports/logos/sports-team-logo.controller.ts',
+    description: 'Consultar logo esportivo por hash e disponibilizar o conteúdo em trechos temporários autorizados.',
+  },
+  {
+    field: 'uploadEventFormImage',
+    kind: 'mutation',
+    transport: 'REST',
+    domain: 'event-forms',
+    permissions: [Permission.EventForm.Update],
+    target: { mode: 'ARGUMENTS', paths: [{ argument: 'formId', context: 'eventFormId' }] },
+    risk: 'SENSITIVE',
+    personalData: true,
+    serviceAuthorized: true,
+    source: 'apps/backend/src/app/event-forms/event-forms.controller.ts',
+    description: 'Propor envio de imagem permanente do formulário com os limites e conversão AVIF do serviço atual.',
+  },
+  {
+    field: 'uploadPendingEventFormImage',
+    kind: 'mutation',
+    transport: 'REST',
+    domain: 'event-forms',
+    permissions: [Permission.EventForm.Create],
+    target: {
+      mode: 'SERVICE',
+      reason: 'O serviço autoriza o evento ou grande evento proprietário informado e vincula o arquivo ao ator.',
+    },
+    risk: 'SENSITIVE',
+    personalData: true,
+    serviceAuthorized: true,
+    source: 'apps/backend/src/app/event-forms/event-forms.controller.ts',
+    description: 'Propor envio de imagem provisória com o escopo proprietário e os limites do serviço atual.',
+  },
+  {
+    field: 'deleteEventFormImage',
+    kind: 'mutation',
+    transport: 'REST',
+    domain: 'event-forms',
+    permissions: [Permission.EventForm.Update],
+    target: { mode: 'ARGUMENTS', paths: [{ argument: 'formId', context: 'eventFormId' }] },
+    risk: 'SENSITIVE',
+    personalData: true,
+    serviceAuthorized: true,
+    source: 'apps/backend/src/app/event-forms/event-forms.controller.ts',
+    description: 'Propor exclusão de imagem sem referências ativas, conforme as verificações do serviço atual.',
+  },
+  {
+    field: 'downloadEventFormImage',
+    kind: 'query',
+    transport: 'REST',
+    domain: 'event-forms',
+    permissions: [Permission.EventForm.Read],
+    target: { mode: 'ARGUMENTS', paths: [{ argument: 'formId', context: 'eventFormId' }] },
+    risk: 'SENSITIVE',
+    personalData: true,
+    serviceAuthorized: true,
+    source: 'apps/backend/src/app/event-forms/event-forms.controller.ts',
+    description: 'Consultar imagem de formulário respeitando publicação e acesso do serviço atual.',
+  },
+  {
+    field: 'downloadEventFormImageById',
+    kind: 'query',
+    transport: 'REST',
+    domain: 'event-forms',
+    permissions: [],
+    target: {
+      mode: 'SERVICE',
+      reason: 'O serviço valida acesso ao formulário publicado ou propriedade da imagem provisória.',
+    },
+    risk: 'SENSITIVE',
+    personalData: true,
+    serviceAuthorized: true,
+    source: 'apps/backend/src/app/event-forms/event-forms.controller.ts',
+    description: 'Consultar imagem pelo identificador permanente sem expor chaves de armazenamento.',
+  },
+  {
+    field: 'exportEventFormResultsCsv',
+    kind: 'query',
+    transport: 'REST',
+    domain: 'event-forms',
+    permissions: [Permission.EventForm.Export],
+    target: { mode: 'ARGUMENTS', paths: [{ argument: 'formId', context: 'eventFormId' }] },
+    risk: 'SENSITIVE',
+    personalData: true,
+    serviceAuthorized: true,
+    source: 'apps/backend/src/app/event-forms/event-forms.controller.ts',
+    description: 'Exportar respostas individuais em CSV para arquivo temporário com leitura por trechos.',
+  },
+  {
+    field: 'exportEventSubscriptionBadgesZip',
+    kind: 'query',
+    transport: 'REST',
+    domain: 'subscriptions',
+    permissions: [Permission.Subscription.Read, Permission.Event.Read, Permission.MajorEvent.Read],
+    target: { mode: 'ARGUMENTS', paths: [{ argument: 'eventId', context: 'eventId' }] },
+    risk: 'SENSITIVE',
+    personalData: true,
+    serviceAuthorized: true,
+    source: 'apps/backend/src/app/events/subscription-badge-export.controller.ts',
+    description: 'Exportar inscrições e códigos de crachá de um evento para um arquivo ZIP temporário.',
+  },
+  {
+    field: 'exportMajorEventSubscriptionBadgesZip',
+    kind: 'query',
+    transport: 'REST',
+    domain: 'subscriptions',
+    permissions: [Permission.Subscription.Read, Permission.MajorEvent.Read],
+    target: { mode: 'ARGUMENTS', paths: [{ argument: 'majorEventId', context: 'majorEventId' }] },
+    risk: 'SENSITIVE',
+    personalData: true,
+    serviceAuthorized: true,
+    source: 'apps/backend/src/app/events/subscription-badge-export.controller.ts',
+    description: 'Exportar inscrições e códigos de crachá de um grande evento para um arquivo ZIP temporário.',
+  },
+  {
     field: 'publicationWorkspace',
     kind: 'query',
     domain: 'publishing',
@@ -170,11 +515,22 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
       mode: 'COLLECTION',
       reason: 'The owning resolver/service filters each row by the actor permissions and audience.',
     },
-    risk: 'READ',
-    personalData: false,
+    risk: 'SENSITIVE',
+    personalData: true,
     serviceAuthorized: true,
     source: 'apps/backend/src/app/publishing/publishing.resolver.ts',
-    selection: 'totalCount skip take hasMore',
+    selection: `
+      generatedAt totalCount skip take hasMore query
+      tree {
+        ${PUBLICATION_NODE_SELECTION}
+        children {
+          ${PUBLICATION_NODE_SELECTION}
+          children { ${PUBLICATION_NODE_SELECTION} }
+        }
+      }
+      items { ${PUBLICATION_NODE_SELECTION} }
+      warnings { type action targetId severity title description eventId relatedEventId personId }
+    `,
     description: 'Consultar publicationWorkspace; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -461,7 +817,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: false,
     serviceAuthorized: true,
     source: 'apps/backend/src/app/certificate/certificates.resolver.ts',
-    selection: 'id personId eventId',
+    selection: 'deleted id personId eventId',
     description: 'Propor deleteCertificateFolder; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -511,7 +867,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: false,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/certificate/certificates.resolver.ts',
-    selection: 'id personId eventId',
+    selection: 'deleted id personId eventId',
     description: 'Propor deleteCertificateConfig; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -550,7 +906,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: false,
     serviceAuthorized: true,
     source: 'apps/backend/src/app/certificate/certificates.resolver.ts',
-    selection: 'id personId eventId',
+    selection: 'deleted id personId eventId',
     description:
       'Propor removeCertificateManualRecipient; preserva autorização, escopo e regras do serviço responsável.',
   },
@@ -579,6 +935,47 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     source: 'apps/backend/src/app/certificate/certificates.resolver.ts',
     selection: 'id status startedAt completedAt createdAt',
     description: 'Propor cancelCertificateIssuance; preserva autorização, escopo e regras do serviço responsável.',
+  },
+  {
+    field: 'requestCertificateIssuance',
+    kind: 'mutation',
+    domain: 'certificate',
+    permissions: [],
+    target: { mode: 'ARGUMENTS', paths: [{ argument: 'input.configId', context: 'certificateConfigId' }] },
+    risk: 'WRITE',
+    personalData: false,
+    serviceAuthorized: true,
+    source: 'apps/backend/src/app/certificate/certificates.resolver.ts',
+    selection:
+      'id configId status scheduledAt reissue notifyRecipients automatic startedAt completedAt certificateCount createdAt',
+    description: 'Propor requestCertificateIssuance; preserva autorização, escopo e regras do serviço responsável.',
+  },
+  {
+    field: 'restoreCertificate',
+    kind: 'mutation',
+    domain: 'certificate',
+    permissions: [Permission.Certificate.Reissue],
+    target: { mode: 'ARGUMENTS', paths: [{ argument: 'id', context: 'certificateId' }] },
+    risk: 'SENSITIVE',
+    personalData: true,
+    serviceAuthorized: false,
+    source: 'apps/backend/src/app/certificate/certificates.resolver.ts',
+    selection:
+      'revokedAt id personId configId issuedAt certificateTemplateId createdAt updatedAt deletedAt config { id name scope majorEventId eventGroupId eventId }',
+    description: 'Propor restoreCertificate; preserva autorização, escopo e regras do serviço responsável.',
+  },
+  {
+    field: 'reissueAllCertificates',
+    kind: 'mutation',
+    domain: 'certificate',
+    permissions: [Permission.Certificate.Reissue],
+    target: 'GLOBAL',
+    risk: 'WRITE',
+    personalData: false,
+    serviceAuthorized: false,
+    source: 'apps/backend/src/app/certificate/certificates.resolver.ts',
+    selection: 'configCount certificateCount',
+    description: 'Propor reissueAllCertificates; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
     field: 'issueCertificateForPerson',
@@ -618,7 +1015,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: false,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/certificate/certificates.resolver.ts',
-    selection: 'id personId eventId',
+    selection: 'deleted id personId eventId',
     description: 'Propor deleteCertificate; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -626,16 +1023,13 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     kind: 'mutation',
     domain: 'certificate',
     permissions: [Permission.Certificate.Issue],
-    target: {
-      mode: 'SERVICE',
-      reason:
-        'The owning resolver/service resolves and authorizes every actual target, including dynamic or bulk targets.',
-    },
-    risk: 'WRITE',
-    personalData: false,
+    target: { mode: 'ARGUMENTS', paths: [{ argument: 'input.configId', context: 'certificateConfigId' }] },
+    risk: 'SENSITIVE',
+    personalData: true,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/certificate/certificate-csv-import.resolver.ts',
-    selection: '__typename',
+    selection:
+      'createdCount duplicateCount failedCount failedValues inferredMatchType ambiguousValues { value candidates { id name } }',
     description: 'Propor issueManualCertificatesFromCsv; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -700,7 +1094,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: false,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/places/resolver.ts',
-    selection: 'id personId eventId',
+    selection: 'deleted id personId eventId',
     description: 'Propor deletePlacePreset; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -713,7 +1107,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: false,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/places/resolver.ts',
-    selection: 'id personId eventId',
+    selection: 'deleted id personId eventId',
     description: 'Propor mergePlacePreset; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -729,8 +1123,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: true,
     source: 'apps/backend/src/app/audit-log/audit-log.resolver.ts',
-    selection:
-      'id entityType entityId entityLabel operation actorName permission eventId majorEventId eventGroupId lastRecordedAt createdAt',
+    selection: AUDIT_LOG_REVIEW_SELECTION,
     description: 'Consultar auditLogEntries; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -746,7 +1139,10 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: true,
     source: 'apps/backend/src/app/audit-log/audit-log.resolver.ts',
-    selection: 'total skip take',
+    selection: `
+      total skip take typesenseAvailable
+      entries { ${AUDIT_LOG_REVIEW_SELECTION} }
+    `,
     description: 'Consultar auditLogExplorer; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -905,7 +1301,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: false,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/event-forms/event-forms.resolver.ts',
-    selection: 'id name description publicationState publishedAt responseCount deletedAt createdAt updatedAt',
+    selection: EVENT_FORM_SELECTION,
     description: 'Consultar eventForms; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -918,7 +1314,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: false,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/event-forms/event-forms.resolver.ts',
-    selection: 'id name description publicationState publishedAt responseCount deletedAt createdAt updatedAt',
+    selection: EVENT_FORM_SELECTION,
     description: 'Consultar eventForm; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -927,12 +1323,18 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     domain: 'event-forms',
     permissions: [Permission.EventForm.Results],
     target: { mode: 'ARGUMENTS', paths: [{ argument: 'formId', context: 'eventFormId' }] },
-    risk: 'READ',
-    personalData: false,
+    risk: 'SENSITIVE',
+    personalData: true,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/event-forms/event-forms.resolver.ts',
-    selection:
-      'responseCount anonymous answersReleased form { id name description publicationState publishedAt responseCount deletedAt createdAt updatedAt }',
+    selection: `
+      responseCount anonymous answersReleased summaryJson
+      form { ${EVENT_FORM_SELECTION} }
+      responses {
+        id formId linkId targetType eventId majorEventId personId respondentName respondentEmail
+        answersJson source submittedAt updatedAt
+      }
+    `,
     description: 'Consultar eventFormResults; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -978,7 +1380,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: false,
     serviceAuthorized: true,
     source: 'apps/backend/src/app/event-forms/event-forms.resolver.ts',
-    selection: 'id name description publicationState publishedAt responseCount deletedAt createdAt updatedAt',
+    selection: EVENT_FORM_SELECTION,
     description: 'Propor saveEventForm; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -1012,7 +1414,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: false,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/event-forms/event-forms.resolver.ts',
-    selection: 'id name description publicationState publishedAt responseCount deletedAt createdAt updatedAt',
+    selection: EVENT_FORM_SELECTION,
     description: 'Propor publishEventForm; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -1025,7 +1427,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: false,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/event-forms/event-forms.resolver.ts',
-    selection: 'id name description publicationState publishedAt responseCount deletedAt createdAt updatedAt',
+    selection: EVENT_FORM_SELECTION,
     description: 'Propor unpublishEventForm; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -1038,7 +1440,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: false,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/event-forms/event-forms.resolver.ts',
-    selection: 'id name description publicationState publishedAt responseCount deletedAt createdAt updatedAt',
+    selection: EVENT_FORM_SELECTION,
     description: 'Propor deleteEventForm; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -1221,7 +1623,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: false,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/major-events/resolver.ts',
-    selection: 'id personId eventId',
+    selection: 'deleted id personId eventId',
     description: 'Propor deleteMajorEvent; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -1454,16 +1856,13 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     kind: 'mutation',
     domain: 'prize-draw',
     permissions: [Permission.PrizeDraw.Operate],
-    target: {
-      mode: 'SERVICE',
-      reason:
-        'The owning resolver/service resolves and authorizes every actual target, including dynamic or bulk targets.',
-    },
-    risk: 'WRITE',
-    personalData: false,
+    target: { mode: 'ARGUMENTS', paths: [{ argument: 'input.drawId', context: 'prizeDrawId' }] },
+    risk: 'SENSITIVE',
+    personalData: true,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/prize-draw/prize-draw.resolver.ts',
-    selection: '__typename',
+    selection:
+      'demo drawId spinId sequence drawTitle spinDescription winnerFullName winnerReelName winnerReelIndex reelNames speed countdownMs reelDurationMs preRevealPauseMs hasMoreSpins',
     description: 'Propor spinPrizeDraw; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -1669,8 +2068,11 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: false,
     serviceAuthorized: true,
     source: 'apps/backend/src/app/sports/read/sports-read.resolver.ts',
-    selection:
-      'categoryCount teamCount pendingApplicationCount pendingReviewCount tournament { id majorEventId status registrationStartDate registrationEndDate selfSubscriptionEnabled selfSubscriptionAllowNoTeam selfSubscriptionAllowNoCategory allowPlayerMultipleTeams shouldIssueCertificate revision finishedAt categoryCount teamCount createdAt updatedAt deletedAt } majorEvent { id name emoji startDate endDate subscriptionStartDate subscriptionEndDate }',
+    selection: `
+      categoryCount teamCount pendingApplicationCount pendingReviewCount
+      tournament { ${SPORTS_TOURNAMENT_SELECTION} }
+      majorEvent { id name emoji startDate endDate subscriptionStartDate subscriptionEndDate isPaymentRequired }
+    `,
     description: 'Consultar adminSportsTournamentList; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -1679,12 +2081,31 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     domain: 'sports',
     permissions: [],
     target: { mode: 'ARGUMENTS', paths: [{ argument: 'tournamentId', context: 'sportsTournamentId' }] },
-    risk: 'READ',
-    personalData: false,
+    risk: 'SENSITIVE',
+    personalData: true,
     serviceAuthorized: true,
     source: 'apps/backend/src/app/sports/read/sports-read.resolver.ts',
-    selection:
-      'tournament { id majorEventId status registrationStartDate registrationEndDate selfSubscriptionEnabled selfSubscriptionAllowNoTeam selfSubscriptionAllowNoCategory allowPlayerMultipleTeams shouldIssueCertificate revision finishedAt categoryCount teamCount createdAt updatedAt deletedAt }',
+    selection: `
+      tournament { ${SPORTS_TOURNAMENT_SELECTION} }
+      categories {
+        ${SPORTS_CATEGORY_SELECTION}
+        registrationForm { id name description elementsJson sigilo responseMode publicationState responseCount }
+      }
+      teams { ${SPORTS_TEAM_SELECTION} }
+      scoreEntries {
+        id tournamentId categoryId teamId sourceMatchId source points reason revision createdAt updatedAt deletedAt
+      }
+      venues { id tournamentId placePresetId name courtLabel capacity notes parentVenueId revision createdAt updatedAt deletedAt }
+      officials { ${SPORTS_OFFICIAL_SELECTION} }
+      teamSummaries {
+        team { ${SPORTS_TEAM_SELECTION} }
+        registrations { id categoryId categoryName categoryEmoji status }
+      }
+      participants {
+        id person { id name } source status paymentStatus
+        teams { memberId teamId teamName status categories { id name division } }
+      }
+    `,
     description: 'Consultar adminSportsTournamentRead; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -1693,12 +2114,28 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     domain: 'sports',
     permissions: [],
     target: { mode: 'ARGUMENTS', paths: [{ argument: 'categoryId', context: 'sportsCategoryId' }] },
-    risk: 'READ',
-    personalData: false,
+    risk: 'SENSITIVE',
+    personalData: true,
     serviceAuthorized: true,
     source: 'apps/backend/src/app/sports/read/sports-read.resolver.ts',
-    selection:
-      'category { id tournamentId eventGroupId name emoji status shouldIssueCertificate registrationStartDate registrationEndDate allowPlayerMultipleTeams revision finishedAt createdAt updatedAt deletedAt }',
+    selection: `
+      category {
+        ${SPORTS_CATEGORY_SELECTION}
+        registrationForm { id name description elementsJson sigilo responseMode publicationState responseCount }
+      }
+      registrations { ${SPORTS_REGISTRATION_SELECTION} team { id name status } }
+      stages { id categoryId name type displayOrder settingsJson generationRevision createdAt updatedAt deletedAt }
+      matches {
+        ${SPORTS_MATCH_SELECTION}
+        stage { id categoryId name type displayOrder }
+        venue { id tournamentId name courtLabel capacity }
+        homeRegistration { id status team { id name } }
+        awayRegistration { id status team { id name } }
+      }
+      standings { id stageId registrationId played wins draws losses scoreFor scoreAgainst points rank revision updatedAt }
+      placements { id categoryId registrationId sourceMatchId placement pointsAwarded confirmedAt createdAt updatedAt }
+      officials { ${SPORTS_OFFICIAL_SELECTION} }
+    `,
     description: 'Consultar adminSportsCategoryRead; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -1711,7 +2148,22 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: true,
     source: 'apps/backend/src/app/sports/read/sports-read.resolver.ts',
-    selection: 'team { id tournamentId name status revision createdAt updatedAt deletedAt }',
+    selection: `
+      team { ${SPORTS_TEAM_SELECTION} }
+      members {
+        id teamId participantId status revision person { id name }
+        categoryAssignments {
+          registrationMemberId registrationId categoryId categoryName categoryEmoji athleteIdentifierMode
+          shirtNumber gameNickname gameAccountName gameAccountUrl
+        }
+      }
+      representatives { id teamId personId person { id name } active assignedAt revokedAt }
+      registrations { ${SPORTS_REGISTRATION_SELECTION} category { id name sport division status } }
+      changeRequests {
+        id teamId submittedByPersonId type status requestRevision baseRevision reviewedAt reviewMessage resultingRevision
+        createdAt updatedAt
+      }
+    `,
     description: 'Consultar adminSportsTeamRead; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -1724,7 +2176,15 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: true,
     source: 'apps/backend/src/app/sports/read/sports-read.resolver.ts',
-    selection: 'registration { id teamId categoryId status revision createdAt updatedAt deletedAt }',
+    selection: `
+      registration { ${SPORTS_REGISTRATION_SELECTION} team { id name } category { id name sport division status } }
+      members {
+        id registrationId categoryId teamMemberId role eligibility shirtNumber gameNickname gameAccountName gameAccountUrl
+        athleteIdentifierMode person { id name }
+      }
+      lineupMembers { id registrationMemberId teamMemberId role eligibility shirtNumber person { id name } }
+      rosters { ${SPORTS_ROSTER_SELECTION} }
+    `,
     description: 'Consultar adminSportsRegistrationRead; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -1737,8 +2197,18 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: true,
     source: 'apps/backend/src/app/sports/read/sports-read.resolver.ts',
-    selection:
-      'match { id eventId categoryId stageId winnerRegistrationId loserRegistrationId revision createdAt updatedAt deletedAt }',
+    selection: `
+      match {
+        ${SPORTS_MATCH_SELECTION}
+        stage { id categoryId name type displayOrder }
+        venue { id tournamentId name courtLabel capacity }
+        homeRegistration { id status team { id name } }
+        awayRegistration { id status team { id name } }
+      }
+      actions { ${SPORTS_ACTION_SELECTION} }
+      rosters { ${SPORTS_ROSTER_SELECTION} }
+      officials { ${SPORTS_OFFICIAL_SELECTION} }
+    `,
     description: 'Consultar adminSportsMatchReviewRead; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -1751,8 +2221,17 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: true,
     source: 'apps/backend/src/app/sports/read/sports-read.resolver.ts',
-    selection:
-      'categoryName homeTeamName awayTeamName action { id matchId type createdAt updatedAt } match { id eventId categoryId stageId winnerRegistrationId loserRegistrationId revision createdAt updatedAt deletedAt }',
+    selection: `
+      categoryName homeTeamName awayTeamName
+      action { ${SPORTS_ACTION_SELECTION} }
+      match {
+        ${SPORTS_MATCH_SELECTION}
+        stage { id categoryId name type displayOrder }
+        venue { id tournamentId name courtLabel capacity }
+        homeRegistration { id status team { id name } }
+        awayRegistration { id status team { id name } }
+      }
+    `,
     description:
       'Consultar adminSportsMatchActionReviewQueue; preserva autorização, escopo e regras do serviço responsável.',
   },
@@ -1766,7 +2245,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/people/resolver.ts',
-    selection: 'id name deletedAt createdAt updatedAt',
+    selection: 'id name email phone identityDocument academicId userId user { unespRole }',
     description: 'Consultar people; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -1819,7 +2298,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/people/resolver.ts',
-    selection: 'id name deletedAt createdAt updatedAt',
+    selection: PERSON_ADMIN_DETAIL_SELECTION,
     description: 'Consultar person; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -1858,7 +2337,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/people/resolver.ts',
-    selection: 'id name deletedAt createdAt updatedAt',
+    selection: PERSON_ADMIN_DETAIL_SELECTION,
     description: 'Propor createPerson; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -1871,7 +2350,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/people/resolver.ts',
-    selection: 'id name deletedAt createdAt updatedAt',
+    selection: PERSON_ADMIN_DETAIL_SELECTION,
     description: 'Propor updatePerson; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -1884,7 +2363,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/people/resolver.ts',
-    selection: 'id personId eventId',
+    selection: 'deleted id personId eventId',
     description: 'Propor deletePerson; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -1914,7 +2393,10 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: true,
     source: 'apps/backend/src/app/major-event-receipts/major-event-receipts.resolver.ts',
-    selection: 'subscriptionCount ticketCount pendingCount',
+    selection: `
+      subscriptionCount ticketCount pendingCount availablePaymentTiers { id name }
+      items { ${RECEIPT_QUEUE_ITEM_SELECTION} }
+    `,
     description: 'Consultar adminReceiptValidationQueue; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -1931,7 +2413,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: true,
     source: 'apps/backend/src/app/major-event-receipts/major-event-receipts.resolver.ts',
-    selection: '__typename',
+    selection: `actionId item { ${RECEIPT_QUEUE_ITEM_SELECTION} }`,
     description: 'Propor approveAdminReceipt; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -1948,7 +2430,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: true,
     source: 'apps/backend/src/app/major-event-receipts/major-event-receipts.resolver.ts',
-    selection: '__typename',
+    selection: `actionId item { ${RECEIPT_QUEUE_ITEM_SELECTION} }`,
     description: 'Propor rejectAdminReceipt; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -1965,8 +2447,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: true,
     source: 'apps/backend/src/app/major-event-receipts/major-event-receipts.resolver.ts',
-    selection:
-      'purchaseId subscriptionId majorEventId personId amountPaid paymentTier subscriptionStatus subscriptionUpdatedAt receipt { id }',
+    selection: RECEIPT_QUEUE_ITEM_SELECTION,
     description:
       'Propor undoAdminReceiptValidationAction; preserva autorização, escopo e regras do serviço responsável.',
   },
@@ -2076,6 +2557,18 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     description: 'Consultar mergeCandidateCount; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
+    field: 'scanMergeCandidates',
+    kind: 'mutation',
+    domain: 'people',
+    permissions: [Permission.MergeCandidate.Scan],
+    target: 'GLOBAL',
+    risk: 'SENSITIVE',
+    personalData: true,
+    serviceAuthorized: false,
+    source: 'apps/backend/src/app/people/merge-candidates/resolver.ts',
+    description: 'Propor scanMergeCandidates; preserva autorização, escopo e regras do serviço responsável.',
+  },
+  {
     field: 'mergeCandidate',
     kind: 'query',
     domain: 'people',
@@ -2150,7 +2643,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/people/merge-candidates/resolver.ts',
-    selection: 'id personId eventId',
+    selection: 'deleted id personId eventId',
     description: 'Propor deleteMergeCandidate; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -2159,12 +2652,20 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     domain: 'authorization',
     permissions: [Permission.PermissionGrant.Read],
     target: 'GLOBAL',
-    risk: 'READ',
-    personalData: false,
+    risk: 'SENSITIVE',
+    personalData: true,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/authorization/permission-management.resolver.ts',
-    selection:
-      'id systemKey name description emoji isSystem isExternal assignable version directPeopleCount groupPeopleCount archivedAt updatedAt',
+    selection: `
+      id systemKey name description emoji isSystem isExternal assignable version permissions inheritedPermissions
+      parentRoleIds directPeopleCount groupPeopleCount archivedAt updatedAt
+      assignments {
+        id personId groupId subjectName subjectHasLinkedUser validFrom validUntil unlimited archivedAt
+        scopes {
+          id scope eventId majorEventId eventGroupId targetLabel validFrom validUntil unlimited archivedAt
+        }
+      }
+    `,
     description: 'Consultar permissionRoles; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -2173,11 +2674,14 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     domain: 'authorization',
     permissions: [Permission.PermissionGrant.Read, Permission.Person.Read],
     target: 'GLOBAL',
-    risk: 'READ',
-    personalData: false,
+    risk: 'SENSITIVE',
+    personalData: true,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/authorization/permission-management.resolver.ts',
-    selection: 'id name description emoji version archivedAt updatedAt',
+    selection: `
+      id name description emoji version assignedRoleIds archivedAt updatedAt
+      members { id person { id name email hasLinkedUser } validFrom validUntil unlimited archivedAt }
+    `,
     description: 'Consultar permissionGroups; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -2190,7 +2694,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: false,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/authorization/permission-management.resolver.ts',
-    selection: 'id label description emoji',
+    selection: 'id label description emoji parentId',
     description: 'Consultar permissionScopeTargets; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -2199,12 +2703,20 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     domain: 'authorization',
     permissions: [],
     target: 'GLOBAL',
-    risk: 'WRITE',
-    personalData: false,
+    risk: 'SENSITIVE',
+    personalData: true,
     serviceAuthorized: true,
     source: 'apps/backend/src/app/authorization/permission-management.resolver.ts',
-    selection:
-      'id systemKey name description emoji isSystem isExternal assignable version directPeopleCount groupPeopleCount archivedAt updatedAt',
+    selection: `
+      id systemKey name description emoji isSystem isExternal assignable version permissions inheritedPermissions
+      parentRoleIds directPeopleCount groupPeopleCount archivedAt updatedAt
+      assignments {
+        id personId groupId subjectName subjectHasLinkedUser validFrom validUntil unlimited archivedAt
+        scopes {
+          id scope eventId majorEventId eventGroupId targetLabel validFrom validUntil unlimited archivedAt
+        }
+      }
+    `,
     description: 'Propor savePermissionRole; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -2213,11 +2725,14 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     domain: 'authorization',
     permissions: [],
     target: 'GLOBAL',
-    risk: 'WRITE',
-    personalData: false,
+    risk: 'SENSITIVE',
+    personalData: true,
     serviceAuthorized: true,
     source: 'apps/backend/src/app/authorization/permission-management.resolver.ts',
-    selection: 'id name description emoji version archivedAt updatedAt',
+    selection: `
+      id name description emoji version assignedRoleIds archivedAt updatedAt
+      members { id person { id name email hasLinkedUser } validFrom validUntil unlimited archivedAt }
+    `,
     description: 'Propor savePermissionGroup; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -2464,8 +2979,13 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/sports/applications/sports-player-application-read.resolver.ts',
-    selection:
-      'id tournamentId status participantStatus paymentStatus paymentTier createdAt updatedAt requestedTeam { id name } applicant { personId name }',
+    selection: `
+      id tournamentId status participantStatus paymentStatus paymentTier noticeAcceptedAt
+      imageLicenseAgreementAccepted reviewedAt reviewMessage createdAt updatedAt
+      requestedTeam { id name institution }
+      categories { id name division }
+      applicant { personId name }
+    `,
     description:
       'Consultar adminSportsPlayerApplicationQueue; preserva autorização, escopo e regras do serviço responsável.',
   },
@@ -2479,8 +2999,13 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/sports/applications/sports-player-application-read.resolver.ts',
-    selection:
-      'id tournamentId status participantStatus paymentStatus paymentTier createdAt updatedAt requestedTeam { id name } applicant { personId name }',
+    selection: `
+      id tournamentId status participantStatus paymentStatus paymentTier noticeAcceptedAt
+      imageLicenseAgreementAccepted reviewedAt reviewMessage createdAt updatedAt
+      requestedTeam { id name institution }
+      categories { id name division }
+      applicant { personId name }
+    `,
     description:
       'Consultar adminSportsPlayerApplication; preserva autorização, escopo e regras do serviço responsável.',
   },
@@ -2559,7 +3084,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: false,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/event-groups/resolver.ts',
-    selection: 'id personId eventId',
+    selection: 'deleted id personId eventId',
     description: 'Propor deleteEventGroup; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -2572,7 +3097,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: false,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/events/event-subscriber-information.resolver.ts',
-    selection: 'updatedAt',
+    selection: 'content updatedAt',
     description: 'Consultar eventSubscriberInformation; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -2585,9 +3110,21 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: false,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/events/event-subscriber-information.resolver.ts',
-    selection: 'updatedAt',
+    selection: 'content updatedAt',
     description:
       'Propor updateEventSubscriberInformation; preserva autorização, escopo e regras do serviço responsável.',
+  },
+  {
+    field: 'notifyEventParticipants',
+    kind: 'mutation',
+    domain: 'events',
+    permissions: [Permission.Event.Update],
+    target: { mode: 'ARGUMENTS', paths: [{ argument: 'eventId', context: 'eventId' }] },
+    risk: 'SENSITIVE',
+    personalData: true,
+    serviceAuthorized: false,
+    source: 'apps/backend/src/app/events/event-manual-notification.resolver.ts',
+    description: 'Propor notifyEventParticipants; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
     field: 'events',
@@ -2679,7 +3216,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: false,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/events/resolver.ts',
-    selection: 'id personId eventId',
+    selection: 'deleted id personId eventId',
     description: 'Propor deleteEvent; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -2724,7 +3261,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: false,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/events/attendance-collectors.resolver.ts',
-    selection: 'id personId eventId',
+    selection: 'deleted id personId eventId',
     description: 'Propor deleteEventAttendanceCollector; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -2793,7 +3330,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/events/lecturers.resolver.ts',
-    selection: 'id personId eventId',
+    selection: 'deleted id personId eventId',
     description: 'Propor deleteEventLecturer; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -2987,7 +3524,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: false,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/events/event-drafts.resolver.ts',
-    selection: 'id personId eventId',
+    selection: 'deleted id personId eventId',
     description: 'Propor deleteEventDraft; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -3000,7 +3537,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: false,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/events/event-drafts.resolver.ts',
-    selection: 'id personId eventId',
+    selection: 'deleted id personId eventId',
     description: 'Propor deleteEventDraftsForEvent; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -3314,7 +3851,7 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/events/attendances/event-attendances.mutations.resolver.ts',
-    selection: 'id personId eventId',
+    selection: 'deleted id personId eventId',
     description: 'Propor deleteEventAttendance; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -3327,7 +3864,8 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/events/attendances/event-attendances.csv-import.resolver.ts',
-    selection: '__typename',
+    selection:
+      'createdCount duplicateCount failedCount failedValues inferredMatchType ambiguousValues { value candidates { id name } }',
     description: 'Propor importEventAttendancesFromCsv; preserva autorização, escopo e regras do serviço responsável.',
   },
   {
@@ -3447,24 +3985,19 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     personalData: true,
     serviceAuthorized: false,
     source: 'apps/backend/src/app/events/attendances/major-event-subscription-csv-import.resolver.ts',
-    selection: '__typename',
+    selection:
+      'createdSubscriptionCount updatedSubscriptionCount duplicateCount createdPeopleCount failedCount createdPeople { id name } failedRows',
     description:
       'Propor importMajorEventSubscriptionsFromCsv; preserva autorização, escopo e regras do serviço responsável.',
   },
 ];
 
 export const ADMIN_MCP_EXCLUSIONS: Readonly<Record<string, string>> = {
-  restoreCertificate:
-    'Optional allowDeferred changes defer actual certificate issuance; this branch requires MCP audit-context propagation or a fixed synchronous-only input policy.',
   downloadCertificate: 'Downloads expose signed private object access; use the human application.',
   createAdminOfflineAttendanceCollectorCredential: 'Creates a bearer credential.',
   createSportsOfflineCollectorCredential: 'Creates a bearer credential.',
   createPublicationPreview: 'Creates a bearer preview token.',
   publicationPreview: 'Consumes a bearer preview token.',
-  requestCertificateIssuance: 'Enqueues certificate work; propagated MCP audit context is not yet supported.',
-  reissueAllCertificates: 'Enqueues certificate work; propagated MCP audit context is not yet supported.',
-  scanMergeCandidates: 'Background scan cannot yet retain MCP audit context.',
-  notifyEventParticipants: 'Notification enqueue cannot yet retain MCP audit context.',
   publicMapEvents: 'Public or current-user self-service workflow outside the administrative MCP surface.',
   publicEvents: 'Public or current-user self-service workflow outside the administrative MCP surface.',
   publicCalendarEvents: 'Public or current-user self-service workflow outside the administrative MCP surface.',

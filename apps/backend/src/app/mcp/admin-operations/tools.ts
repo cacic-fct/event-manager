@@ -1,5 +1,6 @@
+import { McpAdminArtifactTools } from './artifact-tools';
 import type { McpServer, CallToolResult } from '@modelcontextprotocol/server';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { z } from 'zod';
 import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { mcpIdSchema } from '../mcp-admin.schemas';
@@ -15,6 +16,7 @@ export class AdminMcpOperationTools {
   constructor(
     private readonly bridge: AdminMcpGraphqlBridge,
     private readonly commands: AdminMcpCommandService,
+    @Optional() private readonly artifactTools?: McpAdminArtifactTools,
   ) {}
 
   async register(server: McpServer, user: AuthenticatedUser, execute: Execute): Promise<void> {
@@ -84,6 +86,7 @@ export class AdminMcpOperationTools {
 
     const grants = await this.commands.delegations(user, true);
     const allowed = new Set(grants.flatMap((grant) => grant.operations));
+    if (allowed.size) this.artifactTools?.register(server, user, execute, allowed);
     for (const info of this.bridge.catalog().filter((operation) => allowed.has(operation.field))) {
       const operation = this.bridge.operation(info.field);
       if (info.kind === 'query') {

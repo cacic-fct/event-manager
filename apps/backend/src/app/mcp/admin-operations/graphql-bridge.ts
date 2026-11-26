@@ -1,4 +1,4 @@
-import { BadRequestException, HttpException, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpException, Injectable, Optional } from '@nestjs/common';
 import { GraphQLSchemaHost } from '@nestjs/graphql';
 import {
   execute,
@@ -22,11 +22,17 @@ import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user
 import { McpAdminConfig } from '../mcp-admin.config';
 import { ADMIN_MCP_OPERATIONS, type AdminMcpOperation } from './catalog';
 import { adminMcpExecution, type AdminMcpExecution } from './execution-context';
+import {
+  AdminMcpRestOperations,
+  type AdminMcpRestOperationContext,
+  type PreparedAdminRestOperation,
+} from './rest-operations';
 
 export interface PreparedAdminOperation {
   definition: AdminMcpOperation;
-  schema: z.ZodObject;
-  document: ReturnType<typeof parse>;
+  schema: z.ZodType;
+  document?: ReturnType<typeof parse>;
+  rest?: PreparedAdminRestOperation;
   info: AdminMcpOperationInfo;
 }
 
@@ -258,6 +264,7 @@ export class AdminMcpGraphqlBridge {
   constructor(
     private readonly host: GraphQLSchemaHost,
     private readonly config: McpAdminConfig,
+    @Optional() private readonly restOperations?: AdminMcpRestOperations,
   ) {}
 
   private load(): void {
@@ -269,6 +276,20 @@ export class AdminMcpGraphqlBridge {
     this.failures = [];
     for (const definition of ADMIN_MCP_OPERATIONS) {
       try {
+        if (definition.transport === 'REST') {
+          if (!this.restOperations) throw new Error('Adaptador REST administrativo indisponível.');
+          const prepared = this.restOperations.prepare(definition);
+          this.prepared.set(definition.field, {
+            definition,
+            schema: prepared.operation.schema,
+            rest: prepared.operation,
+            info: prepared.info,
+          });
+          continue;
+        }
+        if (this.restOperations?.operation(definition.field)) {
+          throw new Error('Operação REST não classificada no catálogo.');
+        }
         const root = definition.kind === 'query' ? schema.getQueryType() : schema.getMutationType();
         const field: GraphQLField<unknown, unknown> | undefined = root?.getFields()[definition.field];
         if (!field) {
@@ -343,20 +364,34 @@ export class AdminMcpGraphqlBridge {
   }
 
   arguments(field: string, input: unknown): Record<string, unknown> {
-    if (!boundedJson(input) || Buffer.byteLength(JSON.stringify(input)) > 64000) {
+    const operation = this.operation(field);
+    let serialized: string | undefined;
+    try {
+      serialized = JSON.stringify(input);
+    } catch {
       throw new BadRequestException('Argumentos inválidos ou excessivos.');
     }
-    const operation = this.operation(field);
+    if (
+      serialized === undefined ||
+      Buffer.byteLength(serialized) > (operation.rest?.maxInputBytes ?? 64000) ||
+      (!operation.rest && !boundedJson(input))
+    ) {
+      throw new BadRequestException('Argumentos inválidos ou excessivos.');
+    }
     const parsed = operation.schema.safeParse(input);
     if (!parsed.success) {
       throw new BadRequestException('Confira os argumentos da operação.');
     }
+    if (operation.rest) {
+      return JSON.parse(JSON.stringify(parsed.data)) as Record<string, unknown>;
+    }
+    if (!operation.document) throw new BadRequestException('Operação administrativa indisponível.');
     const variables = getVariableValues(
       this.host.schema,
       operation.document.definitions.flatMap((item) =>
         item.kind === 'OperationDefinition' ? (item.variableDefinitions ?? []) : [],
       ),
-      parsed.data,
+      parsed.data as Record<string, unknown>,
     );
     if (variables.errors) {
       throw new BadRequestException('Argumentos incompatíveis com a operação.');
@@ -390,6 +425,10 @@ export class AdminMcpGraphqlBridge {
     };
     const response = { setHeader: () => undefined, header: () => undefined, locals: {} };
     return adminMcpExecution.run({ ...execution, request, user: safeUser }, async () => {
+      if (operation.rest) {
+        return this.restOperations?.execute(field, canonical, safeUser, restContext(field, execution));
+      }
+      if (!operation.document) throw new BadRequestException('Operação administrativa indisponível.');
       const result = await execute({
         schema: this.host.schema,
         document: operation.document,
@@ -413,4 +452,29 @@ export class AdminMcpGraphqlBridge {
       return output;
     });
   }
+
+  async preflight(
+    field: string,
+    input: unknown,
+    user: AuthenticatedUser,
+    context: Pick<AdminMcpExecution, 'delegationId' | 'clientId' | 'proposalId'>,
+  ): Promise<void> {
+    const operation = this.operation(field);
+    if (operation.definition.kind !== 'mutation') throw new BadRequestException('Esta operação só consulta.');
+    if (!operation.rest) return;
+    const canonical = this.arguments(field, input);
+    await this.restOperations?.preflight(field, canonical, user, { ...context, operation: field });
+  }
+}
+
+function restContext(
+  operation: string,
+  execution: Omit<AdminMcpExecution, 'request' | 'user'>,
+): AdminMcpRestOperationContext {
+  return {
+    delegationId: execution.delegationId,
+    clientId: execution.clientId,
+    operation,
+    ...(execution.proposalId ? { proposalId: execution.proposalId } : {}),
+  };
 }

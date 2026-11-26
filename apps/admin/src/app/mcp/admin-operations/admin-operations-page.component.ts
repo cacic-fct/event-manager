@@ -1,3 +1,4 @@
+import { commandFileLinks } from './command-files';
 import { DatePipe } from '@angular/common';
 import {
   Component,
@@ -87,6 +88,7 @@ export class AdminOperationsPageComponent {
   readonly feedback = signal('');
   readonly page = signal(0);
   readonly serialize = serializeArgument;
+  readonly commandFiles = commandFileLinks;
   readonly creating = signal(false);
   readonly selectedCommands = signal<string[]>([]);
   readonly previews = signal<Record<string, AdminMcpCommandPreview>>({});
