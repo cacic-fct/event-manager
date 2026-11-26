@@ -21,6 +21,7 @@ describe('NovuNotificationsController', () => {
     applicationIdentifier: 'app-1',
     subscriberId: 'user-1',
     subscriberHash: 'hash-1',
+    vapidPublicKey: 'public-key',
   };
 
   let currentUserContext: { resolveCurrentUserContext: jest.Mock };
@@ -28,7 +29,10 @@ describe('NovuNotificationsController', () => {
     mapPersonToRecipient: jest.Mock;
     mapAuthenticatedUserToRecipient: jest.Mock;
     createSubscriberSession: jest.Mock;
+    registerWebPushRecipient: jest.Mock;
   };
+  const webPush = { saveSubscription: jest.fn() };
+  const subscription = { endpoint: 'https://fcm.googleapis.com/fcm/send/example', p256dh: 'key', auth: 'auth' };
   let controller: NovuNotificationsController;
 
   beforeEach(() => {
@@ -39,8 +43,10 @@ describe('NovuNotificationsController', () => {
       mapPersonToRecipient: jest.fn().mockReturnValue(recipient),
       mapAuthenticatedUserToRecipient: jest.fn().mockReturnValue(recipient),
       createSubscriberSession: jest.fn().mockReturnValue(session),
+      registerWebPushRecipient: jest.fn().mockResolvedValue(true),
     };
-    controller = new NovuNotificationsController(currentUserContext as never, notifications as never);
+    controller = new NovuNotificationsController(currentUserContext as never, notifications as never, webPush as never);
+    webPush.saveSubscription.mockClear();
   });
 
   it('returns a signed session for the resolved current person recipient', async () => {
@@ -66,5 +72,33 @@ describe('NovuNotificationsController', () => {
     notifications.createSubscriberSession.mockReturnValueOnce(null);
 
     await expect(controller.createNovuSession({ user } as never)).rejects.toBeInstanceOf(ServiceUnavailableException);
+  });
+
+  it('registers only for the resolved subscriber and rejects an account switch', async () => {
+    await controller.registerPushSubscription({ user } as never, { ...subscription, subscriberId: 'user-1' });
+    expect(notifications.registerWebPushRecipient).toHaveBeenCalledWith(recipient);
+    expect(webPush.saveSubscription).toHaveBeenCalledWith('user-1', {
+      endpoint: subscription.endpoint,
+      keys: { p256dh: subscription.p256dh, auth: subscription.auth },
+    });
+    notifications.registerWebPushRecipient.mockClear();
+    await expect(
+      controller.registerPushSubscription({ user } as never, { ...subscription, subscriberId: 'someone-else' }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      controller.registerPushSubscription({} as never, { ...subscription, subscriberId: 'user-1' }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(notifications.registerWebPushRecipient).not.toHaveBeenCalled();
+  });
+
+  it('reports unavailable push registration', async () => {
+    notifications.registerWebPushRecipient.mockResolvedValueOnce(false);
+    await expect(
+      controller.registerPushSubscription({ user } as never, {
+        ...subscription,
+        subscriberId: 'user-1',
+      }),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(webPush.saveSubscription).not.toHaveBeenCalled();
   });
 });

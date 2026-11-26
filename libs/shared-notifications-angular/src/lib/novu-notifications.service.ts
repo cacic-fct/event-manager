@@ -61,6 +61,8 @@ export class NovuNotificationsService {
   private sessionRequestUserKey: string | null = null;
   private connectionRequest: Promise<void> | null = null;
   private connectionUserKey: string | null = null;
+  private pushOperation: Promise<void> = Promise.resolve();
+  private subscriberPersistence: Promise<void> = Promise.resolve();
 
   readonly loadingConfig = signal(false);
   readonly unreadCount = signal(0);
@@ -81,7 +83,7 @@ export class NovuNotificationsService {
         return;
       }
 
-      if (this.activeSubscriberId && this.activeUserKey !== nextUserKey) {
+      if ((!user && this.auth.initialized()) || (this.activeSubscriberId && this.activeUserKey !== nextUserKey)) {
         void this.unregisterWebPushEndpoint();
         void this.persistActiveSubscriberId(null);
       }
@@ -267,6 +269,7 @@ export class NovuNotificationsService {
   shouldOfferPushPermission(): boolean {
     return (
       isPlatformBrowser(this.platformId) &&
+      Boolean(this.session()?.vapidPublicKey) &&
       this.notificationPermission() === 'default' &&
       !this.pushPermissionDismissed()
     );
@@ -339,10 +342,13 @@ export class NovuNotificationsService {
     this.activeSubscriberId = session.subscriberId;
     this.activeUserKey = userKey;
     await this.persistActiveSubscriberId(session.subscriberId);
+    if (this.session() !== session) return;
     await this.refreshUnreadCount();
     if (this.notificationPermission() === 'granted') {
-      await this.registerWebPushEndpoint();
+      void this.registerWebPushEndpoint();
     }
+
+    if (this.session() !== session) return;
 
     this.realtimeCleanup = client.on('notifications.unread_count_changed', ({ result }) => {
       this.unreadCount.set(result.total);
@@ -367,88 +373,106 @@ export class NovuNotificationsService {
 
   private async registerWebPushEndpoint(): Promise<void> {
     const session = this.session();
-    const client = this.client();
     if (
       !session?.pushIntegrationIdentifier ||
       !session.vapidPublicKey ||
-      !client ||
       !('serviceWorker' in navigator) ||
       !('PushManager' in window)
     ) {
       return;
     }
 
-    const registration = await navigator.serviceWorker.ready;
-    const subscription =
-      (await registration.pushManager.getSubscription()) ??
-      (await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: this.urlBase64ToUint8Array(session.vapidPublicKey),
-      }));
-
-    const key = subscription.getKey('p256dh');
-    const auth = subscription.getKey('auth');
-    if (!key || !auth) {
-      return;
-    }
-
-    const endpointHash = btoa(subscription.endpoint).replace(/=+$/, '');
-    const { error } = await client.channelEndpoints.create({
-      identifier: `web-push:${endpointHash}`,
-      integrationIdentifier: session.pushIntegrationIdentifier,
-      subscriberId: session.subscriberId,
-      type: 'push',
-      endpoint: {
-        endpoint: subscription.endpoint,
-        p256dh: this.arrayBufferToBase64Url(key),
-        auth: this.arrayBufferToBase64Url(auth),
-      },
-    });
-
-    if (error) {
-      this.lastError.set('Não foi possível registrar este navegador para notificações push.');
-    }
+    const { vapidPublicKey } = session;
+    this.pushOperation = this.pushOperation
+      .then(async () => {
+        if (this.session() !== session) return;
+        // Reuse the public Workbox worker, including when the admin app is open.
+        // Do not wait indefinitely for a worker that has never been installed.
+        const registration = await navigator.serviceWorker.getRegistration('/app/');
+        if (!registration?.active) return;
+        const applicationServerKey = this.urlBase64ToUint8Array(vapidPublicKey);
+        let subscription = await registration.pushManager.getSubscription();
+        if (subscription && !this.usesVapidKey(subscription, applicationServerKey)) {
+          await subscription.unsubscribe();
+          subscription = null;
+        }
+        subscription ??= await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey,
+        });
+        if (this.session() !== session) {
+          await subscription.unsubscribe();
+          return;
+        }
+        const { endpoint, keys } = subscription.toJSON();
+        await firstValueFrom(
+          this.http.post<void>('/api/notifications/push-subscription', {
+            subscriberId: session.subscriberId,
+            endpoint,
+            p256dh: keys?.['p256dh'],
+            auth: keys?.['auth'],
+          }),
+        );
+        if (this.session() !== session) await subscription.unsubscribe();
+      })
+      .catch(() => {
+        this.lastError.set('Não foi possível registrar este navegador para notificações push.');
+      });
+    return this.pushOperation;
   }
 
   private async unregisterWebPushEndpoint(): Promise<void> {
-    const client = this.client();
-    if (!client || !isPlatformBrowser(this.platformId) || !('serviceWorker' in navigator)) {
-      return;
-    }
-
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-      if (!subscription) {
-        return;
-      }
-
-      const endpointHash = btoa(subscription.endpoint).replace(/=+$/, '');
-      const { error } = await client.channelEndpoints.delete({
-        identifier: `web-push:${endpointHash}`,
-      });
-
-      if (error) {
+    if (!isPlatformBrowser(this.platformId)) return;
+    this.pushOperation = this.pushOperation
+      .then(async () => {
+        if (!('serviceWorker' in navigator)) return;
+        const registration = await navigator.serviceWorker.getRegistration('/app/');
+        const subscription = await registration?.pushManager.getSubscription();
+        await subscription?.unsubscribe();
+      })
+      .catch(() => {
         this.lastError.set('Não foi possível remover este navegador das notificações push.');
-      }
-    } catch {
-      this.lastError.set('Não foi possível remover este navegador das notificações push.');
-    }
+      });
+    return this.pushOperation;
   }
 
-  private async persistActiveSubscriberId(subscriberId: string | null): Promise<void> {
+  private persistActiveSubscriberId(subscriberId: string | null): Promise<void> {
     if (!isPlatformBrowser(this.platformId) || !('caches' in window)) {
-      return;
+      return Promise.resolve();
     }
+    this.activeSubscriberId = subscriberId;
+    this.subscriberPersistence = this.subscriberPersistence
+      .catch(() => undefined)
+      .then(async () => {
+        const cache = await caches.open(ACTIVE_SUBSCRIBER_CACHE);
+        if (subscriberId) {
+          const previous = await cache.match(ACTIVE_SUBSCRIBER_REQUEST);
+          const previousSubscriberId = await previous
+            ?.json()
+            .then((entry) => entry?.subscriberId)
+            .catch(() => null);
+          if (previousSubscriberId && previousSubscriberId !== subscriberId) {
+            await this.unregisterWebPushEndpoint();
+          }
+          await cache.put(ACTIVE_SUBSCRIBER_REQUEST, new Response(JSON.stringify({ subscriberId })));
+        } else {
+          await cache.delete(ACTIVE_SUBSCRIBER_REQUEST);
+        }
+        if ('serviceWorker' in navigator) {
+          const registration = await navigator.serviceWorker.getRegistration('/app/');
+          for (const notification of (await registration?.getNotifications()) ?? []) {
+            if (notification.data?.cacicPush && notification.data.subscriberId !== subscriberId) notification.close();
+          }
+        }
+      });
+    return this.subscriberPersistence;
+  }
 
-    const cache = await caches.open(ACTIVE_SUBSCRIBER_CACHE);
-    if (!subscriberId) {
-      await cache.delete(ACTIVE_SUBSCRIBER_REQUEST);
-      this.activeSubscriberId = null;
-      return;
-    }
-
-    await cache.put(ACTIVE_SUBSCRIBER_REQUEST, new Response(JSON.stringify({ subscriberId })));
+  private usesVapidKey(subscription: PushSubscription, expected: ArrayBuffer): boolean {
+    const key = subscription.options.applicationServerKey;
+    if (!key || key.byteLength !== expected.byteLength) return false;
+    const expectedBytes = new Uint8Array(expected);
+    return new Uint8Array(key).every((byte, index) => byte === expectedBytes[index]);
   }
 
   private urlBase64ToUint8Array(value: string): ArrayBuffer {
@@ -460,12 +484,6 @@ export class NovuNotificationsService {
       output[index] = raw.charCodeAt(index);
     }
     return output.buffer;
-  }
-
-  private arrayBufferToBase64Url(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer);
-    const binary = [...bytes].map((byte) => String.fromCharCode(byte)).join('');
-    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
 
   private async fetchSubscriberSession(userKey: string): Promise<NovuSubscriberSession | null> {

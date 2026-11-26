@@ -126,7 +126,10 @@ describe('NovuNotificationsService', () => {
           return '/socket.io';
         }
         if (key === 'NOVU_PUSH_INTEGRATION_IDENTIFIER') {
-          return 'firebase-cloud-messaging';
+          return 'push-webhook-test';
+        }
+        if (['NOVU_VAPID_PRIVATE_KEY', 'NOVU_VAPID_SUBJECT', 'NOVU_PUSH_WEBHOOK_SECRET'].includes(key)) {
+          return 'configured';
         }
         if (key === 'NOVU_VAPID_PUBLIC_KEY') {
           return 'vapid-public-key';
@@ -174,7 +177,7 @@ describe('NovuNotificationsService', () => {
       apiUrl: 'https://novu-browser.example.com/api',
       socketUrl: 'https://novu-browser.example.com',
       socketPath: '/socket.io',
-      pushIntegrationIdentifier: 'firebase-cloud-messaging',
+      pushIntegrationIdentifier: 'push-webhook-test',
       vapidPublicKey: 'vapid-public-key',
     });
   });
@@ -306,7 +309,7 @@ describe('NovuNotificationsService', () => {
     expect(request.payload.redirectUrl).toBe(actionUrl);
     expect(request.payload).not.toHaveProperty('actionLabel');
     expect(request.payload).not.toHaveProperty('actionUrl');
-    expect(request.overrides.fcm.data.url).toBe(actionUrl);
+    expect(request.overrides.webPush.data.url).toBe(actionUrl);
   });
 
   it('sends subscription status payloads to Novu with labels and action data', async () => {
@@ -346,7 +349,7 @@ describe('NovuNotificationsService', () => {
         }),
       }),
     );
-    expect(body.overrides.fcm.data).toEqual(
+    expect(body.overrides.webPush.data).toEqual(
       expect.objectContaining({
         majorEventId: 'major-event-1',
         subscriptionId: 'subscription-1',

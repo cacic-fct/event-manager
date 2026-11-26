@@ -1,6 +1,16 @@
 import { validateBackendEnvironment } from './environment.validation';
 
 describe('validateBackendEnvironment', () => {
+  it('rejects incomplete Web Push configuration', () => {
+    expect(() =>
+      validateBackendEnvironment({
+        NODE_ENV: 'test',
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
+        NOVU_PUSH_WEBHOOK_SECRET: 'synthetic-secret',
+      }),
+    ).toThrow('NOVU_VAPID_PRIVATE_KEY');
+  });
+
   it('requires production-only backend secrets and integration settings', () => {
     expect(() =>
       validateBackendEnvironment({

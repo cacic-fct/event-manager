@@ -350,7 +350,7 @@ describe('Novu notification preferences service', () => {
       providers: [
         provideHttpClient(),
         NovuNotificationsService,
-        { provide: AuthService, useValue: { user: signal(null) } },
+        { provide: AuthService, useValue: { user: signal(null), initialized: signal(false) } },
       ],
     });
     return TestBed.inject(NovuNotificationsService);

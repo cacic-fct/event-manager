@@ -1,6 +1,6 @@
 # API
 
-Trabalhamos com dois tipos de API: GraphQL e REST.
+Disponibilizamos GraphQL, REST e uma [interface MCP administrativa](MCP%20administrativo.md), com consultas autorizadas e propostas sujeitas a aprovação humana.
 
 ## GraphQL
 

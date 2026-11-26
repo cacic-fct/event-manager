@@ -14,6 +14,8 @@ self.addEventListener('push', (event) => {
 });
 
 self.addEventListener('notificationclick', (event) => {
+  if (!event.notification.data?.cacicPush) return;
+  event.stopImmediatePropagation();
   const url = event.notification.data?.url;
   if (!url) {
     return;
@@ -21,13 +23,15 @@ self.addEventListener('notificationclick', (event) => {
 
   event.notification.close();
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+    readActiveSubscriberId().then(async (subscriberId) => {
+      if (subscriberId !== event.notification.data.subscriberId) return;
+      const clientList = await clients.matchAll({ type: 'window', includeUncontrolled: true });
       const matchingClient = clientList.find((client) => 'focus' in client && client.url.endsWith(url));
       if (matchingClient) {
         return matchingClient.focus();
       }
 
-      return clients.openWindow(url);
+      return clients.openWindow(trustedAppPath(url));
     }),
   );
 });
@@ -64,9 +68,19 @@ async function handleGuardedPush(payload, subscriberId) {
     badge: notification.badge ?? data.badge ?? '/app/icons/192.webp',
     image: notification.image ?? data.image,
     data: {
-      url: data.url ?? data.redirectUrl ?? payload.redirectUrl ?? '/app/notifications',
+      cacicPush: true,
+      subscriberId,
+      url: trustedAppPath(data.url ?? data.redirectUrl ?? payload.redirectUrl),
     },
   });
+}
+
+function trustedAppPath(value) {
+  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//') || value.includes('\\')) {
+    return '/app/notifications';
+  }
+  if (/^\/(app|admin)(\/|\?|#|$)/.test(value)) return value;
+  return `/app${value}`;
 }
 
 async function readActiveSubscriberId() {
@@ -84,11 +98,5 @@ async function readActiveSubscriberId() {
 }
 
 function findSubscriberId(payload) {
-  return (
-    payload.subscriberId ??
-    payload.data?.subscriberId ??
-    payload.webPush?.data?.subscriberId ??
-    payload.fcm?.data?.subscriberId ??
-    null
-  );
+  return payload.subscriberId ?? payload.data?.subscriberId ?? payload.webPush?.data?.subscriberId ?? null;
 }

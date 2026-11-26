@@ -76,6 +76,21 @@ export function validateBackendEnvironment(config: Environment): Environment {
   validateMcpAdminEnvironment(config, errors);
 
   validateCompleteGroup(config, S3_STORAGE_KEYS, errors);
+  if (
+    ['NOVU_VAPID_PRIVATE_KEY', 'NOVU_VAPID_SUBJECT', 'NOVU_PUSH_WEBHOOK_SECRET'].some((key) => readString(config, key))
+  ) {
+    requireKeys(
+      config,
+      [
+        'NOVU_PUSH_INTEGRATION_IDENTIFIER',
+        'NOVU_VAPID_PUBLIC_KEY',
+        'NOVU_VAPID_PRIVATE_KEY',
+        'NOVU_VAPID_SUBJECT',
+        'NOVU_PUSH_WEBHOOK_SECRET',
+      ],
+      errors,
+    );
+  }
 
   requireHttpUrl(config, 'PUBLIC_APP_ORIGIN', errors);
   requireHttpUrl(config, 'BACKEND_URL', errors);

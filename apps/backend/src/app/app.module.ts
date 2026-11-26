@@ -249,6 +249,7 @@ import { ReceiptAdminQueueService } from './major-event-receipts/services/receip
 import { ReceiptSubscriptionSyncService } from './major-event-receipts/services/receipt-subscription-sync.service';
 import { ReceiptUploadService } from './major-event-receipts/services/receipt-upload.service';
 import { ReceiptValidationService } from './major-event-receipts/services/receipt-validation.service';
+import { NovuWebPushService } from './notifications/novu-web-push.service';
 import { NovuNotificationsService } from './notifications/novu-notifications.service';
 import { NovuNotificationsController } from './notifications/novu-notifications.controller';
 import { AccountManagerPrivacySyncService } from './privacy/account-manager-privacy-sync.service';
@@ -574,6 +575,7 @@ const schedulerProviders = useInMemoryTestInfra
     TicketSubscriptionSyncService,
     HealthService,
     NovuNotificationsService,
+    NovuWebPushService,
     BackendFeatureFlagService,
     EventAudienceService,
     CurrentUserParticipationEventsResolver,
