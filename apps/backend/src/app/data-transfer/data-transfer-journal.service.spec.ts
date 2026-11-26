@@ -1,3 +1,5 @@
+import { adminMcpExecution } from '../mcp/admin-operations/execution-context';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
@@ -109,7 +111,12 @@ function fixture(options: { metadata?: unknown } = {}) {
     assertEventGroupMutable: jest.fn().mockResolvedValue(undefined),
     assertMajorEventMutable: jest.fn().mockResolvedValue(undefined),
   } as unknown as FrozenResourceService;
-  const service = new DataTransferJournalService(prisma, authorization, frozen);
+  const service = new DataTransferJournalService(
+    prisma,
+    authorization,
+    frozen,
+    new AuditLogService(prisma, authorization, {} as never),
+  );
   return { service, prisma, tx, batch, eventGroup, auditLogEntry, authorization, frozen };
 }
 
@@ -276,6 +283,64 @@ describe('DataTransferJournalService', () => {
         permission: Permission.DataTransfer.Undo,
       }),
     });
+  });
+
+  it('records approved MCP undo in the owning transaction with its reversal link', async () => {
+    const { service, batch, auditLogEntry } = fixture();
+    const transactionAudit = { businessWrites: true, recorded: false };
+    await adminMcpExecution.run(
+      {
+        request: {},
+        user: actor,
+        phase: 'apply',
+        inTransaction: true,
+        transactionAudit,
+        operation: 'undoDataTransfer',
+        proposalId: 'proposal',
+        delegationId: 'delegation',
+        clientId: 'client',
+        beforeTransaction: async () => undefined,
+      },
+      () => service.undo(batch.id, actor),
+    );
+
+    expect(transactionAudit.recorded).toBe(true);
+    expect(auditLogEntry.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        operation: AuditLogOperation.REVERT,
+        revertTargetId: batch.id,
+        metadata: expect.objectContaining({ batchId: batch.id, proposalId: 'proposal', source: 'mcp' }),
+      }),
+    });
+  });
+
+  it('preflights the latest snapshot when an import changes a row more than once', async () => {
+    const first = mutation({ after: { id: 'group-1', name: 'Intermediário' } });
+    const second = mutation({ before: first.after });
+    const { service, batch, eventGroup } = fixture({ metadata: metadata({ mutations: [first, second] }) });
+
+    await expect(service.validateUndo(batch.id, actor)).resolves.toBeUndefined();
+    expect(eventGroup.updateMany).not.toHaveBeenCalled();
+    await expect(service.undo(batch.id, actor)).resolves.toMatchObject({ undone: true });
+    expect(await eventGroup.findMany()).toEqual([first.before]);
+  });
+
+  it('rejects a later edit before undoing two mutations to the same row', async () => {
+    const first = mutation({ after: { id: 'group-1', name: 'Intermediário' } });
+    const second = mutation({ before: first.after });
+    const { service, batch, eventGroup } = fixture({ metadata: metadata({ mutations: [first, second] }) });
+    eventGroup.findMany.mockResolvedValue([{ id: 'group-1', name: 'Alterado depois' }]);
+    await expect(service.undo(batch.id, actor)).rejects.toBeInstanceOf(ConflictException);
+    expect(eventGroup.updateMany).not.toHaveBeenCalled();
+    expect(batch.revertedAt).toBeNull();
+  });
+
+  it('accepts journals written before the MCP relation keys were recognized', async () => {
+    const { service, batch } = fixture({
+      metadata: metadata({ schemaFingerprint: journalSchemaFingerprint({ legacyMcpKeys: true }) }),
+    });
+
+    await expect(service.undo(batch.id, actor)).resolves.toMatchObject({ undone: true });
   });
 
   it('refuses undo after an out-of-band edit without changing the batch state', async () => {

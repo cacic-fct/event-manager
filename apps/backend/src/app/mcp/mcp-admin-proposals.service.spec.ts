@@ -169,8 +169,9 @@ describe('McpAdminProposalsService', () => {
       beforeValues: { locationName: 'Sala A' },
     };
     f.tx.mcpAdminProposal.findUnique.mockResolvedValue(proposal);
-    f.tx.event.findFirst.mockResolvedValue({ ...f.event, isVirtual: true, updatedAt: new Date(Date.now() + 1000) });
-    f.event.updatedAt = new Date(Date.now() + 1000);
+    const updatedAt = new Date(Date.now() + 1000);
+    f.tx.event.findFirst.mockResolvedValue({ ...f.event, isVirtual: true, updatedAt });
+    f.event.updatedAt = updatedAt;
     const input = {
       delegationId: f.input.delegationId,
       eventId: f.input.eventId,

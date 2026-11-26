@@ -1,3 +1,6 @@
+import { lockMcpJobAttribution } from '../../audit-log/mcp-job-attribution';
+import { McpAdminAdvisoryLockService } from '../mcp-admin-advisory-lock.service';
+import { AdminMcpScopePolicy } from './scope-policy';
 import { McpAdminFileArtifactService } from './artifact-files';
 import { createHash, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -346,6 +349,7 @@ describe('administrative commands on disposable PostgreSQL', () => {
       policy as never,
       checkedAudit as unknown as AuditLogService,
       { publish: async () => undefined } as never,
+      new McpAdminAdvisoryLockService(),
     );
   });
 
@@ -392,17 +396,67 @@ describe('administrative commands on disposable PostgreSQL', () => {
     delegationId = delegation.id;
   });
 
+  it('excludes privacy cleanup from concurrent job attribution reads and audit writes', async () => {
+    await prisma.$transaction(async (tx) => {
+      await lockMcpJobAttribution(tx, true);
+      const result = await sql.query<{ acquired: boolean }>(
+        "SELECT pg_try_advisory_xact_lock_shared(hashtext('mcp-job-attribution-privacy')) AS acquired",
+      );
+      expect(result.rows[0].acquired).toBe(false);
+    });
+    await prisma.$transaction(async (tx) => {
+      await lockMcpJobAttribution(tx);
+      const result = await sql.query<{ acquired: boolean }>(
+        "SELECT pg_try_advisory_xact_lock(hashtext('mcp-job-attribution-privacy')) AS acquired",
+      );
+      expect(result.rows[0].acquired).toBe(false);
+    });
+    const result = await sql.query<{ acquired: boolean }>(
+      "SELECT pg_try_advisory_xact_lock(hashtext('mcp-job-attribution-privacy')) AS acquired",
+    );
+    expect(result.rows[0].acquired).toBe(true);
+  });
+
+  it('reconciles an interrupted claim only after its PostgreSQL owner releases the lock', async () => {
+    const proposal = await stage();
+    const locks = new McpAdminAdvisoryLockService();
+    const oldClaim = new Date(Date.now() - 120_000);
+    await locks.runForCommand(proposal.proposalId, async () => {
+      await prisma.mcpAdminCommand.update({
+        where: { id: proposal.proposalId },
+        data: { state: 'APPLYING', decidedAt: oldClaim },
+      });
+      await service.recoverInterrupted();
+      expect(await commandState(proposal.proposalId)).toBe('APPLYING');
+    });
+
+    await service.recoverInterrupted();
+    await service.recoverInterrupted();
+    expect(await commandState(proposal.proposalId)).toBe('UNCERTAIN');
+    expect(invocations).toBe(0);
+    expect(
+      await prisma.auditLogEntry.count({
+        where: {
+          entityId: proposal.proposalId,
+          metadata: { path: ['result'], equals: 'UNCERTAIN' },
+        },
+      }),
+    ).toBe(1);
+  });
+
   it('persists verified private files and erases bytes through the delegation cascade', async () => {
     await prisma.mcpAdminOperationDelegation.update({
       where: { id: delegationId },
       data: { operations: ['uploadSportsTeamLogo'] },
     });
-    const artifacts = new McpAdminFileArtifactService(prisma, new AuthorizationPolicyService(prisma), {
-      enabled: true,
-      proposalsEnabled: true,
-      allowedClients: [CLIENT_ID],
-      resourceUrl: RESOURCE,
-    } as McpAdminConfig);
+    const authorization = new AuthorizationPolicyService(prisma);
+    const artifacts = new McpAdminFileArtifactService(
+      prisma,
+      authorization,
+      { enabled: true, proposalsEnabled: true, allowedClients: [CLIENT_ID], resourceUrl: RESOURCE } as McpAdminConfig,
+      new AdminMcpScopePolicy(authorization, prisma),
+      {} as never,
+    );
     const bytes = Buffer.from('synthetic-private-file');
     const owner = { userId: USER_ID, clientId: CLIENT_ID, delegationId, operation: 'uploadSportsTeamLogo' };
     const file = await artifacts.createUpload({

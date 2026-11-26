@@ -3,7 +3,7 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { EventPostCommitEffectsService } from '../events/event-post-commit-effects.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SportsMutationEventsService } from '../sports/realtime/sports-mutation-events.service';
-import { McpEventContentSyncLockService } from './mcp-event-content-sync-lock.service';
+import { McpAdminAdvisoryLockService } from './mcp-admin-advisory-lock.service';
 
 @Injectable()
 export class McpAdminMaintenanceService {
@@ -13,7 +13,7 @@ export class McpAdminMaintenanceService {
     private readonly prisma: PrismaService,
     private readonly effects: EventPostCommitEffectsService,
     private readonly sportsEvents: SportsMutationEventsService,
-    private readonly syncLock: McpEventContentSyncLockService,
+    private readonly syncLock: McpAdminAdvisoryLockService,
     @Optional() private readonly artifacts?: McpAdminFileArtifactService,
   ) {}
 

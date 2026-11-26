@@ -1,3 +1,4 @@
+import { AuditLogService } from '../../audit-log/audit-log.service';
 import { ForbiddenException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
 import type { Prisma } from '@prisma/client';
@@ -68,7 +69,7 @@ export async function createTicketTransferFixture() {
       frozenResources,
       [...additionalAdapters, adapter],
       new TransferKeyAllocations(),
-      new DataTransferJournalService(prisma, policy, frozenResources),
+      new DataTransferJournalService(prisma, policy, frozenResources, new AuditLogService(prisma, policy, {} as never)),
     );
   const transfer = createService();
   await client.event.create({

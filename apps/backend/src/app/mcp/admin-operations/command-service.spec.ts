@@ -1,4 +1,10 @@
-import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  NotFoundException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { Prisma, type McpAdminCommand, type McpAdminOperationDelegation } from '@prisma/client';
 import type { AdminMcpCommandDecision } from '@cacic-fct/event-manager-mcp-contracts';
@@ -185,6 +191,7 @@ function fixture() {
     }),
   };
   const invalidations = { publish: jest.fn(async () => undefined) };
+  const executionLock = { runForCommand: jest.fn(async (_id: string, work: () => Promise<unknown>) => work()) };
   const service = new AdminMcpCommandService(
     prisma as never,
     access as never,
@@ -194,6 +201,7 @@ function fixture() {
     policy as never,
     audit as never,
     invalidations as never,
+    executionLock as never,
   );
   const args = { id: 'event-a', input: { name: 'Nome proposto' } };
   const propose = () => service.propose(user, delegation.id, 'updateEvent', args, 'idempotent-a');
@@ -221,6 +229,7 @@ function fixture() {
     access,
     audit,
     invalidations,
+    executionLock,
     config,
     domainWrite,
     args,
@@ -345,6 +354,24 @@ describe('administrative MCP reviewed command lifecycle', () => {
       NotFoundException,
     );
     expect(f.bridge.execute).not.toHaveBeenCalled();
+  });
+
+  it.each(['APPLIED', 'UNCERTAIN'])('returns %s after the last content review change was removed', async (state) => {
+    const f = fixture();
+    await f.propose();
+    const command = f.command();
+    if (!command) throw new Error('Proposal missing');
+    command.operation = 'decideContentReview';
+    command.arguments = { id: 'removed-review' };
+    command.state = state;
+    f.delegation.operations.push(command.operation);
+    f.delegation.personalData = true;
+    const contentReview = { findUnique: jest.fn(async () => null) };
+    Object.assign(f.prisma, { contentReview });
+    await expect(f.service.status(f.user, command.id)).resolves.toMatchObject({ state });
+    expect(contentReview.findUnique).not.toHaveBeenCalled();
+    command.state = 'PENDING';
+    await expect(f.service.status(f.user, command.id)).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('omits a result after an uncertain execution', async () => {

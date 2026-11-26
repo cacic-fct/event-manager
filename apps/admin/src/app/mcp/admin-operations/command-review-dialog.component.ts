@@ -34,7 +34,12 @@ export interface CommandArgumentEditResult {
     <h2 mat-dialog-title>Editar {{ field.label }}</h2>
     <mat-dialog-content>
       <p>O valor será usado nesta revisão. A operação só será executada após sua confirmação na página.</p>
-      @if (kind === 'resources') {
+      @if (field.value === null) {
+        <mat-checkbox [checked]="keepNull()" (change)="keepNull.set($event.checked)">Manter sem valor</mat-checkbox>
+      }
+      @if (keepNull()) {
+        <p>Este campo continuará sem valor.</p>
+      } @else if (kind === 'resources') {
         <mat-form-field appearance="outline">
           <mat-label>Buscar {{ field.label }}</mat-label>
           <input matInput type="search" [formControl]="search" />
@@ -75,7 +80,7 @@ export interface CommandArgumentEditResult {
               [attr.max]="field.schema['maximum'] ?? null"
               [step]="field.schema['type'] === 'integer' ? 1 : 'any'" />
           } @else if (kind === 'date') {
-            <input matInput type="datetime-local" step="1" [formControl]="control" />
+            <input matInput type="datetime-local" step="0.001" [formControl]="control" />
           } @else {
             <textarea matInput rows="5" [formControl]="control"></textarea>
             @if (kind === 'json') {
@@ -134,6 +139,7 @@ export class CommandReviewDialogComponent {
     return options.filter((option) => normalizeOperationSearch(`${this.display(option)} ${option}`).includes(query));
   });
   readonly error = signal('');
+  readonly keepNull = signal(this.field.value === null);
   readonly display = (value: unknown) => argumentDisplay(value, this.data.targets);
 
   private editorKind(): 'resources' | 'enum' | 'boolean' | 'number' | 'date' | 'json' | 'text' {
@@ -150,7 +156,7 @@ export class CommandReviewDialogComponent {
     if (this.kind === 'date' && typeof this.field.value === 'string') {
       const date = new Date(this.field.value);
       if (!Number.isNaN(date.getTime()))
-        return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 19);
+        return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, -1);
     }
     return this.kind === 'json' ? serializeArgument(this.field.value) : String(this.field.value ?? '');
   }
@@ -160,6 +166,10 @@ export class CommandReviewDialogComponent {
   save(): void {
     if (this.field.locked || this.field.children.length) return;
     try {
+      if (this.keepNull()) {
+        this.dialog.close({ value: null });
+        return;
+      }
       const input = String(this.control.value);
       let value: unknown = this.control.value;
       if (this.kind === 'resources') value = this.selection();

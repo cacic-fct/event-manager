@@ -64,11 +64,20 @@ describe('CommandReviewDialogComponent', () => {
     component.save();
     expect(close).toHaveBeenCalledWith({ value: true });
   });
-  it('round-trips dates in local time without changing the instant', () => {
-    const value = new Date().toISOString().replace(/\.\d{3}Z$/, '.000Z');
+  it.each(['.000Z', '.123Z'])('round-trips dates with precision %s', (precision) => {
+    const value = new Date().toISOString().replace(/\.\d{3}Z$/, precision);
     const { component, close } = setup({ value, schema: { format: 'date-time' } });
     component.save();
     expect(close).toHaveBeenCalledWith({ value });
+  });
+  it('preserves null when saved unchanged and allows an edited text value', () => {
+    const { component, close } = setup({ key: 'notes', value: null, schema: { type: 'string' } });
+    component.save();
+    expect(close).toHaveBeenLastCalledWith({ value: null });
+    component.keepNull.set(false);
+    component.control.setValue('Observação');
+    component.save();
+    expect(close).toHaveBeenLastCalledWith({ value: 'Observação' });
   });
   it('keeps invalid structured input open and cannot edit a locked target', () => {
     const { component, fixture, close } = setup({ value: ['text'], schema: { type: 'array' } });

@@ -17,7 +17,7 @@ import { McpAdminConfig, MCP_ADMIN_PROPOSE_SCOPE, MCP_ADMIN_READ_SCOPE } from '.
 import { EventPostCommitEffectsService } from '../events/event-post-commit-effects.service';
 import { SportsMutationEventsService } from '../sports/realtime/sports-mutation-events.service';
 import { McpAdminMaintenanceService } from './mcp-admin-maintenance.service';
-import { McpEventContentSyncLockService } from './mcp-event-content-sync-lock.service';
+import { McpAdminAdvisoryLockService } from './mcp-admin-advisory-lock.service';
 import { McpAdminProposalsService } from './mcp-admin-proposals.service';
 import type { McpEventReviewInput, McpProposalOperation } from '@cacic-fct/event-manager-mcp-contracts';
 
@@ -697,7 +697,7 @@ describe('MCP real PostgreSQL transactions', () => {
       prisma,
       effects as unknown as EventPostCommitEffectsService,
       { publishForBackingEvent: async () => undefined } as unknown as SportsMutationEventsService,
-      new McpEventContentSyncLockService(),
+      new McpAdminAdvisoryLockService(),
     );
     const first = service.flush();
     await entered.promise;
@@ -739,7 +739,7 @@ describe('MCP real PostgreSQL transactions', () => {
       prisma,
       effects as unknown as EventPostCommitEffectsService,
       { publishForBackingEvent: async () => undefined } as unknown as SportsMutationEventsService,
-      new McpEventContentSyncLockService(),
+      new McpAdminAdvisoryLockService(),
     );
     await service.flush();
     expect(attempted).toHaveLength(20);

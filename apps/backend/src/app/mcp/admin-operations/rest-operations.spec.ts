@@ -169,7 +169,7 @@ describe('typed administrative MCP REST operations', () => {
     expect(artifacts.createExport).toHaveBeenCalledWith(
       expect.objectContaining({
         operation: 'exportDataTransfer',
-        target: { majorEventId: 'major-1' },
+        target: { majorEventId: 'major-1', accessRequirements: '[]' },
         fileName: 'event-data-export-major-event.json',
         contentType: 'application/json',
         bytes: Buffer.from(JSON.stringify({ resources: [{ kind: 'event', id: 'event-1', data: { name: 'Evento' } }] })),

@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { generateRequestDetails, type PushSubscription } from 'web-push';
 import { webPushRecipientToken } from './novu-notification-transport';
 
@@ -68,32 +68,53 @@ export class NovuWebPushService {
     });
     const results = await Promise.allSettled(
       subscriptions.map(async (entry) => {
-        const subscription = JSON.parse(entry) as PushSubscription;
-        assertPushEndpoint(subscription.endpoint);
-        const request = generateRequestDetails(subscription, payload, {
-          vapidDetails: { publicKey, privateKey, subject },
-          TTL: 300,
-        });
-        const response = await fetch(request.endpoint, {
-          method: request.method,
-          headers: request.headers,
-          body: request.body ? new Uint8Array(request.body) : undefined,
-          redirect: 'error',
-          signal: AbortSignal.timeout(5_000),
-        });
-        await response.body?.cancel();
-        if (response.status === 404 || response.status === 410) {
-          await this.redis.zrem(key, entry);
-        } else if (!response.ok) {
-          throw new Error('Browser push service rejected the notification.');
+        const identity = createHash('sha256')
+          .update(JSON.stringify([subscriberId, id, entry]))
+          .digest('hex');
+        const deliveryKey = `notifications:web-push-delivery:${identity}`;
+        if ((await this.redis.get(deliveryKey)) === 'done') return;
+        const lockKey = `${deliveryKey}:lock`;
+        const claim = randomUUID();
+        if ((await this.redis.set(lockKey, claim, 'PX', 30_000, 'NX')) !== 'OK') {
+          throw new Error('Browser push delivery is already in progress.');
+        }
+        try {
+          // Recheck after claiming: another attempt may have just completed.
+          if ((await this.redis.get(deliveryKey)) === 'done') return;
+          const subscription = JSON.parse(entry) as PushSubscription;
+          assertPushEndpoint(subscription.endpoint);
+          const request = generateRequestDetails(subscription, payload, {
+            vapidDetails: { publicKey, privateKey, subject },
+            TTL: 300,
+          });
+          const response = await fetch(request.endpoint, {
+            method: request.method,
+            headers: request.headers,
+            body: request.body ? new Uint8Array(request.body) : undefined,
+            redirect: 'error',
+            signal: AbortSignal.timeout(5_000),
+          });
+          await response.body?.cancel();
+          if (response.status === 404 || response.status === 410) {
+            await this.redis.zrem(key, entry);
+          } else if (!response.ok) {
+            throw new Error('Browser push service rejected the notification.');
+          } else {
+            await this.redis.set(deliveryKey, 'done', 'EX', 7 * 24 * 60 * 60);
+          }
+        } finally {
+          await this.redis.eval(
+            "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+            1,
+            lockKey,
+            claim,
+          );
         }
       }),
     );
     if (results.some((result) => result.status === 'rejected')) {
       this.logger.warn('Web Push delivery failed for one or more subscriptions.');
-      if (results.every((result) => result.status === 'rejected')) {
-        throw new ServiceUnavailableException('Web Push delivery failed.');
-      }
+      throw new ServiceUnavailableException('Web Push delivery failed.');
     }
     return { id };
   }
@@ -101,7 +122,14 @@ export class NovuWebPushService {
 
 export function assertPushEndpoint(endpoint: string): void {
   const url = URL.parse(endpoint);
-  if (!url || url.protocol !== 'https:' || url.username || url.password || url.port || !pushHosts.has(url.hostname)) {
+  if (
+    !url ||
+    url.protocol !== 'https:' ||
+    url.username ||
+    url.password ||
+    url.port ||
+    !(pushHosts.has(url.hostname) || url.hostname.endsWith('.notify.windows.com'))
+  ) {
     throw new BadRequestException('Unsupported browser push endpoint.');
   }
 }

@@ -34,6 +34,8 @@ As variáveis principais são:
 
 O app público usa o service worker Workbox em `/app/` para receber Web Push, inclusive quando a PWA está fechada. O navegador registra a assinatura no endpoint autenticado `POST /api/notifications/push-subscription`. O backend guarda até 20 assinaturas por pessoa no Redis, renova cada uma ao abrir o app e descarta assinaturas sem renovação após 90 dias. A Novu recebe um identificador de roteamento por assinante. Os endereços e as chaves de criptografia dos navegadores ficam no backend.
 
+Falhas temporárias de qualquer assinatura fazem o webhook retornar erro para permitir nova tentativa. O Redis registra os envios concluídos por mensagem e assinatura durante sete dias, evitando reenviá-los nas tentativas seguintes. Respostas 404 e 410 removem a assinatura encerrada. Os endpoints aceitos incluem FCM, Mozilla, Apple e WNS (`*.notify.windows.com`). Se a identidade da sessão não puder ser persistida no navegador, o push fica desativado nessa conexão, enquanto a inbox e seu contador continuam disponíveis.
+
 1. Gere um par VAPID por ambiente com `bunx web-push generate-vapid-keys`. Configure o par, o contato e o segredo HMAC no backend. Use Redis persistente para manter as assinaturas entre reinícios.
 2. Na Novu, adicione uma integração [Push Webhook](https://docs.novu.co/platform/integrations/push/push-webhook) para o ambiente. Informe o endereço público HTTPS do backend seguido de `/api/notifications/push-webhook` e o mesmo segredo HMAC. Configure o identificador dessa integração em `NOVU_PUSH_INTEGRATION_IDENTIFIER`.
 3. Após publicar o backend e o app, abra a PWA no Android Chrome com um assinante sintético, permita notificações e dispare um workflow com a PWA fechada. Confira o aviso, o destino ao tocar e a troca de conta no mesmo navegador. Após validar, desative a integração FCM legada no mesmo ambiente.
@@ -94,3 +96,5 @@ As notificações de informações para inscritos usam um identificador estável
 A aba de notificações do app público depende de autenticação, feature flag e sessão Novu válida.
 
 Se a sessão não puder ser criada, a interface deve mostrar indisponibilidade sem vazar detalhes de configuração.
+
+Na auditoria dos avisos manuais aprovados via MCP, cada gravação relê a atribuição persistida dentro da transação. Uma trava compartilhada com a limpeza LGPD impede copiar a identidade antiga do aprovador depois da anonimização.

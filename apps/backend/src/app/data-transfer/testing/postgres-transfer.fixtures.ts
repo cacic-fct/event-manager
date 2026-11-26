@@ -1,3 +1,4 @@
+import { AuditLogService } from '../../audit-log/audit-log.service';
 import { expect } from '@jest/globals';
 import { randomUUID } from 'node:crypto';
 import type { TransferApplyRequest, TransferDocument } from '@cacic-fct/shared-data-transfer';
@@ -165,7 +166,12 @@ export function createPostgresTransferRuntime(prisma: PrismaService) {
   const matcher = new PersonTransferMatcherService(prisma);
   const tickets = new EventTicketTransferAdapter(authorization, matcher, realtime);
   const purchases = new TicketPurchaseTransferAdapter(authorization, matcher, issuance);
-  const journal = new DataTransferJournalService(prisma, authorization, frozen);
+  const journal = new DataTransferJournalService(
+    prisma,
+    authorization,
+    frozen,
+    new AuditLogService(prisma, authorization, {} as never),
+  );
   const transfer = new DataTransferService(
     prisma,
     authorization,

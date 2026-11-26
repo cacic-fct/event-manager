@@ -169,6 +169,8 @@ export class AuditLogService {
 
     const entry = await prisma.auditLogEntry.create({
       data: {
+        ...(options.entryId ? { id: options.entryId } : {}),
+        ...(options.revertTargetId ? { revertTargetId: options.revertTargetId } : {}),
         entityType: options.entityType,
         entityId: options.entityId,
         entityLabel: options.entityLabel ?? null,

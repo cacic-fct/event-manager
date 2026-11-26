@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { createHash } from 'node:crypto';
 import {
   BadRequestException,
@@ -9,10 +10,14 @@ import {
 import { Prisma } from '@prisma/client';
 import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
+import { EventFormImagesService } from '../../event-forms/event-form-images.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ADMIN_MCP_OPERATIONS } from './catalog';
 import { adminMcpExecution } from './execution-context';
 import { McpAdminConfig } from '../mcp-admin.config';
+import { parseMcpInput } from '../mcp-admin.schemas';
+import { AdminMcpScopePolicy, operationContexts } from './scope-policy';
+import { adminScopeSchema } from './schemas';
 
 const MAX_FILE_BYTES = 64 * 1024 * 1024;
 export const MCP_FILE_CHUNK_BYTES = 48 * 1024;
@@ -53,6 +58,8 @@ export class McpAdminFileArtifactService {
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationPolicyService,
     private readonly config: McpAdminConfig,
+    private readonly scopes: AdminMcpScopePolicy,
+    private readonly formImages: EventFormImagesService,
   ) {}
 
   private async delegation(owner: ArtifactOwner, tx: Prisma.TransactionClient = this.prisma, requireEnabled = true) {
@@ -151,7 +158,7 @@ export class McpAdminFileArtifactService {
     tx: Prisma.TransactionClient = this.prisma,
     requireEnabled = true,
   ) {
-    await this.delegation(owner, tx, requireEnabled);
+    const grant = await this.delegation(owner, tx, requireEnabled);
     const file = await tx.mcpAdminFileArtifact.findFirst({
       where: {
         id,
@@ -168,7 +175,7 @@ export class McpAdminFileArtifactService {
       },
     });
     if (!file) throw new NotFoundException('Arquivo temporário indisponível.');
-    return file;
+    return { file, grant };
   }
 
   private async completeBytes(
@@ -200,32 +207,63 @@ export class McpAdminFileArtifactService {
   }
 
   private async assertCurrentExportPermission(
-    file: { operation: string; purpose: string; target: Prisma.JsonValue },
+    file: { operation: string; target: Prisma.JsonValue },
+    grant: { scope: Prisma.JsonValue; personalData: boolean },
     user: AuthenticatedUser,
   ): Promise<void> {
-    if (file.purpose !== 'export') return;
     const operation = ADMIN_MCP_OPERATIONS.find((entry) => entry.field === file.operation);
-    if (!operation || operation.permissions.length === 0)
+    if (!operation || (operation.personalData && !grant.personalData)) {
       throw new ForbiddenException('Operação de exportação indisponível.');
-
-    const rawTarget = file.target as Record<string, unknown>;
-    const target = typeof rawTarget === 'object' && rawTarget !== null ? rawTarget : {};
-    const contextTarget =
-      typeof target['eventId'] === 'string' ||
-      typeof target['eventGroupId'] === 'string' ||
-      typeof target['majorEventId'] === 'string'
-        ? target
-        : target['kind'] === 'event' && typeof target['id'] === 'string'
-          ? { eventId: target['id'] }
-          : target['kind'] === 'group' && typeof target['id'] === 'string'
-            ? { eventGroupId: target['id'] }
-            : target['kind'] === 'major-event' && typeof target['id'] === 'string'
-              ? { majorEventId: target['id'] }
-              : {};
-    if (!('eventId' in contextTarget || 'eventGroupId' in contextTarget || 'majorEventId' in contextTarget))
+    }
+    const target = file.target;
+    if (!target || typeof target !== 'object' || Array.isArray(target)) {
       throw new ForbiddenException('O arquivo de exportação não tem um destino autorizado.');
-    const context = this.authorization.buildResourceContext(contextTarget, operation.permissions);
-    await this.authorization.assertPermissions(user, operation.permissions, context);
+    }
+    const scope = parseMcpInput(adminScopeSchema, grant.scope);
+    await this.scopes.operation(scope, operation, target);
+
+    if (operation.field === 'downloadEventFormImageById' && typeof target['imageId'] === 'string') {
+      await this.formImages.authorizeDownloadById(target['imageId'], user);
+      return;
+    }
+
+    const contexts = operationContexts(operation, target, this.authorization);
+    if (operation.field === 'exportDataTransfer') {
+      const encoded = target['accessRequirements'];
+      if (typeof encoded !== 'string') throw new ForbiddenException('Reexporte o arquivo para validar o acesso atual.');
+      const requirements = z
+        .array(
+          z.object({
+            permissions: z.array(z.string()).min(1),
+            context: z.record(z.string(), z.union([z.string(), z.boolean()])),
+          }),
+        )
+        .min(1)
+        .parse(JSON.parse(encoded) as unknown);
+      for (const requirement of requirements) {
+        await this.authorization.assertPermissions(user, requirement.permissions, requirement.context);
+      }
+      // Transfer files store the root export target, while the catalog delegates
+      // transfer target resolution to the owning service.
+      const eventId = target['eventId'] ?? (target['kind'] === 'event' ? target['id'] : undefined);
+      const eventGroupId = target['eventGroupId'] ?? (target['kind'] === 'group' ? target['id'] : undefined);
+      const majorEventId = target['majorEventId'] ?? (target['kind'] === 'major-event' ? target['id'] : undefined);
+      if (typeof eventId === 'string') contexts.push({ eventId });
+      else if (typeof eventGroupId === 'string') contexts.push({ eventGroupId });
+      else if (typeof majorEventId === 'string') contexts.push({ majorEventId });
+    }
+    if (!operation.permissions.length || !contexts.length) {
+      throw new ForbiddenException('O arquivo de exportação não tem um destino autorizado.');
+    }
+    for (const context of contexts) {
+      await this.authorization.assertPermissions(user, operation.permissions, context);
+    }
+    if (operation.field === 'downloadEventFormImage') {
+      if (typeof target['formId'] !== 'string' || typeof target['imageId'] !== 'string') {
+        throw new ForbiddenException('O arquivo de exportação não tem um destino autorizado.');
+      }
+      await this.formImages.authorizeDownload(target['formId'], target['imageId'], user);
+    }
   }
 
   async append(owner: ArtifactOwner, id: string, offset: number, base64: string) {
@@ -236,7 +274,7 @@ export class McpAdminFileArtifactService {
       throw new BadRequestException('Trecho do arquivo inválido ou excessivo.');
     const chunk = Buffer.from(base64, 'base64');
     return this.prisma.$transaction(async (tx) => {
-      const file = await this.owned(owner, id, tx);
+      const { file } = await this.owned(owner, id, tx);
       if (file.purpose !== 'export') this.assertStagingAllowed(file.operation);
       if (!Number.isInteger(offset) || offset < 0 || offset > file.sizeBytes || offset % MCP_FILE_CHUNK_BYTES !== 0)
         throw new BadRequestException('Posição de envio inválida.');
@@ -277,7 +315,7 @@ export class McpAdminFileArtifactService {
 
   async finalize(owner: ArtifactOwner, id: string): Promise<ArtifactReference> {
     return this.prisma.$transaction(async (tx) => {
-      const file = await this.owned(owner, id, tx);
+      const { file } = await this.owned(owner, id, tx);
       if (file.purpose !== 'export') this.assertStagingAllowed(file.operation);
       await this.completeBytes(file, tx);
       if (!file.ready) {
@@ -293,20 +331,38 @@ export class McpAdminFileArtifactService {
 
   async createUpload(input: ArtifactInput & { bytes: Uint8Array }): Promise<ArtifactReference> {
     const reference = await this.begin(input);
-    for (let offset = 0; offset < input.bytes.length; offset += MCP_FILE_CHUNK_BYTES)
-      await this.append(
-        input,
-        reference.artifactId,
-        offset,
-        Buffer.from(input.bytes.subarray(offset, offset + MCP_FILE_CHUNK_BYTES)).toString('base64'),
-      );
-    return this.finalize(input, reference.artifactId);
+    return this.writeFile(input, reference);
+  }
+
+  private async writeFile(input: ArtifactOwner & { bytes: Uint8Array }, reference: ArtifactReference) {
+    try {
+      for (let offset = 0; offset < input.bytes.length; offset += MCP_FILE_CHUNK_BYTES) {
+        await this.append(
+          input,
+          reference.artifactId,
+          offset,
+          Buffer.from(input.bytes.subarray(offset, offset + MCP_FILE_CHUNK_BYTES)).toString('base64'),
+        );
+      }
+      return await this.finalize(input, reference.artifactId);
+    } catch (error) {
+      try {
+        await this.prisma.mcpAdminFileArtifact.deleteMany({ where: { id: reference.artifactId } });
+      } catch {
+        // Persist expiry so periodic cleanup recovers a failed deletion.
+        await this.prisma.mcpAdminFileArtifact.updateMany({
+          where: { id: reference.artifactId },
+          data: { expiresAt: new Date(), ready: false },
+        });
+      }
+      throw error;
+    }
   }
 
   async loadUpload(
     input: ArtifactOwner & { artifactId: string; expectedSha256?: string; target?: Record<string, string> },
   ): Promise<Buffer> {
-    const file = await this.owned(input, input.artifactId);
+    const { file } = await this.owned(input, input.artifactId);
     if (
       !file.ready ||
       (input.expectedSha256 && file.sha256 !== input.expectedSha256) ||
@@ -331,22 +387,15 @@ export class McpAdminFileArtifactService {
         expectedSha256: createHash('sha256').update(input.bytes).digest('hex'),
       };
       const reference = await this.begin(metadata, true);
-      for (let offset = 0; offset < input.bytes.length; offset += MCP_FILE_CHUNK_BYTES)
-        await this.append(
-          input,
-          reference.artifactId,
-          offset,
-          Buffer.from(input.bytes.subarray(offset, offset + MCP_FILE_CHUNK_BYTES)).toString('base64'),
-        );
-      return this.finalize(input, reference.artifactId);
+      return this.writeFile(input, reference);
     });
   }
 
   async readChunk(owner: ArtifactOwner & { artifactId: string; offset: number }, user: AuthenticatedUser) {
-    const file = await this.owned(owner, owner.artifactId);
+    const { file, grant } = await this.owned(owner, owner.artifactId);
     if (!file.ready) throw new BadRequestException('O arquivo não corresponde à proposta.');
     if (file.purpose === 'export') {
-      await this.assertCurrentExportPermission(file, user);
+      await this.assertCurrentExportPermission(file, grant, user);
     }
     if (
       !Number.isInteger(owner.offset) ||
@@ -377,7 +426,7 @@ export class McpAdminFileArtifactService {
       include: { delegation: true },
     });
     if (!command) throw new NotFoundException('Proposta indisponível.');
-    const file = await this.owned(
+    const { file } = await this.owned(
       {
         userId,
         clientId: command.delegation.clientId,

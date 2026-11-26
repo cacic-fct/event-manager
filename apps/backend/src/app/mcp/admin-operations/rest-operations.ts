@@ -1,3 +1,4 @@
+import { captureAuthorizationRequirements } from '../../authorization/authorization-requirements';
 import { BadRequestException, Injectable, Optional } from '@nestjs/common';
 import type { AdminMcpOperationInfo } from '@cacic-fct/event-manager-mcp-contracts';
 import { Permission } from '@cacic-fct/shared-permissions';
@@ -310,8 +311,10 @@ export class AdminMcpRestOperations {
           maxOutputBytes: TRANSFER_MAX_OUTPUT_BYTES,
           execute: async (args, user, context) => {
             const input = args as unknown as TransferExportRequest;
-            const exported = await this.transfer.export(input, user);
-            const target: Record<string, string> = {};
+            const { result: exported, requirements } = await captureAuthorizationRequirements(() =>
+              this.transfer.export(input, user),
+            );
+            const target: Record<string, string> = { accessRequirements: JSON.stringify(requirements) };
             if (input.target.kind === 'event') target['eventId'] = input.target.id;
             else if (input.target.kind === 'group') target['eventGroupId'] = input.target.id;
             else target['majorEventId'] = input.target.id;

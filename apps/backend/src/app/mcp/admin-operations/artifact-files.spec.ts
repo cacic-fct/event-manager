@@ -1,9 +1,12 @@
+import { Permission } from '@cacic-fct/shared-permissions';
+import type { AdminMcpScope } from '@cacic-fct/event-manager-mcp-contracts';
 import { createHash, randomUUID } from 'node:crypto';
 import { ForbiddenException } from '@nestjs/common';
 import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { McpAdminConfig } from '../mcp-admin.config';
 import { McpAdminFileArtifactService, MCP_FILE_CHUNK_BYTES, type ArtifactInput } from './artifact-files';
+import { AdminMcpScopePolicy } from './scope-policy';
 import { adminMcpExecution, type AdminMcpExecution } from './execution-context';
 const { jest } = import.meta;
 
@@ -42,6 +45,7 @@ function fixture() {
     resource: 'https://events.example.test/api/mcp/admin',
     operations: [owner.operation, 'exportDataTransfer'],
     personalData: true,
+    scope: { mode: 'ALL_AUTHORIZED' } as AdminMcpScope,
     revokedAt: null,
     expiresAt: row.expiresAt,
   };
@@ -54,10 +58,17 @@ function fixture() {
   } as McpAdminConfig;
   const authorization = {
     buildResourceContext: jest.fn((context) => context),
+    resolveOperationTargets: jest.fn(async () => ({
+      eventIds: new Set(['event']),
+      eventGroupIds: new Set<string>(),
+      majorEventIds: new Set<string>(),
+    })),
     assertPermissions: jest.fn(async () => undefined),
   } as unknown as AuthorizationPolicyService;
   const user = { sub: owner.userId } as AuthenticatedUser;
   const prisma = {
+    eventGroup: { findFirst: jest.fn(async () => ({ majorEventId: null })) },
+    event: { count: jest.fn(async () => 1) },
     mcpAdminOperationDelegation: {
       findFirst: jest.fn(async ({ where }) => {
         if (
@@ -115,8 +126,13 @@ function fixture() {
     $transaction: jest.fn(),
   };
   prisma.$transaction.mockImplementation(async (work) => work(prisma));
-  const service = new McpAdminFileArtifactService(prisma as never, authorization, config);
-  return { input, owner, bytes, row, grant, chunks, config, authorization, user, prisma, service };
+  const scopes = new AdminMcpScopePolicy(authorization, prisma as never);
+  const formImages = {
+    authorizeDownload: jest.fn(async () => undefined),
+    authorizeDownloadById: jest.fn(async () => undefined),
+  };
+  const service = new McpAdminFileArtifactService(prisma as never, authorization, config, scopes, formImages as never);
+  return { input, owner, bytes, row, grant, chunks, config, authorization, user, prisma, service, scopes, formImages };
 }
 
 describe('private MCP file artifacts', () => {
@@ -275,6 +291,21 @@ describe('private MCP file artifacts', () => {
     await expect(f.service.begin(f.input)).rejects.toThrow('Limite');
   });
 
+  it.each(['upload', 'export'])('releases an incomplete %s reservation after a chunk fails', async (kind) => {
+    const f = fixture();
+    const error = new Error('chunk failed');
+    f.prisma.mcpAdminFileArtifactChunk.create.mockRejectedValueOnce(error);
+    const operation =
+      kind === 'upload'
+        ? f.service.createUpload(f.input)
+        : f.service.createExport({
+            ...f.input,
+            operation: 'exportDataTransfer',
+          });
+    await expect(operation).rejects.toBe(error);
+    expect(f.prisma.mcpAdminFileArtifact.deleteMany).toHaveBeenCalledWith({ where: { id: f.row.id } });
+  });
+
   it('requires an own pending proposal with the exact artifact and hash for human inspection', async () => {
     const f = fixture();
     const ref = await f.service.createUpload(f.input);
@@ -303,13 +334,23 @@ describe('private MCP file artifacts', () => {
         ...data,
         operation: owner.operation,
         purpose: 'export',
-        target: { eventId: 'event' },
+        target: {
+          eventId: 'event',
+          accessRequirements: JSON.stringify([
+            { permissions: [Permission.Subscription.Read], context: { eventId: 'event' } },
+          ]),
+        },
       });
     });
     await adminMcpExecution.run({ phase: 'read' } as AdminMcpExecution, async () => {
       const ref = await f.service.createExport({
         ...owner,
-        target: { eventId: 'event' },
+        target: {
+          eventId: 'event',
+          accessRequirements: JSON.stringify([
+            { permissions: [Permission.Subscription.Read], context: { eventId: 'event' } },
+          ]),
+        },
         fileName: 'data.json',
         contentType: 'application/json',
         bytes: f.bytes,
@@ -327,7 +368,12 @@ describe('private MCP file artifacts', () => {
     const deniedOwner = { ...denied.owner, operation: 'exportDataTransfer' };
     const ref = await denied.service.createExport({
       ...deniedOwner,
-      target: { eventId: 'event' },
+      target: {
+        eventId: 'event',
+        accessRequirements: JSON.stringify([
+          { permissions: [Permission.Subscription.Read], context: { eventId: 'event' } },
+        ]),
+      },
       fileName: 'data.json',
       contentType: 'application/json',
       bytes: denied.bytes,
@@ -336,5 +382,95 @@ describe('private MCP file artifacts', () => {
     await expect(
       denied.service.readChunk({ ...deniedOwner, artifactId: ref.artifactId, offset: 0 }, denied.user),
     ).rejects.toThrow();
+  });
+
+  it.each([
+    {
+      operation: 'downloadSportsTeamLogo',
+      target: { sportsTeamId: 'team' },
+      context: { sportsTeamId: 'team' },
+      permission: Permission.SportsTeam.Read,
+    },
+    {
+      operation: 'downloadEventFormImage',
+      target: { formId: 'form', imageId: 'image' },
+      context: { eventFormId: 'form' },
+      permission: Permission.EventForm.Read,
+    },
+    {
+      operation: 'exportEventFormResultsCsv',
+      target: { formId: 'form' },
+      context: { eventFormId: 'form' },
+      permission: Permission.EventForm.Export,
+    },
+  ])('reads $operation against the owning target', async ({ operation, target, context, permission }) => {
+    const f = fixture();
+    f.grant.operations.push(operation);
+    const owner = { ...f.owner, operation };
+    const file = await f.service.createExport({
+      ...owner,
+      target: target as Record<string, string>,
+      fileName: 'export.bin',
+      contentType: 'application/octet-stream',
+      bytes: f.bytes,
+    });
+
+    await expect(
+      f.service.readChunk({ ...owner, artifactId: file.artifactId, offset: 0 }, f.user),
+    ).resolves.toMatchObject({
+      base64: f.bytes.toString('base64'),
+    });
+    expect(f.authorization.assertPermissions).toHaveBeenCalledWith(
+      f.user,
+      [permission],
+      expect.objectContaining(context),
+    );
+    if (operation === 'downloadEventFormImage') {
+      expect(f.formImages.authorizeDownload).toHaveBeenCalledWith('form', 'image', f.user);
+    }
+  });
+
+  it('uses the native image check on image-by-ID chunks', async () => {
+    const f = fixture();
+    const owner = { ...f.owner, operation: 'downloadEventFormImageById' };
+    f.grant.operations.push(owner.operation);
+    const file = await f.service.createExport({
+      ...owner,
+      target: { imageId: 'image' },
+      fileName: 'image.avif',
+      contentType: 'image/avif',
+      bytes: f.bytes,
+    });
+    const read = () => f.service.readChunk({ ...owner, artifactId: file.artifactId, offset: 0 }, f.user);
+
+    await expect(read()).resolves.toMatchObject({ base64: f.bytes.toString('base64') });
+    expect(f.formImages.authorizeDownloadById).toHaveBeenCalledWith('image', f.user);
+    f.formImages.authorizeDownloadById.mockRejectedValueOnce(new ForbiddenException());
+    await expect(read()).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('denies further chunks when the target event leaves the delegated group', async () => {
+    const f = fixture();
+    const owner = { ...f.owner, operation: 'exportEventSubscriptionBadgesZip' };
+    f.grant.operations.push(owner.operation);
+    f.grant.scope = { mode: 'RESOURCE', kind: 'EVENT_GROUP', id: randomUUID() };
+    const file = await f.service.createExport({
+      ...owner,
+      target: {
+        eventId: 'event',
+        accessRequirements: JSON.stringify([
+          { permissions: [Permission.Subscription.Read], context: { eventId: 'event' } },
+        ]),
+      },
+      fileName: 'badges.zip',
+      contentType: 'application/zip',
+      bytes: f.bytes,
+    });
+    const read = () => f.service.readChunk({ ...owner, artifactId: file.artifactId, offset: 0 }, f.user);
+
+    await expect(read()).resolves.toMatchObject({ base64: f.bytes.toString('base64') });
+    f.prisma.event.count.mockResolvedValue(0);
+    await expect(read()).rejects.toBeInstanceOf(ForbiddenException);
+    expect(f.prisma.mcpAdminFileArtifactChunk.findUnique).toHaveBeenCalledTimes(1);
   });
 });

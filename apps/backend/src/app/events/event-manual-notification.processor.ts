@@ -1,4 +1,4 @@
-import { readMcpAttribution } from '../audit-log/mcp-job-attribution';
+import { lockMcpJobAttribution, readMcpAttribution } from '../audit-log/mcp-job-attribution';
 import { eventInformationPath } from '@cacic-fct/shared-utils';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
@@ -31,52 +31,57 @@ export class EventManualNotificationProcessor extends WorkerHost {
         where: { id: eventId, deletedAt: null },
         select: { name: true, majorEventId: true, eventGroupId: true },
       });
-      // Resolve current, privacy-cleaned attribution rather than retaining reviewer names in Redis.
-      const requestAudit = job.data.mcpProposalId
-        ? await this.prisma.auditLogEntry.findFirst({
-            where: {
+      const record = (status: string, personId?: string) =>
+        this.prisma.$transaction(async (tx) => {
+          await lockMcpJobAttribution(tx);
+          const requestAudit = job.data.mcpProposalId
+            ? await tx.auditLogEntry.findFirst({
+                where: {
+                  entityType: AuditLogEntityType.EVENT,
+                  entityId: eventId,
+                  AND: [
+                    { metadata: { path: ['requestId'], equals: requestId } },
+                    { metadata: { path: ['proposalId'], equals: job.data.mcpProposalId } },
+                    { metadata: { path: ['source'], equals: 'mcp' } },
+                  ],
+                },
+                select: { metadata: true },
+                orderBy: { createdAt: 'asc' },
+              })
+            : null;
+          await this.audit.record(
+            {
               entityType: AuditLogEntityType.EVENT,
               entityId: eventId,
-              AND: [
-                { metadata: { path: ['requestId'], equals: requestId } },
-                { metadata: { path: ['proposalId'], equals: job.data.mcpProposalId } },
-                { metadata: { path: ['source'], equals: 'mcp' } },
-              ],
+              entityLabel: event?.name,
+              operation: AuditLogOperation.SUBMIT,
+              actor,
+              force: true,
+              squashWindowMs: 0,
+              summary:
+                status === 'ACKNOWLEDGED'
+                  ? 'Novu aceitou o aviso manual.'
+                  : status === 'FAILED'
+                    ? 'Falha no envio de aviso manual.'
+                    : status === 'UNKNOWN'
+                      ? 'Não foi possível confirmar se o Novu aceitou o aviso manual.'
+                      : status === 'SKIPPED_DISABLED'
+                        ? 'Aviso manual não enviado: Novu desativado ou sem chave.'
+                        : 'Aviso manual não enviado: vínculo ou evento indisponível.',
+              scope: { eventId },
+              metadata: {
+                ...readMcpAttribution(requestAudit?.metadata),
+                category: 'manual-event-notification',
+                audience,
+                requestId,
+                message,
+                personId,
+                status,
+                attempt: job.attemptsMade + 1,
+              },
             },
-            select: { metadata: true },
-            orderBy: { createdAt: 'asc' },
-          })
-        : null;
-      const record = (status: string, personId?: string) =>
-        this.audit.record({
-          entityType: AuditLogEntityType.EVENT,
-          entityId: eventId,
-          entityLabel: event?.name,
-          operation: AuditLogOperation.SUBMIT,
-          actor,
-          force: true,
-          squashWindowMs: 0,
-          summary:
-            status === 'ACKNOWLEDGED'
-              ? 'Novu aceitou o aviso manual.'
-              : status === 'FAILED'
-                ? 'Falha no envio de aviso manual.'
-                : status === 'UNKNOWN'
-                  ? 'Não foi possível confirmar se o Novu aceitou o aviso manual.'
-                  : status === 'SKIPPED_DISABLED'
-                    ? 'Aviso manual não enviado: Novu desativado ou sem chave.'
-                    : 'Aviso manual não enviado: vínculo ou evento indisponível.',
-          scope: { eventId },
-          metadata: {
-            ...readMcpAttribution(requestAudit?.metadata),
-            category: 'manual-event-notification',
-            audience,
-            requestId,
-            message,
-            personId,
-            status,
-            attempt: job.attemptsMade + 1,
-          },
+            tx,
+          );
         });
       if (!event) {
         await record('SKIPPED');

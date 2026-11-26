@@ -1,3 +1,4 @@
+import { captureAuthorizationRequirements } from './authorization-requirements';
 import { jest as jestEsm } from '@jest/globals';
 import { ForbiddenException } from '@nestjs/common';
 import { CertificateScope, EventManagerPermissionScope } from '@prisma/client';
@@ -45,6 +46,19 @@ describe('AuthorizationPolicyService', () => {
     expect([...targets.eventIds]).toEqual(['event-1']);
     expect([...targets.majorEventIds]).toEqual(['major-1']);
     expect(activeScopes).not.toHaveBeenCalled();
+  });
+
+  it('captures successful export requirements without retaining denied checks or leaking into another operation', async () => {
+    const actor = user([EventManagerKeycloakRole.SuperAdmin]);
+    const { requirements } = await captureAuthorizationRequirements(async () => {
+      await service.assertPermissions(actor, [Permission.Subscription.Read], { eventId: 'event-1' });
+      await expect(service.assertPermissions(user([]), [Permission.Person.Read])).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+    });
+    expect(requirements).toEqual([{ permissions: [Permission.Subscription.Read], context: { eventId: 'event-1' } }]);
+    const next = await captureAuthorizationRequirements(async () => undefined);
+    expect(next.requirements).toEqual([]);
   });
 
   it('requires the Event Manager access Keycloak role before DB grants are considered', async () => {

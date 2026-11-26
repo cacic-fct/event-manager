@@ -16,15 +16,13 @@ describe('AdminOperationsPageComponent', () => {
       delegations: vi.fn().mockResolvedValue([]),
       proposals: vi.fn().mockResolvedValue({ items: [sportsCommand()], hasMore: false }),
       create: vi.fn().mockResolvedValue({}),
-      review: vi
-        .fn()
-        .mockImplementation(async (id, input) => ({
-          ...input,
-          proposalId: id,
-          operation: sportsOperation.field,
-          effects: 'Efeito validado',
-          token: `token-${id}`,
-        })),
+      review: vi.fn().mockImplementation(async (id, input) => ({
+        ...input,
+        proposalId: id,
+        operation: sportsOperation.field,
+        effects: 'Efeito validado',
+        token: `token-${id}`,
+      })),
       decide: vi.fn().mockResolvedValue({ success: true, state: 'APPLIED' }),
       revoke: vi.fn(),
     };
@@ -153,6 +151,7 @@ describe('AdminOperationsPageComponent', () => {
     expect(open).not.toHaveBeenCalled();
     expect(fixture.nativeElement.querySelector('[aria-label="Confirmação final"]')).not.toBeNull();
     expect(fixture.nativeElement.textContent).toContain('Validado para execução');
+    expect(fixture.nativeElement.textContent).toContain('Efeito validado');
     const review = component.previews()[command.id];
     await component.approveSelected();
     expect(api.decide).toHaveBeenCalledWith(command.id, {

@@ -57,7 +57,7 @@ const RECEIPT_QUEUE_ITEM_SELECTION = `
   subscriptionFlow desiredCourses desiredLectures desiredUncategorized subscriptionStatus subscriptionUpdatedAt
   receiptRejectionReason
   receipt {
-    id fileName mimeType sizeBytes uploadedAt expiresAt processingStatus ocrText
+    id fileName mimeType sizeBytes uploadedAt expiresAt processingStatus
     amountMatched matchedAmountText nameMatched matchedNameText
   }
   events { ${RECEIPT_EVENT_SELECTION} }
@@ -2382,6 +2382,19 @@ export const ADMIN_MCP_OPERATIONS: readonly AdminMcpOperation[] = [
     selection: 'pendingCount',
     description:
       'Consultar adminReceiptPendingValidationCount; preserva autorização, escopo e regras do serviço responsável.',
+  },
+  {
+    field: 'adminReceiptOcrText',
+    kind: 'query',
+    domain: 'major-event-receipts',
+    permissions: [Permission.Receipt.Read],
+    target: { mode: 'ARGUMENTS', paths: [{ argument: 'receiptId', context: 'receiptId' }] },
+    risk: 'SENSITIVE',
+    personalData: true,
+    serviceAuthorized: true,
+    source: 'apps/backend/src/app/major-event-receipts/major-event-receipts.resolver.ts',
+    selection: 'text totalLength nextOffset',
+    description: 'Consultar o OCR completo de um comprovante em trechos, seguindo nextOffset até retornar null.',
   },
   {
     field: 'adminReceiptValidationQueue',

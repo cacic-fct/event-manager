@@ -67,6 +67,10 @@ export class MajorEventReceiptsService {
     return this.uploads.uploadReceipt(majorEventId, file, authenticatedUser);
   }
 
+  getAdminOcrText(receiptId: string, offset: number, user: AuthenticatedUser) {
+    return this.uploads.getAdminOcrText(receiptId, offset, user);
+  }
+
   getReceiptImage(
     receiptId: string,
     authenticatedUser: AuthenticatedUser,

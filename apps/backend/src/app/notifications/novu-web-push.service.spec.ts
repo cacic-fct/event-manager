@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac } from 'node:crypto';
 import { generateVAPIDKeys } from 'web-push';
@@ -22,7 +22,14 @@ describe('NovuWebPushService', () => {
     payload: { subscriber: { subscriberId: 'user-1' }, redirectUrl: '/app/notifications' },
   };
 
+  const deliveries = new Map<string, string>();
   const redis = {
+    get: jest.fn(async (key: string) => deliveries.get(key) ?? null),
+    set: jest.fn(async (key: string, value: string) => {
+      deliveries.set(key, value);
+      return 'OK';
+    }),
+    eval: jest.fn(async () => 1),
     zrangebyscore: jest.fn().mockResolvedValue([subscription]),
     zrem: jest.fn(),
   };
@@ -37,9 +44,16 @@ describe('NovuWebPushService', () => {
   );
   const sign = (body: Buffer) => createHmac('sha256', secret).update(body).digest('hex');
 
+  const fetchMock = jest.fn<typeof fetch>();
+  beforeEach(() => {
+    fetchMock.mockReset();
+    Object.defineProperty(globalThis, 'fetch', { configurable: true, writable: true, value: fetchMock });
+  });
   afterEach(() => {
     jest.restoreAllMocks();
     jest.clearAllMocks();
+    deliveries.clear();
+    redis.zrangebyscore.mockResolvedValue([subscription]);
   });
 
   it('rejects invalid signatures and recipient mismatches before looking up a subscription', async () => {
@@ -51,7 +65,7 @@ describe('NovuWebPushService', () => {
   });
 
   it('encrypts and sends Web Push and removes expired subscriptions', async () => {
-    const fetchMock = jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 410 }));
+    fetchMock.mockResolvedValue(new Response(null, { status: 410 }));
     const raw = Buffer.from(JSON.stringify(message));
     await expect(service.deliver(raw, sign(raw), message)).resolves.toEqual({ id: 'message-1' });
     expect(fetchMock).toHaveBeenCalledWith(
@@ -66,8 +80,35 @@ describe('NovuWebPushService', () => {
     expect(redis.zrem).toHaveBeenCalledWith(expect.any(String), subscription);
   });
 
+  it.each([201, 410])(
+    'retries a failed subscription after a %s on another device without resending successes',
+    async (status) => {
+      const second = JSON.stringify({
+        ...JSON.parse(subscription),
+        endpoint: 'https://fcm.googleapis.com/fcm/send/second',
+      });
+      redis.zrangebyscore.mockResolvedValue([subscription, second]);
+      fetchMock
+        .mockResolvedValueOnce(new Response(null, { status }))
+        .mockResolvedValueOnce(new Response(null, { status: 503 }))
+        .mockResolvedValue(new Response(null, { status: 201 }));
+      const raw = Buffer.from(JSON.stringify(message));
+      await expect(service.deliver(raw, sign(raw), message)).rejects.toBeInstanceOf(ServiceUnavailableException);
+      if (status === 410) redis.zrangebyscore.mockResolvedValue([second]);
+      await expect(service.deliver(raw, sign(raw), message)).resolves.toEqual({ id: 'message-1' });
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(fetchMock.mock.calls[2][0]).toBe(JSON.parse(second).endpoint);
+    },
+  );
+
+  it('accepts WNS endpoints with a bounded hostname suffix', () => {
+    expect(() => assertPushEndpoint('https://wns2-par02p.notify.windows.com/w/?token=example')).not.toThrow();
+  });
+
   it.each([
     'https://localhost/private',
+    'https://notify.windows.com.evil.example/push',
+    'https://evilnotify.windows.com/push',
     'http://fcm.googleapis.com/fcm/send/test',
     'https://fcm.googleapis.com.evil.example/push',
     'https://fcm.googleapis.com:8443/fcm/send/test',

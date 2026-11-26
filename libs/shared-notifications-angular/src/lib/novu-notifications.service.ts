@@ -85,7 +85,7 @@ export class NovuNotificationsService {
 
       if ((!user && this.auth.initialized()) || (this.activeSubscriberId && this.activeUserKey !== nextUserKey)) {
         void this.unregisterWebPushEndpoint();
-        void this.persistActiveSubscriberId(null);
+        void this.persistActiveSubscriberId(null).catch(() => undefined);
       }
       this.disconnectRealtime();
       this.novuClient.set(null);
@@ -341,10 +341,19 @@ export class NovuNotificationsService {
     this.novuClient.set(client);
     this.activeSubscriberId = session.subscriberId;
     this.activeUserKey = userKey;
-    await this.persistActiveSubscriberId(session.subscriberId);
+    let pushIdentityPersisted = false;
+    try {
+      await this.persistActiveSubscriberId(session.subscriberId);
+      pushIdentityPersisted = true;
+    } catch {
+      if (this.session() === session) {
+        this.activeSubscriberId = null;
+        this.lastError.set('Não foi possível ativar as notificações push neste navegador.');
+      }
+    }
     if (this.session() !== session) return;
     await this.refreshUnreadCount();
-    if (this.notificationPermission() === 'granted') {
+    if (this.session() === session && pushIdentityPersisted && this.notificationPermission() === 'granted') {
       void this.registerWebPushEndpoint();
     }
 
@@ -361,12 +370,16 @@ export class NovuNotificationsService {
     }
 
     this.connectionUserKey = userKey;
-    this.connectionRequest = this.connectClient(user, userKey).finally(() => {
-      if (this.connectionUserKey === userKey) {
-        this.connectionRequest = null;
-        this.connectionUserKey = null;
-      }
-    });
+    this.connectionRequest = this.connectClient(user, userKey)
+      .catch(() => {
+        if (this.auth.user() === user) this.lastError.set('Não foi possível conectar as notificações.');
+      })
+      .finally(() => {
+        if (this.connectionUserKey === userKey) {
+          this.connectionRequest = null;
+          this.connectionUserKey = null;
+        }
+      });
 
     return this.connectionRequest;
   }
@@ -376,6 +389,7 @@ export class NovuNotificationsService {
     if (
       !session?.pushIntegrationIdentifier ||
       !session.vapidPublicKey ||
+      this.activeSubscriberId !== session.subscriberId ||
       !('serviceWorker' in navigator) ||
       !('PushManager' in window)
     ) {

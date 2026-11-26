@@ -51,7 +51,7 @@
           }
         </div>
         <p>{{ domainLabel(command.domain) }} - {{ clientName(command.clientId) }} - {{ status(command) }}</p>
-        <p>{{ command.effects }}</p>
+        <p>{{ previews()[command.id]?.effects ?? command.effects }}</p>
         <app-command-targets [targets]="command.targets ?? []" />
         @if (drafts()[command.id]; as fields) {
           <h4>{{ command.state === 'PENDING' ? 'Alterações propostas' : 'Valores enviados pelo aplicativo' }}</h4>

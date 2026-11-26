@@ -1,7 +1,7 @@
 import { EventPostCommitEffectsService } from '../events/event-post-commit-effects.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SportsMutationEventsService } from '../sports/realtime/sports-mutation-events.service';
-import { McpEventContentSyncLockService } from './mcp-event-content-sync-lock.service';
+import { McpAdminAdvisoryLockService } from './mcp-admin-advisory-lock.service';
 import { McpAdminMaintenanceService } from './mcp-admin-maintenance.service';
 
 const { jest } = import.meta;
@@ -34,7 +34,7 @@ function context() {
     prisma as unknown as PrismaService,
     effects as unknown as EventPostCommitEffectsService,
     sports as unknown as SportsMutationEventsService,
-    syncLock as unknown as McpEventContentSyncLockService,
+    syncLock as unknown as McpAdminAdvisoryLockService,
   );
   return { service, prisma, effects, sports, entry, syncLock };
 }

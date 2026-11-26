@@ -13,6 +13,7 @@ import {
   type TransferTarget,
   type TransferUndoResult,
 } from '@cacic-fct/shared-data-transfer';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import {
   AuthorizationPolicyService,
@@ -195,6 +196,7 @@ export class DataTransferJournalService {
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationPolicyService,
     private readonly frozen: FrozenResourceService,
+    private readonly audit: AuditLogService,
   ) {}
 
   begin(tx: Prisma.TransactionClient): TransferJournalRecorder {
@@ -356,12 +358,7 @@ export class DataTransferJournalService {
         const { entry, metadata } = await this.assertUndoable(tx, batchId, actor);
         for (const mutation of [...metadata.mutations].reverse()) {
           const delegate = journalDelegate(tx, mutation.model);
-          const rows = await delegate.findMany({ where: mutation.key, take: 2 });
-          const current = rows[0] ? journalJson(rows[0]) : null;
-          if (rows.length > 1 || canonicalTransferJson(current) !== canonicalTransferJson(mutation.after))
-            throw new ConflictException(
-              'Um registro deste lote foi alterado depois da importação. Nenhuma alteração foi desfeita.',
-            );
+          await this.assertMutationSnapshot(tx, mutation);
           if (mutation.before === null) await delegate.deleteMany({ where: mutation.key });
           else if (mutation.after === null)
             await delegate.create({ data: journalRestoreData(mutation.model, mutation.before, true) });
@@ -401,27 +398,31 @@ export class DataTransferJournalService {
           },
         });
         if (changed.count !== 1) throw new ConflictException('Este lote mudou durante a reversão.');
-        await tx.auditLogEntry.create({
-          data: {
-            id: auditEntryId,
+        await this.audit.record(
+          {
+            entryId: auditEntryId,
+            revertTargetId: batchId,
             entityType: AuditLogEntityType.SYSTEM,
             entityId: entry.entityId,
             entityLabel: 'Reversão de importação JSON',
             operation: AuditLogOperation.REVERT,
             summary: 'Todo o lote foi desfeito após conferir permissões e alterações posteriores.',
-            actorId: actor.sub,
-            actorName: actor.preferredUsername ?? actor.sub ?? 'Organizador',
-            actorType: AuditLogActorType.USER,
-            permission: Permission.DataTransfer.Undo,
-            eventId: entry.eventId,
-            eventGroupId: entry.eventGroupId,
-            majorEventId: entry.majorEventId,
-            changes: [],
-            changedFields: [],
-            revertTargetId: batchId,
+            actor: {
+              id: actor.sub,
+              name: actor.preferredUsername ?? actor.sub ?? 'Organizador',
+              type: AuditLogActorType.USER,
+            },
+            scope: {
+              permission: Permission.DataTransfer.Undo,
+              eventId: entry.eventId,
+              eventGroupId: entry.eventGroupId,
+              majorEventId: entry.majorEventId,
+            },
+            force: true,
             metadata: { batchId },
           },
-        });
+          tx,
+        );
         return { batchId, auditEntryId, undone: true };
       },
       { maxWait: 10000, timeout: 120000 },
@@ -435,7 +436,14 @@ export class DataTransferJournalService {
     await runSerializablePrismaTransaction(
       this.prisma,
       async (tx) => {
-        await this.assertUndoable(tx, batchId, actor);
+        const { metadata } = await this.assertUndoable(tx, batchId, actor);
+        const seen = new Set<string>();
+        for (const mutation of [...metadata.mutations].reverse()) {
+          const key = `${mutation.model}:${canonicalTransferJson(mutation.key)}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          await this.assertMutationSnapshot(tx, mutation);
+        }
       },
       { maxWait: 10000, timeout: 120000 },
     );
@@ -460,23 +468,26 @@ export class DataTransferJournalService {
     )
       throw new NotFoundException('Lote não encontrado.');
     if (metadata.undone || entry.revertedAt) throw new ConflictException('Este lote já foi desfeito.');
-    if (metadata.schemaFingerprint !== journalSchemaFingerprint())
+    if (
+      metadata.schemaFingerprint !== journalSchemaFingerprint() &&
+      metadata.schemaFingerprint !== journalSchemaFingerprint({ legacyMcpKeys: true })
+    )
       throw new ConflictException(
         'O schema mudou desde esta importação. A reversão automática foi bloqueada para preservar os dados.',
       );
     await this.assertSources(metadata, actor, true);
     for (const mutation of metadata.mutations) await this.assertMutationPermissions(mutation, actor);
     await assertJournalCreationReferencesUnchanged(tx, metadata.mutations, metadata.creationReferences);
-    for (const mutation of [...metadata.mutations].reverse()) {
-      const delegate = journalDelegate(tx, mutation.model);
-      const rows = await delegate.findMany({ where: mutation.key, take: 2 });
-      const current = rows[0] ? journalJson(rows[0]) : null;
-      if (rows.length > 1 || canonicalTransferJson(current) !== canonicalTransferJson(mutation.after))
-        throw new ConflictException(
-          'Um registro deste lote foi alterado depois da importação. Nenhuma alteração foi desfeita.',
-        );
-    }
     return { entry, metadata };
+  }
+
+  private async assertMutationSnapshot(tx: Prisma.TransactionClient, mutation: JournalMutation): Promise<void> {
+    const rows = await journalDelegate(tx, mutation.model).findMany({ where: mutation.key, take: 2 });
+    const current = rows[0] ? journalJson(rows[0]) : null;
+    if (rows.length > 1 || canonicalTransferJson(current) !== canonicalTransferJson(mutation.after))
+      throw new ConflictException(
+        'Um registro deste lote foi alterado depois da importação. Nenhuma alteração foi desfeita.',
+      );
   }
 
   async markSynchronized(batchId: string, expectedUndone: boolean): Promise<void> {

@@ -1,3 +1,4 @@
+import { AuditLogService } from '../audit-log/audit-log.service';
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import type { PGlite } from '@electric-sql/pglite';
 import { createTransferDatabaseFixture, transferDatabaseDelegates } from './testing/transfer-database.fixtures';
@@ -45,9 +46,17 @@ describe('durable audit-backed import rollback and undo', () => {
     assertEventMutable: jest.fn().mockResolvedValue(undefined),
   } as unknown as FrozenResourceService;
 
+  const freshJournalService = () =>
+    new DataTransferJournalService(
+      prisma,
+      authorization,
+      frozen,
+      new AuditLogService(prisma, authorization, {} as never),
+    );
+
   beforeEach(async () => {
     ({ database, client, prisma } = await createTransferDatabaseFixture());
-    journal = new DataTransferJournalService(prisma, authorization, frozen);
+    journal = freshJournalService();
     jest.clearAllMocks();
     jest.mocked(authorization.assertPermissions).mockResolvedValue(undefined);
   });
@@ -416,7 +425,7 @@ describe('durable audit-backed import rollback and undo', () => {
       latitude: -22,
       longitude: -51,
     });
-    await new DataTransferJournalService(prisma, authorization, frozen).undo(batch.batchId, actor);
+    await freshJournalService().undo(batch.batchId, actor);
     if (action === 'create') expect(await client.placePreset.findMany()).toEqual([]);
     else
       expect(await client.placePreset.findUnique({ where: { id: resource.id } })).toMatchObject({
@@ -539,7 +548,7 @@ describe('durable audit-backed import rollback and undo', () => {
       await recorder.tx.eventGroup.update({ where: { id }, data: { name: 'Nome importado' } });
       return journal.record(recorder, tx, actor, undefined, doc, items(doc, 'update'));
     });
-    const freshJournal = new DataTransferJournalService(prisma, authorization, frozen);
+    const freshJournal = freshJournalService();
     await freshJournal.undo(batch.batchId, actor);
     expect((await client.eventGroup.findUnique({ where: { id } }))?.['name']).toBe('Nome anterior');
     const audit = await client.auditLogEntry.findUnique({ where: { id: batch.auditEntryId } });
@@ -824,7 +833,7 @@ describe('durable audit-backed import rollback and undo', () => {
       const batch = await journal.record(recorder, tx, actor, undefined, doc, items(doc, 'create'));
       return { batch, domainAudit };
     });
-    await new DataTransferJournalService(prisma, authorization, frozen).undo(result.batch.batchId, actor);
+    await freshJournalService().undo(result.batch.batchId, actor);
     const domainAudit = await client.auditLogEntry.findUnique({ where: { id: result.domainAudit.id } });
     expect(domainAudit?.['revertedAt']).toBeInstanceOf(Date);
     expect(domainAudit?.['revertedById']).toBe(actor.sub);
@@ -924,7 +933,7 @@ describe('durable audit-backed import rollback and undo', () => {
       },
     ]);
 
-    const freshJournal = new DataTransferJournalService(prisma, authorization, frozen);
+    const freshJournal = freshJournalService();
     const replay = await freshJournal.findCommittedRequest(actor, requestFingerprint);
 
     expect(replay?.entry.id).toBe(committed.batchId);

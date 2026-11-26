@@ -1,3 +1,4 @@
+import { lockMcpJobAttribution } from '../audit-log/mcp-job-attribution';
 import { anonymizeTicketingData, collectTicketingData } from './lgpd-ticketing';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -425,6 +426,7 @@ export class LgpdService {
     const { people: dataSubjectPeople, personIds, userIds } = dataSubject;
     const receiptObjectKeys = await findReceiptObjectKeys(this.prisma, personIds);
     const { anonymizedAuditEntryIds, ...result } = await this.prisma.$transaction(async (tx) => {
+      await lockMcpJobAttribution(tx, true);
       const importRecords = await suppressErasedImportPeople(tx, personIds);
       if (personIds.length === 0 && userIds.length === 0) {
         return { anonymizedAuditEntryIds: [], peopleDeleted: 0, usersDeleted: 0, recordsDeleted: importRecords };

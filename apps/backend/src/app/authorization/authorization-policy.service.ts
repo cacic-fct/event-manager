@@ -1,3 +1,4 @@
+import { authorizationRequirements } from './authorization-requirements';
 import { adminMcpExecution } from '../mcp/admin-operations/execution-context';
 import {
   EVENT_MANAGER_PERMISSION_CATALOG,
@@ -120,6 +121,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     await this.assertGrantedPermissions(user, requirements, context, resolveTarget);
     await this.assertAudienceForTargets(requirements, resolveTarget, audienceContext.getStore());
     await adminMcpExecution.getStore()?.assertScope?.(requirements, context);
+    authorizationRequirements.getStore()?.push({ permissions: [...requirements], context: { ...context } });
   }
 
   /** Requires a compatible grant and reports whether the collection can be read globally. */

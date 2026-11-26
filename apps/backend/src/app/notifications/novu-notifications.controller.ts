@@ -10,7 +10,9 @@ import {
   Req,
   ServiceUnavailableException,
   UseGuards,
+  UsePipes,
 } from '@nestjs/common';
+import { REST_VALIDATION_PIPE } from '../common/rest-validation.pipe';
 import { IsString, Length, Matches } from 'class-validator';
 import {
   ApiBearerAuth,
@@ -154,6 +156,7 @@ export class NovuNotificationsController {
   }
 
   @Post('push-subscription')
+  @UsePipes(REST_VALIDATION_PIPE)
   @HttpCode(204)
   @UseGuards(RateLimitGuard)
   @RateLimit(RATE_LIMIT_POLICIES.notificationPushRegistration)

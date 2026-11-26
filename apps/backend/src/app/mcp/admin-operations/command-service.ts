@@ -14,6 +14,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -32,6 +33,7 @@ import { runSerializablePrismaTransaction } from '../../common/serializable-pris
 import { PrismaService } from '../../prisma/prisma.service';
 import { McpAdminAccessService } from '../mcp-admin-access.service';
 import { McpAdminConfig, MCP_ADMIN_PROPOSE_SCOPE, MCP_ADMIN_READ_SCOPE } from '../mcp-admin.config';
+import { McpAdminAdvisoryLockService } from '../mcp-admin-advisory-lock.service';
 import { McpAdminInvalidationService } from '../mcp-admin-invalidation.service';
 import { mcpUserId } from '../mcp-admin-principal';
 import { assertMcpReviewToken, canonicalMcpValue, signMcpReview } from '../mcp-review-token';
@@ -74,6 +76,8 @@ function preserveTargets(original: unknown, reviewed: unknown): void {
 
 @Injectable()
 export class AdminMcpCommandService {
+  private readonly logger = new Logger(AdminMcpCommandService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly access: McpAdminAccessService,
@@ -83,6 +87,7 @@ export class AdminMcpCommandService {
     private readonly policy: AuthorizationPolicyService,
     private readonly audit: AuditLogService,
     private readonly invalidations: McpAdminInvalidationService,
+    private readonly executionLock: McpAdminAdvisoryLockService,
   ) {}
   catalog() {
     return this.bridge.catalog();
@@ -188,6 +193,7 @@ export class AdminMcpCommandService {
     field: string,
     args: Record<string, unknown>,
     phase: 'read' | 'propose' | 'apply',
+    decided = false,
   ): Promise<McpAdminOperationDelegation> {
     await this.access.assertEligible(user);
     if (!this.config.enabled || (phase !== 'read' && !this.config.proposalsEnabled))
@@ -208,7 +214,7 @@ export class AdminMcpCommandService {
     )
       throw new ForbiddenException('Delegação expirada, revogada ou sem essa operação.');
     const scope = parseMcpInput(adminScopeSchema, row.scope);
-    await this.scopes.operation(scope, operation, args);
+    if (!decided || operation.permissions.length) await this.scopes.operation(scope, operation, args);
     if (operation.permissions.length) {
       const contexts = operationContexts(operation, args, this.policy);
       if (contexts.length) {
@@ -222,7 +228,7 @@ export class AdminMcpCommandService {
             (operation.serviceAuthorized && operation.target !== 'GLOBAL' && operation.target.mode === 'SERVICE'),
         });
       }
-    } else if (operation.kind === 'mutation') {
+    } else if (operation.kind === 'mutation' && !decided) {
       await assertDynamicAdminMcpAdmission(field, args, user, { prisma: this.prisma, policy: this.policy });
     }
     return row;
@@ -341,6 +347,7 @@ export class AdminMcpCommandService {
       command.operation,
       command.arguments as Record<string, unknown>,
       user.oidcScopeSet.has(MCP_ADMIN_READ_SCOPE) ? 'read' : 'propose',
+      command.state !== 'PENDING',
     );
     return this.statusResult(command, user.oidcScopeSet.has(MCP_ADMIN_READ_SCOPE));
   }
@@ -552,6 +559,21 @@ export class AdminMcpCommandService {
     if (!isDeepStrictEqual(preview.arguments, input.review.arguments) || preview.effects !== input.review.effects)
       throw new ConflictException('Os valores normalizados mudaram.');
     const delegation = await this.grant(user, command.delegationId, command.operation, preview.arguments, 'apply');
+    const outcome = await this.executionLock.runForCommand(id, () =>
+      this.applyReviewed(user, command, delegation, preview),
+    );
+    if (!outcome) throw new ConflictException('Proposta já em execução.');
+    await this.invalidations.publish(mcpUserId(user));
+    return outcome;
+  }
+
+  private async applyReviewed(
+    user: AuthenticatedUser,
+    command: McpAdminCommand,
+    delegation: McpAdminOperationDelegation,
+    preview: AdminMcpCommandPreview,
+  ): Promise<'APPLIED' | 'UNCERTAIN'> {
+    const id = command.id;
     const person = await this.prisma.user.findUnique({ where: { id: mcpUserId(user) }, select: { name: true } });
     const approvedByName = person?.name ?? mcpUserId(user);
     await runSerializablePrismaTransaction(this.prisma, async (tx) => {
@@ -604,18 +626,37 @@ export class AdminMcpCommandService {
         },
         assertScope: (permissions, context) => this.scopes.assert(scope, permissions, context),
       });
-      await this.finish(user, id, 'APPLIED', command.operation, result);
+      if (!(await this.finish(user, id, 'APPLIED', command.operation, result))) outcome = 'UNCERTAIN';
     } catch {
       // Never retry a potentially committed domain operation. Its own transaction
       // audit has proposalId; a person must inspect history after ambiguous failure.
       outcome = 'UNCERTAIN';
       await this.finish(user, id, 'UNCERTAIN', command.operation);
     }
-    await this.invalidations.publish(mcpUserId(user));
     return outcome;
   }
+
+  async recoverInterrupted(): Promise<void> {
+    const commands = await this.prisma.mcpAdminCommand.findMany({
+      where: { state: 'APPLYING', decidedAt: { lte: new Date(Date.now() - 60_000) } },
+      orderBy: [{ decidedAt: 'asc' }, { id: 'asc' }],
+      take: 50,
+      select: { id: true, operation: true, delegation: { select: { userId: true } } },
+    });
+    for (const command of commands) {
+      try {
+        const recovered = await this.executionLock.runForCommand(command.id, () =>
+          this.finish(undefined, command.id, 'UNCERTAIN', command.operation),
+        );
+        if (recovered) await this.invalidations.publish(command.delegation.userId);
+      } catch {
+        this.logger.warn('MCP command reconciliation will be retried.');
+      }
+    }
+  }
+
   private async finish(
-    user: AuthenticatedUser,
+    user: AuthenticatedUser | undefined,
     id: string,
     state: 'APPLIED' | 'UNCERTAIN',
     operation: string,
@@ -625,11 +666,12 @@ export class AdminMcpCommandService {
       state === 'APPLIED' && result != null
         ? (JSON.parse(JSON.stringify(result)) as Prisma.InputJsonValue)
         : Prisma.JsonNull;
-    await runSerializablePrismaTransaction(this.prisma, async (tx) => {
-      await tx.mcpAdminCommand.updateMany({
+    return runSerializablePrismaTransaction(this.prisma, async (tx) => {
+      const updated = await tx.mcpAdminCommand.updateMany({
         where: { id, state: 'APPLYING' },
         data: { state, result: persistedResult },
       });
+      if (updated.count !== 1) return false;
       await this.queueAudit(
         tx,
         user,
@@ -639,11 +681,12 @@ export class AdminMcpCommandService {
           : 'Resultado MCP incerto; confira o histórico antes de qualquer nova ação.',
         { operation, result: state },
       );
+      return true;
     });
   }
   private queueAudit(
     tx: Prisma.TransactionClient,
-    user: AuthenticatedUser,
+    user: AuthenticatedUser | undefined,
     id: string,
     summary: string,
     metadata: Record<string, unknown>,

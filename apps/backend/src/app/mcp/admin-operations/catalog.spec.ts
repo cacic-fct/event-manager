@@ -183,7 +183,10 @@ describe('static administrative MCP catalog', () => {
     has('publicationWorkspace', 'tree.children.children.id', 'items.id', 'warnings.type', 'warnings.description');
     personal('publicationWorkspace');
 
-    has('adminReceiptValidationQueue', 'items.personName', 'items.receipt.ocrText', 'items.events.name');
+    has('adminReceiptValidationQueue', 'items.personName', 'items.receipt.id', 'items.events.name');
+    expect(projectionPaths('adminReceiptValidationQueue').has('items.receipt.ocrText')).toBe(false);
+    has('adminReceiptOcrText', 'text', 'totalLength', 'nextOffset');
+    personal('adminReceiptOcrText');
     expect(projectionPaths('adminReceiptValidationQueue').has('items.receipt.imageUrl')).toBe(false);
     for (const field of ['adminReceiptValidationQueue', 'approveAdminReceipt', 'rejectAdminReceipt']) personal(field);
 

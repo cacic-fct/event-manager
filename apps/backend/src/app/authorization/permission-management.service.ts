@@ -380,7 +380,7 @@ export class PermissionManagementService {
       return saved.id;
     });
 
-    const roles = await this.listRoles();
+    const roles = await this.readRoles();
     const savedRole = roles.find((role) => role.id === savedId);
     if (!savedRole) {
       throw new NotFoundException('Cargo salvo não foi encontrado.');
@@ -476,7 +476,7 @@ export class PermissionManagementService {
       );
     });
 
-    const group = (await this.listGroups()).find((item) => item.id === groupId);
+    const group = (await this.readGroups()).find((item) => item.id === groupId);
     if (!group) {
       throw new NotFoundException('Grupo salvo não foi encontrado.');
     }

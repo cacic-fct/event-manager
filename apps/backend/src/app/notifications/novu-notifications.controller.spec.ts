@@ -1,3 +1,6 @@
+import { PIPES_METADATA } from '@nestjs/common/constants';
+import { REST_VALIDATION_PIPE } from '../common/rest-validation.pipe';
+import type { Type } from '@nestjs/common';
 import { ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
 import { NovuNotificationsController } from './novu-notifications.controller';
 const { jest } = import.meta;
@@ -47,6 +50,26 @@ describe('NovuNotificationsController', () => {
     };
     controller = new NovuNotificationsController(currentUserContext as never, notifications as never, webPush as never);
     webPush.saveSubscription.mockClear();
+  });
+
+  it('validates browser keys and rejects undeclared fields at the REST boundary', async () => {
+    const method = NovuNotificationsController.prototype.registerPushSubscription;
+    expect(Reflect.getMetadata(PIPES_METADATA, method)).toContain(REST_VALIDATION_PIPE);
+    const types = Reflect.getMetadata(
+      'design:paramtypes',
+      NovuNotificationsController.prototype,
+      'registerPushSubscription',
+    ) as Type<unknown>[];
+    const metadata = { type: 'body' as const, metatype: types[1] };
+    const body = {
+      subscriberId: 'user-1',
+      endpoint: subscription.endpoint,
+      p256dh: 'B' + 'a'.repeat(86),
+      auth: 'a'.repeat(22),
+    };
+    await expect(REST_VALIDATION_PIPE.transform(body, metadata)).resolves.toMatchObject(body);
+    await expect(REST_VALIDATION_PIPE.transform({ ...body, p256dh: 'invalid' }, metadata)).rejects.toThrow();
+    await expect(REST_VALIDATION_PIPE.transform({ ...body, extra: true }, metadata)).rejects.toThrow();
   });
 
   it('returns a signed session for the resolved current person recipient', async () => {

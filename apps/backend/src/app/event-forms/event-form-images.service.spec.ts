@@ -1,3 +1,4 @@
+import { Permission } from '@cacic-fct/shared-permissions';
 import { EventFormImagesService } from './event-form-images.service';
 import { ForbiddenException } from '@nestjs/common';
 import { Readable } from 'node:stream';
@@ -6,6 +7,56 @@ import { formRecord, linkRecord } from './event-form.spec-support';
 const { jest } = import.meta;
 
 describe('EventFormImagesService references and cleanup', () => {
+  it.each(['attached', 'pending'] as const)('audits a new %s image in its insert transaction', async (kind) => {
+    const { service, prisma, audit, tx } = createHarness();
+    const user = { sub: 'user-1' } as AuthenticatedUser;
+    const buffer = Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10" fill="#1565c0"/></svg>',
+    );
+    const file = { buffer, mimetype: 'image/svg+xml', originalname: 'image.svg', size: buffer.length };
+    const saved =
+      kind === 'attached'
+        ? await service.upload('form-1', file, user)
+        : await service.uploadPending(file, user, { ownerEventId: 'event-1' });
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(tx.eventFormImage.create).toHaveBeenCalledTimes(1);
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor: user,
+        after: expect.objectContaining({ imageId: saved.id }),
+        scope: expect.objectContaining({
+          eventId: 'event-1',
+          permission: kind === 'attached' ? Permission.EventForm.Update : Permission.EventForm.Create,
+        }),
+      }),
+      tx,
+    );
+  });
+
+  it('retains the stored image if the deletion transaction cannot be audited', async () => {
+    const { service, tx, audit, s3 } = createHarness();
+    const user = { sub: 'user-1' } as AuthenticatedUser;
+    tx.eventFormImage.findFirst.mockResolvedValue({
+      id: 'image-1',
+      formId: 'form-1',
+      objectKey: 'image.avif',
+      width: 20,
+      height: 10,
+    });
+    audit.record.mockRejectedValueOnce(new Error('audit unavailable'));
+
+    await expect(service.delete('form-1', 'image-1', user)).rejects.toThrow('audit unavailable');
+    expect(tx.eventFormImage.delete).toHaveBeenCalledWith({ where: { id: 'image-1' } });
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ before: { imageId: 'image-1', width: 20, height: 10 }, actor: user }),
+      tx,
+    );
+    expect(s3.deleteFile).not.toHaveBeenCalled();
+    await service.delete('form-1', 'image-1', user);
+    expect(s3.deleteFile).toHaveBeenCalledWith('image.avif');
+  });
+
   it.each([
     { interested: true, subscribed: false, allowed: true },
     { interested: false, subscribed: false, allowed: false },
@@ -260,23 +311,49 @@ function createHarness() {
       findUnique: jest.fn(),
       findFirst: jest.fn(),
       findMany: jest.fn(),
+      count: jest.fn(async () => 0),
+      create: jest.fn(async ({ data }) => ({ formId: null, ...data })),
+      delete: jest.fn(async () => undefined),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       deleteMany: jest.fn(),
     },
-    eventForm: { findMany: jest.fn() },
+    eventForm: {
+      findMany: jest.fn(),
+      findUnique: jest.fn(async () => ({ descriptionImages: [], elements: [], ownerEventId: 'event-1' })),
+    },
     eventFormDraft: { findMany: jest.fn().mockResolvedValue([]) },
   };
+  const tx = {
+    eventFormImage: prisma.eventFormImage,
+    eventForm: prisma.eventForm,
+    eventFormDraft: prisma.eventFormDraft,
+  };
+  const database = {
+    ...prisma,
+    $transaction: jest.fn(async (callback: (transaction: typeof tx) => unknown) => callback(tx)),
+  };
   const s3 = {
+    uploadFile: jest.fn(async (key: string) => ({ key, size: 100 })),
     deleteFile: jest.fn().mockResolvedValue(undefined),
     downloadFile: jest.fn().mockResolvedValue({ stream: Readable.from([]), contentType: 'image/avif' }),
   };
-  const authorization = { assertPermissions: jest.fn().mockResolvedValue(undefined) };
+  const assertPermissions = jest.fn().mockResolvedValue(undefined);
+  const authorization = { assertPermissions, forTransaction: jest.fn(() => ({ assertPermissions })) };
+  const audit = { record: jest.fn(async () => undefined) };
   const currentUser = { resolveCurrentUserContext: jest.fn().mockResolvedValue({ person: { id: 'person-1' } }) };
   return {
-    prisma,
+    prisma: database,
+    tx,
     s3,
     authorization,
-    service: new EventFormImagesService(prisma as never, s3 as never, authorization as never, currentUser as never),
+    audit,
+    service: new EventFormImagesService(
+      database as never,
+      s3 as never,
+      authorization as never,
+      currentUser as never,
+      audit as never,
+    ),
   };
 }
 

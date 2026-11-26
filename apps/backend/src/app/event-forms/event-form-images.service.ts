@@ -9,9 +9,11 @@ import {
 } from '@nestjs/common';
 import { type FormElement, type FormImage, type FormImageReference } from '@cacic-fct/form-contracts';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { Prisma, PublicationState } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, Prisma, PublicationState } from '@prisma/client';
 import { createHash, randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { runSerializablePrismaTransaction } from '../common/serializable-prisma-transaction';
 import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { CurrentUserContextService } from '../current-user/context.service';
@@ -49,6 +51,7 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
     private readonly s3: S3Service,
     private readonly authorizationPolicy: AuthorizationPolicyService,
     private readonly currentUserContext: CurrentUserContextService,
+    private readonly audit: AuditLogService,
   ) {}
 
   onModuleInit(): void {
@@ -88,20 +91,27 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
     });
 
     try {
-      const image = await this.prisma.eventFormImage.create({
-        data: {
-          id: imageId,
-          formId,
-          objectKey: upload.key,
-          sha256,
-          originalFileName: file?.originalname || 'imagem',
-          originalMimeType: converted.originalMimeType,
-          mimeType: 'image/avif',
-          sizeBytes: upload.size,
-          width: converted.width,
-          height: converted.height,
-          createdById: user?.sub,
-        },
+      const image = await this.prisma.$transaction(async (tx) => {
+        await this.authorizationPolicy.forTransaction(tx).assertPermissions(user, [Permission.EventForm.Update], {
+          eventFormId: formId,
+        });
+        const created = await tx.eventFormImage.create({
+          data: {
+            id: imageId,
+            formId,
+            objectKey: upload.key,
+            sha256,
+            originalFileName: file?.originalname || 'imagem',
+            originalMimeType: converted.originalMimeType,
+            mimeType: 'image/avif',
+            sizeBytes: upload.size,
+            width: converted.width,
+            height: converted.height,
+            createdById: user?.sub,
+          },
+        });
+        await this.recordImageChange(tx, created, user, AuditLogOperation.CREATE);
+        return created;
       });
       return this.toImage(image);
     } catch (error) {
@@ -146,19 +156,28 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
       originalMimeType: converted.originalMimeType,
     });
     try {
-      const image = await this.prisma.eventFormImage.create({
-        data: {
-          id: imageId,
-          objectKey: upload.key,
-          sha256,
-          originalFileName: file?.originalname || 'imagem',
-          originalMimeType: converted.originalMimeType,
-          mimeType: 'image/avif',
-          sizeBytes: upload.size,
-          width: converted.width,
-          height: converted.height,
-          createdById: user.sub,
-        },
+      const image = await this.prisma.$transaction(async (tx) => {
+        await this.authorizationPolicy.forTransaction(tx).assertPermissions(user, [Permission.EventForm.Create], {
+          eventId: target.ownerEventId ?? undefined,
+          majorEventId: target.ownerMajorEventId ?? undefined,
+          allowScopedCollection: true,
+        });
+        const created = await tx.eventFormImage.create({
+          data: {
+            id: imageId,
+            objectKey: upload.key,
+            sha256,
+            originalFileName: file?.originalname || 'imagem',
+            originalMimeType: converted.originalMimeType,
+            mimeType: 'image/avif',
+            sizeBytes: upload.size,
+            width: converted.width,
+            height: converted.height,
+            createdById: user.sub,
+          },
+        });
+        await this.recordImageChange(tx, created, user, AuditLogOperation.CREATE, target);
+        return created;
       });
       return this.toImage(image);
     } catch (error) {
@@ -168,32 +187,71 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
   }
 
   async delete(formId: string, imageId: string, user: AuthenticatedUser | undefined): Promise<void> {
-    await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Update], { eventFormId: formId });
-    const image = await this.prisma.eventFormImage.findFirst({ where: { id: imageId, formId } });
-    if (!image) {
-      throw new NotFoundException('Imagem do formulário não encontrada.');
-    }
-    const [form, drafts] = await Promise.all([
-      this.prisma.eventForm.findUnique({
-        where: { id: formId },
-        select: { descriptionImages: true, elements: true },
-      }),
-      this.prisma.eventFormDraft.findMany({
-        where: { sourceFormId: formId, expiresAt: { gt: new Date() } },
-        select: { payload: true },
-      }),
-    ]);
-    const referenced = form ? collectStoredImageIds(form.descriptionImages, form.elements) : new Set<string>();
-    for (const draft of drafts) {
-      for (const id of collectDraftImageIds(draft.payload)) {
-        referenced.add(id);
+    const image = await runSerializablePrismaTransaction(this.prisma, async (tx) => {
+      await this.authorizationPolicy.forTransaction(tx).assertPermissions(user, [Permission.EventForm.Update], {
+        eventFormId: formId,
+      });
+      const image = await tx.eventFormImage.findFirst({ where: { id: imageId, formId } });
+      if (!image) {
+        throw new NotFoundException('Imagem do formulário não encontrada.');
       }
-    }
-    if (referenced.has(imageId)) {
-      throw new BadRequestException('Remova a imagem do formulário e dos rascunhos antes de excluí-la.');
-    }
-    await this.prisma.eventFormImage.delete({ where: { id: image.id } });
+      const [form, drafts] = await Promise.all([
+        tx.eventForm.findUnique({
+          where: { id: formId },
+          select: { descriptionImages: true, elements: true },
+        }),
+        tx.eventFormDraft.findMany({
+          where: { sourceFormId: formId, expiresAt: { gt: new Date() } },
+          select: { payload: true },
+        }),
+      ]);
+      const referenced = form ? collectStoredImageIds(form.descriptionImages, form.elements) : new Set<string>();
+      for (const draft of drafts) {
+        for (const id of collectDraftImageIds(draft.payload)) {
+          referenced.add(id);
+        }
+      }
+      if (referenced.has(imageId)) {
+        throw new BadRequestException('Remova a imagem do formulário e dos rascunhos antes de excluí-la.');
+      }
+      await tx.eventFormImage.delete({ where: { id: image.id } });
+      await this.recordImageChange(tx, image, user, AuditLogOperation.DELETE);
+      return image;
+    });
     await this.deleteObjectBestEffort(image.objectKey);
+  }
+
+  private async recordImageChange(
+    tx: Prisma.TransactionClient,
+    image: { id: string; formId: string | null; width: number; height: number },
+    actor: AuthenticatedUser | undefined,
+    operation: 'CREATE' | 'DELETE',
+    pendingTarget?: { ownerEventId?: string | null; ownerMajorEventId?: string | null },
+  ): Promise<void> {
+    const target = image.formId
+      ? await tx.eventForm.findUnique({
+          where: { id: image.formId },
+          select: { ownerEventId: true, ownerMajorEventId: true },
+        })
+      : pendingTarget;
+    const snapshot = { imageId: image.id, width: image.width, height: image.height };
+    await this.audit.record(
+      {
+        entityType: image.formId ? AuditLogEntityType.EVENT_FORM : AuditLogEntityType.SYSTEM,
+        entityId: image.formId ?? image.id,
+        entityLabel: 'Imagem de formulário',
+        operation: image.formId ? AuditLogOperation.UPDATE : operation,
+        squashWindowMs: 0,
+        actor,
+        ...(operation === AuditLogOperation.CREATE ? { after: snapshot } : { before: snapshot }),
+        scope: {
+          permission: image.formId ? Permission.EventForm.Update : Permission.EventForm.Create,
+          eventId: target?.ownerEventId,
+          majorEventId: target?.ownerMajorEventId,
+        },
+      },
+      tx,
+    );
   }
 
   async download(
@@ -201,6 +259,16 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
     imageId: string,
     user: AuthenticatedUser | undefined,
   ): Promise<{ stream: Readable; contentType: string; contentLength?: number }> {
+    const image = await this.authorizeDownload(formId, imageId, user);
+    const file = await this.s3.downloadFile(image.objectKey);
+    return {
+      stream: file.stream,
+      contentType: file.contentType ?? image.mimeType,
+      contentLength: file.contentLength,
+    };
+  }
+
+  async authorizeDownload(formId: string, imageId: string, user: AuthenticatedUser | undefined) {
     const image = await this.prisma.eventFormImage.findFirst({
       where: { id: imageId, formId },
       include: { form: { include: eventFormInclude } },
@@ -217,18 +285,19 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
         throw new ForbiddenException('Você não pode acessar esta imagem do formulário.');
       }
     }
-    const file = await this.s3.downloadFile(image.objectKey);
-    return {
-      stream: file.stream,
-      contentType: file.contentType ?? image.mimeType,
-      contentLength: file.contentLength,
-    };
+    return image;
   }
 
   async downloadById(
     imageId: string,
     user: AuthenticatedUser | undefined,
   ): Promise<{ stream: Readable; contentType: string; contentLength?: number }> {
+    const image = await this.authorizeDownloadById(imageId, user);
+    const file = await this.s3.downloadFile(image.objectKey);
+    return { stream: file.stream, contentType: file.contentType ?? image.mimeType, contentLength: file.contentLength };
+  }
+
+  async authorizeDownloadById(imageId: string, user: AuthenticatedUser | undefined) {
     const image = await this.prisma.eventFormImage.findUnique({
       where: { id: imageId },
       include: { form: { include: eventFormInclude } },
@@ -249,8 +318,7 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
         eventFormId: image.formId,
       });
     }
-    const file = await this.s3.downloadFile(image.objectKey);
-    return { stream: file.stream, contentType: file.contentType ?? image.mimeType, contentLength: file.contentLength };
+    return image;
   }
 
   async reconcile(

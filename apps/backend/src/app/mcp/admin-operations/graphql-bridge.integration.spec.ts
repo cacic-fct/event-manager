@@ -238,7 +238,14 @@ describe('administrative MCP bridge through actual Nest GraphQL guards', () => {
       'archivePermissionRole',
       'dataTransferHistory',
       'dataTransferSchema',
+      'deleteEventFormImage',
+      'downloadEventFormImage',
+      'downloadEventFormImageById',
+      'downloadSportsTeamLogo',
       'exportDataTransfer',
+      'exportEventFormResultsCsv',
+      'exportEventSubscriptionBadgesZip',
+      'exportMajorEventSubscriptionBadgesZip',
       'permissionGroups',
       'permissionRoles',
       'permissionScopeTargets',
@@ -248,6 +255,9 @@ describe('administrative MCP bridge through actual Nest GraphQL guards', () => {
       'savePermissionRole',
       'undoDataTransfer',
       'updatePlacePreset',
+      'uploadEventFormImage',
+      'uploadPendingEventFormImage',
+      'uploadSportsTeamLogo',
     ]);
   });
 

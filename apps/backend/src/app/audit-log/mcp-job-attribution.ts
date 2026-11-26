@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { adminMcpExecution } from '../mcp/admin-operations/execution-context';
 
@@ -36,4 +37,10 @@ export function currentMcpAttribution(): Record<string, string> | undefined {
     approvedById: context.user.sub,
     approvedByName: context.approvedByName,
   });
+}
+
+// Privacy cleanup takes the exclusive form before selecting audit entries.
+export async function lockMcpJobAttribution(tx: Prisma.TransactionClient, cleanup = false): Promise<void> {
+  if (cleanup) await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('mcp-job-attribution-privacy'))`;
+  else await tx.$executeRaw`SELECT pg_advisory_xact_lock_shared(hashtext('mcp-job-attribution-privacy'))`;
 }
