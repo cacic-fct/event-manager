@@ -5,7 +5,7 @@ import { RealtimeInvalidationService } from '../realtime/realtime-invalidation.s
 import { SseReplayService } from '../realtime/sse-replay.service';
 import { McpAdminAccessService } from './mcp-admin-access.service';
 import { McpAdminInvalidationService } from './mcp-admin-invalidation.service';
-import { type McpAuthenticatedRequest } from './mcp-admin-principal';
+import { type McpAuthenticatedRequest } from './shared/principal';
 import { McpAdminRealtimeController } from './mcp-admin-realtime.controller';
 
 const { jest } = import.meta;

@@ -3,20 +3,15 @@ import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards, Us
 import { ApiBody, ApiCookieAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { Public } from '../auth/decorators/public.decorator';
-import { type McpAuthenticatedRequest } from './mcp-admin-principal';
+import { type McpAuthenticatedRequest } from './shared/principal';
 import { McpAdminAccessService } from './mcp-admin-access.service';
 import { McpAdminConfig } from './mcp-admin.config';
 import { McpAdminMaintenanceService } from './mcp-admin-maintenance.service';
 import { McpAdminProposalsService } from './mcp-admin-proposals.service';
 import { McpAdminSessionGuard } from './mcp-admin-session.guard';
 import { McpAdminOperationInterceptor } from './mcp-admin-operation.interceptor';
-import {
-  mcpDecisionSchema,
-  mcpDelegationInputSchema,
-  mcpEventReviewSchema,
-  mcpIdSchema,
-  parseMcpInput,
-} from './mcp-admin.schemas';
+import { mcpDecisionSchema, mcpDelegationInputSchema, mcpEventReviewSchema } from './mcp-admin.schemas';
+import { mcpIdSchema, parseMcpInput } from './shared/schemas';
 
 @ApiTags('Admin MCP')
 @ApiCookieAuth()

@@ -4,8 +4,8 @@ import { z } from 'zod';
 import { Public } from '../../auth/decorators/public.decorator';
 import { McpAdminSessionGuard } from '../mcp-admin-session.guard';
 import { McpAdminOperationInterceptor } from '../mcp-admin-operation.interceptor';
-import type { McpAuthenticatedRequest } from '../mcp-admin-principal';
-import { mcpIdSchema, parseMcpInput } from '../mcp-admin.schemas';
+import type { McpAuthenticatedRequest } from '../shared/principal';
+import { mcpIdSchema, parseMcpInput } from '../shared/schemas';
 import { AdminMcpCommandService } from './command-service';
 import { adminDelegationSchema, commandDecisionSchema, commandReviewSchema } from './schemas';
 

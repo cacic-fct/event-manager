@@ -19,7 +19,7 @@ import { runSerializablePrismaTransaction } from '../common/serializable-prisma-
 import { PrismaService } from '../prisma/prisma.service';
 import { McpAdminConfig, MCP_ADMIN_PROPOSE_SCOPE, MCP_ADMIN_READ_SCOPE } from './mcp-admin.config';
 import { McpAdminInvalidationService } from './mcp-admin-invalidation.service';
-import { mcpUserId } from './mcp-admin-principal';
+import { assertMcpAccountEligible, mcpUserId } from './shared/principal';
 
 export const MCP_CAPABILITY_PERMISSION = {
   EVENT_READ: Permission.Event.Read,
@@ -200,16 +200,7 @@ export class McpAdminAccessService {
   }
 
   async assertEligible(user: AuthenticatedUser, tx?: Prisma.TransactionClient): Promise<void> {
-    if (!user.sub) throw new ForbiddenException('Usuário MCP inválido.');
-    const people = await (tx ?? this.prisma).people.findMany({
-      where: { userId: user.sub },
-      select: { deletedAt: true, lgpdDeletionRequestId: true },
-      take: 2,
-    });
-    // Even super-admins must have one active linked identity before delegating.
-    if (people.length !== 1 || people[0].deletedAt || people[0].lgpdDeletionRequestId) {
-      throw new ForbiddenException('O MCP exige uma pessoa ativa vinculada à conta, sem exclusão pendente.');
-    }
+    await assertMcpAccountEligible(user, tx ?? this.prisma);
   }
 
   assertActive(delegation: StoredDelegation, capability: McpAdminCapability, eventId?: string): void {

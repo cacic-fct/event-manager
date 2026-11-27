@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import type { McpOperationOutcome } from './shared/transport';
 
 export interface McpOperationContext {
   userId?: string;
@@ -19,7 +20,7 @@ export class McpAdminOperationLogService {
     return entry.id;
   }
 
-  async finish(id: string, outcome: 'SUCCEEDED' | 'DENIED' | 'FAILED'): Promise<void> {
+  async finish(id: string, outcome: McpOperationOutcome): Promise<void> {
     await this.prisma.mcpAdminOperationLog.update({ where: { id }, data: { outcome } });
   }
 

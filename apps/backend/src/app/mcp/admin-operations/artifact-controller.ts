@@ -3,7 +3,7 @@ import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { Public } from '../../auth/decorators/public.decorator';
 import { McpAdminSessionGuard } from '../mcp-admin-session.guard';
-import { mcpUserId, type McpAuthenticatedRequest } from '../mcp-admin-principal';
+import { mcpUserId, type McpAuthenticatedRequest } from '../shared/principal';
 import { McpAdminFileArtifactService } from './artifact-files';
 
 @Public()

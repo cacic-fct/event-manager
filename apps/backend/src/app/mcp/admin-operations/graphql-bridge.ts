@@ -1,24 +1,17 @@
-import { BadRequestException, HttpException, Injectable, Optional } from '@nestjs/common';
+import { BadRequestException, Injectable, Optional } from '@nestjs/common';
 import { GraphQLSchemaHost } from '@nestjs/graphql';
-import {
-  execute,
-  getNamedType,
-  getVariableValues,
-  isEnumType,
-  isInputObjectType,
-  isListType,
-  isNonNullType,
-  isObjectType,
-  isInterfaceType,
-  parse,
-  validate,
-  type GraphQLInputType,
-  type GraphQLSchema,
-  type GraphQLField,
-} from 'graphql';
+import type { GraphQLSchema } from 'graphql';
 import { z } from 'zod';
 import type { AdminMcpOperationInfo } from '@cacic-fct/event-manager-mcp-contracts';
 import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import {
+  executeMcpGraphqlOperation,
+  parseMcpGraphqlArguments,
+  prepareMcpGraphqlOperation,
+  type PreparedMcpGraphqlOperation,
+} from '../shared/graphql-operation';
+import { withoutMcpBearer } from '../shared/principal';
+import { parseMcpOperationInput } from '../shared/schemas';
 import { McpAdminConfig } from '../mcp-admin.config';
 import { ADMIN_MCP_OPERATIONS, type AdminMcpOperation } from './catalog';
 import { adminMcpExecution, type AdminMcpExecution } from './execution-context';
@@ -31,105 +24,13 @@ import {
 export interface PreparedAdminOperation {
   definition: AdminMcpOperation;
   schema: z.ZodType;
-  document?: ReturnType<typeof parse>;
+  graphql?: PreparedMcpGraphqlOperation;
   rest?: PreparedAdminRestOperation;
   info: AdminMcpOperationInfo;
 }
 
 export function adminToolName(operation: Pick<AdminMcpOperation, 'kind' | 'field'>): string {
   return `${operation.kind === 'mutation' ? 'propose_admin' : 'admin'}_${operation.field}`;
-}
-
-const jsonValue = z.unknown().superRefine((value, context) => {
-  if (!boundedJson(value)) {
-    context.addIssue({ code: 'custom', message: 'JSON inválido ou excessivo.' });
-  }
-});
-
-export function boundedJson(value: unknown, depth = 0): boolean {
-  if (depth > 12) {
-    return false;
-  }
-  if (value === null || ['string', 'boolean'].includes(typeof value)) {
-    return true;
-  }
-  if (typeof value === 'number') {
-    return Number.isFinite(value);
-  }
-  if (Array.isArray(value)) {
-    return value.length <= 200 && value.every((item) => boundedJson(item, depth + 1));
-  }
-  if (typeof value !== 'object') {
-    return false;
-  }
-  return (
-    Object.entries(value).length <= 200 &&
-    Object.entries(value).every(
-      ([key, item]) => !['__proto__', 'prototype', 'constructor'].includes(key) && boundedJson(item, depth + 1),
-    )
-  );
-}
-
-function inputSchema(type: GraphQLInputType, cache: Map<string, z.ZodType>): z.ZodType {
-  if (!isNonNullType(type)) {
-    return nonNullableSchema(type, cache).nullable().optional();
-  }
-  return nonNullableSchema(type.ofType, cache);
-}
-
-function nonNullableSchema(type: GraphQLInputType, cache: Map<string, z.ZodType>): z.ZodType {
-  if (isNonNullType(type)) {
-    return nonNullableSchema(type.ofType, cache);
-  }
-  if (isListType(type)) {
-    return z.array(inputSchema(type.ofType, cache)).max(200);
-  }
-  if (isEnumType(type)) {
-    return z.enum(type.getValues().map((value) => value.name) as [string, ...string[]]);
-  }
-  if (isInputObjectType(type)) {
-    const prior = cache.get(type.name);
-    if (prior) {
-      return prior;
-    }
-    const lazy = z.lazy(() =>
-      z.strictObject(
-        Object.fromEntries(
-          Object.entries(type.getFields()).map(([name, field]) => [
-            name,
-            field.defaultValue === undefined
-              ? inputSchema(field.type, cache)
-              : inputSchema(field.type, cache).default(JSON.parse(JSON.stringify(field.defaultValue))),
-          ]),
-        ),
-      ),
-    );
-    cache.set(type.name, lazy);
-    return lazy;
-  }
-  switch (getNamedType(type).name) {
-    case 'Boolean':
-      return z.boolean();
-    case 'Int':
-      return z.number().int().min(-2147483648).max(2147483647);
-    case 'Float':
-      return z.number();
-    case 'ID':
-      return z.string().min(1).max(200);
-    case 'DateTime':
-    case 'Date':
-      return z.iso.datetime({ offset: true });
-    case 'Timestamp':
-      return z.number().int();
-    case 'String':
-      return z.string().max(50000);
-    case 'JSON':
-    case 'JSONObject':
-    case 'JSONString':
-      return jsonValue;
-    default:
-      throw new Error('Unsupported input scalar.');
-  }
 }
 
 function humanLabel(field: string): string {
@@ -290,34 +191,7 @@ export class AdminMcpGraphqlBridge {
         if (this.restOperations?.operation(definition.field)) {
           throw new Error('Operação REST não classificada no catálogo.');
         }
-        const root = definition.kind === 'query' ? schema.getQueryType() : schema.getMutationType();
-        const field: GraphQLField<unknown, unknown> | undefined = root?.getFields()[definition.field];
-        if (!field) {
-          throw new Error('Operação ausente no schema.');
-        }
-        const named = getNamedType(field.type);
-        if (!isObjectType(named) && !isInterfaceType(named) && /JSON|Upload|Buffer|File|Stream/i.test(named.name)) {
-          throw new Error('Saída opaca indisponível.');
-        }
-        const variables = field.args.map((arg) => `$${arg.name}: ${arg.type}`).join(', ');
-        const args = field.args.map((arg) => `${arg.name}: $${arg.name}`).join(', ');
-        const selection = definition.selection ? `{ ${definition.selection} }` : '';
-        const document = parse(
-          `${definition.kind} McpOperation${variables ? `(${variables})` : ''} { ${definition.field}${args ? `(${args})` : ''} ${selection} }`,
-        );
-        if (validate(schema, document).length) {
-          throw new Error('Projeção não corresponde ao schema.');
-        }
-        const cache = new Map<string, z.ZodType>();
-        const shape = Object.fromEntries(
-          field.args.map((arg) => [
-            arg.name,
-            arg.defaultValue === undefined
-              ? inputSchema(arg.type, cache)
-              : inputSchema(arg.type, cache).default(JSON.parse(JSON.stringify(arg.defaultValue))),
-          ]),
-        );
-        const inputs = z.strictObject(shape);
+        const graphql = prepareMcpGraphqlOperation(schema, definition);
         const info: AdminMcpOperationInfo = {
           field: definition.field,
           kind: definition.kind,
@@ -327,9 +201,12 @@ export class AdminMcpGraphqlBridge {
           tool: adminToolName(definition),
           label: humanLabel(definition.field),
           description: definition.description,
-          inputSchema: z.toJSONSchema(inputs, { io: 'input', unrepresentable: 'any' }) as Record<string, unknown>,
+          inputSchema: z.toJSONSchema(graphql.schema, { io: 'input', unrepresentable: 'any' }) as Record<
+            string,
+            unknown
+          >,
         };
-        this.prepared.set(definition.field, { definition, document, schema: inputs, info });
+        this.prepared.set(definition.field, { definition, graphql, schema: graphql.schema, info });
       } catch (error) {
         this.failures.push({
           field: definition.field,
@@ -365,39 +242,12 @@ export class AdminMcpGraphqlBridge {
 
   arguments(field: string, input: unknown): Record<string, unknown> {
     const operation = this.operation(field);
-    let serialized: string | undefined;
-    try {
-      serialized = JSON.stringify(input);
-    } catch {
-      throw new BadRequestException('Argumentos inválidos ou excessivos.');
-    }
-    if (
-      serialized === undefined ||
-      Buffer.byteLength(serialized) > (operation.rest?.maxInputBytes ?? 64000) ||
-      (!operation.rest && !boundedJson(input))
-    ) {
-      throw new BadRequestException('Argumentos inválidos ou excessivos.');
-    }
-    const parsed = operation.schema.safeParse(input);
-    if (!parsed.success) {
-      throw new BadRequestException('Confira os argumentos da operação.');
-    }
     if (operation.rest) {
-      return JSON.parse(JSON.stringify(parsed.data)) as Record<string, unknown>;
+      const parsed = parseMcpOperationInput(input, operation.schema, operation.rest.maxInputBytes ?? 64000);
+      return JSON.parse(JSON.stringify(parsed)) as Record<string, unknown>;
     }
-    if (!operation.document) throw new BadRequestException('Operação administrativa indisponível.');
-    const variables = getVariableValues(
-      this.host.schema,
-      operation.document.definitions.flatMap((item) =>
-        item.kind === 'OperationDefinition' ? (item.variableDefinitions ?? []) : [],
-      ),
-      parsed.data as Record<string, unknown>,
-    );
-    if (variables.errors) {
-      throw new BadRequestException('Argumentos incompatíveis com a operação.');
-    }
-    // Keep JSON values canonical; GraphQL performs scalar coercion again on execution.
-    return JSON.parse(JSON.stringify(parsed.data)) as Record<string, unknown>;
+    if (!operation.graphql) throw new BadRequestException('Operação administrativa indisponível.');
+    return parseMcpGraphqlArguments(this.host.schema, operation.graphql, input);
   }
 
   async execute(
@@ -412,7 +262,7 @@ export class AdminMcpGraphqlBridge {
     }
     const canonical = this.arguments(field, values);
     const headers = { host: new URL(this.config.resourceUrl).host };
-    const safeUser: AuthenticatedUser = { ...user, token: '', authenticationTransport: 'mcp' };
+    const safeUser = withoutMcpBearer(user);
     const request = {
       user: safeUser,
       headers,
@@ -428,28 +278,12 @@ export class AdminMcpGraphqlBridge {
       if (operation.rest) {
         return this.restOperations?.execute(field, canonical, safeUser, restContext(field, execution));
       }
-      if (!operation.document) throw new BadRequestException('Operação administrativa indisponível.');
-      const result = await execute({
-        schema: this.host.schema,
-        document: operation.document,
-        variableValues: canonical,
-        contextValue: { req: request, request, res: response },
+      if (!operation.graphql) throw new BadRequestException('Operação administrativa indisponível.');
+      return executeMcpGraphqlOperation(this.host.schema, operation.graphql, canonical, {
+        req: request,
+        request,
+        res: response,
       });
-      if (result.errors?.length) {
-        const error = result.errors[0];
-        const original = error.originalError;
-        if (original instanceof HttpException && original.getStatus() < 500) {
-          throw new BadRequestException(error.message);
-        }
-        throw new BadRequestException(
-          'O serviço responsável recusou a operação. Confira permissões, revisão e elegibilidade.',
-        );
-      }
-      const output = result.data?.[field] ?? null;
-      if (Buffer.byteLength(JSON.stringify(output)) > 512000) {
-        throw new BadRequestException('Resultado excessivo. Reduza a página ou consulte um recurso específico.');
-      }
-      return output;
     });
   }
 

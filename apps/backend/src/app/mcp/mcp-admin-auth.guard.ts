@@ -6,18 +6,17 @@ import {
   HttpException,
   Injectable,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { type AuthenticatedRequest } from '../auth/authenticated-request';
 import { KeycloakAuthService } from '../auth/keycloak-auth.service';
-import { assertUserOnboarded } from '../auth/onboarding';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { McpAdminConfig, MCP_ADMIN_READ_SCOPE, MCP_ADMIN_PROPOSE_SCOPE } from './mcp-admin.config';
 import { McpAdminOperationLogService } from './mcp-admin-operation-log.service';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
 import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
 import { McpAdminAccessService } from './mcp-admin-access.service';
+import { authenticateMcpResource, setMcpOAuthChallenge } from './shared/oauth-resource';
 import { isRecord } from '../auth/keycloak-claims.utils';
 
 @Injectable()
@@ -36,34 +35,14 @@ export class McpAdminAuthGuard implements CanActivate {
     const response = context.switchToHttp().getResponse<Response>();
     response.setHeader('Cache-Control', 'no-store');
     if (!this.config.enabled) throw new NotFoundException();
-    response.setHeader(
-      'WWW-Authenticate',
-      `Bearer resource_metadata="${this.config.metadataUrl}", scope="${MCP_ADMIN_READ_SCOPE}"`,
-    );
+    setMcpOAuthChallenge(response, this.config.metadataUrl, MCP_ADMIN_READ_SCOPE);
     try {
       await this.limits.assertAllowed({ policy: RATE_LIMIT_POLICIES.mcpAuthenticate, request, response });
-      if (request.headers.host !== new URL(this.config.resourceUrl).host) {
-        throw new ForbiddenException('Invalid MCP host.');
-      }
-      const origin = request.headers.origin;
-      if (origin !== undefined && !this.config.allowedOrigins.has(origin)) {
-        throw new ForbiddenException('Invalid MCP origin.');
-      }
-      const authorization = request.headers.authorization;
-      const match = typeof authorization === 'string' ? /^Bearer ([A-Za-z0-9._~-]+)$/i.exec(authorization) : null;
-      if (!match || match[1].length > 16384) throw new UnauthorizedException('MCP requires an OAuth bearer token.');
-      const user = await this.auth.authenticateMcpAccessToken(match[1], {
-        audience: this.config.resourceUrl,
-        allowedClients: this.config.allowedClients,
-      });
-      assertUserOnboarded(user);
+      const user = await authenticateMcpResource(request, this.config, this.auth);
       if (!this.authorization.hasEventManagerAccess(user))
         throw new ForbiddenException('Administrative access required.');
       if (![MCP_ADMIN_READ_SCOPE, MCP_ADMIN_PROPOSE_SCOPE].some((scope) => user.oidcScopeSet.has(scope))) {
-        response.setHeader(
-          'WWW-Authenticate',
-          `Bearer error="insufficient_scope", resource_metadata="${this.config.metadataUrl}", scope="${MCP_ADMIN_READ_SCOPE}"`,
-        );
+        setMcpOAuthChallenge(response, this.config.metadataUrl, MCP_ADMIN_READ_SCOPE, 'insufficient_scope');
         throw new ForbiddenException('Missing MCP capability scope.');
       }
       const body: unknown = request.body;
@@ -77,10 +56,7 @@ export class McpAdminAuthGuard implements CanActivate {
             ? MCP_ADMIN_PROPOSE_SCOPE
             : MCP_ADMIN_READ_SCOPE;
         if (!user.oidcScopeSet.has(requiredScope)) {
-          response.setHeader(
-            'WWW-Authenticate',
-            `Bearer error="insufficient_scope", resource_metadata="${this.config.metadataUrl}", scope="${requiredScope}"`,
-          );
+          setMcpOAuthChallenge(response, this.config.metadataUrl, requiredScope, 'insufficient_scope');
           throw new ForbiddenException('Escopo OAuth insuficiente para esta ferramenta.');
         }
       }

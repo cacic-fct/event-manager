@@ -15,7 +15,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ADMIN_MCP_OPERATIONS } from './catalog';
 import { adminMcpExecution } from './execution-context';
 import { McpAdminConfig } from '../mcp-admin.config';
-import { parseMcpInput } from '../mcp-admin.schemas';
+import { parseMcpInput } from '../shared/schemas';
 import { AdminMcpScopePolicy, operationContexts } from './scope-policy';
 import { adminScopeSchema } from './schemas';
 

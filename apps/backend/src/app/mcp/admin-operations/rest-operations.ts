@@ -27,7 +27,7 @@ import { SportsTeamLogoService, type SportsTeamLogoUploadFile } from '../../spor
 import type { Readable } from 'node:stream';
 import { McpAdminFileArtifactService } from './artifact-files';
 import type { AdminMcpOperation } from './catalog';
-import { mcpUserId } from '../mcp-admin-principal';
+import { mcpUserId } from '../shared/principal';
 
 const TRANSFER_MAX_INPUT_BYTES = TRANSFER_MAX_BYTES + 64 * 1024;
 const TRANSFER_MAX_OUTPUT_BYTES = 10 * 1024 * 1024;

@@ -25,7 +25,8 @@ import { AuditLogService } from '../../audit-log/audit-log.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { McpAdminConfig } from '../mcp-admin.config';
 import { adminMcpExecution } from './execution-context';
-import { AdminMcpGraphqlBridge, boundedJson } from './graphql-bridge';
+import { boundedJson } from '../shared/graphql-operation';
+import { AdminMcpGraphqlBridge } from './graphql-bridge';
 import { AdminMcpRestOperations } from './rest-operations';
 const { jest } = import.meta;
 

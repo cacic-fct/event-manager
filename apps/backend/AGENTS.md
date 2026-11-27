@@ -33,6 +33,7 @@ Current human authorization is role-based: `effective-role-scopes.ts` derives sc
 | Lecturer profile and subscriber material review | [Content review](src/app/content-review/README.md) |
 | Certificate issuance, protection and previews | [Certificates](src/app/certificate/README.md) |
 | Personal-data export and deletion | [LGPD](src/app/lgpd/README.md) |
+| MCP transport, operations and review | [MCP](src/app/mcp/AGENTS.md) |
 | Umami aggregate reporting and permission | [Shared analytics](../../libs/shared-analytics/README.md) |
 | Ticket transfer visibility | `src/app/tickets/ticket-transfer.service.ts`, especially `isWithinPostEventRetention` |
 

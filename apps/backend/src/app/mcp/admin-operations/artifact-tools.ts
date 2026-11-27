@@ -1,9 +1,10 @@
-import type { McpServer, CallToolResult } from '@modelcontextprotocol/server';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { z } from 'zod';
 import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { MCP_ADMIN_PROPOSE_SCOPE, MCP_ADMIN_READ_SCOPE } from '../mcp-admin.config';
-import { mcpUserId } from '../mcp-admin-principal';
+import { mcpUserId } from '../shared/principal';
+import { MCP_PROPOSAL_ANNOTATIONS, MCP_READ_ANNOTATIONS, type ExecuteMcpTool } from '../shared/transport';
 import { McpAdminFileArtifactService, MCP_FILE_CHUNK_BYTES } from './artifact-files';
 
 const ownerSchema = z.strictObject({ delegationId: z.uuid(), operation: z.string().min(1).max(100) });
@@ -25,12 +26,7 @@ const fileSchema = z.strictObject({
 export class McpAdminArtifactTools {
   constructor(private readonly artifacts: McpAdminFileArtifactService) {}
 
-  register(
-    server: McpServer,
-    user: AuthenticatedUser,
-    execute: (work: () => Promise<unknown>) => Promise<CallToolResult>,
-    allowed: ReadonlySet<string>,
-  ) {
+  register(server: McpServer, user: AuthenticatedUser, execute: ExecuteMcpTool, allowed: ReadonlySet<string>) {
     const uploads = [
       'uploadSportsTeamLogo',
       'uploadEventFormImage',
@@ -57,7 +53,6 @@ export class McpAdminArtifactTools {
       if (!user.oidcScopeSet.has(MCP_ADMIN_PROPOSE_SCOPE))
         throw new ForbiddenException('Escopo de propostas necessário.');
     };
-    const annotations = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false };
     if (
       (uploads.some((operation) => allowed.has(operation)) && user.oidcScopeSet.has(MCP_ADMIN_PROPOSE_SCOPE)) ||
       (allowed.has('previewDataTransfer') && user.oidcScopeSet.has(MCP_ADMIN_READ_SCOPE))
@@ -69,7 +64,7 @@ export class McpAdminArtifactTools {
           description:
             'Stage an immutable private file for a delegated upload or transfer proposal. This never changes a domain resource. Send chunks, then finalize the hash before proposing.',
           inputSchema: fileSchema,
-          annotations,
+          annotations: { ...MCP_PROPOSAL_ANNOTATIONS, idempotentHint: false },
         },
         (input) =>
           execute(async () => {
@@ -89,7 +84,7 @@ export class McpAdminArtifactTools {
             offset: z.number().int().min(0),
             base64: z.string().max(Math.ceil(MCP_FILE_CHUNK_BYTES / 3) * 4),
           }),
-          annotations: { ...annotations, idempotentHint: true },
+          annotations: MCP_PROPOSAL_ANNOTATIONS,
         },
         ({ artifactId, offset, base64, ...owner }) =>
           execute(async () => {
@@ -103,7 +98,7 @@ export class McpAdminArtifactTools {
           title: 'Conferir arquivo enviado',
           description: 'Verify size and SHA-256 before an immutable file reference can be proposed for human approval.',
           inputSchema: z.strictObject({ ...ownerSchema.shape, artifactId: z.uuid() }),
-          annotations: { ...annotations, idempotentHint: true },
+          annotations: MCP_PROPOSAL_ANNOTATIONS,
         },
         ({ artifactId, ...owner }) =>
           execute(async () => {
@@ -119,7 +114,7 @@ export class McpAdminArtifactTools {
         description:
           'Read an own private export or staged artifact in bounded base64 chunks. Requires its exact active operation delegation.',
         inputSchema: z.strictObject({ ...ownerSchema.shape, artifactId: z.uuid(), offset: z.number().int().min(0) }),
-        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+        annotations: MCP_READ_ANNOTATIONS,
       },
       (input) =>
         execute(async () => {

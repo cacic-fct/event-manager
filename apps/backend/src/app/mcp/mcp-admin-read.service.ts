@@ -5,7 +5,7 @@ import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.in
 import { PrismaService } from '../prisma/prisma.service';
 import { McpAdminAccessService } from './mcp-admin-access.service';
 import { McpAdminConfig, MCP_ADMIN_READ_SCOPE } from './mcp-admin.config';
-import { mcpUserId } from './mcp-admin-principal';
+import { mcpUserId } from './shared/principal';
 
 export const MCP_EVENT_SELECT = {
   id: true,

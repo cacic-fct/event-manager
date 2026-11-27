@@ -42,9 +42,9 @@ import { nextContentRevision } from '../content-review/material-review';
 import type { EventUpdateInput } from '@cacic-fct/shared-data-types';
 import { mcpDescriptionProposalSchema } from './mcp-admin.schemas';
 import { McpAdminInvalidationService } from './mcp-admin-invalidation.service';
-import { mcpUserId } from './mcp-admin-principal';
+import { mcpUserId } from './shared/principal';
 import { mcpEventReviewFields, mcpReviewValueEntries, prepareMcpEventReview } from './mcp-event-review';
-import { assertMcpReviewToken, signMcpReview } from './mcp-review-token';
+import { assertMcpReviewToken, signMcpReview } from './shared/review-token';
 
 const PROPOSAL_INCLUDE = {
   delegation: true,

@@ -10,7 +10,8 @@ import type { Prisma } from '@prisma/client';
 import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
 import { assertEventLocation, normalizeEventLocation } from '../events/event-location';
-import { mcpEventToolSchema, parseMcpInput } from './mcp-admin.schemas';
+import { mcpEventToolSchema } from './mcp-admin.schemas';
+import { parseMcpInput } from './shared/schemas';
 
 const text = (max: number) => z.string().trim().max(max).nullable().optional();
 const nonempty = (value: object) => Object.keys(value).length > 0;

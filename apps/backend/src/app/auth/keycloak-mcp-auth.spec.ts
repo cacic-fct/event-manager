@@ -1,6 +1,7 @@
 import { jest as jestEsm } from '@jest/globals';
 import { UnauthorizedException } from '@nestjs/common';
 import { generateKeyPairSync, type KeyObject, sign as signToken } from 'node:crypto';
+import { authenticateMcpResource } from '../mcp/shared/oauth-resource';
 import type { AuthenticatedUserSyncService } from './authenticated-user-sync.service';
 import type { KeycloakAuthService } from './keycloak-auth.service';
 
@@ -95,6 +96,28 @@ describe('KeycloakAuthService MCP authentication', () => {
     expect(fetchMock).toHaveBeenCalledWith(`${TEST_ISSUER}/protocol/openid-connect/certs`, expect.any(Object));
     expect(mockedAxios.post).not.toHaveBeenCalled();
     expect(mockedAxios.get).not.toHaveBeenCalled();
+    expect(userClaimSync.syncLoginClaims).not.toHaveBeenCalled();
+  });
+
+  it('isolates tokens by OAuth resource when the same client is allowed on both', async () => {
+    const userResource = 'https://events.example/api/mcp/user';
+    const config = {
+      enabled: true,
+      resourceUrl: userResource,
+      allowedOrigins: new Set(['https://events.example']),
+      allowedClients: [CLIENT_ID],
+    };
+    const authenticate = (token: string) =>
+      authenticateMcpResource(
+        { headers: { host: 'events.example', authorization: `Bearer ${token}` } },
+        config,
+        service,
+      );
+
+    await expect(authenticate(jwt({ is_onboarded: true }))).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(
+      authenticate(jwt({ aud: userResource, scope: 'mcp:user:read', is_onboarded: true })),
+    ).resolves.toMatchObject({ sub: 'human-user', authenticationTransport: 'mcp' });
     expect(userClaimSync.syncLoginClaims).not.toHaveBeenCalled();
   });
 

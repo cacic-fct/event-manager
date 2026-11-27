@@ -9,7 +9,8 @@ import {
 import { catchError, concatMap, type Observable } from 'rxjs';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { McpAdminOperationLogService } from './mcp-admin-operation-log.service';
-import { mcpIdSchema } from './mcp-admin.schemas';
+import { mcpIdSchema } from './shared/schemas';
+import type { McpOperationOutcome } from './shared/transport';
 
 @Injectable()
 export class McpAdminOperationInterceptor implements NestInterceptor {
@@ -39,7 +40,7 @@ export class McpAdminOperationInterceptor implements NestInterceptor {
     );
   }
 
-  private async finish(id: string, outcome: 'SUCCEEDED' | 'DENIED' | 'FAILED'): Promise<void> {
+  private async finish(id: string, outcome: McpOperationOutcome): Promise<void> {
     try {
       await this.log.finish(id, outcome);
     } catch {

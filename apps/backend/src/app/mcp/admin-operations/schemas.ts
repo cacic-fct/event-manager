@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { mcpIdSchema } from '../mcp-admin.schemas';
-import { mcpReviewTokenSchemaPattern } from '../mcp-review-token';
+import { mcpIdSchema } from '../shared/schemas';
+import { mcpReviewTokenSchemaPattern } from '../shared/review-token';
 export const adminScopeSchema = z.discriminatedUnion('mode', [
   z.strictObject({ mode: z.literal('ALL_AUTHORIZED') }),
   z.strictObject({
