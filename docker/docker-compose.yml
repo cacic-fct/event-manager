@@ -142,7 +142,7 @@ services:
       - 'traefik.scope=public'
       - 'traefik.docker.network=traefik'
       - 'traefik.http.routers.event-manager-api.entrypoints=web,websecure'
-      - 'traefik.http.routers.event-manager-api.rule=Host(`eventos.cacic.com.br`) && PathPrefix(`/api`)'
+      - 'traefik.http.routers.event-manager-api.rule=Host(`eventos.cacic.com.br`) && (PathPrefix(`/api`) || Path(`/.well-known/oauth-protected-resource/api/mcp/admin`))'
       - 'traefik.http.routers.event-manager-api.tls=true'
       - 'traefik.http.routers.event-manager-api.service=event-manager-api-svc'
       - 'traefik.http.services.event-manager-api-svc.loadbalancer.server.port=3000'

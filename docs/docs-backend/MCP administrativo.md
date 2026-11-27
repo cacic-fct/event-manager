@@ -118,7 +118,8 @@ O realm local fixa Keycloak 26.2. O cadastro usa o mecanismo de scopes/audience 
 ## Implantação e validação
 
 - Revise e aplique, com autorização, `20261119000000_admin_mcp`, `20261119220000_expand_admin_mcp` e `20261120090000_admin_mcp_operations` no banco do ambiente. `prisma generate` não aplica migrations. Os workers de manutenção também dependem das novas tabelas.
-- Encaminhe `/.well-known/oauth-protected-resource/api/mcp/admin` ao backend no proxy, além de `/api/mcp/admin`. Os metadados indicam o issuer e os scopes disponíveis.
+- Em produção, configure `MCP_ADMIN_RESOURCE_URL=https://eventos.cacic.com.br/api/mcp/admin` e inclua o cliente dedicado `cacic-event-manager-mcp` em `MCP_ADMIN_ALLOWED_CLIENTS`. Comece com `MCP_ADMIN_PROPOSALS_ENABLED=false`.
+- Encaminhe `/.well-known/oauth-protected-resource/api/mcp/admin` ao backend no proxy, além de `/api/mcp/admin`. Os metadados indicam o issuer e os scopes disponíveis. O Compose inclui a rota exata de metadados na regra do backend.
 - Valide login, consentimento, PKCE, `resource`, audience, renovação e revogação com cada cliente de IA. Crie uma delegação limitada e confirme negativas entre eventos, SSE, revisão obsoleta, rejeição, aprovação e atribuição na auditoria.
 - Habilite propostas apenas depois dessa verificação. Publicação no proxy, emissão real de tokens e entrega SSE entre instâncias são verificações separadas dos testes locais.
 
