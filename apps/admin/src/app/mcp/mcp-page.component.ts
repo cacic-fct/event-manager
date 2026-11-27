@@ -322,7 +322,7 @@ export class McpPageComponent {
             data: proposal,
             autoFocus: 'first-heading',
             restoreFocus: false,
-            width: '42rem',
+            width: '54rem',
             maxWidth: 'calc(100vw - 2rem)',
           })
           .afterClosed(),

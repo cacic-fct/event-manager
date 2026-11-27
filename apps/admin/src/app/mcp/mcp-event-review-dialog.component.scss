@@ -1,27 +1,49 @@
 .review,
 .comparison,
-.field {
+.field,
+.draft {
   display: grid;
   gap: 0.5rem;
   min-width: 0;
 }
 
 .review {
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .comparison,
 .field {
   border-block-start: 1px solid var(--mat-sys-outline-variant);
-  padding-block-start: 0.5rem;
+  padding-block-start: 0.75rem;
 }
 
-.field-actions {
+.field-header {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0 0.5rem;
+  gap: 0.75rem;
+}
+
+.field-values {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  align-items: start;
+  gap: 1rem;
+}
+
+.before {
+  background: var(--mat-sys-surface-container);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+}
+
+.before p {
+  white-space: pre-wrap;
+  margin-block-start: 0.25rem;
+}
+
+.draft button {
+  justify-self: start;
 }
 
 p,
@@ -40,10 +62,7 @@ h4,
   font: var(--mat-sys-title-small);
 }
 
-.proposed-value {
-  white-space: pre-wrap;
-}
-
+.before h4,
 .supporting {
   color: var(--mat-sys-on-surface-variant);
   font: var(--mat-sys-body-small);
@@ -51,4 +70,11 @@ h4,
 
 [role='alert'] {
   color: var(--mat-sys-error);
+}
+
+@media (max-width: 640px) {
+  .field-values {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
 }

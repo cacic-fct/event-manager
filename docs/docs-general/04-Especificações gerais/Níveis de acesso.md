@@ -48,4 +48,4 @@ A atribuição, cada escopo e a participação em grupo podem expirar independen
 
 Para retirar uma responsabilidade específica, remova a atribuição, a participação ou o escopo correspondente. Arquivar um cargo personalizado também arquiva suas atribuições ativas e vínculos em que ele é herdado; arquivar um grupo arquiva suas participações. Outros caminhos de acesso podem continuar ativos.
 
-Consulte [Concessão de permissões](../../docs-manual/07-Procedimentos/Cargos/Concessão%20de%20permissões.md) para o procedimento e [Autorização e permissões](../../docs-backend/Autorização%20e%20permissões.md) para a implementação.
+Consulte [Concessão de permissões](/Manual/Procedimentos/Cargos/Concess%C3%A3o%20de%20permiss%C3%B5es) para o procedimento e [Autorização e permissões](/Backend/Autoriza%C3%A7%C3%A3o%20e%20permiss%C3%B5es) para a implementação.

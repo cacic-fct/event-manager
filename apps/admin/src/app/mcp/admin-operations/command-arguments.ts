@@ -17,6 +17,19 @@ function record(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
+function isReferenceKey(key: string): boolean {
+  return key === 'id' || key === 'ids' || /Ids?$/.test(key);
+}
+
+export function isReferenceList(key: string, value: unknown): value is string[] {
+  return isReferenceKey(key) && Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+function containsReference(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(containsReference);
+  return Object.entries(record(value)).some(([key, item]) => isReferenceKey(key) || containsReference(item));
+}
+
 export function argumentSchema(value: unknown, root: Record<string, unknown>): Record<string, unknown> {
   const schema = record(value);
   if (typeof schema['$ref'] === 'string' && schema['$ref'].startsWith('#/')) {
@@ -41,10 +54,12 @@ export function buildCommandArguments(command: AdminMcpCommand): CommandArgument
       const info = argumentSchema(record(schema['properties'])[key], command.inputSchema);
       const children =
         value !== null && typeof value === 'object' && !Array.isArray(value) ? build(record(value), info) : [];
-      const identifier = key === 'id' || /Ids?$/.test(key);
-      // Review may narrow a list of destinations, but cannot replace a unique destination.
+      // Review can narrow a list of proposed destinations. Keep references inside
+      // structured lists fixed because a JSON editor cannot enforce that choice.
       const locked =
-        (identifier && (!Array.isArray(value) || value.length <= 1)) || children.some((child) => child.locked);
+        (isReferenceKey(key) && (!isReferenceList(key, value) || value.length <= 1)) ||
+        (Array.isArray(value) && containsReference(value)) ||
+        children.some((child) => child.locked);
       return {
         key,
         label: typeof info['title'] === 'string' ? info['title'] : adminOperationArgumentLabel(key),

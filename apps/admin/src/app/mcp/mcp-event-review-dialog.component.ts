@@ -1,3 +1,4 @@
+import { TextFieldModule } from '@angular/cdk/text-field';
 import { Component, ElementRef, Injector, afterNextRender, computed, inject, signal, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -18,7 +19,7 @@ import { McpApi, mcpErrorMessage } from './mcp-api.service';
 
 interface ReviewField extends McpEventReviewFieldValue {
   selected: boolean;
-  editing: boolean;
+  before: string | null | undefined;
   input: string;
   invalid: boolean;
 }
@@ -33,6 +34,7 @@ const TEXTAREAS = new Set<McpEventReviewField>([
 
 @Component({
   imports: [
+    TextFieldModule,
     MatButtonModule,
     MatCheckboxModule,
     MatDialogModule,
@@ -63,7 +65,11 @@ export class McpEventReviewDialogComponent {
       ...field,
       input: String(field.proposedValue ?? ''),
       selected: true,
-      editing: false,
+      before: this.proposal.changes
+        ? this.proposal.changes.find((change) => change.field === field.field)?.before
+        : field.field === 'description'
+          ? this.proposal.descriptionBefore
+          : undefined,
       invalid: false,
     })),
   );
@@ -76,12 +82,25 @@ export class McpEventReviewDialogComponent {
     this.updateField(field, { selected });
   }
 
-  edit(field: ReviewField, editing: boolean): void {
-    this.updateField(field.field, { editing, input: String(field.proposedValue ?? ''), invalid: false });
+  isEdited(field: ReviewField): boolean {
+    return field.invalid || field.input !== String(field.proposedValue ?? '');
+  }
+
+  restore(field: ReviewField): void {
+    this.changeValue(field.field, String(field.proposedValue ?? ''));
   }
 
   changeValue(field: McpEventReviewField, input: string, invalid = false): void {
     this.updateField(field, { input, invalid });
+  }
+
+  changeText(field: McpEventReviewField, editor: HTMLTextAreaElement): void {
+    if (field === 'name' && editor.value.includes('\n')) {
+      const { selectionStart, selectionEnd } = editor;
+      editor.value = editor.value.replaceAll('\n', ' ');
+      editor.setSelectionRange(selectionStart, selectionEnd);
+    }
+    this.changeValue(field, editor.value);
   }
 
   isLongText(field: McpEventReviewField): boolean {
@@ -94,11 +113,6 @@ export class McpEventReviewDialogComponent {
 
   isRequired(field: McpEventReviewField): boolean {
     return field === 'name' || this.operation === 'EVENT_DESCRIPTION';
-  }
-
-  proposedText(value: ReviewField['proposedValue']): string {
-    if (typeof value === 'boolean') return value ? 'Sim' : 'Não';
-    return value === null ? 'Sem valor.' : String(value);
   }
 
   async prepare(): Promise<void> {
@@ -146,7 +160,9 @@ export class McpEventReviewDialogComponent {
     }
   }
 
-  private selection({ field, input, editing }: ReviewField): McpEventReviewSelection {
+  private selection(row: ReviewField): McpEventReviewSelection {
+    const { field, input } = row;
+    const editing = this.isEdited(row);
     if (field === 'isVirtual') return { field, value: editing ? input === 'true' : undefined };
     if (field === 'latitude' || field === 'longitude') {
       return { field, value: editing ? (input === '' ? null : Number(input)) : undefined };
@@ -157,7 +173,7 @@ export class McpEventReviewDialogComponent {
 
   private updateField(
     field: McpEventReviewField,
-    patch: Partial<Pick<ReviewField, 'selected' | 'editing' | 'input' | 'invalid'>>,
+    patch: Partial<Pick<ReviewField, 'selected' | 'input' | 'invalid'>>,
   ): void {
     this.fields.update((fields) => fields.map((row) => (row.field === field ? { ...row, ...patch } : row)));
   }

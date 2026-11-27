@@ -255,7 +255,6 @@ async function previewPartialApproval(canvasElement: HTMLElement) {
   await userEvent.click(await within(canvasElement).findByRole('button', { name: 'Revisar proposta' }));
   const dialog = within(await within(canvasElement.ownerDocument.body).findByRole('dialog'));
   await userEvent.click(dialog.getByRole('checkbox', { name: 'Incluir Nome' }));
-  await userEvent.click(dialog.getByRole('button', { name: 'Editar Descrição' }));
   const input = dialog.getByRole('textbox', { name: 'Descrição para aplicar' });
   await userEvent.clear(input);
   await userEvent.type(input, revisedText);
@@ -265,6 +264,15 @@ async function previewPartialApproval(canvasElement: HTMLElement) {
   await expect(dialog.getByText('Será aplicado')).toBeVisible();
   return dialog;
 }
+
+export const ReviewInProgress: Story = {
+  parameters: handlers([contentProposal]),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await within(canvasElement).findByRole('button', { name: 'Revisar proposta' }));
+    const dialog = within(await within(canvasElement.ownerDocument.body).findByRole('dialog'));
+    await expect(dialog.getByRole('textbox', { name: 'Descrição para aplicar' })).toBeVisible();
+  },
+};
 
 export const FinalReview: Story = {
   parameters: handlers([contentProposal]),

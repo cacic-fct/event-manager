@@ -9,7 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import type { AdminMcpCommand } from '@cacic-fct/event-manager-mcp-contracts';
 import { normalizeOperationSearch } from './admin-operation-labels';
-import { argumentDisplay, serializeArgument, type CommandArgument } from './command-arguments';
+import { argumentDisplay, isReferenceList, serializeArgument, type CommandArgument } from './command-arguments';
 
 export interface CommandArgumentEdit {
   field: CommandArgument;
@@ -143,7 +143,7 @@ export class CommandReviewDialogComponent {
   readonly display = (value: unknown) => argumentDisplay(value, this.data.targets);
 
   private editorKind(): 'resources' | 'enum' | 'boolean' | 'number' | 'date' | 'json' | 'text' {
-    if (/Ids$/.test(this.field.key) && Array.isArray(this.field.original)) return 'resources';
+    if (isReferenceList(this.field.key, this.field.original)) return 'resources';
     if (this.enumOptions.length) return 'enum';
     if (typeof this.field.value === 'boolean' || this.field.schema['type'] === 'boolean') return 'boolean';
     if (typeof this.field.value === 'number' || ['number', 'integer'].includes(String(this.field.schema['type']))) {

@@ -37,4 +37,17 @@ describe('command arguments', () => {
     const fields = buildCommandArguments(command);
     expect(fields.map((field) => field.locked)).toEqual([false, true, true]);
   });
+
+  it('keeps relation IDs in structured lists out of the raw JSON editor', () => {
+    const command = {
+      ...sportsCommand(),
+      arguments: {
+        assignments: [{ scopes: [{ eventId: 'event' }] }],
+        priceOptions: [{ name: 'Inteira', price: 20 }],
+      },
+    };
+    const [assignments, priceOptions] = buildCommandArguments(command);
+    expect(assignments.locked).toBe(true);
+    expect(priceOptions.locked).toBe(false);
+  });
 });

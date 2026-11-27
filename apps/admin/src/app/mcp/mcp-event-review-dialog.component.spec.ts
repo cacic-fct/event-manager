@@ -58,7 +58,6 @@ describe('McpEventReviewDialogComponent', () => {
   it('approves the confirmed snapshot even if the editable values change before the decision', async () => {
     const { component, proposal, api, dialog } = setup();
     component.select('name', false);
-    component.edit(component.fields()[1], true);
     component.changeValue('description', '  Editado  ');
     await component.approve();
     expect(api.decide).not.toHaveBeenCalled();
@@ -89,7 +88,6 @@ describe('McpEventReviewDialogComponent', () => {
     expect(api.prepareReview).not.toHaveBeenCalled();
 
     component.select('description', true);
-    component.edit(component.fields()[1], true);
     component.changeValue('description', 'Editado');
     api.prepareReview.mockRejectedValueOnce(new Error('Validação do evento falhou.'));
     await component.prepare();

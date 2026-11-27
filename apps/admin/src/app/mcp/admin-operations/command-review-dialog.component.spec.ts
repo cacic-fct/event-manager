@@ -1,17 +1,18 @@
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import type { AdminMcpCommand } from '@cacic-fct/event-manager-mcp-contracts';
 import { CommandReviewDialogComponent } from './command-review-dialog.component';
 import { buildCommandArguments, type CommandArgument } from './command-arguments';
 import { sportsCommand } from './admin-operations.fixtures';
 
 describe('CommandReviewDialogComponent', () => {
-  function setup(overrides: Partial<CommandArgument> = {}) {
+  function setup(overrides: Partial<CommandArgument> = {}, targets?: AdminMcpCommand['targets']) {
     const command = sportsCommand();
     const field = { ...buildCommandArguments(command)[1], ...overrides };
     const close = vi.fn();
     TestBed.configureTestingModule({
       providers: [
-        { provide: MAT_DIALOG_DATA, useValue: { field, targets: command.targets } },
+        { provide: MAT_DIALOG_DATA, useValue: { field, targets: targets ?? command.targets } },
         { provide: MatDialogRef, useValue: { close } },
       ],
     });
@@ -30,25 +31,27 @@ describe('CommandReviewDialogComponent', () => {
     expect(close).toHaveBeenCalledWith({ value: 7 });
     expect(field.value).toBe(2);
   });
-  it('offers searchable named destinations and preserves selection across search queries', async () => {
-    const { component, fixture, close } = setup({
-      key: 'teamIds',
-      label: 'Equipes',
-      original: ['equipe-demo', 'other'],
-      value: ['equipe-demo', 'other'],
-    });
-    component.search.setValue('azul');
+  it.each(['eventIds', 'ids'])('allows searching and narrowing event destinations for %s', async (key) => {
+    const { component, fixture, close } = setup(
+      { key, label: 'Eventos', original: ['oficina', 'seminario'], value: ['oficina', 'seminario'] },
+      [
+        { kind: 'Event', id: 'oficina', label: 'Oficina de Ciência de Dados' },
+        { kind: 'Event', id: 'seminario', label: 'Seminário de Matemática' },
+      ],
+    );
+    expect(fixture.nativeElement.querySelector('textarea')).toBeNull();
+    component.search.setValue('ciencia');
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(component.filteredOptions()).toEqual(['equipe-demo']);
-    expect(fixture.nativeElement.textContent).toContain('Equipe Azul');
-    component.toggle('equipe-demo', false);
-    component.search.setValue('other');
+    expect(component.filteredOptions()).toEqual(['oficina']);
+    expect(fixture.nativeElement.textContent).toContain('Oficina de Ciência de Dados');
+    component.toggle('oficina', false);
+    component.search.setValue('matematica');
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(component.filteredOptions()).toEqual(['other']);
+    expect(component.filteredOptions()).toEqual(['seminario']);
     component.save();
-    expect(close).toHaveBeenCalledWith({ value: ['other'] });
+    expect(close).toHaveBeenCalledWith({ value: ['seminario'] });
   });
   it('uses a select for enumerated values and checkbox for boolean values', () => {
     const { component, fixture, close } = setup({ value: 'DRAFT', schema: { enum: ['DRAFT', 'PUBLISHED'] } });

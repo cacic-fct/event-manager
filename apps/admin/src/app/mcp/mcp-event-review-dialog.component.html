@@ -23,67 +23,76 @@
         </section>
       }
     } @else {
-      <h3 #stage tabindex="-1">Campos para aplicar</h3>
-      <p>Escolha os campos que deseja incluir e edite os valores se necessário.</p>
+      <p #stage tabindex="-1">
+        Ajuste os valores que deseja aplicar. Desmarque os campos que deseja excluir da proposta.
+      </p>
       @for (field of fields(); track field.field) {
-        <div class="field">
-          <div class="field-actions">
-            <mat-checkbox [checked]="field.selected" [disabled]="busy()" (change)="select(field.field, $event.checked)">
-              Incluir {{ field.label }}
+        <section class="field" [attr.aria-labelledby]="'review-' + field.field">
+          <div class="field-header">
+            <h3 [id]="'review-' + field.field">{{ field.label }}</h3>
+            <mat-checkbox
+              [checked]="field.selected"
+              [disabled]="busy()"
+              [aria-label]="'Incluir ' + field.label"
+              (change)="select(field.field, $event.checked)">
+              Incluir
             </mat-checkbox>
-            @if (field.selected) {
-              <button
-                mat-button
-                type="button"
-                [disabled]="busy()"
-                [attr.aria-label]="(field.editing ? 'Restaurar ' : 'Editar ') + field.label"
-                (click)="edit(field, !field.editing)">
-                {{ field.editing ? 'Restaurar' : 'Editar' }}
-              </button>
-            }
           </div>
-          @if (field.selected && field.editing) {
-            <mat-form-field subscriptSizing="dynamic">
-              <mat-label>{{ field.label }} para aplicar</mat-label>
-              @if (field.field === 'isVirtual') {
-                <mat-select
-                  [value]="field.input"
-                  [disabled]="busy()"
-                  (selectionChange)="changeValue(field.field, $event.value)">
-                  <mat-option value="true">Sim</mat-option>
-                  <mat-option value="false">Não</mat-option>
-                </mat-select>
-              } @else if (isLongText(field.field)) {
-                <textarea
-                  #valueInput
-                  matInput
-                  rows="3"
-                  [required]="isRequired(field.field)"
-                  [value]="field.input"
-                  [disabled]="busy()"
-                  (input)="changeValue(field.field, valueInput.value)"></textarea>
-              } @else {
-                <input
-                  #valueInput
-                  matInput
-                  [type]="isCoordinate(field.field) ? 'number' : 'text'"
-                  step="any"
-                  [required]="isRequired(field.field)"
-                  [value]="field.input"
-                  [disabled]="busy()"
-                  (input)="changeValue(field.field, valueInput.value, valueInput.validity.badInput)" />
+          <div class="field-values">
+            <div class="before">
+              <h4>Valor atual</h4>
+              <p>{{ field.before === undefined ? 'Valor indisponível.' : field.before || 'Sem valor.' }}</p>
+            </div>
+            <div class="draft">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>{{ field.label }} para aplicar</mat-label>
+                @if (field.field === 'isVirtual') {
+                  <mat-select
+                    [value]="field.input"
+                    [disabled]="busy() || !field.selected"
+                    (selectionChange)="changeValue(field.field, $event.value)">
+                    <mat-option value="true">Sim</mat-option>
+                    <mat-option value="false">Não</mat-option>
+                  </mat-select>
+                } @else if (field.field === 'name' || isLongText(field.field)) {
+                  <textarea
+                    #valueInput
+                    matInput
+                    cdkTextareaAutosize
+                    [cdkAutosizeMinRows]="field.field === 'name' ? 1 : 3"
+                    cdkAutosizeMaxRows="12"
+                    [required]="isRequired(field.field)"
+                    [value]="field.input"
+                    [disabled]="busy() || !field.selected"
+                    (input)="changeText(field.field, valueInput)"></textarea>
+                } @else {
+                  <input
+                    #valueInput
+                    matInput
+                    [type]="isCoordinate(field.field) ? 'number' : 'text'"
+                    step="any"
+                    [required]="isRequired(field.field)"
+                    [value]="field.input"
+                    [disabled]="busy() || !field.selected"
+                    (input)="changeValue(field.field, valueInput.value, valueInput.validity.badInput)" />
+                }
+                @if (!isRequired(field.field) && field.field !== 'isVirtual') {
+                  <mat-hint>Deixe em branco para limpar o campo.</mat-hint>
+                }
+              </mat-form-field>
+              @if (field.selected && isEdited(field)) {
+                <button mat-button type="button" [disabled]="busy()" (click)="restore(field)">
+                  Restaurar valor proposto
+                </button>
               }
-              @if (!isRequired(field.field) && field.field !== 'isVirtual') {
-                <mat-hint>Deixe em branco para limpar o campo.</mat-hint>
+              @if (field.field === 'isVirtual' && field.selected && field.input === 'true') {
+                <p class="supporting">
+                  Ao tornar o evento virtual, o local físico e as coordenadas serão limpos juntos.
+                </p>
               }
-            </mat-form-field>
-          } @else {
-            <p class="proposed-value">{{ proposedText(field.proposedValue) }}</p>
-          }
-          @if (field.field === 'isVirtual' && field.selected && field.input === 'true') {
-            <p class="supporting">Ao tornar o evento virtual, o local físico e as coordenadas serão limpos juntos.</p>
-          }
-        </div>
+            </div>
+          </div>
+        </section>
       }
       @if (!hasSelection()) {
         <p role="status">Selecione pelo menos um campo para continuar.</p>

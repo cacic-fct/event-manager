@@ -77,4 +77,4 @@ Mudanças de cargos/grupos e novas operações de domínio devem registrar ator,
 5. Teste acesso permitido, negação por escopo, validade, herança e ausência de vínculo de conta, conforme a mudança.
 6. Atualize avaliação de abas, mensagens e stories do painel.
 
-Para detalhes de implementação por agentes, consulte os [arquivos de autorização](../../apps/backend/src/app/authorization/AGENTS.md) e [do catálogo](../../libs/shared-permissions/AGENTS.md). Para operação humana, leia [Concessão de permissões](../docs-manual/07-Procedimentos/Cargos/Concessão%20de%20permissões.md).
+Para detalhes de implementação por agentes, consulte os [arquivos de autorização](https://github.com/cacic-fct/event-manager/blob/main/apps/backend/src/app/authorization/AGENTS.md) e [do catálogo](https://github.com/cacic-fct/event-manager/blob/main/libs/shared-permissions/AGENTS.md). Para operação humana, leia [Concessão de permissões](/Manual/Procedimentos/Cargos/Concess%C3%A3o%20de%20permiss%C3%B5es).
