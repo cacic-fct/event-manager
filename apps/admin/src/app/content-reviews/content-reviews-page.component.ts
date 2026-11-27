@@ -18,6 +18,8 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { auditTime, firstValueFrom, map } from 'rxjs';
 import { ConfirmationDialogComponent } from '../app-shell/dialogs/confirmation-dialog.component';
+import { ReviewTextComparisonComponent } from '../shared/review-queue/review-text-comparison.component';
+import { ReviewQueuePaginationComponent } from '../shared/review-queue/review-queue-pagination.component';
 import { RealtimeApiService } from '../graphql/realtime-api.service';
 import {
   ContentReviewsApi,
@@ -39,7 +41,16 @@ const FIELD_LABELS: Readonly<Record<string, string>> = {
 
 @Component({
   selector: 'app-content-reviews-page',
-  imports: [DatePipe, MatButtonModule, MatExpansionModule, MatProgressBarModule, NgTemplateOutlet, RouterLink],
+  imports: [
+    DatePipe,
+    MatButtonModule,
+    MatExpansionModule,
+    MatProgressBarModule,
+    NgTemplateOutlet,
+    RouterLink,
+    ReviewTextComparisonComponent,
+    ReviewQueuePaginationComponent,
+  ],
   templateUrl: './content-reviews-page.component.html',
   styleUrl: './content-reviews-page.component.scss',
 })

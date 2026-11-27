@@ -494,6 +494,8 @@ export class AuditLogService {
     return (
       !isPublicationLifecycleEntry(entry) &&
       !isBatchAuditEntry(entry.metadata) &&
+      !isMcpAuditMetadata(entry.metadata) &&
+      !isMcpAuditMetadata(options.metadata) &&
       !legacyEventLocationBefore(entry) &&
       entry.operation === options.operation &&
       (entry.actorId ?? null) === (actor.id ?? null) &&
@@ -854,6 +856,10 @@ export class AuditLogService {
 
 function isPublicationLifecycleMetadata(metadata: Record<string, unknown> | undefined): boolean {
   return metadata?.category === AuditLogMetadataCategory.PUBLICATION_LIFECYCLE;
+}
+
+function isMcpAuditMetadata(metadata: unknown): boolean {
+  return typeof metadata === 'object' && metadata !== null && 'source' in metadata && metadata.source === 'mcp';
 }
 
 function isPublicationLifecycleEntry(entry: PrismaAuditLogEntry): boolean {

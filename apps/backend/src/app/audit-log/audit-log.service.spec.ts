@@ -194,6 +194,56 @@ describe('AuditLogService', () => {
     expect(prisma.auditLogEntry.create).toHaveBeenCalled();
   });
 
+  it.each([
+    ['MCP then manual', true, false],
+    ['manual then MCP', false, true],
+    ['separate MCP approvals', true, true],
+  ])(
+    'keeps %s audit entries distinct despite an otherwise compatible squash context',
+    async (_name, previousMcp, incomingMcp) => {
+      const previousMetadata = previousMcp ? { source: 'mcp', proposalId: 'proposal-original' } : null;
+      const incomingMetadata = incomingMcp ? { source: 'mcp', proposalId: 'proposal-new' } : undefined;
+      prisma.auditLogEntry.findFirst.mockResolvedValue(
+        createAuditEntry({
+          entityType: AuditLogEntityType.EVENT,
+          entityId: 'event-1',
+          operation: AuditLogOperation.UPDATE,
+          actorId: 'admin-1',
+          actorName: 'Admin',
+          permission: Permission.Event.Update,
+          eventId: 'event-1',
+          lastRecordedAt: new Date(),
+          before: { description: 'Descrição anterior' },
+          after: { description: 'Primeira revisão' },
+          changedFields: ['description'],
+          metadata: previousMetadata,
+        }),
+      );
+
+      // Deliberately use the normal squash window to protect both sides of the boundary.
+      await service.record({
+        entityType: AuditLogEntityType.EVENT,
+        entityId: 'event-1',
+        operation: AuditLogOperation.UPDATE,
+        actor: { id: 'admin-1', name: 'Admin', type: AuditLogActorType.USER },
+        before: { description: 'Primeira revisão' },
+        after: { description: 'Segunda revisão' },
+        scope: { permission: Permission.Event.Update, eventId: 'event-1' },
+        metadata: incomingMetadata,
+      });
+
+      expect(prisma.auditLogEntry.findFirst).toHaveBeenCalled();
+      expect(prisma.auditLogEntry.update).not.toHaveBeenCalled();
+      expect(prisma.auditLogEntry.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          before: { description: 'Primeira revisão' },
+          after: { description: 'Segunda revisão' },
+          ...(incomingMcp ? { metadata: incomingMetadata } : {}),
+        }),
+      });
+    },
+  );
+
   it('keeps structured location edits separate from legacy combined snapshots', async () => {
     prisma.auditLogEntry.findFirst.mockResolvedValue(
       createAuditEntry({

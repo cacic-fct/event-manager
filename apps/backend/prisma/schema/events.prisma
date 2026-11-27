@@ -19,6 +19,8 @@ enum PublicationPreviewTargetType {
 
 model Event {
   contentReview ContentReview?
+  mcpProposals McpAdminProposal[]
+  mcpContentSync McpEventContentSync?
   audience            EventAudience             @default(PUBLIC)
   audienceCourseCodes String[]                  @default([])
   audienceInvitations EventAudienceInvitation[]

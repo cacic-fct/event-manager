@@ -22,6 +22,10 @@ export class RealtimeApiService {
     );
   }
 
+  watchMcpReviews(): Observable<void> {
+    return this.watch('/api/realtime/admin/mcp/events', 'Não foi possível acompanhar as propostas MCP.', true);
+  }
+
   watchEventTickets(eventId: string): Observable<void> {
     return this.watch(
       `/api/realtime/admin/events/${encodeURIComponent(eventId)}/tickets/events`,

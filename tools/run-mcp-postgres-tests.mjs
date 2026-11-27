@@ -1,0 +1,162 @@
+import { spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import { Client } from 'pg';
+
+const workspace = fileURLToPath(new URL('..', import.meta.url));
+const containerName = `fct-mcp-postgres-${randomUUID()}`;
+const toolEnv = { ...process.env };
+for (const key of ['PGPASSWORD', 'PGSERVICE', 'PGDATABASE', 'PGHOST', 'PGHOSTADDR', 'PGPORT', 'PGUSER', 'PGOPTIONS']) {
+  delete toolEnv[key];
+}
+let activeChild;
+let interrupted = false;
+let containerAttempted = false;
+let containerStarted = false;
+let exitCode = 1;
+
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, () => {
+    interrupted = true;
+    activeChild?.kill(signal);
+  });
+}
+
+function run(executable, args, options = {}) {
+  if (interrupted && !options.cleanup) throw new Error('MCP PostgreSQL checks were interrupted.');
+  return new Promise((resolve, reject) => {
+    const child = spawn(executable, args, {
+      cwd: workspace,
+      stdio: options.inherit ? 'inherit' : ['ignore', 'pipe', 'pipe'],
+      env: options.env ?? toolEnv,
+    });
+    activeChild = child;
+    let output = '';
+    if (!options.inherit) {
+      child.stdout.on('data', (chunk) => {
+        output = (output + chunk.toString()).slice(-4096);
+      });
+      if (options.captureStderr)
+        child.stderr.on('data', (chunk) => {
+          output = (output + chunk.toString()).slice(-4096);
+        });
+      else child.stderr.resume();
+    }
+    child.once('error', () => reject(new Error(`Unable to start ${options.label ?? 'Docker step'}.`)));
+    child.once('exit', (code, signal) => {
+      if (activeChild === child) activeChild = undefined;
+      if (code === 0) resolve(output.trim());
+      else reject(new Error(`${options.label ?? 'Docker step'} failed (${signal ?? code ?? 'unknown'}).`));
+    });
+  });
+}
+
+async function waitForPostgres(port) {
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline && !interrupted) {
+    const client = new Client({
+      host: '127.0.0.1',
+      port,
+      user: 'fct_mcp_admin',
+      database: 'fct_mcp_test',
+      connectionTimeoutMillis: 1000,
+    });
+    try {
+      await client.connect();
+      await client.query('SELECT 1');
+      return;
+    } catch {
+      const running = await run('docker', ['inspect', '--format', '{{.State.Running}}', containerName], {
+        label: 'Checking the disposable container',
+      });
+      if (running !== 'true') throw new Error('The disposable PostgreSQL container exited during initialization.');
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    } finally {
+      await client.end();
+    }
+  }
+  throw new Error('The disposable PostgreSQL container did not become ready.');
+}
+
+try {
+  containerAttempted = true;
+  await run(
+    'docker',
+    [
+      'run',
+      '--detach',
+      '--name',
+      containerName,
+      '--publish',
+      '127.0.0.1::5432',
+      // The entrypoint drops privileges; the parent must remain traversable.
+      // PostgreSQL creates its actual data directory with private permissions.
+      '--tmpfs',
+      '/var/lib/postgresql:rw,mode=0755',
+      '--env',
+      'POSTGRES_USER=fct_mcp_admin',
+      '--env',
+      'POSTGRES_DB=fct_mcp_test',
+      '--env',
+      'POSTGRES_HOST_AUTH_METHOD=trust',
+      'postgres:18-alpine',
+    ],
+    { label: 'Starting the disposable PostgreSQL container' },
+  );
+  containerStarted = true;
+  const published = await run('docker', ['port', containerName, '5432/tcp'], {
+    label: 'Reading the isolated test port',
+  });
+  const match = /^127\.0\.0\.1:(\d+)$/.exec(published);
+  if (!match) throw new Error('The test database must be published only on a random loopback port.');
+  const port = Number(match[1]);
+  await waitForPostgres(port);
+  const databaseUrl = `postgresql://fct_mcp_admin@127.0.0.1:${port}/fct_mcp_test`;
+  await run(
+    process.execPath,
+    [
+      '--experimental-vm-modules',
+      'node_modules/jest/bin/jest.js',
+      '--config=apps/backend/jest.mcp.postgres.config.mts',
+      '--runInBand',
+      '--passWithNoTests=false',
+      ...process.argv.slice(2),
+    ],
+    {
+      label: 'MCP PostgreSQL integration tests',
+      inherit: true,
+      env: {
+        ...toolEnv,
+        DATABASE_URL: databaseUrl,
+        MCP_POSTGRES_TEST_DATABASE_URL: databaseUrl,
+        MCP_POSTGRES_ISOLATED_CLUSTER: '1',
+      },
+    },
+  );
+  exitCode = 0;
+} catch (error) {
+  console.error(error instanceof Error ? error.message : 'MCP PostgreSQL integration setup failed.');
+  if (containerStarted) {
+    const diagnostics = await run('docker', ['logs', '--tail', '12', containerName], {
+      captureStderr: true,
+      cleanup: true,
+    }).catch(() => '');
+    if (diagnostics) console.error(diagnostics);
+  }
+} finally {
+  if (containerAttempted) {
+    try {
+      // The name is generated by this process; no existing container or volume is selected.
+      await run('docker', ['rm', '--force', '--volumes', containerName], {
+        label: 'Removing the disposable PostgreSQL container',
+        cleanup: true,
+      });
+    } catch {
+      if (containerStarted) {
+        console.error(`Unable to remove the owned disposable container ${containerName}; remove it manually.`);
+        exitCode = 1;
+      }
+    }
+  }
+}
+process.exitCode = exitCode;

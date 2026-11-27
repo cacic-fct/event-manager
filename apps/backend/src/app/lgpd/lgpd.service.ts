@@ -18,6 +18,9 @@ import { findReceiptObjectKeys } from './lgpd-receipts';
 import { LgpdStorageCleanupService } from './lgpd-storage-cleanup.service';
 import { suppressErasedImportPeople } from './lgpd-import-suppression';
 import {
+  LGPD_MCP_ADMIN_DELEGATION_SELECT,
+  LGPD_MCP_ADMIN_PROPOSAL_SELECT,
+  LGPD_MCP_ADMIN_OPERATION_LOG_SELECT,
   LGPD_ACCOUNT_USER_MERGE_SELECT,
   LGPD_ACCOUNT_USER_SELECT,
   LGPD_CERTIFICATE_SELECT,
@@ -58,6 +61,9 @@ export class LgpdService {
 
     const userWhere = { OR: [{ oldUserId: { in: userIds } }, { newUserId: { in: userIds } }] };
     const [
+      mcpDelegations,
+      mcpProposals,
+      mcpOperationLogs,
       lecturerProfiles,
       accountUsers,
       accountUserMerges,
@@ -78,6 +84,21 @@ export class LgpdService {
       prizeDrawSpinEntriesForExport,
       prizeDrawWinsForExport,
     ] = await Promise.all([
+      this.prisma.mcpAdminDelegation.findMany({
+        where: { userId: { in: userIds } },
+        select: LGPD_MCP_ADMIN_DELEGATION_SELECT,
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.mcpAdminProposal.findMany({
+        where: { delegation: { userId: { in: userIds } } },
+        select: LGPD_MCP_ADMIN_PROPOSAL_SELECT,
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.mcpAdminOperationLog.findMany({
+        where: { userId: { in: userIds } },
+        select: LGPD_MCP_ADMIN_OPERATION_LOG_SELECT,
+        orderBy: { createdAt: 'asc' },
+      }),
       personIds.length > 0
         ? this.prisma.lecturerProfile.findMany({
             where: { personId: { in: personIds } },
@@ -211,6 +232,11 @@ export class LgpdService {
 
     return {
       metadata: this.metadata(input, dataSubject),
+      mcp: {
+        delegations: selectManyForExport(mcpDelegations, LGPD_MCP_ADMIN_DELEGATION_SELECT),
+        proposals: selectManyForExport(mcpProposals, LGPD_MCP_ADMIN_PROPOSAL_SELECT),
+        operationLogs: selectManyForExport(mcpOperationLogs, LGPD_MCP_ADMIN_OPERATION_LOG_SELECT),
+      },
       ticketing: await collectTicketingData(this.prisma, personIds, userIds),
       accountUsers: { records: selectManyForExport(accountUsers, LGPD_ACCOUNT_USER_SELECT) },
       people: { records: people.map((person) => mapPersonForExport(person)) },
@@ -248,6 +274,13 @@ export class LgpdService {
     };
   }
 
+  private async deleteMcpData(tx: Prisma.TransactionClient, userIds: string[]): Promise<number> {
+    const operationLogs = await tx.mcpAdminOperationLog.deleteMany({ where: { userId: { in: userIds } } });
+    // Delegation deletion also removes proposals through their cascading foreign key.
+    const delegations = await tx.mcpAdminDelegation.deleteMany({ where: { userId: { in: userIds } } });
+    return operationLogs.count + delegations.count;
+  }
+
   async scheduleDeletion(input: { userId: string; email?: string; requestId: string }) {
     const dataSubject = await resolveDataSubject(this.prisma, input);
     const { personIds, userIds } = dataSubject;
@@ -257,6 +290,7 @@ export class LgpdService {
 
     const now = new Date();
     const result = await this.prisma.$transaction(async (tx) => {
+      const mcpRecordsDeleted = await this.deleteMcpData(tx, userIds);
       const people = await tx.people.updateMany({
         where: { id: { in: personIds }, deletedAt: null },
         data: { deletedAt: now, lgpdDeletionRequestId: input.requestId, updatedById: input.userId },
@@ -291,6 +325,7 @@ export class LgpdService {
       return {
         people,
         recordsUpdated:
+          mcpRecordsDeleted +
           eventSubscriptions.count +
           eventInterests.count +
           eventGroupSubscriptions.count +
@@ -393,6 +428,11 @@ export class LgpdService {
       );
       const eventDrafts = await anonymizeEventDrafts(tx, dataSubject, anonymizedSubjectId);
       await anonymizeTicketingData(tx, personIds, userIds);
+      await tx.mcpAdminProposal.updateMany({
+        where: { approvedById: { in: userIds } },
+        data: { approvedById: null, approvedByName: null },
+      });
+      const mcpRecordsDeleted = await this.deleteMcpData(tx, userIds);
       const certificates = await tx.certificate.deleteMany({ where: { personId: { in: personIds } } });
       const selections = await tx.majorEventSubscriptionEventSelection.deleteMany({
         where: { subscription: { personId: { in: personIds } } },
@@ -516,6 +556,7 @@ export class LgpdService {
         peopleDeleted: people.count,
         usersDeleted: users.count,
         recordsDeleted:
+          mcpRecordsDeleted +
           certificates.count +
           selections.count +
           receiptValidationActions.count +

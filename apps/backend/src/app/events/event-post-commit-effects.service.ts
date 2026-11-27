@@ -124,6 +124,17 @@ export class EventPostCommitEffectsService {
     await this.syncEvents([eventId]);
   }
 
+  /** Text-only changes refresh public projections without scheduling notifications. */
+  async syncEventContent(eventId: string): Promise<void> {
+    await this.runAsSystem(async () => {
+      const event = await this.prisma.event.findUnique({ where: { id: eventId }, select: EVENT_EFFECTS_SELECT });
+      if (!event || event.deletedAt) await this.typesenseSearch.deleteEvent(eventId, true);
+      else await this.upsertEventSearchDocument(event, true);
+      await this.sitemap.refresh();
+    });
+    await this.publishInvalidations('event');
+  }
+
   async syncEvents(eventIds: readonly string[], options: PostCommitSyncOptions = {}): Promise<void> {
     const uniqueIds = [...new Set(eventIds.filter(Boolean))];
     if (uniqueIds.length === 0) {

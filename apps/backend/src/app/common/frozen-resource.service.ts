@@ -62,10 +62,15 @@ export class FrozenResourceService {
       throw new NotFoundException(`Event ${eventId} was not found.`);
     }
 
-    if (await this.canBypass(user, operation, { eventId })) {
-      return;
-    }
+    await this.assertLoadedEventMutable({ id: eventId, ...event }, user, operation);
+  }
 
+  async assertLoadedEventMutable(
+    event: { id: string; createdAt: Date; endDate: Date },
+    user: AuthenticatedUser | undefined,
+    operation: FrozenOperation,
+  ): Promise<void> {
+    if (await this.canBypass(user, operation, { eventId: event.id })) return;
     this.assertDatesMutable([event.createdAt, event.endDate], operation);
   }
 

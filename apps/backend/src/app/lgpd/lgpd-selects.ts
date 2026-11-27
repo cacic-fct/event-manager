@@ -200,3 +200,40 @@ export const LGPD_LECTURER_PROFILE_SELECT = {
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.LecturerProfileSelect;
+
+export const LGPD_MCP_ADMIN_DELEGATION_SELECT = {
+  id: true,
+  userId: true,
+  clientId: true,
+  resource: true,
+  eventIds: true,
+  capabilities: true,
+  maxProposals: true,
+  createdAt: true,
+  expiresAt: true,
+  revokedAt: true,
+} satisfies Prisma.McpAdminDelegationSelect;
+
+export const LGPD_MCP_ADMIN_PROPOSAL_SELECT = {
+  id: true,
+  delegationId: true,
+  eventId: true,
+  state: true,
+  createdAt: true,
+  expiresAt: true,
+  decidedAt: true,
+  approvedById: true,
+  approvedByName: true,
+} satisfies Prisma.McpAdminProposalSelect;
+
+export const LGPD_MCP_ADMIN_OPERATION_LOG_SELECT = {
+  id: true,
+  userId: true,
+  clientId: true,
+  delegationId: true,
+  tool: true,
+  eventId: true,
+  proposalId: true,
+  outcome: true,
+  createdAt: true,
+} satisfies Prisma.McpAdminOperationLogSelect;

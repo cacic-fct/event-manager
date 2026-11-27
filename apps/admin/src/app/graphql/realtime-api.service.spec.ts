@@ -44,6 +44,34 @@ describe('RealtimeApiService', () => {
     }
   });
 
+  it('refreshes the MCP queue on connection and replays invalidations through one authenticated source', () => {
+    const restoreEventSource = installFakeEventSource();
+    try {
+      const service = TestBed.inject(RealtimeApiService);
+      const invalidation = vi.fn();
+      const subscription = service.watchMcpReviews().subscribe(invalidation);
+      const source = FakeEventSource.instances[0] as FakeEventSource & Pick<EventSource, 'onopen'>;
+      expect(source.url).toBe('/api/realtime/admin/mcp/events');
+      expect(source.init).toEqual({ withCredentials: true });
+      source.onopen?.call(source as unknown as EventSource, new Event('open'));
+      expect(invalidation).toHaveBeenCalledTimes(1);
+      source.emitMessage({ type: 'heartbeat' });
+      source.emitMessage({ type: 'MCP_QUEUE_INVALIDATED' });
+      expect(invalidation).toHaveBeenCalledTimes(2);
+      source.readyState = 0;
+      source.emitError();
+      expect(FakeEventSource.instances).toHaveLength(1);
+      source.onopen?.call(source as unknown as EventSource, new Event('open'));
+      source.emitMessage({ type: 'MCP_QUEUE_INVALIDATED' });
+      expect(invalidation).toHaveBeenCalledTimes(4);
+      expect(authService.refreshMe).not.toHaveBeenCalled();
+      subscription.unsubscribe();
+      expect(source.close).toHaveBeenCalledOnce();
+    } finally {
+      restoreEventSource();
+    }
+  });
+
   it('encodes event and major-event subscription scopes in their SSE URLs', () => {
     const restoreEventSource = installFakeEventSource();
     try {

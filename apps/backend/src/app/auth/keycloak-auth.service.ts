@@ -108,6 +108,43 @@ export class KeycloakAuthService {
     return principal;
   }
 
+  /** MCP has its own admission policy and never synchronizes identity records. */
+  async authenticateMcpAccessToken(
+    accessToken: string,
+    options: { audience: string; allowedClients: readonly string[] },
+  ): Promise<AuthenticatedUser> {
+    const claims = await this.verifyJwtClaims(accessToken);
+    const clientId = readStringClaim(claims, 'azp');
+    const now = Math.floor(Date.now() / 1000);
+    const issuedAt = readNumberClaim(claims, 'iat');
+    const expiresAt = readNumberClaim(claims, 'exp');
+    if (
+      !clientId ||
+      !options.allowedClients.includes(clientId) ||
+      !this.hasAudience(claims['aud'], options.audience) ||
+      claims['typ'] !== 'Bearer' ||
+      !readStringClaim(claims, 'sub') ||
+      !readStringClaim(claims, 'sid') ||
+      !issuedAt ||
+      !expiresAt ||
+      expiresAt <= now ||
+      expiresAt <= issuedAt ||
+      expiresAt - issuedAt > 300
+    ) {
+      throw new UnauthorizedException('Invalid MCP access token.');
+    }
+    const principal = this.createPrincipal(accessToken, claims);
+    if (this.isServiceAccountPrincipal(principal)) {
+      throw new UnauthorizedException('MCP requires a human session.');
+    }
+    principal.authenticationTransport = 'mcp';
+    return principal;
+  }
+
+  getIssuerUrl(): string {
+    return this.realmUrl;
+  }
+
   assertClientRoles(principal: AuthenticatedUser | undefined, requiredRoles: readonly string[]): void {
     if (!principal) {
       throw new UnauthorizedException('Missing authenticated principal.');
@@ -551,6 +588,22 @@ export class KeycloakAuthService {
 
     const mergedClaims = await this.verifyAccessTokenClaims(accessToken);
 
+    const principal = this.createPrincipal(accessToken, mergedClaims);
+    this.assertAccessTokenClientAllowed(principal);
+
+    const expSeconds = readNumberClaim(mergedClaims, 'exp');
+    const expBasedCache = expSeconds ? expSeconds * 1000 : now + this.cacheTtlMs;
+
+    this.userCache.set(accessToken, {
+      user: principal,
+      expiresAt: Math.min(expBasedCache, now + this.cacheTtlMs),
+    });
+    this.evictOverflowingUserCache();
+
+    return principal;
+  }
+
+  private createPrincipal(accessToken: string, mergedClaims: TokenClaims): AuthenticatedUser {
     const roles = extractRoles(this.clientId, mergedClaims);
     const roleSet = new Set(roles);
     const oidcScopes = extractOidcScopes(mergedClaims);
@@ -574,17 +627,6 @@ export class KeycloakAuthService {
       scopeSet: oidcScopeSet,
       claims: mergedClaims,
     };
-    this.assertAccessTokenClientAllowed(principal);
-
-    const expSeconds = readNumberClaim(mergedClaims, 'exp');
-    const expBasedCache = expSeconds ? expSeconds * 1000 : now + this.cacheTtlMs;
-
-    this.userCache.set(accessToken, {
-      user: principal,
-      expiresAt: Math.min(expBasedCache, now + this.cacheTtlMs),
-    });
-    this.evictOverflowingUserCache();
-
     return principal;
   }
 
@@ -1160,6 +1202,9 @@ export class KeycloakAuthService {
   }
 
   private assertAccessTokenClientAllowed(principal: AuthenticatedUser): void {
+    if (principal.oidcScopes.some((scope) => scope.startsWith('mcp:'))) {
+      throw new UnauthorizedException('MCP credentials cannot authenticate to the application API.');
+    }
     if (this.isServiceAccountPrincipal(principal)) {
       return;
     }

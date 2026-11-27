@@ -1,4 +1,4 @@
-import { Logger, type INestApplication } from '@nestjs/common';
+import { Logger, RequestMethod, type INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
@@ -11,6 +11,8 @@ import { KeycloakAuthService } from '../auth/keycloak-auth.service';
 import { AppModule } from '../app.module';
 import { requestContextMiddleware } from './request-context';
 import { RequestContextLogger } from './request-context-logger';
+import { McpAdminConfig, MCP_ADMIN_METADATA_PATH } from '../mcp/mcp-admin.config';
+import { mcpAdminHttpMiddleware } from '../mcp/mcp-admin-http.middleware';
 
 const globalPrefix = 'api';
 
@@ -51,6 +53,7 @@ export function configureBackendHttpApp(app: INestApplication): void {
   });
   app.use(cookieParser());
   app.use(requestContextMiddleware);
+  app.use(mcpAdminHttpMiddleware(app.get(McpAdminConfig)));
   // Allow bounded larger bodies only for imports and certificate ID selections.
   // Capture raw JSON bodies for signed integrations as Nest's default parser does.
   const captureRawBody = (request: IncomingMessage, _response: ServerResponse, buffer: Buffer) => {
@@ -101,7 +104,7 @@ export function configureBackendHttpApp(app: INestApplication): void {
     }
     next();
   });
-  app.setGlobalPrefix(globalPrefix);
+  app.setGlobalPrefix(globalPrefix, { exclude: [{ path: MCP_ADMIN_METADATA_PATH, method: RequestMethod.GET }] });
   app.use(
     createDocsAuthGate({
       keycloakAuthService: app.get(KeycloakAuthService),

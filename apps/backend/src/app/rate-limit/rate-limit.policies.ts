@@ -12,6 +12,22 @@ export interface RateLimitPolicy {
 const minute = 60_000;
 
 export const RATE_LIMIT_POLICIES = {
+  mcpAuthenticate: {
+    name: 'mcp-authenticate',
+    windowMs: minute,
+    freeAttempts: 120,
+    baseCooldownMs: minute,
+    maxCooldownMs: minute,
+    maxAttempts: 120,
+  },
+  mcpOperations: {
+    name: 'mcp-operations',
+    windowMs: minute,
+    freeAttempts: 60,
+    baseCooldownMs: minute,
+    maxCooldownMs: minute,
+    maxAttempts: 60,
+  },
   authPasswordLogin: {
     name: 'auth-password-login',
     windowMs: 15 * minute,

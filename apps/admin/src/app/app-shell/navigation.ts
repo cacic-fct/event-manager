@@ -216,6 +216,17 @@ export const navigationItems = [
   },
   {
     kind: 'link',
+    id: 'mcp',
+    path: 'mcp',
+    label: 'Aplicativos e propostas MCP',
+    description: 'Autorize aplicativos e revise propostas de descrição dos seus eventos.',
+    icon: 'extension',
+    group: 'Administração',
+    helpLink: undefined,
+    hideWithoutReadAccess: true,
+  },
+  {
+    kind: 'link',
     id: 'notifications',
     path: 'notifications',
     label: 'Notificações',

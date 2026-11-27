@@ -1,4 +1,5 @@
 export interface AuthenticatedUser {
+  authenticationTransport?: 'mcp';
   realm_access: {
     roles: string[];
   };

@@ -68,6 +68,43 @@ describe('EventPostCommitEffectsService', () => {
     expect(realtime.publish.mock.calls[1]?.[1]).not.toHaveProperty('domain');
   });
 
+  it('refreshes text projections and both catalog and workspace streams without scheduling notifications', async () => {
+    const event = { ...eventRecord({ description: 'Descrição revisada' }), deletedAt: null };
+    const prisma = { event: { findUnique: jest.fn().mockResolvedValue(event) } };
+    const typesense = { upsertEvent: jest.fn().mockResolvedValue(undefined) };
+    const sitemap = { refresh: jest.fn().mockResolvedValue([]) };
+    const notifications = { scheduleEvent: jest.fn() };
+    const realtime = {
+      scope: (channel: string) => channel,
+      publish: jest.fn().mockResolvedValue({}),
+    };
+    const service = new EventPostCommitEffectsService(
+      prisma as never,
+      typesense as never,
+      sitemap as never,
+      notifications as never,
+      realtime as never,
+    );
+
+    await service.syncEventContent(event.id);
+
+    expect(typesense.upsertEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ description: event.description }),
+      true,
+    );
+    expect(sitemap.refresh).toHaveBeenCalledTimes(1);
+    expect(notifications.scheduleEvent).not.toHaveBeenCalled();
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'admin-workspace',
+      expect.objectContaining({ type: 'CATALOG_INVALIDATED' }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'public-catalog-v2',
+      expect.objectContaining({ type: 'PUBLIC_CATALOG_INVALIDATED' }),
+    );
+    expect(JSON.stringify(realtime.publish.mock.calls)).not.toContain(event.description);
+  });
+
   it('still publishes an invalidation when a committed event side effect fails', async () => {
     const failure = new Error('Typesense indisponível.');
     const realtime = {

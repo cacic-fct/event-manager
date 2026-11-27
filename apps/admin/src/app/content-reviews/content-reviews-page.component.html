@@ -58,16 +58,7 @@
                 @if (item.fields.length > 1) {
                   <h4>{{ fieldLabel(field.key) }}</h4>
                 }
-                <dl class="comparison">
-                  <div>
-                    <dt>Antes</dt>
-                    <dd>{{ field.before ?? 'Sem valor' }}</dd>
-                  </div>
-                  <div>
-                    <dt>Publicado</dt>
-                    <dd>{{ field.after ?? 'Sem valor' }}</dd>
-                  </div>
-                </dl>
+                <app-review-text-comparison [before]="field.before" [after]="field.after" afterLabel="Publicado" />
               }
               @if (!group.isProfile) {
                 <dl class="comparison">
@@ -136,21 +127,11 @@
         </mat-expansion-panel>
       }
     </mat-accordion>
-    @if (page() || result().hasNextPage) {
-      <nav class="actions" aria-label="Páginas da fila de revisão">
-        <button mat-button type="button" [disabled]="!page() || loading() || busy()" (click)="load(page() - 1)">
-          Anterior
-        </button>
-        <span>Página {{ page() + 1 }}</span>
-        <button
-          mat-button
-          type="button"
-          [disabled]="!result().hasNextPage || loading() || busy()"
-          (click)="load(page() + 1)">
-          Próxima
-        </button>
-      </nav>
-    }
+    <app-review-queue-pagination
+      [page]="page()"
+      [hasNextPage]="result().hasNextPage"
+      [disabled]="loading() || busy()"
+      (pageChange)="load($event)" />
   } @else if (!loading()) {
     <p>{{ reviewId() ? 'Esta revisão não está mais disponível.' : 'Nenhuma alteração aguarda revisão.' }}</p>
   }
