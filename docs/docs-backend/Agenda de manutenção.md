@@ -12,3 +12,5 @@ Os trabalhos com horário fixo do backend usam o fuso `America/Sao_Paulo`.
 | 00:05 | Backend | Procura eventos próximos e agenda a atualização da previsão do tempo |
 
 A tabela indica horários de início. Trabalhos atrasados por indisponibilidade ou fila podem executar depois do horário previsto. Rotinas que atendem prazos de eventos, reconciliam filas ou verificam pendências ao iniciar o backend seguem seus próprios intervalos.
+
+A fila `mcp-admin-maintenance` recupera projeções de descrições aprovadas e remove registros operacionais/delegações MCP vencidos há 90 dias, em lotes limitados a cada minuto. Consulte [MCP administrativo](MCP%20administrativo.md).

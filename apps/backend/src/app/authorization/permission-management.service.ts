@@ -130,6 +130,10 @@ export class PermissionManagementService {
 
   async listRoles(includeArchived = false): Promise<PermissionRole[]> {
     await this.archiveExpiredAccess();
+    return this.readRoles(includeArchived);
+  }
+
+  async readRoles(includeArchived = false): Promise<PermissionRole[]> {
     const records = await this.prisma.eventManagerRole.findMany({
       where: includeArchived ? {} : { archivedAt: null },
       select: roleSelect,
@@ -140,6 +144,10 @@ export class PermissionManagementService {
 
   async listGroups(includeArchived = false): Promise<PermissionGroup[]> {
     await this.archiveExpiredAccess();
+    return this.readGroups(includeArchived);
+  }
+
+  async readGroups(includeArchived = false): Promise<PermissionGroup[]> {
     const groups = await this.prisma.eventManagerPermissionGroup.findMany({
       where: includeArchived ? {} : { archivedAt: null },
       select: groupSelect,
@@ -372,7 +380,7 @@ export class PermissionManagementService {
       return saved.id;
     });
 
-    const roles = await this.listRoles();
+    const roles = await this.readRoles();
     const savedRole = roles.find((role) => role.id === savedId);
     if (!savedRole) {
       throw new NotFoundException('Cargo salvo não foi encontrado.');
@@ -468,7 +476,7 @@ export class PermissionManagementService {
       );
     });
 
-    const group = (await this.listGroups()).find((item) => item.id === groupId);
+    const group = (await this.readGroups()).find((item) => item.id === groupId);
     if (!group) {
       throw new NotFoundException('Grupo salvo não foi encontrado.');
     }

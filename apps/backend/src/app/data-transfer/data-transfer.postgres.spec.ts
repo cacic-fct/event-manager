@@ -7,6 +7,7 @@ import type {
   TransferPersonDecision,
   TransferResult,
 } from '@cacic-fct/shared-data-transfer';
+import { observeTicketDeletions } from './testing/observe-ticket-deletions';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   createPostgresTransferFixture,
@@ -500,18 +501,8 @@ describe('JSON imports with real Prisma, PostgreSQL constraints and overlapping 
       },
     });
     const deletedIds: string[] = [];
-    const instrumented = prisma.$extends({
-      query: {
-        eventTicket: {
-          deleteMany: async ({ args, query }) => {
-            const deleted = await query(args);
-            if (deleted.count > 0 && typeof args.where?.id === 'string') deletedIds.push(args.where.id);
-            return deleted;
-          },
-        },
-      },
-    });
-    const undoRuntime = createPostgresTransferRuntime(instrumented as unknown as PrismaService);
+    const instrumented = observeTicketDeletions(prisma, (id) => deletedIds.push(id));
+    const undoRuntime = createPostgresTransferRuntime(instrumented);
     const before = await f.state();
     await expect(undoRuntime.transfer.undo(result.batchId ?? '', f.actor)).rejects.toThrow(ConflictException);
     expect(deletedIds).toEqual([second.resources[0].id]);

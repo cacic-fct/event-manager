@@ -1,3 +1,4 @@
+import { mcpJobAttribution, readMcpAttribution } from '../audit-log/mcp-job-attribution';
 import { InjectQueue } from '@nestjs/bullmq';
 import {
   BadRequestException,
@@ -189,6 +190,30 @@ export class CertificateIssuanceJobsService implements OnModuleInit {
       const run = await this.prisma.certificateIssuanceRun.findUnique({ where: { id: runId } });
       if (!run || !ACTIVE_STATUSES.some((status) => status === run.status) || run.scheduledAt.getTime() > Date.now())
         return;
+      // Recover from the durable request audit, including Redis reconstruction.
+      // Attribution carries no principal or execution capability into the worker.
+      const origin = run.automatic
+        ? null
+        : await this.prisma.auditLogEntry.findFirst({
+            where: {
+              entityType: 'CERTIFICATE_CONFIG',
+              entityId: run.configId,
+              AND: [
+                { metadata: { path: ['runId'], equals: runId } },
+                { metadata: { path: ['source'], equals: 'mcp' } },
+              ],
+            },
+            select: { metadata: true },
+            orderBy: { createdAt: 'asc' },
+          });
+      const attribution = readMcpAttribution(origin?.metadata);
+      return mcpJobAttribution.run(attribution ?? {}, () => this.processRun(run, finalAttempt));
+    });
+  }
+
+  private async processRun(run: CertificateIssuanceRun, finalAttempt: boolean): Promise<void> {
+    const runId = run.id;
+    return this.withSystemAudience(async () => {
       const startedAt = run.startedAt ?? new Date();
       const claimed = await this.prisma.$transaction(async (tx) => {
         const result = await tx.certificateIssuanceRun.updateMany({

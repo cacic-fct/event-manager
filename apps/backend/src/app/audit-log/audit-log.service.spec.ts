@@ -1,3 +1,4 @@
+import { mcpJobAttribution } from './mcp-job-attribution';
 import { EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
 import { AuditLogActorType, AuditLogEntityType, AuditLogOperation, AuditLogRevertMode, Prisma } from '@prisma/client';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
@@ -38,6 +39,27 @@ describe('AuditLogService', () => {
       frozenResources as never,
       ticketIssuance as never,
     );
+  });
+
+  it('preserves approved MCP attribution on background job audit records', async () => {
+    await mcpJobAttribution.run(
+      { source: 'mcp', proposalId: 'p', approvedById: 'admin', approvedByName: 'Admin' },
+      () =>
+        service.record({
+          entityType: AuditLogEntityType.CERTIFICATE_CONFIG,
+          entityId: 'config',
+          operation: AuditLogOperation.FINALIZE,
+          actor: { id: 'admin', name: 'Admin', type: AuditLogActorType.USER },
+          force: true,
+          metadata: { runId: 'run' },
+        }),
+    );
+    expect(prisma.auditLogEntry.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        summary: 'Alteração MCP aprovada por Admin.',
+        metadata: { source: 'mcp', proposalId: 'p', approvedById: 'admin', approvedByName: 'Admin', runId: 'run' },
+      }),
+    });
   });
 
   it('records field-level changes while ignoring bookkeeping fields', async () => {

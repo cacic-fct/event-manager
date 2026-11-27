@@ -1,3 +1,5 @@
+import { AdminMcpOperationTools } from './admin-operations/tools';
+import { McpAdminWorkspaceReadService } from './mcp-admin-workspace-read.service';
 import { type INestApplication, HttpException, RequestMethod, UnauthorizedException } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
@@ -58,12 +60,27 @@ describe('Admin MCP HTTP and official SDK boundaries', () => {
     getIssuerUrl: () => 'https://identity.example/realms/cacic',
   };
   const access = { assertEligible: jest.fn(), list: jest.fn(), create: jest.fn(), revoke: jest.fn() };
-  const proposals = { propose: jest.fn(), list: jest.fn(), status: jest.fn(), decide: jest.fn() };
+  const proposals = {
+    proposeChange: jest.fn(),
+    propose: jest.fn(),
+    list: jest.fn(),
+    status: jest.fn(),
+    prepareReview: jest.fn(),
+    decide: jest.fn(),
+  };
   const reads = {
     listDelegations: jest.fn(),
     listEvents: jest.fn(),
     getEvent: jest.fn(),
     attendanceSummary: jest.fn(),
+  };
+  const workspace = {
+    getWorkspaceSummary: jest.fn(),
+    getEventPreparation: jest.fn(),
+    getEventMaterials: jest.fn(),
+    getRegistrationSummary: jest.fn(),
+    listEventForms: jest.fn(),
+    getEventContentReview: jest.fn(),
   };
   const log = { start: jest.fn(), finish: jest.fn(), denied: jest.fn() };
   const limits = { assertAllowed: jest.fn() };
@@ -85,6 +102,7 @@ describe('Admin MCP HTTP and official SDK boundaries', () => {
       providers: [
         McpAdminConfig,
         McpAdminToolServer,
+        { provide: AdminMcpOperationTools, useValue: { register: async () => undefined } },
         McpAdminAuthGuard,
         McpAdminSessionGuard,
         McpAdminOperationInterceptor,
@@ -103,6 +121,7 @@ describe('Admin MCP HTTP and official SDK boundaries', () => {
         { provide: McpAdminAccessService, useValue: access },
         { provide: McpAdminProposalsService, useValue: proposals },
         { provide: McpAdminReadService, useValue: reads },
+        { provide: McpAdminWorkspaceReadService, useValue: workspace },
         { provide: McpAdminOperationLogService, useValue: log },
         { provide: RateLimitService, useValue: limits },
         { provide: McpAdminMaintenanceService, useValue: maintenance },
@@ -142,6 +161,7 @@ describe('Admin MCP HTTP and official SDK boundaries', () => {
     log.finish.mockResolvedValue(undefined);
     log.denied.mockResolvedValue(undefined);
     proposals.propose.mockResolvedValue({ proposalId, state: 'PENDING', appliesAutomatically: false });
+    proposals.proposeChange.mockResolvedValue({ proposalId, state: 'PENDING', appliesAutomatically: false });
     proposals.decide.mockResolvedValue(undefined);
     proposals.list.mockResolvedValue({ items: [], hasMore: false });
     reads.getEvent.mockImplementation(async () => ({ id: eventId, contextUserId: audienceContext.getStore()?.userId }));
@@ -192,6 +212,16 @@ describe('Admin MCP HTTP and official SDK boundaries', () => {
         'get_attendance_summary',
         'propose_event_description_change',
         'get_proposal_status',
+        'get_workspace_summary',
+        'get_event_preparation',
+        'get_event_materials',
+        'get_registration_summary',
+        'list_event_forms',
+        'get_event_content_review',
+        'propose_event_content_change',
+        'propose_event_location_change',
+        'propose_event_preparation_change',
+        'propose_event_livestream_change',
       ]);
       expect(tools.find((tool: { name: string }) => tool.name === 'propose_event_description_change')).toMatchObject({
         annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
@@ -435,6 +465,13 @@ describe('Admin MCP HTTP and official SDK boundaries', () => {
     expect(auth.authenticateSession).not.toHaveBeenCalled();
   });
 
+  it('rejects MCP bearer review preparation even when a website cookie accompanies it', async () => {
+    const response = await webDecision({ Authorization: 'Bearer verified-token' }, {}, 'review');
+    expect(response.status).toBe(401);
+    expect(proposals.prepareReview).not.toHaveBeenCalled();
+    expect(auth.authenticateSession).not.toHaveBeenCalled();
+  });
+
   it('does not permit MCP bearer credentials on the application-only live queue stream', async () => {
     const response = await fetch(`${origin}/api/realtime/admin/mcp/events`, {
       headers: { Authorization: 'Bearer verified-token', Cookie: `${AUTH_SESSION_COOKIE_NAME}=website` },
@@ -460,6 +497,72 @@ describe('Admin MCP HTTP and official SDK boundaries', () => {
   it.each(invalidReviewHeaders)('requires session-bound CSRF protections for review: %p', async (headers) => {
     const response = await webDecision(headers);
     expect(response.status).toBe(403);
+    expect(proposals.decide).not.toHaveBeenCalled();
+    const preview = await webDecision(headers, {}, 'review');
+    expect(preview.status).toBe(403);
+    expect(proposals.prepareReview).not.toHaveBeenCalled();
+  });
+
+  it('validates a web preview and binds the decision to its typed selection and token', async () => {
+    const expectedOperation = 'EVENT_CONTENT';
+    const expectedUpdatedAt = new Date().toISOString();
+    const selections = [{ field: 'description', value: 'Descrição revisada.' }];
+    const token = `${Date.now()}.${'A'.repeat(43)}`;
+    const reviewed = { token, changes: [{ field: 'description', before: null, after: selections[0].value }] };
+    proposals.prepareReview.mockResolvedValue(reviewed);
+    const response = await webDecision({}, { expectedOperation, expectedUpdatedAt, selections }, 'review');
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(await response.json()).toEqual(reviewed);
+    expect(proposals.prepareReview).toHaveBeenCalledWith(expect.objectContaining({ sub: 'human' }), proposalId, {
+      expectedOperation,
+      expectedUpdatedAt,
+      selections,
+    });
+    expect(log.start).toHaveBeenCalledWith(
+      expect.objectContaining({ tool: 'web:prepareProposalReview', proposalId, userId: 'human' }),
+    );
+    expect(maintenance.flush).not.toHaveBeenCalled();
+
+    const decision = { decision: 'APPROVE', expectedOperation, expectedUpdatedAt, review: { token, selections } };
+    expect((await webDecision({}, decision)).status).toBe(201);
+    expect(proposals.decide).toHaveBeenCalledWith(expect.objectContaining({ sub: 'human' }), proposalId, decision);
+  });
+
+  it.each(
+    [
+      [],
+      [{ field: 'description' }, { field: 'description', value: 'Duplicate' }],
+      [{ field: 'publicationState', value: 'UNPUBLISHED' }],
+      [{ field: 'description', value: { set: 'Unsafe' } }],
+      [{ field: 'latitude', value: '2' }],
+      [{ field: 'name', value: null }],
+    ].map((selections) => ({ selections })),
+  )('rejects invalid field selections before the web preview service: %j', async ({ selections }) => {
+    const response = await webDecision(
+      {},
+      {
+        expectedOperation: 'EVENT_CONTENT',
+        expectedUpdatedAt: new Date().toISOString(),
+        selections,
+      },
+      'review',
+    );
+    expect(response.status).toBe(400);
+    expect(proposals.prepareReview).not.toHaveBeenCalled();
+  });
+
+  it('rejects an amendment attached to a rejection', async () => {
+    const response = await webDecision(
+      {},
+      {
+        decision: 'REJECT',
+        expectedOperation: 'EVENT_CONTENT',
+        expectedUpdatedAt: new Date().toISOString(),
+        review: { token: `${Date.now()}.${'A'.repeat(43)}`, selections: [{ field: 'description' }] },
+      },
+    );
+    expect(response.status).toBe(400);
     expect(proposals.decide).not.toHaveBeenCalled();
   });
 
@@ -514,6 +617,96 @@ describe('Admin MCP HTTP and official SDK boundaries', () => {
 
     expect(response.status).toBe(201);
     expect(maintenance.flush).not.toHaveBeenCalled();
+  });
+
+  const workspaceCalls = [
+    { tool: 'get_workspace_summary', method: 'getWorkspaceSummary', input: { delegationId }, expected: [delegationId] },
+    {
+      tool: 'get_event_preparation',
+      method: 'getEventPreparation',
+      input: { delegationId, eventId },
+      expected: [delegationId, eventId],
+    },
+    {
+      tool: 'get_event_materials',
+      method: 'getEventMaterials',
+      input: { delegationId, eventId },
+      expected: [delegationId, eventId],
+    },
+    {
+      tool: 'get_registration_summary',
+      method: 'getRegistrationSummary',
+      input: { delegationId, eventId },
+      expected: [delegationId, eventId],
+    },
+    {
+      tool: 'list_event_forms',
+      method: 'listEventForms',
+      input: { delegationId, eventId, offset: 0 },
+      expected: [delegationId, eventId, 0],
+    },
+    {
+      tool: 'get_event_content_review',
+      method: 'getEventContentReview',
+      input: { delegationId, eventId },
+      expected: [delegationId, eventId],
+    },
+  ] as const;
+  for (const call of workspaceCalls) {
+    it(`dispatches ${call.tool} through the official SDK with its explicit delegation`, async () => {
+      workspace[call.method].mockResolvedValue({ eventId, coverage: call.tool });
+      const response = await rpc('tools/call', { name: call.tool, arguments: call.input });
+      expect((await message(response)).result.structuredContent).toMatchObject({ coverage: call.tool });
+      expect(workspace[call.method]).toHaveBeenCalledWith(expect.objectContaining({ sub: 'human' }), ...call.expected);
+      expect(log.start).toHaveBeenCalledWith(expect.objectContaining({ tool: `tool:${call.tool}`, delegationId }));
+      expect(proposals.decide).not.toHaveBeenCalled();
+    });
+  }
+
+  it.each([
+    ['propose_event_content_change', 'EVENT_CONTENT', { name: 'Novo nome' }],
+    ['propose_event_location_change', 'EVENT_LOCATION', { isVirtual: true }],
+    ['propose_event_preparation_change', 'EVENT_PREPARATION', { lecturerInformation: 'Instruções' }],
+    ['propose_event_livestream_change', 'EVENT_LIVESTREAM', { twitchChannel: 'cacic' }],
+  ])('queues %s without applying a domain change', async (name, operation, changes) => {
+    const input = {
+      delegationId,
+      eventId,
+      expectedUpdatedAt: new Date().toISOString(),
+      idempotencyKey: randomUUID(),
+      changes,
+    };
+    const response = await rpc('tools/call', { name, arguments: input });
+    expect((await message(response)).result.structuredContent).toMatchObject({ appliesAutomatically: false });
+    expect(proposals.proposeChange).toHaveBeenCalledWith(expect.objectContaining({ sub: 'human' }), operation, input);
+    expect(proposals.decide).not.toHaveBeenCalled();
+    expect(log.start).toHaveBeenCalledWith(expect.objectContaining({ tool: `tool:${name}`, eventId, delegationId }));
+  });
+
+  it('rejects publication or ownership changes inside an expanded proposal', async () => {
+    const response = await rpc('tools/call', {
+      name: 'propose_event_content_change',
+      arguments: {
+        delegationId,
+        eventId,
+        expectedUpdatedAt: new Date().toISOString(),
+        idempotencyKey: randomUUID(),
+        changes: { name: 'Novo nome', publicationState: 'PUBLISHED', majorEventId: randomUUID() },
+      },
+    });
+    const result = await message(response);
+    expect(result.result?.isError === true || result.error !== undefined).toBe(true);
+    expect(proposals.proposeChange).not.toHaveBeenCalled();
+  });
+
+  it('challenges expanded proposals when only the read OAuth scope was granted', async () => {
+    const user = principal(true);
+    user.oidcScopeSet = new Set(['mcp:admin:read']);
+    auth.authenticateMcpAccessToken.mockResolvedValue(user);
+    const response = await rpc('tools/call', { name: 'propose_event_location_change', arguments: {} });
+    expect(response.status).toBe(403);
+    expect(response.headers.get('www-authenticate')).toContain('mcp:admin:proposals:create');
+    expect(proposals.proposeChange).not.toHaveBeenCalled();
   });
 
   it('does not persist more auth log rows after the shared rate limiter rejects traffic', async () => {
@@ -573,8 +766,9 @@ describe('Admin MCP HTTP and official SDK boundaries', () => {
   async function webDecision(
     headers: Record<string, string> = {},
     body: unknown = { decision: 'APPROVE', expectedUpdatedAt: new Date().toISOString() },
+    endpoint: 'decision' | 'review' = 'decision',
   ) {
-    return fetch(`${origin}/api/admin/mcp/proposals/${proposalId}/decision`, {
+    return fetch(`${origin}/api/admin/mcp/proposals/${proposalId}/${endpoint}`, {
       method: 'POST',
       headers: {
         Cookie: `${AUTH_SESSION_COOKIE_NAME}=website-session`,

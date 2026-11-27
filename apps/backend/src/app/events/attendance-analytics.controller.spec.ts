@@ -10,9 +10,14 @@ describe('AttendanceAnalyticsController', () => {
   const replay = { scope: jest.fn(), replay: jest.fn() };
 
   beforeEach(() => {
+    jest.useFakeTimers();
     jest.clearAllMocks();
     replay.scope.mockReturnValue('analytics-scope');
     replay.replay.mockImplementation((_scope, _cursor, source) => source);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it('requires attendance read permission for the analytics stream', () => {
@@ -87,7 +92,6 @@ describe('AttendanceAnalyticsController', () => {
   });
 
   it('lets a slow analytics query finish before requesting another snapshot', async () => {
-    jest.useFakeTimers();
     let completeSnapshot: () => void = () => undefined;
     const pending = new Promise((resolve) => {
       completeSnapshot = () => resolve({ eventId: 'event-1', total: 0 });
@@ -112,7 +116,6 @@ describe('AttendanceAnalyticsController', () => {
       expect(analytics.snapshot).toHaveBeenCalledTimes(2);
     } finally {
       subscription.unsubscribe();
-      jest.useRealTimers();
     }
   });
 

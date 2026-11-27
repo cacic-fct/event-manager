@@ -3,6 +3,7 @@ import { AuditLogActorType } from '@prisma/client';
 
 export const EVENT_MANUAL_NOTIFICATION_QUEUE = 'event-manual-notification';
 export interface EventManualNotificationJob {
+  mcpProposalId?: string;
   audience: EventNotificationAudience;
   eventId: string;
   requestId: string;

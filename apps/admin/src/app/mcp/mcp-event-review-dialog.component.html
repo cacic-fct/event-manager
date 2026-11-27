@@ -1,0 +1,113 @@
+<h2 mat-dialog-title>Revisar proposta MCP</h2>
+<mat-dialog-content [attr.aria-busy]="busy()">
+  <div class="review">
+    <p class="event">{{ proposal.eventName }}</p>
+    @if (error()) {
+      <p #alert role="alert" tabindex="-1">{{ error() }}</p>
+    }
+    @if (busy()) {
+      <mat-progress-bar mode="indeterminate" aria-label="Processando revisão" />
+    }
+    @if (preview(); as final) {
+      <h3 #stage tabindex="-1">Alterações que serão aplicadas</h3>
+      <p>{{ final.approvalEffects }}</p>
+      @for (change of final.changes; track change.field) {
+        <section class="comparison" [attr.aria-label]="change.label">
+          <h4>{{ change.label }}</h4>
+          <app-review-text-comparison
+            [before]="change.before"
+            [after]="change.after"
+            beforeLabel="Antes"
+            afterLabel="Será aplicado"
+            emptyLabel="Sem valor." />
+        </section>
+      }
+    } @else {
+      <p #stage tabindex="-1">
+        Ajuste os valores que deseja aplicar. Desmarque os campos que deseja excluir da proposta.
+      </p>
+      @for (field of fields(); track field.field) {
+        <section class="field" [attr.aria-labelledby]="'review-' + field.field">
+          <div class="field-header">
+            <h3 [id]="'review-' + field.field">{{ field.label }}</h3>
+            <mat-checkbox
+              [checked]="field.selected"
+              [disabled]="busy()"
+              [aria-label]="'Incluir ' + field.label"
+              (change)="select(field.field, $event.checked)">
+              Incluir
+            </mat-checkbox>
+          </div>
+          <div class="field-values">
+            <div class="before">
+              <h4>Valor atual</h4>
+              <p>{{ field.before === undefined ? 'Valor indisponível.' : field.before || 'Sem valor.' }}</p>
+            </div>
+            <div class="draft">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>{{ field.label }} para aplicar</mat-label>
+                @if (field.field === 'isVirtual') {
+                  <mat-select
+                    [value]="field.input"
+                    [disabled]="busy() || !field.selected"
+                    (selectionChange)="changeValue(field.field, $event.value)">
+                    <mat-option value="true">Sim</mat-option>
+                    <mat-option value="false">Não</mat-option>
+                  </mat-select>
+                } @else if (field.field === 'name' || isLongText(field.field)) {
+                  <textarea
+                    #valueInput
+                    matInput
+                    cdkTextareaAutosize
+                    [cdkAutosizeMinRows]="field.field === 'name' ? 1 : 3"
+                    cdkAutosizeMaxRows="12"
+                    [required]="isRequired(field.field)"
+                    [value]="field.input"
+                    [disabled]="busy() || !field.selected"
+                    (input)="changeText(field.field, valueInput)"></textarea>
+                } @else {
+                  <input
+                    #valueInput
+                    matInput
+                    [type]="isCoordinate(field.field) ? 'number' : 'text'"
+                    step="any"
+                    [required]="isRequired(field.field)"
+                    [value]="field.input"
+                    [disabled]="busy() || !field.selected"
+                    (input)="changeValue(field.field, valueInput.value, valueInput.validity.badInput)" />
+                }
+                @if (!isRequired(field.field) && field.field !== 'isVirtual') {
+                  <mat-hint>Deixe em branco para limpar o campo.</mat-hint>
+                }
+              </mat-form-field>
+              @if (field.selected && isEdited(field)) {
+                <button mat-button type="button" [disabled]="busy()" (click)="restore(field)">
+                  Restaurar valor proposto
+                </button>
+              }
+              @if (field.field === 'isVirtual' && field.selected && field.input === 'true') {
+                <p class="supporting">
+                  Ao tornar o evento virtual, o local físico e as coordenadas serão limpos juntos.
+                </p>
+              }
+            </div>
+          </div>
+        </section>
+      }
+      @if (!hasSelection()) {
+        <p role="status">Selecione pelo menos um campo para continuar.</p>
+      }
+    }
+  </div>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" [disabled]="busy()" [mat-dialog-close]="false">Cancelar</button>
+  @if (preview()) {
+    <button mat-button type="button" [disabled]="busy()" (click)="back()">Voltar aos ajustes</button>
+    <button mat-flat-button type="button" [disabled]="busy()" (click)="approve()">Aprovar proposta</button>
+  } @else {
+    <button mat-flat-button type="button" [disabled]="busy() || !hasSelection()" (click)="prepare()">
+      Conferir alterações finais
+    </button>
+  }
+</mat-dialog-actions>

@@ -1,3 +1,4 @@
+import { AuditLogService } from '../../audit-log/audit-log.service';
 import { ForbiddenException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
 import type { Prisma } from '@prisma/client';
@@ -61,14 +62,19 @@ export async function createTicketTransferFixture() {
   const policy = authorization as unknown as AuthorizationPolicyService;
   const frozenResources = frozen as unknown as FrozenResourceService;
   const adapter = new EventTicketTransferAdapter(policy, new PersonTransferMatcherService(prisma), realtime as never);
-  const createService = (additionalAdapters: readonly DataTransferAdapter[] = []) =>
+  const createService = (additionalAdapters: readonly DataTransferAdapter[] = [], servicePrisma = prisma) =>
     new DataTransferService(
-      prisma,
+      servicePrisma,
       policy,
       frozenResources,
       [...additionalAdapters, adapter],
       new TransferKeyAllocations(),
-      new DataTransferJournalService(prisma, policy, frozenResources),
+      new DataTransferJournalService(
+        servicePrisma,
+        policy,
+        frozenResources,
+        new AuditLogService(servicePrisma, policy, {} as never),
+      ),
     );
   const transfer = createService();
   await client.event.create({

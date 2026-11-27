@@ -12,6 +12,14 @@ export interface RateLimitPolicy {
 const minute = 60_000;
 
 export const RATE_LIMIT_POLICIES = {
+  notificationPushRegistration: {
+    name: 'notification-push-registration',
+    windowMs: minute,
+    freeAttempts: 20,
+    baseCooldownMs: minute,
+    maxCooldownMs: minute,
+    maxAttempts: 20,
+  },
   mcpAuthenticate: {
     name: 'mcp-authenticate',
     windowMs: minute,

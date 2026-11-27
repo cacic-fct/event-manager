@@ -1,3 +1,5 @@
+import { mcpJobAttribution } from './mcp-job-attribution';
+import { adminMcpExecution } from '../mcp/admin-operations/execution-context';
 import { EventManagerKeycloakRole } from '@cacic-fct/shared-permissions';
 import {
   BadRequestException,
@@ -103,10 +105,46 @@ export class AuditLogService {
   ) {}
 
   async record(options: AuditRecordOptions, prisma: AuditPrismaClient = this.prisma): Promise<void> {
+    const mcp = adminMcpExecution.getStore();
+    if (mcp?.phase === 'apply' && mcp.beforeTransaction && (!mcp.inTransaction || prisma === this.prisma)) {
+      throw new BadRequestException('A auditoria MCP deve compartilhar a transação da alteração.');
+    }
+    if (mcp?.phase === 'apply' && mcp.proposalId) {
+      options = {
+        ...options,
+        squashWindowMs: 0,
+        summary: `Alteração MCP aprovada por ${mcp.approvedByName ?? mcp.user.sub}. ${options.summary ?? ''}`.trim(),
+        metadata: {
+          ...options.metadata,
+          ...mcp.reviewMetadata,
+          source: 'mcp',
+          proposalId: mcp.proposalId,
+          delegationId: mcp.delegationId,
+          clientId: mcp.clientId,
+          operation: mcp.operation,
+          proposedById: mcp.user.sub,
+          approvedById: mcp.user.sub,
+          approvedByName: mcp.approvedByName,
+        },
+      };
+    }
+    const jobAttribution = mcpJobAttribution.getStore();
+    if (jobAttribution?.['proposalId'] && !mcp) {
+      options = {
+        ...options,
+        squashWindowMs: 0,
+        summary:
+          `Alteração MCP aprovada por ${jobAttribution['approvedByName'] ?? jobAttribution['approvedById'] ?? 'responsável'}. ${options.summary ?? ''}`.trim(),
+        metadata: { ...options.metadata, ...jobAttribution },
+      };
+    }
     const before = normalizeAuditSnapshot(options.before);
     const after = normalizeAuditSnapshot(options.after);
     const changes = diffAuditRecords(before, after);
     if (!options.force && changes.length === 0) {
+      if (mcp?.phase === 'apply' && mcp.transactionAudit && before && after && Object.keys(before).length > 0) {
+        mcp.transactionAudit.validatedNoop = true;
+      }
       return;
     }
     const snapshots = compactAuditSnapshots(before, after, changes);
@@ -131,6 +169,8 @@ export class AuditLogService {
 
     const entry = await prisma.auditLogEntry.create({
       data: {
+        ...(options.entryId ? { id: options.entryId } : {}),
+        ...(options.revertTargetId ? { revertTargetId: options.revertTargetId } : {}),
         entityType: options.entityType,
         entityId: options.entityId,
         entityLabel: options.entityLabel ?? null,
@@ -157,6 +197,9 @@ export class AuditLogService {
             : undefined,
       },
     });
+    if (mcp?.phase === 'apply' && mcp.transactionAudit) {
+      mcp.transactionAudit.recorded = true;
+    }
     synchronizeAuditLogEntry(entry, prisma, this.prisma, this.typesenseSearch);
   }
 

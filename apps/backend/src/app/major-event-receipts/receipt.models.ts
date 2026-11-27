@@ -255,3 +255,15 @@ export class RejectReceiptInput {
   @Field(() => String, { nullable: true })
   reason?: string;
 }
+
+@ObjectType()
+export class AdminReceiptOcrTextChunk {
+  @Field(() => String)
+  text!: string;
+
+  @Field(() => Int)
+  totalLength!: number;
+
+  @Field(() => Int, { nullable: true })
+  nextOffset!: number | null;
+}

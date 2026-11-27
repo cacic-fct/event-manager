@@ -1,11 +1,12 @@
 import { BadRequestException } from '@nestjs/common';
-import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { MajorEventReceiptsService } from './major-event-receipts.service';
 import {
   AdminReceiptPendingCount,
+  AdminReceiptOcrTextChunk,
   AdminReceiptQueue,
   AdminReceiptQueueItemModel,
   AdminReceiptValidationResultModel,
@@ -57,6 +58,16 @@ export class MajorEventReceiptsResolver {
   @RequirePermissions(RECEIPT_ADMIN_PERMISSION)
   adminReceiptValidationQueue(@Args('majorEventId', { type: () => String, nullable: true }) majorEventId?: string) {
     return this.receipts.listPendingValidationQueue(majorEventId?.trim() || undefined);
+  }
+
+  @Query(() => AdminReceiptOcrTextChunk)
+  @RequirePermissions(RECEIPT_ADMIN_PERMISSION)
+  adminReceiptOcrText(
+    @Args('receiptId', { type: () => String }) receiptId: string,
+    @Args('offset', { type: () => Int, defaultValue: 0 }) offset: number,
+    @Context() context: GraphqlContext,
+  ) {
+    return this.receipts.getAdminOcrText(receiptId, offset, this.requireAuthenticatedUser(context));
   }
 
   @Mutation(() => AdminReceiptValidationResultModel, {

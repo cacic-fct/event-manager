@@ -1,3 +1,4 @@
+import { lockMcpJobAttribution } from '../audit-log/mcp-job-attribution';
 import { anonymizeTicketingData, collectTicketingData } from './lgpd-ticketing';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -18,6 +19,8 @@ import { findReceiptObjectKeys } from './lgpd-receipts';
 import { LgpdStorageCleanupService } from './lgpd-storage-cleanup.service';
 import { suppressErasedImportPeople } from './lgpd-import-suppression';
 import {
+  LGPD_MCP_OPERATION_DELEGATION_SELECT,
+  LGPD_MCP_COMMAND_SELECT,
   LGPD_MCP_ADMIN_DELEGATION_SELECT,
   LGPD_MCP_ADMIN_PROPOSAL_SELECT,
   LGPD_MCP_ADMIN_OPERATION_LOG_SELECT,
@@ -61,6 +64,8 @@ export class LgpdService {
 
     const userWhere = { OR: [{ oldUserId: { in: userIds } }, { newUserId: { in: userIds } }] };
     const [
+      mcpOperationDelegations,
+      mcpCommands,
       mcpDelegations,
       mcpProposals,
       mcpOperationLogs,
@@ -84,6 +89,16 @@ export class LgpdService {
       prizeDrawSpinEntriesForExport,
       prizeDrawWinsForExport,
     ] = await Promise.all([
+      this.prisma.mcpAdminOperationDelegation.findMany({
+        where: { userId: { in: userIds } },
+        select: LGPD_MCP_OPERATION_DELEGATION_SELECT,
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.mcpAdminCommand.findMany({
+        where: { delegation: { userId: { in: userIds } } },
+        select: LGPD_MCP_COMMAND_SELECT,
+        orderBy: { createdAt: 'asc' },
+      }),
       this.prisma.mcpAdminDelegation.findMany({
         where: { userId: { in: userIds } },
         select: LGPD_MCP_ADMIN_DELEGATION_SELECT,
@@ -233,6 +248,8 @@ export class LgpdService {
     return {
       metadata: this.metadata(input, dataSubject),
       mcp: {
+        operationDelegations: selectManyForExport(mcpOperationDelegations, LGPD_MCP_OPERATION_DELEGATION_SELECT),
+        commands: selectManyForExport(mcpCommands, LGPD_MCP_COMMAND_SELECT),
         delegations: selectManyForExport(mcpDelegations, LGPD_MCP_ADMIN_DELEGATION_SELECT),
         proposals: selectManyForExport(mcpProposals, LGPD_MCP_ADMIN_PROPOSAL_SELECT),
         operationLogs: selectManyForExport(mcpOperationLogs, LGPD_MCP_ADMIN_OPERATION_LOG_SELECT),
@@ -278,7 +295,11 @@ export class LgpdService {
     const operationLogs = await tx.mcpAdminOperationLog.deleteMany({ where: { userId: { in: userIds } } });
     // Delegation deletion also removes proposals through their cascading foreign key.
     const delegations = await tx.mcpAdminDelegation.deleteMany({ where: { userId: { in: userIds } } });
-    return operationLogs.count + delegations.count;
+    // The operation delegation owns its command payloads through an ON DELETE CASCADE foreign key.
+    const operationDelegations = await tx.mcpAdminOperationDelegation.deleteMany({
+      where: { userId: { in: userIds } },
+    });
+    return operationLogs.count + delegations.count + operationDelegations.count;
   }
 
   async scheduleDeletion(input: { userId: string; email?: string; requestId: string }) {
@@ -405,6 +426,7 @@ export class LgpdService {
     const { people: dataSubjectPeople, personIds, userIds } = dataSubject;
     const receiptObjectKeys = await findReceiptObjectKeys(this.prisma, personIds);
     const { anonymizedAuditEntryIds, ...result } = await this.prisma.$transaction(async (tx) => {
+      await lockMcpJobAttribution(tx, true);
       const importRecords = await suppressErasedImportPeople(tx, personIds);
       if (personIds.length === 0 && userIds.length === 0) {
         return { anonymizedAuditEntryIds: [], peopleDeleted: 0, usersDeleted: 0, recordsDeleted: importRecords };
@@ -428,6 +450,10 @@ export class LgpdService {
       );
       const eventDrafts = await anonymizeEventDrafts(tx, dataSubject, anonymizedSubjectId);
       await anonymizeTicketingData(tx, personIds, userIds);
+      await tx.mcpAdminCommand.updateMany({
+        where: { approvedById: { in: userIds } },
+        data: { approvedById: null, approvedByName: null },
+      });
       await tx.mcpAdminProposal.updateMany({
         where: { approvedById: { in: userIds } },
         data: { approvedById: null, approvedByName: null },

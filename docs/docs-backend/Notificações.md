@@ -27,8 +27,20 @@ As variáveis principais são:
 | `NOVU_APPLICATION_IDENTIFIER` | Identificador usado pela inbox no navegador. |
 | `NOVU_CLIENT_API_URL`, `NOVU_CLIENT_SOCKET_URL`, `NOVU_CLIENT_SOCKET_PATH` | Endpoints do SDK quando a instalação não usa os padrões. |
 | `NOVU_PUSH_INTEGRATION_IDENTIFIER`, `NOVU_VAPID_PUBLIC_KEY` | Configuração de push. |
+| `NOVU_VAPID_PRIVATE_KEY`, `NOVU_VAPID_SUBJECT` | Chave privada VAPID e contato do remetente (`mailto:` ou URL HTTPS). |
+| `NOVU_PUSH_WEBHOOK_SECRET` | Segredo HMAC compartilhado com a integração Push Webhook da Novu. |
 
-Quando o modo seguro não está ativo ou a configuração está incompleta, o backend deve falhar de forma controlada e não bloquear o fluxo principal.
+## Web Push
+
+O app público usa o service worker Workbox em `/app/` para receber Web Push, inclusive quando a PWA está fechada. O navegador registra a assinatura no endpoint autenticado `POST /api/notifications/push-subscription`. O backend guarda até 20 assinaturas por pessoa no Redis, renova cada uma ao abrir o app e descarta assinaturas sem renovação após 90 dias. A Novu recebe um identificador de roteamento por assinante. Os endereços e as chaves de criptografia dos navegadores ficam no backend.
+
+Falhas temporárias de qualquer assinatura fazem o webhook retornar erro para permitir nova tentativa. O Redis registra os envios concluídos por mensagem e assinatura durante sete dias, evitando reenviá-los nas tentativas seguintes. Respostas 404 e 410 removem a assinatura encerrada. Os endpoints aceitos incluem FCM, Mozilla, Apple e WNS (`*.notify.windows.com`). Se a identidade da sessão não puder ser persistida no navegador, o push fica desativado nessa conexão, enquanto a inbox e seu contador continuam disponíveis.
+
+1. Gere um par VAPID por ambiente com `bunx web-push generate-vapid-keys`. Configure o par, o contato e o segredo HMAC no backend. Use Redis persistente para manter as assinaturas entre reinícios.
+2. Na Novu, adicione uma integração [Push Webhook](https://docs.novu.co/platform/integrations/push/push-webhook) para o ambiente. Informe o endereço público HTTPS do backend seguido de `/api/notifications/push-webhook` e o mesmo segredo HMAC. Configure o identificador dessa integração em `NOVU_PUSH_INTEGRATION_IDENTIFIER`.
+3. Após publicar o backend e o app, abra a PWA no Android Chrome com um assinante sintético, permita notificações e dispare um workflow com a PWA fechada. Confira o aviso, o destino ao tocar e a troca de conta no mesmo navegador. Após validar, desative a integração FCM legada no mesmo ambiente.
+
+O webhook autentica a assinatura do corpo da requisição e usa o destinatário informado pela Novu. O worker só mostra e abre o aviso quando esse destinatário corresponde ao assinante ativo. Ao sair ou trocar de conta, o navegador cancela a própria assinatura. O backend remove assinaturas que retornam HTTP 404 ou 410. Se o navegador já permitiu notificações, reabra o app para registrar a assinatura no novo provedor. A área administrativa pode reutilizar o worker depois que ele for instalado pelo app público.
 
 ## Identidade do assinante
 
@@ -43,7 +55,7 @@ Evite trocar a estratégia sem planejar migração, porque isso cria caixas de n
 Os identificadores são contratos versionados no catálogo `apps/backend/src/app/notifications/novu-workflow-identifiers.ts`. Development e Production devem publicar os mesmos identificadores; as credenciais selecionam o ambiente. Alterações nesses contratos devem atualizar o catálogo, os testes e os workflows no Novu em conjunto.
 ### Configuração dos templates
 
-Cada workflow usa primeiro um passo **In-App** e depois um passo **Push**, com os provedores Novu Inbox e Firebase Cloud Messaging ativos no mesmo ambiente. Os workflows opcionais permitem que a pessoa altere suas preferências por canal.
+Cada workflow usa primeiro um passo **In-App** e depois um passo **Push**, com Novu Inbox e a integração Push Webhook ativos no mesmo ambiente. Os workflows opcionais permitem que a pessoa altere suas preferências por canal.
 
 Na API v2 do Novu, configure `preferences.workflow.all` com `enabled: true` e `readOnly: true` para esses workflows. Se houver um override em `preferences.user`, mantenha também `all.enabled: true` e `all.readOnly: true` nesse override. A resposta de consulta apresenta os valores padrão em `preferences.default`. Essa configuração marca o workflow como crítico e impede que preferências individuais ou globais suprimam os avisos obrigatórios. A entrega push ainda depende da permissão do navegador e de um dispositivo registrado.
 
@@ -84,3 +96,5 @@ As notificações de informações para inscritos usam um identificador estável
 A aba de notificações do app público depende de autenticação, feature flag e sessão Novu válida.
 
 Se a sessão não puder ser criada, a interface deve mostrar indisponibilidade sem vazar detalhes de configuração.
+
+Na auditoria dos avisos manuais aprovados via MCP, cada gravação relê a atribuição persistida dentro da transação. Uma trava compartilhada com a limpeza LGPD impede copiar a identidade antiga do aprovador depois da anonimização.

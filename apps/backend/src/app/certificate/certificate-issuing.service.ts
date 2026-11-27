@@ -105,7 +105,7 @@ export class CertificateIssuingService {
     const { configId, skip, take, includeRevoked = false, personName } = options;
     const query = this.certificatePageQuery(scope, targetId, configId, skip, take, includeRevoked, personName);
     const [certificates, totalCount] = await this.prisma.$transaction(
-      [this.prisma.certificate.findMany(query), this.prisma.certificate.count({ where: query.where })],
+      (tx) => Promise.all([tx.certificate.findMany(query), tx.certificate.count({ where: query.where })]),
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
     return { items: certificates.map(mapCertificate), totalCount };

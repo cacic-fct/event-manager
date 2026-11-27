@@ -1,0 +1,80 @@
+.review,
+.comparison,
+.field,
+.draft {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.review {
+  gap: 1rem;
+}
+
+.comparison,
+.field {
+  border-block-start: 1px solid var(--mat-sys-outline-variant);
+  padding-block-start: 0.75rem;
+}
+
+.field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.field-values {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  align-items: start;
+  gap: 1rem;
+}
+
+.before {
+  background: var(--mat-sys-surface-container);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+}
+
+.before p {
+  white-space: pre-wrap;
+  margin-block-start: 0.25rem;
+}
+
+.draft button {
+  justify-self: start;
+}
+
+p,
+h3,
+h4 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+h3 {
+  font: var(--mat-sys-title-medium);
+}
+
+h4,
+.event {
+  font: var(--mat-sys-title-small);
+}
+
+.before h4,
+.supporting {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+[role='alert'] {
+  color: var(--mat-sys-error);
+}
+
+@media (max-width: 640px) {
+  .field-values {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+}

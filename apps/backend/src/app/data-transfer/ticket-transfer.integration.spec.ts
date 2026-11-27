@@ -8,6 +8,7 @@ import type {
   TransferPersonDecision,
 } from '@cacic-fct/shared-data-transfer';
 import { createTicketTransferFixture } from './testing/ticket-transfer.fixtures';
+import { observeTicketDeletions } from './testing/observe-ticket-deletions';
 import type { DataTransferAdapter } from './data-transfer-adapter';
 
 describe('ticket imports with transactional storage and the durable undo journal', () => {
@@ -61,6 +62,39 @@ describe('ticket imports with transactional storage and the durable undo journal
     expect(await fixture.client.eventTicketHistory.findMany()).toEqual([
       expect.objectContaining({ operation: 'ISSUED' }),
     ]);
+  });
+
+  it('rolls back earlier ticket deletions when a later undo snapshot has an expiry edit', async () => {
+    const first = fixture.document.resources[0] as ResourceOfKind<'event-ticket'>;
+    fixture.document = {
+      ...fixture.document,
+      resources: [first, { ...first, key: 'SECOND-TICKET', data: { ...first.data, person: { id: 'person-2' } } }],
+    };
+    const preview = await fixture.transfer.preview({ document: fixture.document }, fixture.actor);
+    const result = await fixture.transfer.apply(
+      {
+        document: fixture.document,
+        planHash: preview.planHash,
+        allocationToken: preview.allocation?.token,
+        allowPartial: false,
+      },
+      fixture.actor,
+    );
+    const tickets = await fixture.client.eventTicket.findMany();
+    const changed = tickets.find((ticket) => ticket['holderPersonId'] === 'person-1');
+    const unchanged = tickets.find((ticket) => ticket['holderPersonId'] === 'person-2');
+    if (!changed || !unchanged) throw new Error('Expected both imported tickets.');
+    await fixture.client.eventTicket.updateMany({
+      where: { id: changed['id'] },
+      data: { expiresAt: new Date(Date.now() + 172_800_000) },
+    });
+    const deletedIds: string[] = [];
+    const instrumented = observeTicketDeletions(fixture.prisma, (id) => deletedIds.push(id));
+    const transfer = fixture.createService([], instrumented);
+    const before = await fixture.state();
+    await expect(transfer.undo(result.batchId ?? '', fixture.actor)).rejects.toThrow(ConflictException);
+    expect(deletedIds).toEqual([unchanged['id']]);
+    expect(await fixture.state()).toEqual(before);
   });
 
   it('requires transfer permission after resolving a portable original holder', async () => {

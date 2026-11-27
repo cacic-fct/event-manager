@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { McpAdminFileArtifactService } from './admin-operations/artifact-files';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { EventPostCommitEffectsService } from '../events/event-post-commit-effects.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SportsMutationEventsService } from '../sports/realtime/sports-mutation-events.service';
-import { McpEventContentSyncLockService } from './mcp-event-content-sync-lock.service';
+import { McpAdminAdvisoryLockService } from './mcp-admin-advisory-lock.service';
 
 @Injectable()
 export class McpAdminMaintenanceService {
@@ -12,7 +13,8 @@ export class McpAdminMaintenanceService {
     private readonly prisma: PrismaService,
     private readonly effects: EventPostCommitEffectsService,
     private readonly sportsEvents: SportsMutationEventsService,
-    private readonly syncLock: McpEventContentSyncLockService,
+    private readonly syncLock: McpAdminAdvisoryLockService,
+    @Optional() private readonly artifacts?: McpAdminFileArtifactService,
   ) {}
 
   async flush(eventId?: string): Promise<void> {
@@ -53,6 +55,7 @@ export class McpAdminMaintenanceService {
   }
 
   async prune(): Promise<void> {
+    await this.artifacts?.cleanup();
     const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60_000);
     const logs = await this.prisma.mcpAdminOperationLog.findMany({
       where: { createdAt: { lt: cutoff } },
@@ -61,6 +64,17 @@ export class McpAdminMaintenanceService {
     });
     await this.prisma.mcpAdminOperationLog.deleteMany({
       where: { id: { in: logs.map((entry) => entry.id) }, createdAt: { lt: cutoff } },
+    });
+    // Cascading deletion removes command payloads only after their consent has
+    // expired for 90 days. This maintenance never executes or retries commands.
+    const operationDelegations = await this.prisma.mcpAdminOperationDelegation.findMany({
+      where: { expiresAt: { lt: cutoff } },
+      select: { id: true },
+      orderBy: [{ expiresAt: 'asc' }, { id: 'asc' }],
+      take: 100,
+    });
+    await this.prisma.mcpAdminOperationDelegation.deleteMany({
+      where: { id: { in: operationDelegations.map((entry) => entry.id) }, expiresAt: { lt: cutoff } },
     });
     const delegations = await this.prisma.mcpAdminDelegation.findMany({
       where: { expiresAt: { lt: cutoff } },

@@ -263,6 +263,20 @@ export class ReceiptUploadService {
     }
   }
 
+  async getAdminOcrText(receiptId: string, offset: number, user: AuthenticatedUser) {
+    if (!Number.isInteger(offset) || offset < 0) throw new BadRequestException('Invalid OCR offset.');
+    await this.authorizationPolicy.assertPermissions(user, [RECEIPT_ADMIN_PERMISSION], { receiptId });
+    const receipt = await this.prisma.majorEventReceipt.findUnique({
+      where: { id: receiptId },
+      select: { ocrText: true },
+    });
+    if (!receipt) throw new NotFoundException('Receipt not found.');
+    const text = receipt.ocrText ?? '';
+    if (offset > text.length) throw new BadRequestException('Invalid OCR offset.');
+    const end = Math.min(offset + 16_000, text.length);
+    return { text: text.slice(offset, end), totalLength: text.length, nextOffset: end < text.length ? end : null };
+  }
+
   async getReceiptImage(
     receiptId: string,
     authenticatedUser: AuthenticatedUser,

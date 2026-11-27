@@ -1,3 +1,4 @@
+import { currentMcpAttribution } from '../audit-log/mcp-job-attribution';
 import { MAX_EVENT_NOTIFICATION_LENGTH } from '@cacic-fct/shared-event-preparation';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
@@ -104,6 +105,7 @@ export class EventManualNotificationResolver {
     if (!people.length) throw new BadRequestException('Nenhuma pessoa com conta vinculada pode receber este aviso.');
     if (people.length > 10000) throw new BadRequestException('Envie avisos para até 10.000 pessoas por evento.');
     const data: EventManualNotificationJob = {
+      mcpProposalId: currentMcpAttribution()?.['proposalId'],
       audience,
       eventId,
       requestId,
@@ -112,25 +114,30 @@ export class EventManualNotificationResolver {
       actor: { id: user.sub, name: user.preferredUsername ?? user.email ?? user.sub, type: AuditLogActorType.USER },
     };
     const audit = (summary: string, status: string) =>
-      this.audit.record({
-        entityType: AuditLogEntityType.EVENT,
-        entityId: eventId,
-        entityLabel: event.name,
-        operation: AuditLogOperation.SUBMIT,
-        actor: user,
-        force: true,
-        squashWindowMs: 0,
-        summary,
-        scope: { permission: Permission.Event.Update, eventId },
-        metadata: {
-          category: 'manual-event-notification',
-          audience,
-          requestId,
-          message: content,
-          personIds: data.personIds,
-          status,
-        },
-      });
+      this.prisma.$transaction((tx) =>
+        this.audit.record(
+          {
+            entityType: AuditLogEntityType.EVENT,
+            entityId: eventId,
+            entityLabel: event.name,
+            operation: AuditLogOperation.SUBMIT,
+            actor: user,
+            force: true,
+            squashWindowMs: 0,
+            summary,
+            scope: { permission: Permission.Event.Update, eventId },
+            metadata: {
+              category: 'manual-event-notification',
+              audience,
+              requestId,
+              message: content,
+              personIds: data.personIds,
+              status,
+            },
+          },
+          tx,
+        ),
+      );
     // Record intent before any external side effect. Never log authentication tokens in jobs.
     await audit('Envio de aviso manual solicitado.', 'REQUESTED');
     try {

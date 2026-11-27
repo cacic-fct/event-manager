@@ -6,6 +6,11 @@ import { EventManualNotificationProcessor } from './event-manual-notification.pr
 function setup(audience: 'LECTURERS' | 'SUBSCRIBERS' = 'LECTURERS') {
   const event = { name: 'Evento', majorEventId: 'major', eventGroupId: null };
   const prisma = {
+    $executeRaw: jest.fn().mockResolvedValue(0),
+    $transaction: jest.fn(),
+    auditLogEntry: {
+      findFirst: jest.fn<() => Promise<{ metadata: Record<string, string> } | null>>().mockResolvedValue(null),
+    },
     event: { findFirst: jest.fn().mockResolvedValue(event) },
     people: {
       findFirst: jest
@@ -13,6 +18,7 @@ function setup(audience: 'LECTURERS' | 'SUBSCRIBERS' = 'LECTURERS') {
         .mockResolvedValue({ id: 'person', userId: 'user', name: 'Pessoa', email: 'person@example.org' }),
     },
   };
+  prisma.$transaction.mockImplementation(async (work) => work(prisma));
   const notifications = {
     notifyEventParticipant: jest
       .fn<NovuNotificationsService['notifyEventParticipant']>()
@@ -46,6 +52,26 @@ function setup(audience: 'LECTURERS' | 'SUBSCRIBERS' = 'LECTURERS') {
 }
 
 describe('manual event notification processing', () => {
+  it('uses persisted approval attribution after privacy cleanup, not queue-supplied identities', async () => {
+    const { prisma, job, processor, audit } = setup();
+    job.data.mcpProposalId = 'proposal';
+    prisma.auditLogEntry.findFirst.mockResolvedValue({
+      metadata: {
+        source: 'mcp',
+        proposalId: 'proposal',
+        approvedById: 'anonymous',
+        approvedByName: 'Pessoa anonimizada',
+      },
+    });
+    await processor.process(job as never);
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({ proposalId: 'proposal', approvedByName: 'Pessoa anonimizada' }),
+      }),
+      expect.any(Object),
+    );
+  });
+
   describe.each(['event', 'event-group', 'major-event'] as const)('%s notification links', (targetType) => {
     it.each(['LECTURERS', 'SUBSCRIBERS'] as const)(
       'preserves the destination and retry generation for %s',
@@ -93,6 +119,7 @@ describe('manual event notification processing', () => {
         }),
         force: true,
       }),
+      expect.any(Object),
     );
   });
 
@@ -103,6 +130,7 @@ describe('manual event notification processing', () => {
     expect(notifications.notifyEventParticipant).not.toHaveBeenCalled();
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({ metadata: expect.objectContaining({ status: 'SKIPPED', personId: 'person' }) }),
+      expect.any(Object),
     );
   });
 
@@ -123,6 +151,7 @@ describe('manual event notification processing', () => {
             summary: 'Aviso manual não enviado: Novu desativado ou sem chave.',
             metadata: expect.objectContaining({ status: 'SKIPPED_DISABLED', personId, audience, attempt: 1 }),
           }),
+          expect.any(Object),
         );
       }
       expect(job.updateData).not.toHaveBeenCalled();
@@ -137,6 +166,7 @@ describe('manual event notification processing', () => {
     expect(notifications.notifyEventParticipant).not.toHaveBeenCalled();
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({ metadata: expect.objectContaining({ status: 'SKIPPED', audience: 'SUBSCRIBERS' }) }),
+      expect.any(Object),
     );
   });
 
@@ -149,6 +179,7 @@ describe('manual event notification processing', () => {
         summary: 'Não foi possível confirmar se o Novu aceitou o aviso manual.',
         metadata: expect.objectContaining({ status: 'UNKNOWN', attempt: 1 }),
       }),
+      expect.any(Object),
     );
     await processor.process({ ...job, attemptsMade: 1 } as never);
     expect(notifications.notifyEventParticipant.mock.calls.map(([input]) => input.requestId)).toEqual([job.id, job.id]);
@@ -164,12 +195,30 @@ describe('manual event notification processing', () => {
         summary: 'Falha no envio de aviso manual.',
         metadata: expect.objectContaining({ status: 'FAILED', attempt: 1 }),
       }),
+      expect.any(Object),
     );
     expect(job.updateData).toHaveBeenCalledWith(expect.objectContaining({ deliveryAttempts: { user: 1 } }));
     await expect(processor.process({ ...job, attemptsMade: 1 } as never)).rejects.toThrow('Novu');
     expect(job.updateData).toHaveBeenCalledTimes(1);
     await processor.process({ ...job, attemptsMade: 2 } as never);
     expect(notifications.notifyEventParticipant.mock.calls.map(([input]) => input.deliveryAttempt)).toEqual([0, 1, 1]);
+  });
+
+  it('rereads privacy-cleaned attribution inside each audit transaction', async () => {
+    const f = setup();
+    f.job.data.mcpProposalId = 'proposal';
+    f.job.data.personIds.push('second');
+    f.prisma.auditLogEntry.findFirst
+      .mockResolvedValueOnce({ metadata: { source: 'mcp', proposalId: 'proposal', approvedByName: 'Original' } })
+      .mockResolvedValueOnce({ metadata: { source: 'mcp', proposalId: 'proposal', approvedByName: '[ANONIMIZADO]' } });
+    await f.processor.process(f.job as never);
+    expect(f.prisma.$transaction).toHaveBeenCalledTimes(2);
+    expect(f.prisma.$executeRaw).toHaveBeenCalledTimes(2);
+    expect(f.audit.record.mock.calls.map(([entry]) => entry.metadata.approvedByName)).toEqual([
+      'Original',
+      '[ANONIMIZADO]',
+    ]);
+    expect(f.audit.record.mock.calls.every(([, tx]) => tx === f.prisma)).toBe(true);
   });
 
   it('keeps successful recipients on their original key when another recipient is rejected', async () => {

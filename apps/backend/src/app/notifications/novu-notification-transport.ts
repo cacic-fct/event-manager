@@ -1,5 +1,5 @@
 import { ConfigService } from '@nestjs/config';
-import { createHmac } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import type {
   NotificationRecipient,
   NovuSubscriberSession,
@@ -45,6 +45,49 @@ export class NovuNotificationTransport {
 
   async trigger(secretKey: string, body: NovuTriggerRequest, idempotencyKey?: string): Promise<boolean> {
     return (await this.triggerWithOutcome(secretKey, body, idempotencyKey)) === 'acknowledged';
+  }
+
+  async registerWebPushRecipient(recipient: NotificationRecipient): Promise<boolean> {
+    const secretKey = this.secretKey();
+    const integrationIdentifier = this.optionalConfig('NOVU_PUSH_INTEGRATION_IDENTIFIER');
+    if (!secretKey || !integrationIdentifier) return false;
+    const signal = AbortSignal.timeout(this.triggerTimeoutMs());
+    const headers = {
+      Authorization: `ApiKey ${secretKey}`,
+      'Content-Type': 'application/json',
+      'Accept-Encoding': 'identity',
+    };
+    try {
+      // A person may enable push before receiving their first notification.
+      const subscriber = await fetch(`${this.apiUrl()}/v1/subscribers`, {
+        method: 'POST',
+        headers,
+        signal,
+        body: JSON.stringify(recipient),
+      });
+      if (!subscriber.ok) {
+        this.logger.warn(`Novu subscriber registration failed with HTTP ${subscriber.status}.`);
+        return false;
+      }
+      const response = await fetch(
+        `${this.apiUrl()}/v1/subscribers/${encodeURIComponent(recipient.subscriberId)}/credentials`,
+        {
+          method: 'PATCH',
+          headers,
+          signal,
+          body: JSON.stringify({
+            providerId: 'push-webhook',
+            integrationIdentifier,
+            credentials: { deviceTokens: [webPushRecipientToken(recipient.subscriberId)] },
+          }),
+        },
+      );
+      if (!response.ok) this.logger.warn(`Novu push registration failed with HTTP ${response.status}.`);
+      return response.ok;
+    } catch {
+      this.logger.warn('Novu push registration is temporarily unavailable.');
+      return false;
+    }
   }
 
   async triggerWithOutcome(
@@ -137,12 +180,15 @@ export class NovuNotificationTransport {
     }
 
     const pushIntegrationIdentifier = this.optionalConfig('NOVU_PUSH_INTEGRATION_IDENTIFIER');
-    if (pushIntegrationIdentifier) {
-      session.pushIntegrationIdentifier = pushIntegrationIdentifier;
-    }
-
     const vapidPublicKey = this.optionalConfig('NOVU_VAPID_PUBLIC_KEY');
-    if (vapidPublicKey) {
+    if (
+      pushIntegrationIdentifier &&
+      vapidPublicKey &&
+      this.optionalConfig('NOVU_VAPID_PRIVATE_KEY') &&
+      this.optionalConfig('NOVU_VAPID_SUBJECT') &&
+      this.optionalConfig('NOVU_PUSH_WEBHOOK_SECRET')
+    ) {
+      session.pushIntegrationIdentifier = pushIntegrationIdentifier;
       session.vapidPublicKey = vapidPublicKey;
     }
   }
@@ -164,4 +210,8 @@ export class NovuNotificationTransport {
     const value = this.config.get<string>(key)?.trim();
     return value || undefined;
   }
+}
+
+export function webPushRecipientToken(subscriberId: string): string {
+  return createHash('sha256').update(subscriberId).digest('hex');
 }

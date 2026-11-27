@@ -25,6 +25,15 @@ export const MCP_CAPABILITY_PERMISSION = {
   EVENT_READ: Permission.Event.Read,
   ATTENDANCE_READ: Permission.EventAttendance.Read,
   DESCRIPTION_PROPOSE: Permission.Event.Update,
+  PREPARATION_READ: Permission.Event.Read,
+  MATERIALS_READ: Permission.Event.Update,
+  SUBSCRIPTIONS_READ: Permission.Subscription.Read,
+  FORMS_READ: Permission.EventForm.Read,
+  CONTENT_REVIEWS_READ: Permission.Event.Update,
+  EVENT_CONTENT_PROPOSE: Permission.Event.Update,
+  LOCATION_PROPOSE: Permission.Event.Update,
+  PREPARATION_PROPOSE: Permission.Event.Update,
+  LIVESTREAM_PROPOSE: Permission.Event.Update,
 } as const satisfies Record<McpAdminCapability, Permission>;
 
 @Injectable()
@@ -47,7 +56,7 @@ export class McpAdminAccessService {
     if (!this.config.allowedClients.includes(input.clientId) || !input.capabilities.includes('EVENT_READ')) {
       throw new BadRequestException('Selecione um aplicativo permitido e inclua a leitura de eventos.');
     }
-    if (input.capabilities.includes('DESCRIPTION_PROPOSE') && !this.config.proposalsEnabled) {
+    if (input.capabilities.some((capability) => capability.endsWith('_PROPOSE')) && !this.config.proposalsEnabled) {
       throw new ForbiddenException('As propostas MCP estão desativadas.');
     }
     const delegation = await runSerializablePrismaTransaction(this.prisma, async (tx) => {
@@ -170,7 +179,7 @@ export class McpAdminAccessService {
     tx?: Prisma.TransactionClient,
   ): Promise<StoredDelegation> {
     await this.assertEligible(user, tx);
-    const requiredScope = capability === 'DESCRIPTION_PROPOSE' ? MCP_ADMIN_PROPOSE_SCOPE : MCP_ADMIN_READ_SCOPE;
+    const requiredScope = capability.endsWith('_PROPOSE') ? MCP_ADMIN_PROPOSE_SCOPE : MCP_ADMIN_READ_SCOPE;
     if (!user.oidcScopeSet.has(requiredScope)) throw new ForbiddenException('Escopo OAuth insuficiente.');
     if (tx) {
       // Concurrent reads/proposals can share the grant; revocation must wait for
@@ -212,7 +221,7 @@ export class McpAdminAccessService {
       !this.config.allowedClients.includes(delegation.clientId) ||
       !delegation.capabilities.includes(capability) ||
       (eventId !== undefined && !delegation.eventIds.includes(eventId)) ||
-      (capability === 'DESCRIPTION_PROPOSE' && !this.config.proposalsEnabled)
+      (capability.endsWith('_PROPOSE') && !this.config.proposalsEnabled)
     ) {
       throw new ForbiddenException('Delegação expirada, revogada ou sem acesso à operação neste evento.');
     }

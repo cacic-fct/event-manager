@@ -1,3 +1,4 @@
+import { trustedAdminMcpPrincipal } from '../mcp/admin-operations/execution-context';
 import { UnauthorizedException } from '@nestjs/common';
 import type { Request } from 'express';
 import { AUTH_SESSION_COOKIE_NAME } from './auth.constants';
@@ -13,6 +14,11 @@ export async function authenticateHttpRequest(
   request: AuthenticatedRequest,
   keycloakAuthService: Pick<KeycloakAuthService, 'authenticateAccessToken' | 'authenticateSession'>,
 ): Promise<AuthenticatedUser> {
+  const internalPrincipal = trustedAdminMcpPrincipal(request);
+  if (internalPrincipal) {
+    request.user = internalPrincipal;
+    return internalPrincipal;
+  }
   const bearerToken = extractBearerToken(request.headers.authorization);
   if (bearerToken) {
     const user = await keycloakAuthService.authenticateAccessToken(bearerToken);

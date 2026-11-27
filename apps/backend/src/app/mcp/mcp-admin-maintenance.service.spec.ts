@@ -1,7 +1,7 @@
 import { EventPostCommitEffectsService } from '../events/event-post-commit-effects.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SportsMutationEventsService } from '../sports/realtime/sports-mutation-events.service';
-import { McpEventContentSyncLockService } from './mcp-event-content-sync-lock.service';
+import { McpAdminAdvisoryLockService } from './mcp-admin-advisory-lock.service';
 import { McpAdminMaintenanceService } from './mcp-admin-maintenance.service';
 
 const { jest } = import.meta;
@@ -18,6 +18,10 @@ function context() {
       findMany: jest.fn().mockResolvedValue([{ id: 'old-log' }]),
       deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
+    mcpAdminOperationDelegation: {
+      findMany: jest.fn().mockResolvedValue([{ id: 'expired-operation-delegation' }]),
+      deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
     mcpAdminDelegation: {
       findMany: jest.fn().mockResolvedValue([{ id: 'expired-delegation' }]),
       deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
@@ -30,7 +34,7 @@ function context() {
     prisma as unknown as PrismaService,
     effects as unknown as EventPostCommitEffectsService,
     sports as unknown as SportsMutationEventsService,
-    syncLock as unknown as McpEventContentSyncLockService,
+    syncLock as unknown as McpAdminAdvisoryLockService,
   );
   return { service, prisma, effects, sports, entry, syncLock };
 }
@@ -153,7 +157,17 @@ describe('McpAdminMaintenanceService', () => {
     expect(prisma.mcpAdminDelegation.deleteMany).toHaveBeenCalledWith({
       where: { id: { in: ['expired-delegation'] }, expiresAt: { lt: cutoff } },
     });
+    expect(prisma.mcpAdminOperationDelegation.findMany).toHaveBeenCalledWith({
+      where: { expiresAt: { lt: cutoff } },
+      select: { id: true },
+      orderBy: [{ expiresAt: 'asc' }, { id: 'asc' }],
+      take: 100,
+    });
+    expect(prisma.mcpAdminOperationDelegation.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ['expired-operation-delegation'] }, expiresAt: { lt: cutoff } },
+    });
     expect(prisma.mcpEventContentSync.deleteMany).not.toHaveBeenCalled();
+    expect(effects.syncEventContent).not.toHaveBeenCalled();
 
     // Recovery has only an event identifier and still runs after personal rows are pruned.
     await service.flush();

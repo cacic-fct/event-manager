@@ -69,6 +69,8 @@ const compoundKeys = {
   userCalendarFeedSettings: ['userId'],
   userAdminCalendarFeedSettings: ['userId'],
   accountUserMerge: ['oldUserId'],
+  mcpEventContentSync: ['eventId'],
+  mcpAdminFileArtifactChunk: ['artifactId', 'offset'],
 } as const satisfies Partial<{ [Model in PrismaModelProperty]: readonly PrismaScalarKeysByModel[Model][] }>;
 const deletableLeaves = new Set([
   'eventAudienceInvitation',
@@ -102,10 +104,14 @@ function object(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === 'object' ? (value as Record<string, unknown>) : {};
 }
 
-export function journalSchemaFingerprint(): string {
+export function journalSchemaFingerprint({ legacyMcpKeys = false } = {}): string {
   const database = Prisma.dmmf.datamodel.models.map((model) => ({
     name: model.name,
-    key: primaryFields(lowerFirst(model.name)),
+    // Journals written before the MCP key mappings can still be undone when the rest of their schema matches.
+    key:
+      legacyMcpKeys && (model.name === 'McpEventContentSync' || model.name === 'McpAdminFileArtifactChunk')
+        ? []
+        : primaryFields(lowerFirst(model.name)),
     fields: model.fields.map((field) => ({
       name: field.name,
       type: field.type,

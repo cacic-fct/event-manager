@@ -8,7 +8,7 @@ Endpoints de exclusão exigem papel M2M `lgpd:delete`.
 
 ## Exportação
 
-A exportação deve retornar dados pessoais do titular agrupados por categoria, sem incluir dados operacionais de eventos apenas por estarem relacionados ao titular. As seleções explícitas em `apps/backend/src/app/lgpd/lgpd-selects.ts` e os mapeadores de saída delimitam esse conteúdo. Consulte também o [guia do módulo LGPD](../../apps/backend/src/app/lgpd/README.md).
+A exportação deve retornar dados pessoais do titular agrupados por categoria, sem incluir dados operacionais de eventos apenas por estarem relacionados ao titular. As seleções explícitas em `apps/backend/src/app/lgpd/lgpd-selects.ts` e os mapeadores de saída delimitam esse conteúdo. Consulte também o [guia do módulo LGPD](https://github.com/cacic-fct/event-manager/blob/main/apps/backend/src/app/lgpd/README.md).
 
 Exemplos de cuidado:
 

@@ -22,6 +22,8 @@ export type AuditScope = {
 };
 
 export type AuditRecordOptions = {
+  entryId?: string;
+  revertTargetId?: string;
   entityType: AuditLogEntityType;
   entityId: string;
   entityLabel?: string | null;

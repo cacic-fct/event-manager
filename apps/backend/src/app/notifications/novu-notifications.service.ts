@@ -43,6 +43,10 @@ export class NovuNotificationsService {
     return this.transport.createSubscriberSession(recipient);
   }
 
+  registerWebPushRecipient(recipient: NotificationRecipient): Promise<boolean> {
+    return this.transport.registerWebPushRecipient(recipient);
+  }
+
   mapAuthenticatedUserToRecipient(user: AuthenticatedUser): NotificationRecipient {
     return mapAuthenticatedUserToRecipient(user);
   }
@@ -85,14 +89,6 @@ export class NovuNotificationsService {
         subscriberId: input.recipient.subscriberId,
       },
       overrides: {
-        fcm: {
-          data: {
-            url: action.url,
-            majorEventId: input.majorEventId,
-            subscriptionId: input.subscriptionId,
-            subscriberId: input.recipient.subscriberId,
-          },
-        },
         webPush: {
           data: {
             url: action.url,
@@ -142,7 +138,6 @@ export class NovuNotificationsService {
       transactionId: `content-review:${input.id}:${input.revision}`,
       payload: { title, subject: title, body, actionUrl, redirectUrl: actionUrl, actionLabel: 'Revisar alterações' },
       overrides: {
-        fcm: { data: { url: actionUrl } },
         webPush: { data: { url: actionUrl } },
       },
     });
@@ -177,13 +172,6 @@ export class NovuNotificationsService {
         redirectUrl: actionUrl,
       },
       overrides: {
-        fcm: {
-          data: {
-            url: actionUrl,
-            eventId: input.eventId,
-            submissionId: input.submissionId,
-          },
-        },
         webPush: {
           data: {
             url: actionUrl,
@@ -225,14 +213,6 @@ export class NovuNotificationsService {
         subscriberId: input.recipient.subscriberId,
       },
       overrides: {
-        fcm: {
-          data: {
-            url: actionUrl,
-            certificateId: input.certificateId,
-            configId: input.configId,
-            subscriberId: input.recipient.subscriberId,
-          },
-        },
         webPush: {
           data: {
             url: actionUrl,
@@ -271,7 +251,6 @@ export class NovuNotificationsService {
         redirectUrl: actionUrl,
       },
       overrides: {
-        fcm: { data: { url: actionUrl, transferId: input.transferId } },
         webPush: { data: { url: actionUrl, transferId: input.transferId } },
       },
     });
@@ -377,14 +356,6 @@ export class NovuNotificationsService {
         redirectUrl: actionUrl,
       },
       overrides: {
-        fcm: {
-          data: {
-            url: actionUrl,
-            formId: input.formId,
-            targetType: input.targetType,
-            targetId: input.targetId,
-          },
-        },
         webPush: {
           data: {
             url: actionUrl,
@@ -423,7 +394,7 @@ export class NovuNotificationsService {
         actionUrl,
         redirectUrl: actionUrl,
       },
-      overrides: { fcm: { data: { url: actionUrl } }, webPush: { data: { url: actionUrl } } },
+      overrides: { webPush: { data: { url: actionUrl } } },
     });
   }
 
@@ -456,7 +427,7 @@ export class NovuNotificationsService {
           actionUrl: input.actionUrl,
           redirectUrl: input.actionUrl,
         },
-        overrides: { fcm: { data: { url: input.actionUrl } }, webPush: { data: { url: input.actionUrl } } },
+        overrides: { webPush: { data: { url: input.actionUrl } } },
       },
       input.deliveryAttempt ? `${transactionId}:retry-${input.deliveryAttempt}` : transactionId,
     );
@@ -494,7 +465,6 @@ export class NovuNotificationsService {
         redirectUrl: actionUrl,
       },
       overrides: {
-        fcm: { data: { url: actionUrl, eventId: input.eventId } },
         webPush: { data: { url: actionUrl, eventId: input.eventId } },
       },
     });
@@ -528,13 +498,6 @@ export class NovuNotificationsService {
         subscriberId: input.recipient.subscriberId,
       },
       overrides: {
-        fcm: {
-          data: {
-            url: input.actionUrl,
-            targetType: input.targetType,
-            targetId: input.targetId,
-          },
-        },
         webPush: {
           data: {
             url: input.actionUrl,
@@ -573,7 +536,6 @@ export class NovuNotificationsService {
         redirectUrl: actionUrl,
       },
       overrides: {
-        fcm: { data: { url: actionUrl, drawId: input.drawId, spinId: input.spinId } },
         webPush: { data: { url: actionUrl, drawId: input.drawId, spinId: input.spinId } },
       },
     });
@@ -603,7 +565,6 @@ export class NovuNotificationsService {
         redirectUrl: actionUrl,
       },
       overrides: {
-        fcm: { data: { url: actionUrl, drawId: input.drawId, spinId: input.spinId } },
         webPush: { data: { url: actionUrl, drawId: input.drawId, spinId: input.spinId } },
       },
     });

@@ -1,3 +1,13 @@
+import { McpAdminFileArtifactService } from './mcp/admin-operations/artifact-files';
+import { McpAdminArtifactTools } from './mcp/admin-operations/artifact-tools';
+import { McpAdminArtifactController } from './mcp/admin-operations/artifact-controller';
+import { AdminMcpGraphqlBridge } from './mcp/admin-operations/graphql-bridge';
+import { AdminMcpCommandService } from './mcp/admin-operations/command-service';
+import { AdminMcpRestOperations } from './mcp/admin-operations/rest-operations';
+import { AdminMcpScopePolicy } from './mcp/admin-operations/scope-policy';
+import { AdminMcpOperationTools } from './mcp/admin-operations/tools';
+import { AdminMcpOperationsController } from './mcp/admin-operations/controller';
+import { McpAdminWorkspaceReadService } from './mcp/mcp-admin-workspace-read.service';
 import { EventPreparationResolver } from './events/event-preparation.resolver';
 import { EventManualNotificationResolver } from './events/event-manual-notification.resolver';
 import { EventManualNotificationProcessor } from './events/event-manual-notification.processor';
@@ -78,7 +88,7 @@ import {
   McpAdminToolServer,
   McpAdminTransportController,
 } from './mcp/mcp-admin-transport.controller';
-import { McpEventContentSyncLockService } from './mcp/mcp-event-content-sync-lock.service';
+import { McpAdminAdvisoryLockService } from './mcp/mcp-admin-advisory-lock.service';
 import { McpAdminMaintenanceService } from './mcp/mcp-admin-maintenance.service';
 import {
   MCP_ADMIN_MAINTENANCE_QUEUE,
@@ -239,6 +249,7 @@ import { ReceiptAdminQueueService } from './major-event-receipts/services/receip
 import { ReceiptSubscriptionSyncService } from './major-event-receipts/services/receipt-subscription-sync.service';
 import { ReceiptUploadService } from './major-event-receipts/services/receipt-upload.service';
 import { ReceiptValidationService } from './major-event-receipts/services/receipt-validation.service';
+import { NovuWebPushService } from './notifications/novu-web-push.service';
 import { NovuNotificationsService } from './notifications/novu-notifications.service';
 import { NovuNotificationsController } from './notifications/novu-notifications.controller';
 import { AccountManagerPrivacySyncService } from './privacy/account-manager-privacy-sync.service';
@@ -478,6 +489,8 @@ const schedulerProviders = useInMemoryTestInfra
   ],
   controllers: [
     McpAdminController,
+    AdminMcpOperationsController,
+    McpAdminArtifactController,
     McpAdminTransportController,
     McpAdminMetadataController,
     McpAdminRealtimeController,
@@ -562,6 +575,7 @@ const schedulerProviders = useInMemoryTestInfra
     TicketSubscriptionSyncService,
     HealthService,
     NovuNotificationsService,
+    NovuWebPushService,
     BackendFeatureFlagService,
     EventAudienceService,
     CurrentUserParticipationEventsResolver,
@@ -745,6 +759,13 @@ const schedulerProviders = useInMemoryTestInfra
     VotingIntegrationService,
     TurnstileService,
     McpAdminConfig,
+    AdminMcpGraphqlBridge,
+    AdminMcpRestOperations,
+    AdminMcpCommandService,
+    AdminMcpScopePolicy,
+    AdminMcpOperationTools,
+    McpAdminFileArtifactService,
+    McpAdminArtifactTools,
     McpAdminAccessService,
     McpAdminAuthGuard,
     McpAdminSessionGuard,
@@ -752,10 +773,11 @@ const schedulerProviders = useInMemoryTestInfra
     McpAdminOperationInterceptor,
     McpAdminInvalidationService,
     McpAdminReadService,
+    McpAdminWorkspaceReadService,
     McpAdminProposalsService,
     McpAdminToolServer,
     McpAdminMaintenanceService,
-    McpEventContentSyncLockService,
+    McpAdminAdvisoryLockService,
     RateLimitGuard,
     RateLimitService,
     redisProvider,

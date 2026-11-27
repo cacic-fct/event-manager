@@ -1,0 +1,294 @@
+<a mat-button routerLink="/mcp">Propostas de eventos</a>
+<header>
+  <h1 #heading tabindex="-1">Operações administrativas por aplicativos</h1>
+  <button mat-button (click)="load()" [disabled]="loading() || busy() || creating() || confirming()">Atualizar</button>
+</header>
+<p>Revise cada operação antes da execução. As autorizações limitam o acesso do aplicativo às suas permissões atuais.</p>
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando operações" />
+}
+@if (error()) {
+  <p #alert role="alert" tabindex="-1">{{ error() }}</p>
+}
+@if (feedback()) {
+  <p role="status">{{ feedback() }}</p>
+}
+@if (settings(); as config) {
+  @if (!config.enabled) {
+    <p>O acesso administrativo por aplicativos está desativado.</p>
+  }
+  @if (!config.proposalsEnabled) {
+    <p>As alterações por aplicativos estão desativadas. As autorizações podem permitir apenas consultas.</p>
+  }
+  <section aria-labelledby="queue-title">
+    <h2 id="queue-title">Operações para revisão</h2>
+    <p>Selecione as operações e os campos opcionais que deseja aplicar. Use o lápis para editar um valor.</p>
+    @if (selectableCommands().length) {
+      <div class="review-toolbar">
+        <mat-checkbox
+          [checked]="allCommandsSelected()"
+          [indeterminate]="selectedCommands().length > 0 && !allCommandsSelected()"
+          [disabled]="busy() || loading() || confirming()"
+          (change)="toggleAllCommands($event.checked)">
+          Selecionar operações desta página
+        </mat-checkbox>
+        <span role="status"
+          >{{ selectedCommands().length }} {{ selectedCommands().length === 1 ? 'selecionada' : 'selecionadas' }}</span
+        >
+      </div>
+    }
+    @for (command of result().items; track command.id) {
+      <article class="command" [class.selected-command]="selectedCommands().includes(command.id)">
+        <div class="command-heading">
+          <h3>{{ command.operationLabel }}</h3>
+          @if (command.state === 'PENDING') {
+            <mat-checkbox
+              [checked]="selectedCommands().includes(command.id)"
+              [disabled]="busy() || loading() || confirming() || !selectable(command)"
+              (change)="toggleCommand(command, $event.checked)">
+              Aplicar esta operação
+            </mat-checkbox>
+          }
+        </div>
+        <p>{{ domainLabel(command.domain) }} - {{ clientName(command.clientId) }} - {{ status(command) }}</p>
+        <p>{{ previews()[command.id]?.effects ?? command.effects }}</p>
+        <app-command-targets [targets]="command.targets ?? []" />
+        @if (drafts()[command.id]; as fields) {
+          <h4>{{ command.state === 'PENDING' ? 'Alterações propostas' : 'Valores enviados pelo aplicativo' }}</h4>
+          <app-command-arguments
+            [fields]="fields"
+            [targets]="command.targets"
+            [disabled]="busy() || loading() || !selectable(command)"
+            [finalValues]="previews()[command.id]?.arguments ?? null"
+            (include)="includeArgument($event)"
+            (edit)="editArgument(command, $event.field, $event.event)" />
+        }
+        @if (command.state === 'PENDING' && !expired(command)) {
+          @let files = commandFiles(command.id, previews()[command.id]?.arguments ?? command.arguments);
+          @if (files.length) {
+            <h4>Arquivos para conferência</h4>
+            <p>Baixe e confira os arquivos antes de aprovar a operação.</p>
+            @for (file of files; track file.id; let index = $index) {
+              <a mat-button [href]="file.href" target="_blank" rel="noopener">Baixar arquivo {{ index + 1 }}</a>
+            }
+          }
+        }
+        <details>
+          <summary>Detalhes técnicos da proposta</summary>
+          <pre>{{ serialize(command.arguments) }}</pre>
+          <p>Identificador de integridade: {{ command.fingerprint }}</p>
+        </details>
+        <p>Validade: {{ command.expiresAt | date: 'short' }}</p>
+        @if (attempted().includes(command.id) && command.state === 'PENDING') {
+          <p>A execução foi solicitada. Confira o histórico antes de agir; esta revisão não pode ser reenviada.</p>
+        }
+        @if (command.state === 'PENDING' && expired(command)) {
+          <p>Esta proposta expirou e não pode ser executada.</p>
+        }
+        @if (command.unavailableReason) {
+          <p>{{ command.unavailableReason }}</p>
+        }
+        @if (command.state === 'UNCERTAIN') {
+          <p>
+            Não repita esta operação. Confira o histórico e o estado do recurso para identificar o resultado da
+            execução.
+          </p>
+        }
+        @if (command.state === 'APPLYING') {
+          <p>A execução já começou. Aguarde e confira o histórico. Não envie novamente.</p>
+        }
+        @if (command.state === 'PENDING') {
+          <div class="actions">
+            <button mat-button [disabled]="busy() || loading() || confirming()" (click)="reject(command, $event)">
+              Rejeitar
+            </button>
+          </div>
+        }
+      </article>
+    } @empty {
+      @if (!loading()) {
+        <p>Nenhuma operação nesta página.</p>
+      }
+    }
+    @if (confirming()) {
+      <section class="confirmation" aria-label="Confirmação final">
+        <h3 #confirmationHeading tabindex="-1">Confira os valores validados acima</h3>
+        <p>
+          {{
+            selectedCommands().length === 1
+              ? 'Será executada 1 operação'
+              : 'Serão executadas ' + selectedCommands().length + ' operações'
+          }}, uma de cada vez. Se uma execução falhar, as demais serão interrompidas. Operações já aplicadas serão
+          mantidas.
+        </p>
+        <div class="actions">
+          <button mat-button [disabled]="busy()" (click)="cancelConfirmation()">Voltar à revisão</button>
+          <button mat-flat-button [disabled]="busy() || loading()" (click)="approveSelected($event)">
+            Aprovar e executar selecionadas
+          </button>
+        </div>
+      </section>
+    } @else if (result().items.length) {
+      <div class="review-actions">
+        <p>Destinos únicos e campos obrigatórios são preservados. Nenhuma operação é executada ao editar.</p>
+        <button
+          #reviewButton
+          mat-flat-button
+          [disabled]="busy() || loading() || !selectedCommands().length"
+          (click)="prepareSelected($event)">
+          Conferir selecionadas ({{ selectedCommands().length }})
+        </button>
+      </div>
+    }
+    <app-review-queue-pagination
+      [page]="page()"
+      [hasNextPage]="result().hasMore"
+      [disabled]="loading() || busy() || creating() || confirming()"
+      (pageChange)="load($event)" />
+  </section>
+  <mat-expansion-panel
+    [expanded]="creating()"
+    (opened)="toggleCreation(true)"
+    (closed)="toggleCreation(false)"
+    [disabled]="busy() || loading() || confirming()">
+    <mat-expansion-panel-header><mat-panel-title>Autorizar aplicativo</mat-panel-title></mat-expansion-panel-header>
+    <p>Consultas autorizadas podem ser realizadas pelo aplicativo. Alterações sempre precisam de revisão humana.</p>
+    <form [formGroup]="form" (ngSubmit)="createDelegation()">
+      <div class="fields">
+        <mat-form-field appearance="outline">
+          <mat-label>Aplicativo</mat-label>
+          <mat-select formControlName="clientId">
+            @for (client of config.clients; track client.id) {
+              <mat-option [value]="client.id">{{ client.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Abrangência</mat-label>
+          <mat-select formControlName="scopeMode">
+            <mat-option value="RESOURCE">Um recurso específico</mat-option>
+            <mat-option value="ALL_AUTHORIZED">Todos os recursos já permitidos</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+      @if (form.controls.scopeMode.value === 'RESOURCE') {
+        <app-event-context-picker
+          [context]="selectedContext()"
+          [searchOnly]="false"
+          [allowGroups]="true"
+          (contextChange)="chooseScope($event)" />
+      } @else {
+        <mat-checkbox formControlName="broadConsent"
+          >Autorizo explicitamente o acesso a todos os recursos permitidos pelas minhas permissões atuais</mat-checkbox
+        >
+      }
+      <p>A autorização não concede permissões adicionais ao usuário nem ao aplicativo.</p>
+      <h3>Operações permitidas ({{ selected().length }}/300)</h3>
+      <mat-form-field appearance="outline" class="catalog-search">
+        <mat-label>Buscar operações</mat-label>
+        <input matInput type="search" [formControl]="search" />
+        <mat-hint>Busque pelo nome, domínio ou descrição.</mat-hint>
+      </mat-form-field>
+      <p role="status">
+        {{ matchingOperations() }} {{ matchingOperations() === 1 ? 'operação encontrada.' : 'operações encontradas.' }}
+      </p>
+      @for (group of groups(); track group.domain) {
+        <mat-expansion-panel>
+          <mat-expansion-panel-header
+            ><mat-panel-title>{{ domainLabel(group.domain) }}</mat-panel-title></mat-expansion-panel-header
+          >
+          <div class="actions">
+            <button mat-button type="button" (click)="toggleDomain(group.operations, true)">
+              Selecionar resultados do domínio
+            </button>
+            <button mat-button type="button" (click)="toggleDomain(group.operations, false)">
+              Limpar resultados do domínio
+            </button>
+          </div>
+          @for (operation of group.operations; track operation.field) {
+            <div class="operation">
+              <mat-checkbox
+                [checked]="selected().includes(operation.field)"
+                [disabled]="
+                  busy() ||
+                  (!selected().includes(operation.field) && selected().length >= 300) ||
+                  operationUnavailable(operation)
+                "
+                (change)="toggleOperation(operation.field, $event.checked)">
+                {{ operation.label }} ({{ operation.kind === 'query' ? 'consulta' : 'alteração com revisão' }})
+              </mat-checkbox>
+              <p>
+                {{ operation.description }}{{ operation.personalData ? ' Acessa dados pessoais.' : '' }}
+                @if (operation.requiresAllAuthorized) {
+                  Exige a abrangência Todos os recursos já permitidos.
+                }
+              </p>
+            </div>
+          }
+        </mat-expansion-panel>
+      }
+      <mat-checkbox formControlName="personalData"
+        >Autorizo o acesso a dados pessoais nas operações selecionadas</mat-checkbox
+      >
+      <div class="fields">
+        <mat-form-field appearance="outline">
+          <mat-label>Validade em horas</mat-label>
+          <input matInput type="number" min="1" max="24" formControlName="hours" />
+          <mat-hint>Até 24 horas</mat-hint>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Limite de propostas</mat-label>
+          <input matInput type="number" min="1" max="20" formControlName="maxProposals" />
+          <mat-hint>Até 20 propostas</mat-hint>
+        </mat-form-field>
+      </div>
+      <button
+        mat-flat-button
+        type="submit"
+        [disabled]="
+          busy() ||
+          !config.enabled ||
+          form.invalid ||
+          !selected().length ||
+          (form.controls.scopeMode.value === 'ALL_AUTHORIZED' ? !form.controls.broadConsent.value : !scope())
+        ">
+        Criar autorização
+      </button>
+    </form>
+  </mat-expansion-panel>
+  <section aria-labelledby="delegations-title">
+    <h2 id="delegations-title">Autorizações</h2>
+    @for (delegation of delegations(); track delegation.id) {
+      <article>
+        <h3>{{ clientName(delegation.clientId) }}</h3>
+        <p>
+          {{ delegation.scope.mode === 'ALL_AUTHORIZED' ? 'Todos os recursos já permitidos' : 'Recurso específico' }} -
+          {{ active(delegation) ? 'Ativa' : 'Encerrada' }}
+        </p>
+        @if (delegation.scope.mode === 'RESOURCE') {
+          <p>{{ scopeKind(delegation.scope.kind) }}: {{ delegation.scope.id }}</p>
+        }
+        <p>
+          {{ delegation.operations.length }} operações permitidas. Até {{ delegation.maxProposals }} propostas.
+          Validade: {{ delegation.expiresAt | date: 'short' }}.
+        </p>
+        <details>
+          <summary>Consultar operações permitidas</summary>
+          @for (operation of delegation.operations; track operation) {
+            <p>{{ operationLabel(operation) }}</p>
+          }
+        </details>
+        @if (delegation.personalData) {
+          <p>Acesso a dados pessoais autorizado.</p>
+        }
+        @if (active(delegation)) {
+          <button mat-button [disabled]="busy() || loading() || confirming()" (click)="revoke(delegation, $event)">
+            Revogar autorização
+          </button>
+        }
+      </article>
+    } @empty {
+      <p>Nenhuma autorização criada.</p>
+    }
+  </section>
+}

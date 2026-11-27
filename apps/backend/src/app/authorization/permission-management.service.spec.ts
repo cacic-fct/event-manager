@@ -1,3 +1,4 @@
+import type { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import {
   PermissionManagementService,
   toPermissionGroupAuditSnapshot,
@@ -6,6 +7,40 @@ import {
 const { jest } = import.meta;
 
 describe('PermissionManagementService transaction safety', () => {
+  it('reads saved roles and groups without starting post-commit expiry cleanup', async () => {
+    const role = { id: 'role-1' };
+    const group = { id: 'group-1', version: 1, members: [] };
+    const prisma = {
+      $transaction: jest.fn().mockResolvedValue('role-1'),
+      eventManagerRole: { findMany: jest.fn().mockResolvedValue([]) },
+      eventManagerRoleInheritance: { findMany: jest.fn().mockResolvedValue([]) },
+      eventManagerPermissionGroup: { findFirst: jest.fn().mockResolvedValue(group) },
+    };
+    const policy = { assertPermissions: jest.fn(), isSuperAdmin: () => true };
+    const service = new PermissionManagementService(prisma as never, {} as never, policy as never);
+    const roles = jest.spyOn(service, 'readRoles').mockResolvedValue([role as never]);
+    const groups = jest.spyOn(service, 'readGroups').mockResolvedValue([group as never]);
+    const listRoles = jest.spyOn(service, 'listRoles').mockRejectedValue(new Error('cleanup outside transaction'));
+    const listGroups = jest.spyOn(service, 'listGroups').mockRejectedValue(new Error('cleanup outside transaction'));
+    const actor = { sub: 'reviewer' } as AuthenticatedUser;
+    await expect(
+      service.saveRole(
+        { name: 'Cargo', description: '', emoji: '', permissions: [], parentRoleIds: [], assignments: [] },
+        actor,
+      ),
+    ).resolves.toEqual(role);
+    await expect(
+      service.saveGroup(
+        { id: group.id, expectedVersion: 1, name: 'Grupo', description: '', emoji: '', members: [] },
+        actor,
+      ),
+    ).resolves.toEqual(group);
+    expect(roles).toHaveBeenCalledTimes(1);
+    expect(groups).toHaveBeenCalledTimes(1);
+    expect(listRoles).not.toHaveBeenCalled();
+    expect(listGroups).not.toHaveBeenCalled();
+  });
+
   it('serializes graph writes behind one transaction advisory lock', async () => {
     const tx = {
       $executeRaw: jest.fn().mockResolvedValue(1),

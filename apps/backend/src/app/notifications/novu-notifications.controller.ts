@@ -1,4 +1,19 @@
-import { Controller, ForbiddenException, Get, Req, ServiceUnavailableException } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Headers,
+  type RawBodyRequest,
+  HttpCode,
+  Post,
+  Req,
+  ServiceUnavailableException,
+  UseGuards,
+  UsePipes,
+} from '@nestjs/common';
+import { REST_VALIDATION_PIPE } from '../common/rest-validation.pipe';
+import { IsString, Length, Matches } from 'class-validator';
 import {
   ApiBearerAuth,
   ApiCookieAuth,
@@ -8,14 +23,43 @@ import {
   ApiProperty,
   ApiPropertyOptional,
   ApiServiceUnavailableResponse,
+  ApiNoContentResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import type { NovuSubscriberSession } from '@cacic-fct/shared-data-types';
 import { type Request } from 'express';
+import { Public } from '../auth/decorators/public.decorator';
+import { assertPushEndpoint, NovuWebPushService } from './novu-web-push.service';
 import { AUTH_SESSION_COOKIE_NAME } from '../auth/auth.constants';
 import { type AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { CurrentUserContextService } from '../current-user/context.service';
 import { NovuNotificationsService } from './novu-notifications.service';
+import type { NotificationRecipient } from './novu-notification.types';
+import { RateLimit } from '../rate-limit/rate-limit.decorator';
+import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
+import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
+
+class RegisterWebPushSubscriptionDto {
+  @ApiProperty({ description: 'Expected subscriber from the signed session.', example: 'user-1' })
+  @IsString()
+  @Length(1, 200)
+  subscriberId!: string;
+
+  @ApiProperty({ description: 'HTTPS endpoint provided by the browser push service.' })
+  @IsString()
+  @Length(1, 2048)
+  endpoint!: string;
+
+  @ApiProperty({ description: 'Browser public encryption key in base64url.' })
+  @IsString()
+  @Matches(/^B[A-Za-z0-9_-]{86}$/)
+  p256dh!: string;
+
+  @ApiProperty({ description: 'Browser encryption secret in base64url.' })
+  @IsString()
+  @Matches(/^[A-Za-z0-9_-]{22}$/)
+  auth!: string;
+}
 
 type RequestWithUser = Request & {
   user?: AuthenticatedUser;
@@ -60,7 +104,7 @@ class NovuSubscriberSessionResponseDto implements NovuSubscriberSession {
 
   @ApiPropertyOptional({
     description: 'Novu push integration identifier used when registering this browser for push notifications.',
-    example: 'firebase-cloud-messaging',
+    example: 'push-webhook-example',
     nullable: true,
   })
   pushIntegrationIdentifier?: string | null;
@@ -78,6 +122,7 @@ export class NovuNotificationsController {
   constructor(
     private readonly currentUserContext: CurrentUserContextService,
     private readonly notifications: NovuNotificationsService,
+    private readonly webPush: NovuWebPushService,
   ) {}
 
   @Get('novu-session')
@@ -100,14 +145,7 @@ export class NovuNotificationsController {
       'Returned when Novu secure mode is not enabled or the required server-side signing configuration is missing.',
   })
   async createNovuSession(@Req() request: RequestWithUser): Promise<NovuSubscriberSession> {
-    if (!request.user) {
-      throw new ForbiddenException('User is not authenticated.');
-    }
-
-    const { person } = await this.currentUserContext.resolveCurrentUserContext(request.user, true);
-    const recipient = person
-      ? this.notifications.mapPersonToRecipient(person)
-      : this.notifications.mapAuthenticatedUserToRecipient(request.user);
+    const recipient = await this.currentRecipient(request);
     const session = this.notifications.createSubscriberSession(recipient);
 
     if (!session) {
@@ -115,5 +153,64 @@ export class NovuNotificationsController {
     }
 
     return session;
+  }
+
+  @Post('push-subscription')
+  @UsePipes(REST_VALIDATION_PIPE)
+  @HttpCode(204)
+  @UseGuards(RateLimitGuard)
+  @RateLimit(RATE_LIMIT_POLICIES.notificationPushRegistration)
+  @ApiBearerAuth()
+  @ApiCookieAuth(AUTH_SESSION_COOKIE_NAME)
+  @ApiOperation({
+    summary: 'Register this browser for push notifications',
+    description: 'Saves this browser’s Web Push subscription for the authenticated subscriber.',
+  })
+  @ApiForbiddenResponse({ description: 'An authenticated identity is required.' })
+  @ApiNoContentResponse({ description: 'This browser subscription was registered for the authenticated subscriber.' })
+  @ApiServiceUnavailableResponse({ description: 'Push registration is unavailable.' })
+  async registerPushSubscription(
+    @Req() request: RequestWithUser,
+    @Body() body: RegisterWebPushSubscriptionDto,
+  ): Promise<void> {
+    const recipient = await this.currentRecipient(request);
+    if (recipient.subscriberId !== body.subscriberId) {
+      throw new ForbiddenException('The notification session belongs to a different user.');
+    }
+    assertPushEndpoint(body.endpoint);
+    if (
+      !this.notifications.createSubscriberSession(recipient)?.vapidPublicKey ||
+      !(await this.notifications.registerWebPushRecipient(recipient))
+    ) {
+      throw new ServiceUnavailableException('Push registration is unavailable.');
+    }
+    await this.webPush.saveSubscription(recipient.subscriberId, {
+      endpoint: body.endpoint,
+      keys: { p256dh: body.p256dh, auth: body.auth },
+    });
+  }
+
+  @Public()
+  @Post('push-webhook')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Deliver a signed Novu Push Webhook to subscribed browsers' })
+  @ApiOkResponse({ description: 'Novu message identifier.' })
+  @ApiForbiddenResponse({ description: 'The Novu signature is missing or invalid.' })
+  async deliverPushWebhook(
+    @Req() request: RawBodyRequest<Request>,
+    @Headers('x-novu-signature') signature: string | undefined,
+  ): Promise<{ id: string }> {
+    return this.webPush.deliver(request.rawBody, signature, request.body);
+  }
+
+  private async currentRecipient(request: RequestWithUser): Promise<NotificationRecipient> {
+    if (!request.user) {
+      throw new ForbiddenException('User is not authenticated.');
+    }
+
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(request.user, true);
+    return person
+      ? this.notifications.mapPersonToRecipient(person)
+      : this.notifications.mapAuthenticatedUserToRecipient(request.user);
   }
 }

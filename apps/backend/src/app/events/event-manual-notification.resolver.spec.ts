@@ -1,3 +1,4 @@
+import { adminMcpExecution, type AdminMcpExecution } from '../mcp/admin-operations/execution-context';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { jest } from '@jest/globals';
 import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
@@ -13,6 +14,8 @@ function setup() {
     },
     people: { findMany: jest.fn().mockResolvedValue([{ id: 'person' }]) },
   };
+  const transaction = jest.fn(async (work: (tx: unknown) => Promise<unknown>) => work(prisma));
+  Object.assign(prisma, { $transaction: transaction });
   const authorization = { assertPermissions: jest.fn() };
   const queue = { getJob: jest.fn().mockResolvedValue(null), add: jest.fn() };
   const audit = { record: jest.fn() };
@@ -43,7 +46,7 @@ describe('manual event notifications', () => {
   it.each(['LECTURERS', 'SUBSCRIBERS'])(
     'records the actor, audience, message, and recipients before queueing %s',
     async (audience) => {
-      const { resolver, audit, queue } = setup();
+      const { resolver, audit, queue, prisma } = setup();
       await expect(
         resolver.notifyEventParticipants('event', audience, ' Atualização do Evento ', requestId, {}),
       ).resolves.toBe(true);
@@ -60,6 +63,7 @@ describe('manual event notifications', () => {
             status: 'REQUESTED',
           }),
         }),
+        prisma,
       );
       expect(audit.record.mock.invocationCallOrder[0]).toBeLessThan(queue.add.mock.invocationCallOrder[0]);
       expect(JSON.stringify(queue.add.mock.calls)).not.toContain('NEVER-LOG-THIS');
@@ -71,8 +75,32 @@ describe('manual event notifications', () => {
     },
   );
 
+  it('persists approval attribution in queued notifications without authentication credentials', async () => {
+    const { resolver, queue } = setup();
+    const context = {
+      phase: 'apply',
+      proposalId: 'proposal',
+      delegationId: 'delegation',
+      clientId: 'client',
+      operation: 'notifyEventParticipants',
+      user: { sub: 'admin', token: 'secret' },
+      request: {},
+    } as unknown as AdminMcpExecution;
+    await adminMcpExecution.run(context, () =>
+      resolver.notifyEventParticipants('event', 'LECTURERS', 'Message', requestId, {}),
+    );
+    expect(queue.add).toHaveBeenCalledWith(
+      'notify',
+      expect.objectContaining({
+        mcpProposalId: 'proposal',
+      }),
+      expect.anything(),
+    );
+    expect(JSON.stringify(queue.add.mock.calls)).not.toContain('secret');
+  });
+
   it('does not send if the request cannot be audited, and logs queue failures', async () => {
-    const { resolver, audit, queue } = setup();
+    const { resolver, audit, queue, prisma } = setup();
     audit.record.mockRejectedValueOnce(new Error('Audit unavailable'));
     await expect(resolver.notifyEventParticipants('event', 'LECTURERS', 'Message', requestId, {})).rejects.toThrow(
       'Audit unavailable',
@@ -84,6 +112,7 @@ describe('manual event notifications', () => {
     );
     expect(audit.record).toHaveBeenLastCalledWith(
       expect.objectContaining({ metadata: expect.objectContaining({ status: 'QUEUE_FAILED' }) }),
+      prisma,
     );
   });
 

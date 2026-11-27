@@ -676,7 +676,7 @@ export class EventsResolver {
         },
         tx,
       );
-      if (publishAfterUpdate) {
+      if (publishAfterUpdate || previousEvent.publicationState !== updatedAudit.publicationState) {
         await this.auditLog.record(
           {
             entityType: AuditLogEntityType.EVENT,
@@ -692,7 +692,7 @@ export class EventsResolver {
               majorEventId: updatedAudit.majorEventId,
               eventGroupId: updatedAudit.eventGroupId,
             },
-            summary: 'Conteúdo publicado.',
+            summary: publishAfterUpdate ? 'Conteúdo publicado.' : 'Evento retornado para rascunho.',
             metadata: PUBLICATION_LIFECYCLE_AUDIT_METADATA,
             squashWindowMs: 0,
             force: true,
